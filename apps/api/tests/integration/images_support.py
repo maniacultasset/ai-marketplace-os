@@ -153,6 +153,10 @@ class FakeStorage:
         data, ctype, when = self.objects[key]
         return ObjectHead(size=len(data), content_type=ctype, last_modified=when)
 
+    async def delete(self, bucket: str, key: str) -> None:
+        self._call("delete")
+        self.objects.pop(key, None)
+
     async def presign_put(self, bucket: str, key: str, **kw: Any) -> str:
         self._call("presign_put")
         return f"http://127.0.0.1:1/{bucket}/{key}?X-Amz-Signature=fake"

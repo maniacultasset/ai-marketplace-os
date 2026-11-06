@@ -33,6 +33,7 @@ from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.image_keys import image_object_key, parse_image_key
+from app.services.image_objects import delete_image_objects
 from app.workers.policy import IMAGE_JOB_LOCK as IMAGE_JOB_LOCK
 
 log = get_logger(__name__)
@@ -222,6 +223,7 @@ async def _register(
     order), the D8 lookup, the live-job cap (429), the product re-read, the per-product cap,
     the main replacement, the row, the job and the audit rows."""
     tenant = principal.tenant_id
+    replaced: list[uuid.UUID] = []
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = _uow_on(session, tenant)
@@ -238,6 +240,7 @@ async def _register(
             old = await uow.images.live_main(form.product_id, form.colourway_id)
             if old is not None:
                 await uow.images.soft_delete(old.id)
+                replaced.append(old.id)
                 await _audit(
                     uow,
                     principal,
@@ -266,6 +269,8 @@ async def _register(
         return 202, accepted_body(image_id, job_id)
 
     _status, body = await idempotent(principal, idem_key, "POST", UPLOAD_PATH, payload, handler)
+    for old_id in replaced:  # SI1 T21: the replaced main's copies go after the commit
+        await remove_objects_after_commit(principal, old_id)
     log.info(
         "image.accepted",
         tenant_id=str(tenant),
@@ -476,6 +481,43 @@ async def _accept_file(
     return await _register(
         principal, idem_key, payload, form, image_id=image_id, object_key=key, size=len(file)
     )
+
+
+# ---- SI1 T21: delete (PLAN D7, decision 18) ----
+
+
+async def remove_objects_after_commit(principal: Principal, image_id: uuid.UUID) -> None:
+    """After the soft delete committed: delete the derived and public objects, then clear the
+    row's markers; a failure is logged by id and the daily step retries (decision 21)."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        row = await uow.images.get_any(image_id)
+    if row is None or row.deleted_at is None:
+        return
+    if not await delete_image_objects(get_storage(), principal.tenant_id, row):
+        return
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        await uow.images.clear_objects(image_id)
+
+
+async def delete_image(principal: Principal, image_id: uuid.UUID) -> None:
+    """Soft-delete a live image of the caller's tenant (another tenant's or a deleted one is
+    404), audit `image.deleted`, then remove its derived and public copies."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        row = await uow.images.get_live(image_id)
+        if row is None:
+            raise NotFoundError("image_id")
+        await uow.images.lock_product_images(row.product_id)
+        if not await uow.images.soft_delete(image_id):
+            raise NotFoundError("image_id")
+        await _audit(
+            uow,
+            principal,
+            "image.deleted",
+            image_id,
+            before={"deleted_at": None},
+            after={"deleted_at": datetime.now(UTC).isoformat()},
+        )
+    await remove_objects_after_commit(principal, image_id)
 
 
 # ---- T12: the report ----

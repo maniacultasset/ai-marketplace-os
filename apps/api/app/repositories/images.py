@@ -342,6 +342,35 @@ class ImageRepository(TenantScopedRepository[Image]):
         deleted: bool | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return deleted
 
+    async def clear_objects(self, image_id: UUID) -> bool:
+        """The cleanup marker of a soft-deleted row whose objects are gone (decision 21): NULL
+        `public_written_at`, the clean pair and `metadata.vision`. `public_id` stays as a
+        tombstone (CP16), so the tenant purge step can still find the name (CP9)."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.deleted_at.is_not(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(
+                {
+                    Image.public_written_at: None,
+                    Image.clean_content_hash: None,
+                    Image.clean_mime_type: None,
+                    Image.metadata_: Image.metadata_.op("-")("vision"),
+                }
+            )
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def get_any(self, image_id: UUID) -> Image | None:
+        """The row, deleted or not (the after-commit object removal reads it)."""
+        stmt = self._select().where(Image.id == _uuid("image_id", image_id))
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def clear_public_written(self, image_id: UUID) -> None:
         """The public object is gone again (the post-PUT delete of a deleted row, CP16)."""
         self._own_session()

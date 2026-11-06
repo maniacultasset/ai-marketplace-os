@@ -93,6 +93,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_upload_url", "POST", "/images/upload-url"),
     ("images_upload", "POST", "/images/upload"),
     ("images_report", "GET", "/images/{image_id}/report"),
+    # SI1: the image delete (78 + 1)
+    ("images_delete", "DELETE", "/images/{image_id}"),
     ("rules_list", "GET", "/rules"),
     ("rules_dry_run", "POST", "/rules/dry-run"),
     ("jobs_get", "GET", "/jobs/{job_id}"),
@@ -116,7 +118,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 78
+    assert len(FROZEN) == 79
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -397,8 +399,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_78_operations() -> None:
-    assert len(OPS) == 78
+def test_79_operations() -> None:
+    assert len(OPS) == 79
 
 
 def test_error_codes_per_d2() -> None:

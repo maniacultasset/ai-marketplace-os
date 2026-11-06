@@ -760,6 +760,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/images/{image_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete an image (and its prepared and public copies)
+         * @description Delete an image and its prepared and public copies (a copy a marketplace already fetched
+         *     stays with the marketplace). Another tenant's image, an unknown id and a deleted one are the
+         *     same 404.
+         */
+        delete: operations["images_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/images/{image_id}/report": {
         parameters: {
             query?: never;
@@ -14851,6 +14873,352 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["UploadUrlOut"];
                 };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PERMISSION_DENIED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PERMISSION_DENIED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "PERMISSION_DENIED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    images_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                image_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Done; no body. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
             400: {

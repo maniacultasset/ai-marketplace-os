@@ -676,6 +676,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
               has_body=True, body_ids=("product_id", "storage_key"), idempotency=True, action=A.PRODUCT_IMPORT),
     Operation("images_report", "GET", "/images/{image_id}/report", 200, ImageReportOut, "images",
               "The image compliance reports", "S17b", path_id="image_id", action=A.TENANT_READ),
+    Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
+              "Delete an image (and its prepared and public copies)", "SI1",
+              path_id="image_id", action=A.PRODUCT_IMPORT),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),

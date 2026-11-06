@@ -691,6 +691,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "headers": {"Content-Type": "image/jpeg"},
             "product_id": PRODUCT_1,
         },
+        "images_delete": None,
         "images_upload": {
             "image_id": IMAGE,
             "job_id": JOB,
