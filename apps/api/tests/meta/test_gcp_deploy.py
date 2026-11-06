@@ -2133,3 +2133,22 @@ def test_public_image_settings_absent_unless_both_set(
     for block in _blocks(out, "env file"):
         env = yaml.safe_load(block)
         assert "GCS_BUCKET_IMAGES_PUBLIC" not in env and "IMAGE_PUBLIC_BASE_URL" not in env
+
+
+def test_prod_pins_public_image_hosting() -> None:
+    """prod.env carries both public image settings, on the images edge host (ADR-0026)."""
+    env = dict(
+        line.split("=", 1)
+        for line in (Path(DEPLOY) / "prod.env").read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#") and "=" in line
+    )
+    assert env["GCS_BUCKET_IMAGES_PUBLIC"] == "aimos-images-public-prod"
+    assert env["IMAGE_PUBLIC_BASE_URL"] == "https://images.kuinn.in"
+
+
+def test_images_edge_worker_serves_only_exact_public_names() -> None:
+    """The images edge Worker accepts only `<26 base32>.<jpg|png>` on GET/HEAD (ADR-0026)."""
+    src = Path("scripts/deploy/cloudflare/images-edge-worker.js").read_text(encoding="utf-8")
+    assert r"const NAME = /^\/([a-z2-7]{26})\.(jpg|png)$/;" in src
+    assert 'request.method !== "GET" && request.method !== "HEAD"' in src
+    assert "url.hostname !== env.EDGE_HOST" in src
