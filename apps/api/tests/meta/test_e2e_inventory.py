@@ -28,6 +28,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "jobs": ("jobs.sh",),
     "google": ("google_signin.sh",),  # ADR-0020
     "trusted_devices": ("trusted_devices.sh",),  # ADR-0023
+    "seller_intake": ("seller_intake.sh",),  # SI1
 }
 # the steps that may read the database (`psql` through the compose postgres), each with its reason;
 # every one is read-only (no write SQL), names as built
