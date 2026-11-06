@@ -12,8 +12,9 @@
 5. the commit, which releases both locks.
 
 A reservation that would take either sum past its cap raises `BudgetRefused(scope)`. A timeout or
-a crash leaves the reservation counted (DATABASE.md:998); the terminal write zeroes it only when
-the job's own `agent_runs` replace it (CP10).
+a crash leaves the reservation counted (DATABASE.md:998); the terminal write zeroes it when the
+job's own `agent_runs` replace it (CP10), or when the job failed before any model stage
+(`app/workers/generation.py` steps 2 and 5).
 """
 
 from __future__ import annotations

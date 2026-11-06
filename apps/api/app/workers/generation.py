@@ -7,13 +7,24 @@ drop at deploy, T104). No session is open across the pipeline call. The steps:
    → `JobFailed(BUDGET_EXCEEDED)`; the terminal hook moves the listing to
    `failed/generation_failed`.
 2. One short read transaction: the job, the listing, `load_rules`, the resolved facts, then
-   `build_context` (T11).
+   `build_context` (T11). A failure here made no model call: the reservation is zeroed.
 3. `build_pipeline_deps(..., product=for_rules(facts))` (CP13), then `run_listing_pipeline(ctx,
    deps)` with no transaction open; `deps.close_spans()` whatever happens.
 4. `check_result` → `recheck` → `map_outcome` → `make_persist` → an `Outcome` (a version saved;
-   the reservation zeroed, real spend replaces it) or a `JobFailed` (no version).
-5. Any port or pipeline exception → `JobFailed(INTERNAL_ERROR)` with a fixed message (the class
-   name is logged only), the recorded rules runs kept and the reservation kept (CP10).
+   the reservation zeroed, real spend replaces it) or a `JobFailed` (no version, the returned
+   `agent_runs` saved and replacing the reservation). When every failed agent run of a no-version
+   result failed transiently (rate limit, provider down, timeout), the report is a retryable
+   `MODEL_UNAVAILABLE`, not the seller-facing `GENERATION_FAILED`.
+5. Any port or pipeline exception → `JobFailed` with a fixed message (the class name is logged
+   only) and the recorded rules runs kept: `MODEL_UNAVAILABLE` (retryable) for a transient
+   model or embedding port failure (`is_transient_failure`), else `INTERNAL_ERROR`. The
+   reservation is zeroed when the run never reached a model stage
+   (`deps.model_stage_reached`: only the context load and the brand retrieval started, whose
+   query embeds write their own `agent_runs`), and kept otherwise, because the pipeline's
+   records of calls already made are lost with the exception (CP10).
+
+A transient failure is not retried inside the job: `listing_generate` keeps `max_attempts=1`
+(`policy.py`); the seller regenerates.
 
 Log lines carry ids and codes only: no instruction, product or model text.
 """
@@ -22,12 +33,14 @@ from __future__ import annotations
 
 import asyncio
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 from mkos_pipeline import run_listing_pipeline
+from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, JobKind, Marketplace
+from mkos_schemas.enums import ErrorSource, JobKind, Marketplace, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.config import get_settings
@@ -43,13 +56,37 @@ from app.services.generation_result import (
     recheck,
     salvage_records,
 )
-from app.services.pipeline_deps import build_pipeline_deps
+from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers import budget
 from app.workers.errors import JobFailed
 from app.workers.registry import JobContext, Outcome, register
 
 log = get_logger(__name__)
+
+# A model or embedding call that was rate limited, unavailable or slow: not the seller's to fix.
+TRANSIENT_CODES: Final = frozenset(
+    {ErrorCode.MODEL_UNAVAILABLE, ErrorCode.RATE_LIMITED, ErrorCode.TIMEOUT}
+)
+TRANSIENT_MESSAGE: Final = "The AI service was briefly unavailable. Try generating again."
+
+
+def is_transient_failure(exc: BaseException) -> bool:
+    """A port refusal with a transient code; for an exception group, every leaf one."""
+    if isinstance(exc, BaseExceptionGroup):
+        return all(is_transient_failure(inner) for inner in exc.exceptions)
+    return isinstance(exc, SeamPortError) and exc.code in TRANSIENT_CODES
+
+
+def runs_failed_transiently(records: Iterable[AgentRunRecord]) -> bool:
+    """At least one agent run failed, and every failed one timed out or carries a transient
+    code."""
+    failed = [r for r in records if r.status in ("failed", "timeout")]
+    return bool(failed) and all(
+        r.status == "timeout"
+        or (r.error_report is not None and r.error_report.error_code in TRANSIENT_CODES)
+        for r in failed
+    )
 
 
 def job_report(
@@ -63,10 +100,11 @@ def job_report(
     max_attempts: int = 1,
 ) -> ErrorReport:
     meta = ERROR_CODE_META[code]
+    retryable = meta.retry_class in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT)
     return ErrorReport(
         status="failed",
         error_code=code,
-        retryable=False,
+        retryable=retryable,
         attempts_used=min(3, ctx.attempt if attempts_used is None else attempts_used),
         max_attempts=max(1, min(3, max_attempts)),
         errors=[
@@ -75,7 +113,7 @@ def job_report(
                 error_code=code,
                 message=message,
                 source=source,
-                retryable=False,
+                retryable=retryable,
                 retry_class=meta.retry_class,
             )
         ],
@@ -107,16 +145,21 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             else await uow.listings.get(job.listing_id)
         )
         if job is None or listing is None:
-            raise _fail(ctx, ErrorCode.INTERNAL_ERROR, "generation failed")
+            raise _fail(ctx, ErrorCode.INTERNAL_ERROR, "generation failed", zero_reservation=True)
         try:
             rules = await load_rules(
                 uow, tenant_id=tenant, marketplace=listing.marketplace, category=listing.category
             )
         except RuleLoadError:
-            raise _fail(ctx, ErrorCode.INTERNAL_ERROR, "The rules could not be loaded.") from None
+            raise _fail(
+                ctx,
+                ErrorCode.INTERNAL_ERROR,
+                "The rules could not be loaded.",
+                zero_reservation=True,
+            ) from None
         facts = await uow.product_facts.resolve(listing.product_id)
         if facts is None:
-            raise _fail(ctx, ErrorCode.NOT_FOUND, "The product is gone.")
+            raise _fail(ctx, ErrorCode.NOT_FOUND, "The product is gone.", zero_reservation=True)
         try:
             gctx = await build_context(
                 uow,
@@ -128,7 +171,9 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 max_attempts=settings.llm_max_correction_attempts,
             )
         except GenerationContextError as exc:
-            raise _fail(ctx, exc.code, "The generation context could not be built.") from None
+            raise _fail(
+                ctx, exc.code, "The generation context could not be built.", zero_reservation=True
+            ) from None
         claim_started_at = job.started_at or datetime.now(UTC)
         created_by = job.created_by
 
@@ -170,15 +215,27 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         raise JobFailed(
             job_report(ErrorCode.JOB_TIMEOUT, "the model call passed its deadline", ctx=ctx),
             persist=make_persist(plan),
+            zero_reservation=not deps.model_stage_reached,
         ) from None
-    except Exception as exc:  # a port or the pipeline raised: recorded, the reservation kept
+    except Exception as exc:  # a port or the pipeline raised: recorded (step 5)
+        transient = is_transient_failure(exc)
         log.warning(
-            "generation.pipeline_error", job_run_id=str(job_id), error_class=type(exc).__name__
+            "generation.pipeline_error",
+            job_run_id=str(job_id),
+            error_class=type(exc).__name__,
+            transient=transient,
+            model_stage_reached=deps.model_stage_reached,
         )
         plan = PersistPlan(**plan_base, move=None, rules_calls=deps.rules_calls)
+        failure = (
+            job_report(
+                ErrorCode.MODEL_UNAVAILABLE, TRANSIENT_MESSAGE, ctx=ctx, source=ErrorSource.AI_MODEL
+            )
+            if transient
+            else job_report(ErrorCode.INTERNAL_ERROR, "generation failed", ctx=ctx)
+        )
         raise JobFailed(
-            job_report(ErrorCode.INTERNAL_ERROR, "generation failed", ctx=ctx),
-            persist=make_persist(plan),
+            failure, persist=make_persist(plan), zero_reservation=not deps.model_stage_reached
         ) from None
     finally:
         deps.close_spans()
@@ -216,10 +273,11 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         plan = PersistPlan(
             **plan_base, move=move, rules_calls=deps.rules_calls, records=trusted.records
         )
+        transient = runs_failed_transiently(trusted.records)
         raise JobFailed(
             job_report(
-                ErrorCode.GENERATION_FAILED,
-                "The pipeline produced no listing.",
+                ErrorCode.MODEL_UNAVAILABLE if transient else ErrorCode.GENERATION_FAILED,
+                TRANSIENT_MESSAGE if transient else "The pipeline produced no listing.",
                 ctx=ctx,
                 source=ErrorSource.AI_MODEL,
                 attempts_used=max(1, attempts_used),

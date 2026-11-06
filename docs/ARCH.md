@@ -96,6 +96,10 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   web address, email address, Indian phone number or HTML tag in the title, bullets, description
   or keywords a `BANNED_TERM` error, so the correction loop rewrites it and a residual hit ends
   `blocked` (`packages/schemas/fixtures/rules.seed.json`, loaded by `rules load`).
+- A generation that fails before any model stage (the context load or the brand retrieval) gives
+  its budget reservation back, and a transient model or embedding failure (rate limit, provider
+  down, timeout) is a retryable `MODEL_UNAVAILABLE` rather than `GENERATION_FAILED`; the job is
+  not retried (`max_attempts=1`), the seller regenerates (`app/workers/generation.py`).
 
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.
