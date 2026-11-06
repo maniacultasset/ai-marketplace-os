@@ -196,3 +196,20 @@ def test_dictionary_sync_cli_one_line(
         assert capsys.readouterr().err == "dictionary sync: failed (ValidationError)\n"
     finally:
         get_settings.cache_clear()
+
+
+async def test_dictionary_sync_carries_si1_rows(
+    migrator_engine: AsyncEngine, superuser_conn: Conn
+) -> None:
+    """SI1 T4: the synced table holds `size_chart_url` and the `fabric_composition` alias, and
+    a second sync writes nothing."""
+    row = superuser_conn.execute(
+        "SELECT owner_levels, value_type FROM attribute_definitions WHERE key = 'size_chart_url'"
+    ).fetchone()
+    assert row == (["style", "standalone"], "text")
+    aliases = superuser_conn.execute(
+        "SELECT input_aliases FROM attribute_definitions WHERE key = 'fiber_composition'"
+    ).fetchone()
+    assert aliases == (["fabric_composition"],)
+    counts = await sync_dictionary(migrator_engine)
+    assert (counts.inserted, counts.updated, counts.disabled) == (0, 0, 0)
