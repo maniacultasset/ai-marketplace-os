@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import dataclasses
 import uuid
+from decimal import Decimal
 from typing import Any
 
-from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate
+from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate, SellerFacts
 from mkos_schemas.listing import CanonicalListing
 from tests.adapters.contract import family, item, sample_listing
 
@@ -30,6 +31,23 @@ def image_refs(body: CanonicalListing) -> dict[uuid.UUID, str]:
     return {i.image_id: f"https://images.example.test/{i.image_id}.jpg" for i in body.images}
 
 
+# SI2 T2: the priced, compliant seller facts every built unit carries unless the caller passes
+# `unit_facts=`
+SELLER_FACTS = SellerFacts(
+    mrp=Decimal("999.00"),
+    selling_price=Decimal("499.00"),
+    currency="INR",
+    country_of_origin="IN",
+    manufacturer_name="Test Mills Pvt Ltd",
+    manufacturer_address="1 Mill Road, Surat, GJ, 395003, IN",
+)
+
+
+def with_facts(sent: AdapterListing, facts: SellerFacts = SELLER_FACTS) -> AdapterListing:
+    """`sent` with `facts` for every unit it publishes."""
+    return dataclasses.replace(sent, unit_facts={u.product_id: facts for u in sent.units()})
+
+
 def amazon_item(
     body: CanonicalListing | None = None,
     *,
@@ -41,7 +59,8 @@ def amazon_item(
     sent = item(body, sku=sku, key=key)
     fields: dict[str, Any] = {"template": template(), "image_refs": image_refs(body)}
     fields.update(over)
-    return dataclasses.replace(sent, **fields)
+    built = dataclasses.replace(sent, **fields)
+    return built if "unit_facts" in over else with_facts(built)
 
 
 def amazon_family(
@@ -75,7 +94,8 @@ def amazon_family(
         "image_refs": image_refs(body),
     }
     fields.update(over)
-    return dataclasses.replace(sent, **fields)
+    built = dataclasses.replace(sent, **fields)
+    return built if "unit_facts" in over else with_facts(built)
 
 
 def prepare(sent: AdapterListing) -> AdapterListing:
@@ -85,7 +105,9 @@ def prepare(sent: AdapterListing) -> AdapterListing:
     body = sent.listing
     if "fabric_type" not in body.attributes:
         body = body.model_copy(update={"attributes": {**body.attributes, "fabric_type": "cotton"}})
-    return dataclasses.replace(sent, listing=body, template=template(), image_refs=image_refs(body))
+    return with_facts(
+        dataclasses.replace(sent, listing=body, template=template(), image_refs=image_refs(body))
+    )
 
 
 # ---- the client's ports over the in-process fake (T10-T12) ----

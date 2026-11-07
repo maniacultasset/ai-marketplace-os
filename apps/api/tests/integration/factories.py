@@ -107,6 +107,31 @@ def brand_profile(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
     )
 
 
+def brand_manufacturer(conn: Conn, tenant_id: UUID, *, country: str | None = "IN") -> UUID:
+    """SI2 T2: a manufacturer party with a full address, set as the tenant's brand default (and
+    `default_country_of_origin`), so a product with no own party resolves one (S-b)."""
+    party_id = party(
+        conn,
+        tenant_id,
+        legal_name="Test Mills Pvt Ltd",
+        address_line1="1 Mill Road",
+        city="Surat",
+        state_code="GJ",
+        postal_code="395003",
+        country_code="IN",
+    )
+    conn.execute(
+        "INSERT INTO brand_profiles (tenant_id) VALUES (%s) ON CONFLICT (tenant_id) DO NOTHING",
+        [tenant_id],
+    )
+    conn.execute(
+        "UPDATE brand_profiles SET default_manufacturer_party_id = %s,"
+        " default_country_of_origin = %s WHERE tenant_id = %s",
+        [party_id, country, tenant_id],
+    )
+    return party_id
+
+
 # Typed fact column → its `provenance` key (DATABASE.md §5.6 `ck_products_typed_facts_sourced`).
 TYPED_FACT_KEYS: dict[str, str] = {
     "mrp": "mrp",

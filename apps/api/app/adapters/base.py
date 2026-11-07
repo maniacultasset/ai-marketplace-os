@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import difflib
 import math
+import re
 import unicodedata
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
@@ -39,7 +40,6 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 from types import MappingProxyType
 from typing import Any, Final, Literal, Protocol, get_args
-from urllib.parse import urlsplit
 from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
@@ -61,6 +61,9 @@ FACT_SPEC_KEYS: Final = ("country_of_origin", "fiber_composition", "manufacturer
 PRICE_PATHS: Final = ("facts.mrp", "facts.selling_price")
 _CENT: Final = Decimal("0.01")
 _HUNDRED: Final = Decimal(100)
+# scheme :// authority rest (adapters import no URL or socket library, `test_fake_adapter`)
+_URL: Final = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*)://([^/?#]*)(.*)", re.DOTALL)
+_PORT: Final = re.compile(r":[0-9]*$")
 
 
 @dataclass(frozen=True)
@@ -439,12 +442,12 @@ def locator_ok(ref: str, *, preview: bool, allow_http: bool) -> bool:
         except ValueError:
             return False
         return True
-    try:
-        parts = urlsplit(ref)
-    except ValueError:
+    match = _URL.fullmatch(ref)
+    if match is None:
         return False
-    scheme = parts.scheme.casefold()
-    if not parts.hostname:
+    scheme = match.group(1).casefold()
+    host = _PORT.sub("", match.group(2).rsplit("@", 1)[-1])
+    if not host:
         return False
     return scheme == "https" or (scheme == "http" and allow_http)
 

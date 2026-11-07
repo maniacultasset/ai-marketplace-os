@@ -28,6 +28,9 @@ def family(
     **style_columns: Any,
 ) -> tuple[UUID, dict[str, UUID]]:
     """(style id, {child sku: child id}); child SKUs are `<sku>-<SIZE>-<n>` per colour n."""
+    # SI2 T2: a priced style the children inherit from, unless the caller says otherwise
+    priced = {"mrp": "999.00", "selling_price": "499.00", "country_of_origin": "IN"}
+    style_columns = {**priced, **style_columns}
     with conn.transaction():
         style = f.product(conn, tenant_id, "style", sku=sku, size_run=list(sizes), **style_columns)
         children: dict[str, UUID] = {}
