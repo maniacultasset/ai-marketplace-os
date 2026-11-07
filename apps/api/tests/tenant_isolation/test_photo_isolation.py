@@ -81,3 +81,24 @@ async def test_iso_the_skip_rule_never_reads_another_tenants_set(
     await generate(pw, "photo_ok")
     assert pw.seen[-1].photo_targets != []
     assert _ai(pw)
+
+
+async def test_iso_another_tenants_reject_is_404_and_the_marker_holds(world: PhotoWorld) -> None:
+    """SI9 T10: tenant B's PATCH on tenant A's product is 404; A's marker is unchanged."""
+    from app.core.errors import NotFoundError
+    from app.services import product_edit
+
+    pw = world
+    pw.conn.execute(
+        "UPDATE products SET photo_rejections = %s WHERE id = %s",
+        [Jsonb({"neckline": "v-neck"}), pw.product_id],
+    )
+    them = pw.world.principal("operator@bharat.test")
+    with pytest.raises(NotFoundError):
+        await product_edit.update_product(
+            them, pw.product_id, {"attributes": {"neckline": None}}, "W/x"
+        )
+    row = pw.conn.execute(
+        "SELECT photo_rejections FROM products WHERE id = %s", [pw.product_id]
+    ).fetchone()
+    assert row is not None and row[0] == {"neckline": "v-neck"}

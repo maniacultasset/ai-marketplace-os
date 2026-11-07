@@ -120,6 +120,7 @@ def test_screen_keeps_only_what_the_rules_allow(w: dict[str, Any]) -> None:
             product_id=UUID(int=8), sku="S", level="standalone", attributes=w["stored"]
         ),
         required=w["required"],
+        rejected={},
     )
     complete = w["records"] == [_record()]
     if not complete:

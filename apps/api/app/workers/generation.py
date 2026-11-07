@@ -215,6 +215,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         image_rows = await uow.images.listing_set(listing.product_id)
         critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
+        rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
@@ -352,6 +353,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             images=context_images,
             facts=facts,
             required=frozenset(rules.template.required_attributes if rules.template else ()),
+            rejected=rejections,
         )
         log.info(
             "generation.photo_screen",

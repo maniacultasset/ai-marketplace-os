@@ -87,6 +87,17 @@ class ProductRepository(TenantScopedRepository[Product]):
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def photo_rejections(self, product_id: uuid.UUID) -> dict[str, str]:
+        """SI9 B5: `{key: rejected value}`, read on its own (never part of `ProductFacts`, so the
+        facts digest is unchanged, CP-D12); `{}` for an unknown product."""
+        stmt = (
+            self._select()
+            .where(Product.id == product_id)
+            .with_only_columns(Product.photo_rejections)
+        )
+        found = (await self.db.execute(stmt)).scalar_one_or_none()
+        return {str(k): str(v) for k, v in (found or {}).items()}
+
     async def get_for_update(self, id: uuid.UUID) -> Product | None:
         """The live row, locked for the rest of the transaction (SI1 PATCH)."""
         if not isinstance(id, uuid.UUID):

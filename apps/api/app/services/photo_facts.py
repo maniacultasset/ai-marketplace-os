@@ -51,6 +51,7 @@ __all__ = [
     "canonical",
     "fold",
     "photo_set",
+    "same_as_rejected",
     "screen",
 ]
 
@@ -639,6 +640,16 @@ def _rank(task: PhotoTask) -> tuple[int, int]:
     return (_TASK_ORDER[group], V1_KEYS.index(task.key))
 
 
+def same_as_rejected(key: str, value: str, marker: str) -> bool:
+    """SI9 B5 (CP-D27): `value` is the value the seller rejected for `key`, compared in vocabulary
+    space (the marker may hold a template spelling such as `Regular`); a marker `canonical`
+    cannot read is compared by `fold` only."""
+    said = canonical(key, marker)
+    if said is not None:
+        return said == (canonical(key, value) or value)
+    return fold(marker) == fold(value)
+
+
 def screen(
     observations: Sequence[PhotoObservation],
     records: Sequence[AgentRunRecord],
@@ -647,8 +658,11 @@ def screen(
     images: Sequence[ContextImage],
     facts: ProductFacts,
     required: frozenset[str],
+    rejected: Mapping[str, str],
 ) -> PhotoDecision:
-    """Keep only what the module docstring allows; everything else lands in `dropped`."""
+    """Keep only what the module docstring allows; everything else lands in `dropped`. SI9: an
+    observation equal to the key's rejected value (`rejected`, `products.photo_rejections`) is
+    dropped `rejected_before` before any write, question or conflict."""
     by_key = {t.key: t for t in targets}
     run_id = _photo_run(records)
     if run_id is None:
@@ -676,6 +690,10 @@ def screen(
             dropped.append((target.key, "bad_image"))
             continue
         key = target.key
+        marker = rejected.get(key)
+        if marker is not None and same_as_rejected(key, entry, marker):
+            dropped.append((key, "rejected_before"))
+            continue
         stored = facts.attributes.get(key)
         if key in CHECK_ONLY:
             task = _pieces(entry, stored, obs)

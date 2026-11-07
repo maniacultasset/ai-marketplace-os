@@ -12,7 +12,9 @@ so a lost-response retry is safe (invariant 10). Every write goes through `FactW
 `provenance` (the allow-list; never a party's name or address, CP4).
 
 SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_by`/`_at` on the
-`ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. A seller write of a key
+`ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. SI9 B5: the reject of an
+unconfirmed photo value records the value in `products.photo_rejections[key]`, so the next photo
+read never writes or asks it again; a seller value or a confirmation for the key clears it. A seller write of a key
 cancels any live fact question on it (`superseded`, CP-D11).
 
 Levels: a style-owned field (`style_number`, `size_chart`, an attribute outside the row's
@@ -39,6 +41,7 @@ from app.core.rbac import Principal
 from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import tenant_uow
 from app.services.intake_values import PartyInput
+from app.services.photo_facts import V1_KEYS
 from app.services.product_facts import (
     SIZE_CHART_KEY,
     SIZE_CHART_LEVELS,
@@ -110,6 +113,16 @@ def _level(row: Any) -> str:
     if row.variation_theme is not None:
         return "style"
     return STANDALONE
+
+
+def is_photo_value(stored: Any) -> bool:
+    """An unconfirmed photo-derived Fact (`ai`, `image:` evidence): what a reject marks."""
+    return (
+        isinstance(stored, Mapping)
+        and stored.get("source") == "ai"
+        and stored.get("confirmed_at") is None
+        and str(stored.get("evidence_ref") or "").startswith("image:")
+    )
 
 
 def _same_fact(stored: Any, new: Mapping[str, Any]) -> bool:
@@ -339,7 +352,16 @@ async def update_product(
             await uow.facts.clear_typed(row.id, key)
         for key, fact in change.attrs_set.items():
             await uow.facts.set_attribute(row.id, key, fact)
+        rejected: list[str] = []
         for key in change.attrs_clear:
+            # SI9 B5: the reject of an unconfirmed photo value keeps a per-key marker
+            if (
+                key in V1_KEYS
+                and is_photo_value((row.attributes or {}).get(key))
+                and await uow.facts.reject_photo_attribute(row.id, key) is not None
+            ):
+                rejected.append(key)
+                continue
             await uow.facts.clear_attribute(row.id, key)
         stamp = fact_stamp(now)
         confirmed: dict[str, Any] = {}

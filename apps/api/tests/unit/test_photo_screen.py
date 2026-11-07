@@ -75,6 +75,7 @@ def run(
     stored: ProductFacts | None = None,
     records: list[AgentRunRecord] | None = None,
     required: frozenset[str] = frozenset({"color"}),
+    rejected: dict[str, str] | None = None,
 ) -> pf.PhotoDecision:
     return pf.screen(
         observations,
@@ -83,6 +84,7 @@ def run(
         images=IMAGES,
         facts=stored or facts(),
         required=required,
+        rejected=rejected or {},
     )
 
 
@@ -339,3 +341,67 @@ def test_every_task_passes_the_db_shapes() -> None:
         assert TARGET_PATH.match(task.target_path)
         assert task.target_path == f"facts.attributes.{task.key}"
         assert task.kind in ("missing_fact", "conflicting_facts")
+
+
+# ---- SI9 T10 (AC11): a value the seller rejected is never written or asked again ----
+
+
+def test_rejected_value_not_written_again() -> None:
+    decision = run(
+        [obs("neckline", "v-neck")], [target("neckline")], rejected={"neckline": "v-neck"}
+    )
+    assert decision.writes == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_value_not_asked_again() -> None:
+    decision = run(
+        [obs("neckline", "v-neck", confidence=0.5)],
+        [target("neckline")],
+        required=frozenset({"neckline"}),
+        rejected={"neckline": "v-neck"},
+    )
+    assert decision.tasks == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_value_no_conflict_question() -> None:
+    decision = run(
+        [obs("neckline", "v-neck", confidence=0.95)],
+        [target("neckline", mode="check")],
+        stored=facts(neckline=seller("neckline", "round neck")),
+        rejected={"neckline": "v-neck"},
+    )
+    assert decision.tasks == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_folds() -> None:
+    decision = run(
+        [obs("neckline", "V-Neck")], [target("neckline")], rejected={"neckline": "v neck"}
+    )
+    assert decision.writes == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_in_template_spelling_compares_canonically() -> None:
+    fits = ["regular fit", "slim fit", "relaxed fit"]
+    decision = run(
+        [obs("fit", "regular fit")], [target("fit", values=fits)], rejected={"fit": "Regular"}
+    )
+    assert decision.writes == () and ("fit", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_canonical_cannot_read_compares_by_fold() -> None:
+    decision = run([obs("color", "maroon")], [target("color")], rejected={"color": "Maroon"})
+    assert decision.writes == () and ("color", "rejected_before") in decision.dropped
+    other = run([obs("color", "maroon")], [target("color")], rejected={"color": "Zzz-Unknown"})
+    assert [w.key for w in other.writes] == ["color"]
+
+
+def test_a_different_value_still_fills() -> None:
+    decision = run(
+        [obs("neckline", "round neck")], [target("neckline")], rejected={"neckline": "v-neck"}
+    )
+    assert [(w.key, w.value) for w in decision.writes] == [("neckline", "round neck")]
+
+
+def test_no_marker_as_today() -> None:
+    decision = run([obs("neckline", "v-neck")], [target("neckline")], rejected={})
+    assert [w.key for w in decision.writes] == ["neckline"]
