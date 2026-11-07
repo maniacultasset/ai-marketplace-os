@@ -8,7 +8,7 @@ from typing import Any
 from app.api.v1.surface import OPS, is_stub
 from fastapi.routing import iter_route_contexts
 
-from .conftest import SLUGS, World2, resolve_id, tenant_counts
+from .conftest import SLUGS, World2, call_for, resolve_id, send, tenant_counts
 
 
 def _v1_routes() -> list[Any]:
@@ -53,3 +53,14 @@ def test_bharat_counts_stable_helper(world2: World2) -> None:
     assert {k: v for k, v in after.items() if k != "idempotency_keys"} == {
         k: v for k, v in before.items() if k != "idempotency_keys"
     }
+
+
+async def test_world2_task_is_answerable_in_its_own_tenant(api: Any, world2: World2) -> None:
+    """SI3 gate fix: the seeded question takes the registry's valid answer in its own tenant, so
+    a 404 from the other tenant (API1) is the tenant scope, never a task the world got wrong."""
+    op = OPS["tasks_answer"]
+    response = await send(api, call_for(op, world2, "acme"), world2.caller_headers(op))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["id"] == str(world2.side("acme").ids["task_id"])
+    assert body["status"] in {"answered", "applied"}

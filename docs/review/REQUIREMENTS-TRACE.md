@@ -8,9 +8,9 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,046 of 8,916 (79%) are covered by our plan**: 6,092 as written and
-  954 deliberately changed by an ADR, Canon row or recorded decision.
-- **497 are gaps** (backend/DB 245, shared seams 128, ops 104, AI team 4, FE team 0, client 16).
+- **7,048 of 8,916 (79%) are covered by our plan**: 6,092 as written and
+  956 deliberately changed by an ADR, Canon row or recorded decision.
+- **495 are gaps** (backend/DB 245, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
@@ -18,8 +18,8 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 | Status | Statements | Share |
 |---|---:|---:|
 | ✅ covered | 6,092 | 68.3% |
-| 🔁 covered-changed | 954 | 10.7% |
-| ⚠️ gap | 497 | 5.6% |
+| 🔁 covered-changed | 956 | 10.7% |
+| ⚠️ gap | 495 | 5.6% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -32,7 +32,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | Page | ✅ | 🔁 | ⚠️ | ❌ | ❓ | 🧩 | ⏭ | Act on |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | AI Marketplace OS — Architecture & Engineering Knowledge Base | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [★] Complete Founder BRD (End-to-End) | 1171 | 86 | 56 | 1 | 40 | 6 | 55 | 97 |
+| [★] Complete Founder BRD (End-to-End) | 1171 | 88 | 54 | 1 | 40 | 6 | 55 | 95 |
 | [01] Product Vision, 19-Step Flow & Scope (§1–4) | 134 | 22 | 1 | 0 | 1 | 2 | 1 | 2 |
 | [02] Brand Onboarding & Catalog Intake (§5) | 39 | 2 | 2 | 0 | 3 | 0 | 1 | 5 |
 | [03] Master Apparel Data & Variants (§6–7) | 192 | 2 | 4 | 0 | 0 | 0 | 0 | 4 |
@@ -1654,7 +1654,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (128)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (126)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1668,8 +1668,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R00949 | L949 | Step 1 goal: build a complete understanding of the product before generating a marketplace listing. | VISION-ALIGNMENT.md:132; DATABASE.md:1193 | Facts resolved, but no understanding/completeness step before generation; missing facts flagged only after |
 | R00953c | L953 | Step 1 action: Detect conflicting data. | DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33 | conflicting_facts task kind exists; nothing detects conflicts; FactWriter conflict rule only in T33 |
 | R00957 | L957–959 | Workflow STEP 2: CLASSIFY. | DATABASE.md:1498; BACKEND-ARCHITECTURE.md:1564 | No classify node in the 12 PipelineStages; category seller-supplied; 'classifying' reserved |
-| R00973n | L973 | Step 3 action: Detect contradictions (e.g., '100% cotton' vs 'cotton-poly blend'). | DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33 | No contradiction detector (e.g. 100% cotton vs blend); only a conflicting_facts task kind |
-| R00975a | L975 | Step 3 output: missing/conflicting fields identified. | DATABASE.md:522; DATABASE.md:1343 | Missing flagged by CRITICAL_FACT_MISSING; no fact-vs-fact conflict detector (FACT_MISMATCH is listing vs facts) |
 | R00993d | L993 | Step 5 creates: Size/fit copy. | DATABASE.md:2131 (CanonicalListing) | No size/fit copy field in CanonicalListing |
 | R01127 | L1127 | Seller action for `CLASSIFYING`: None unless ambiguous. | DATABASE.md:1498; VISION-ALIGNMENT.md:132 | No classify stage, so no ambiguous-classification question; CATEGORY_MISMATCH user_action only |
 | R01263 | L1263 | Detail panel 'Marketplace-specific preview/mapped fields': side-by-side view of portal payloads. | BACKEND-ARCHITECTURE.md:835 (G11) | No network-free adapter preview of mapped payloads before submission |

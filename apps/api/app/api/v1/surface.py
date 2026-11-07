@@ -93,7 +93,7 @@ from app.api.v1.schemas.signup import (
     SignupStatusOut,
 )
 from app.api.v1.schemas.submissions import SubmissionPage
-from app.api.v1.schemas.tasks import TaskPage
+from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenants import TenantOut
 from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, roles_for
 
@@ -702,6 +702,11 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("tasks_list", "GET", "/tasks", 200, TaskPage, "tasks",
               "The human task inbox (open tasks by default)", "S19",
               query=("status", "limit", "cursor"), action=A.TENANT_READ),
+    Operation("tasks_answer", "POST", "/tasks/{task_id}/answer", 200, TaskOut, "tasks",
+              "Answer a fact question", "SI3", path_id="task_id", has_body=True,
+              idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
+              action=A.PRODUCT_IMPORT),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),

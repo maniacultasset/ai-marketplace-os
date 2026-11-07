@@ -20,7 +20,7 @@ from mkos_schemas.codes import ErrorCode
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
 # "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65,
-# ADR-0020 72).
+# ADR-0020 72, SI1 79, SI3 80).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
@@ -103,6 +103,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("issues_list", "GET", "/issues"),
     ("issues_dismiss", "POST", "/issues/{issue_id}/dismiss"),
     ("tasks_list", "GET", "/tasks"),
+    # SI3: the fact-question answer (79 + 1)
+    ("tasks_answer", "POST", "/tasks/{task_id}/answer"),
     ("analytics_get", "GET", "/analytics"),
     ("analytics_summary", "GET", "/analytics/summary"),
     # ADR-0019: self-serve sign-up and the platform admin's queue (50 + 5)
@@ -118,7 +120,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 79
+    assert len(FROZEN) == 80
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -245,6 +247,7 @@ D9_IDEMPOTENT = {
     "images_upload",
     "issues_dismiss",  # S19
     "listings_refresh_status",  # S21
+    "tasks_answer",  # SI3
 }
 
 
@@ -399,8 +402,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_79_operations() -> None:
-    assert len(OPS) == 79
+def test_80_operations() -> None:
+    assert len(OPS) == 80
 
 
 def test_error_codes_per_d2() -> None:
@@ -417,6 +420,7 @@ def test_error_codes_per_d2() -> None:
         "members_patch": (E.LAST_OWNER_REQUIRED,),
         "listings_preview": (E.LISTING_BUSY,),
         "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -484,6 +488,7 @@ def test_error_codes_per_d2() -> None:
                 "products_create": (E.UNKNOWN_FACT_KEY,),
                 "products_update": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI1 D1b
                 "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
+                "tasks_answer": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI3 CP-D8
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
@@ -494,7 +499,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

@@ -442,3 +442,178 @@ async def test_concurrent_patches_one_wins(api: httpx.AsyncClient, products_worl
         _patch(api, products_world, created["id"], {"title": "Two"}, etag=tag),
     )
     assert sorted(r.status_code for r in results) == [200, 409]
+
+
+# ---- SI3 T15: confirm, reject and the photo facts on reads ----
+
+PHOTO_IMAGE = "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11"
+
+
+def _photo(value: str = "v-neck") -> dict[str, Any]:
+    return {
+        "value": value,
+        "normalized": value,
+        "source": "ai",
+        "captured_via": "agent",
+        "agent_run_id": str(uuid.uuid4()),
+        "confidence": 0.95,
+        "evidence_ref": f"image:{PHOTO_IMAGE}",
+        "updated_at": "2026-11-07T00:00:00.000000Z",
+    }
+
+
+def _put_photo(conn: Conn, product_id: Any, key: str = "neckline") -> None:
+    from psycopg.types.json import Jsonb
+
+    conn.execute(
+        "UPDATE products SET attributes = attributes || jsonb_build_object(%s::text, %s::jsonb) "
+        "WHERE id = %s",
+        [key, Jsonb(_photo()), product_id],
+    )
+
+
+def _stored(conn: Conn, product_id: Any) -> dict[str, Any]:
+    row = conn.execute("SELECT attributes FROM products WHERE id = %s", [product_id]).fetchone()
+    assert row is not None
+    return dict(row[0])
+
+
+async def test_si3_confirm_a_photo_value(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    created = await _create(api, products_world, "SI3-CONFIRM")
+    _put_photo(auth_db, created["id"])
+    got = await api.get(f"{PRODUCTS}/{created['id']}", headers=_op(products_world))
+    (fact,) = got.json()["photo_facts"]
+    assert fact == {
+        "key": "neckline",
+        "value": "v-neck",
+        "confidence": 0.95,
+        "image_id": PHOTO_IMAGE,
+        "confirmed": False,
+        "confirmed_at": None,
+    }
+    response = await _patch(
+        api,
+        products_world,
+        created["id"],
+        {"confirm_attributes": ["neckline"]},
+        etag=got.headers["ETag"],
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers["ETag"] != got.headers["ETag"]
+    (fact,) = response.json()["photo_facts"]
+    assert fact["confirmed"] is True and fact["confirmed_at"] is not None
+    stored = _stored(auth_db, created["id"])["neckline"]
+    assert stored["confirmed_by"] == str(products_world.user("operator@acme.test"))
+    assert stored["value"] == "v-neck"
+    after = auth_db.execute(
+        "SELECT after FROM audit_log WHERE entity_id = %s AND action = 'product.fact_updated' "
+        "ORDER BY occurred_at DESC, id DESC LIMIT 1",
+        [created["id"]],
+    ).fetchone()
+    assert after is not None and after[0]["attributes"]["neckline"]["confirmed_at"] is not None
+
+
+@pytest.mark.parametrize(
+    ("body", "code"),
+    [
+        ({"confirm_attributes": ["color"]}, "VALIDATION_FAILED"),
+        ({"confirm_attributes": ["sparkle"]}, "UNKNOWN_FACT_KEY"),
+        (
+            {"confirm_attributes": ["neckline"], "attributes": {"neckline": "Round"}},
+            "VALIDATION_FAILED",
+        ),
+    ],
+)
+async def test_si3_confirm_refusals(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn, body: dict[str, Any], code: str
+) -> None:
+    created = await _create(api, products_world, f"SI3-REF-{uuid.uuid4().hex[:6]}")
+    _put_photo(auth_db, created["id"])
+    response = await _patch(api, products_world, created["id"], body)
+    assert response.status_code == 422, response.text
+    error = response.json()["error"]
+    assert error["type"] == code
+    assert error["details"][0]["loc"] == ["body", "confirm_attributes", 0]
+
+
+async def test_si3_reject_removes_the_photo_value(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    created = await _create(api, products_world, "SI3-REJECT")
+    _put_photo(auth_db, created["id"])
+    response = await _patch(api, products_world, created["id"], {"attributes": {"neckline": None}})
+    assert response.status_code == 200, response.text
+    assert response.json()["photo_facts"] == []
+    assert "neckline" not in _stored(auth_db, created["id"])
+
+
+async def test_si3_a_seller_write_cancels_the_open_question(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    from app.db.session import unit_of_work
+    from app.repositories.human_tasks import HumanTaskRepository
+
+    created = await _create(api, products_world, "SI3-CANCEL")
+    tenant = products_world.tenant("acme")
+    product_id = uuid.UUID(created["id"])
+    async with unit_of_work(tenant) as session:
+        assert await HumanTaskRepository(session, tenant).open_photo_fact_task(
+            product_id=product_id,
+            kind="missing_fact",
+            target_path="facts.attributes.neckline",
+            question="What is the neckline of this product?",
+            reason="The photos suggest v-neck, but not clearly enough to use it.",
+            expected_answer={"kind": "enum", "allowed_values": ["v-neck"]},
+            suggestions=[],
+            evidence=[],
+        )
+    response = await _patch(
+        api, products_world, created["id"], {"attributes": {"neckline": "V-Neck"}}
+    )
+    assert response.status_code == 200, response.text
+    row = auth_db.execute(
+        "SELECT status, cancelled_reason FROM human_tasks WHERE product_id = %s", [product_id]
+    ).fetchone()
+    assert row == ("cancelled", "superseded")
+
+
+async def test_si3_confirm_with_a_stale_tag_is_409(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    created = await _create(api, products_world, "SI3-STALE")
+    _put_photo(auth_db, created["id"])
+    response = await _patch(
+        api,
+        products_world,
+        created["id"],
+        {"confirm_attributes": ["neckline"]},
+        etag=created["_etag"],
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["type"] == "STALE_VERSION"
+
+
+async def test_si3_confirm_role_and_tenant(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    created = await _create(api, products_world, "SI3-ROLE")
+    _put_photo(auth_db, created["id"])
+    response = await _patch(
+        api,
+        products_world,
+        created["id"],
+        {"confirm_attributes": ["neckline"]},
+        email="reviewer@acme.test",
+    )
+    assert response.status_code == 403
+    response = await _patch(
+        api,
+        products_world,
+        created["id"],
+        {"confirm_attributes": ["neckline"]},
+        email="operator@bharat.test",
+    )
+    assert response.status_code == 404
+    assert "confirmed_at" not in _stored(auth_db, created["id"])["neckline"]

@@ -19,6 +19,14 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
    one was saved;
 5. the move, with the job as actor.
 
+SI3: when the plan carries a photo decision, `apply_photo_decision` runs first, right after the
+listing lock (`services/photo_facts_store.py`: the product lock, the superseded check, the guarded
+photo writes and questions, their audit rows, the re-read). The version-linked re-check then
+stamps `recheck_digest(pre, reread, pinned)`, so a listing generated with photo facts stays
+approvable, while a seller change made during the run still voids it. The applied photo set is
+written into the job's result dict as `photo_set` (the skip rule's record). Photo questions never
+block the listing (SI3 shared blocking rule).
+
 Every insert is idempotent or fenced, so a replayed terminal write writes nothing twice.
 """
 
@@ -38,10 +46,13 @@ from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.validation import ValidationResult
 
 from app.core.logging import get_logger
+from app.core.resolved_facts import ProductFacts, recheck_digest
 from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
 from app.services.generation_result import Move
 from app.services.issues import sync_issues
+from app.services.photo_facts import PhotoDecision, PhotoSet
+from app.services.photo_facts_store import apply_photo_decision
 from app.services.pipeline_deps import RulesCall
 
 log = get_logger(__name__)
@@ -75,6 +86,12 @@ class PersistPlan:
     version_id: uuid.UUID = field(default_factory=uuid.uuid4)
     # the Outcome's result dict: a persist that finds the listing taken empties its version id
     result: dict[str, Any] | None = None
+    # SI3: the photo decision of a trusted result, the facts the context was built from, the photo
+    # set the job saw at read time and the one it sent
+    photo: PhotoDecision | None = None
+    pre_facts: ProductFacts | None = None
+    seen_set: PhotoSet | None = None
+    sent_set: PhotoSet = ()
 
 
 def _run(
@@ -100,10 +117,14 @@ def _run(
 
 
 async def _insert_runs(
-    uow: TenantUnitOfWork, plan: PersistPlan, version_id: uuid.UUID | None
+    uow: TenantUnitOfWork,
+    plan: PersistPlan,
+    version_id: uuid.UUID | None,
+    recheck_pin: bytes | None = None,
 ) -> Any:
     """The per-attempt runs (no version) and, with a version, the linked re-check, which it
-    returns (None otherwise)."""
+    returns (None otherwise). The re-check stamps `recheck_pin` when given (SI3), else the
+    pre-pipeline pin; the per-attempt runs always keep the pin."""
     pins = plan.pins
     for call in plan.rules_calls:
         await uow.validation_runs.insert(
@@ -119,7 +140,7 @@ async def _insert_runs(
         _run(plan, plan.recheck, min(4, len(plan.rules_calls) + 1), version_id),
         template_id=pins.template_id,
         template_version=pins.template_version,
-        facts_digest=pins.facts_digest,
+        facts_digest=pins.facts_digest if recheck_pin is None else recheck_pin,
         request_id=plan.request_id,
     )
 
@@ -148,6 +169,32 @@ def _discard(plan: PersistPlan) -> None:
         plan.result.update({"listing_version_id": None, "discarded": True})
 
 
+async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -> bytes | None:
+    """SI3: the photo decision (module docstring); the re-check digest, or None without one."""
+    if plan.photo is None or plan.pre_facts is None:
+        return None
+    applied = await apply_photo_decision(
+        uow,
+        job_id=plan.job_id,
+        product_id=listing.product_id,
+        decision=plan.photo,
+        pre_facts=plan.pre_facts,
+        seen_set=plan.seen_set,
+        sent_set=plan.sent_set,
+        now=datetime.now(UTC),
+    )
+    if applied.record_set is not None and plan.result is not None:
+        plan.result["photo_set"] = [list(pair) for pair in applied.record_set]
+    log.info(
+        "generation.photo_applied",
+        job_id=str(plan.job_id),
+        written=len(applied.written),
+        tasks=applied.tasks,
+        recorded=applied.record_set is not None,
+    )
+    return recheck_digest(plan.pre_facts, applied.reread, plan.pins.facts_digest)
+
+
 def make_persist(plan: PersistPlan) -> Any:
     """The `registry.Persist` of one generation job (module docstring)."""
 
@@ -158,6 +205,7 @@ def make_persist(plan: PersistPlan) -> Any:
             if saves:
                 _discard(plan)
             return
+        digest = await _apply_photo(uow, plan, listing)
         if not saves or plan.listing is None or plan.move is None:
             await _insert_runs(uow, plan, None)
             await _insert_records(uow, plan, None)
@@ -192,7 +240,7 @@ def make_persist(plan: PersistPlan) -> Any:
                 attempts_used=plan.attempts_used,
             )
         )
-        recheck = await _insert_runs(uow, plan, version.id)
+        recheck = await _insert_runs(uow, plan, version.id, digest)
         if recheck is not None and plan.recheck is not None:
             # S19 T18 (CP-D2): only the version-linked re-check feeds the issue inbox
             await sync_issues(

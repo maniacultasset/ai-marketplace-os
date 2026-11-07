@@ -107,6 +107,57 @@ class PartyView:
 
 
 @dataclass(frozen=True, slots=True)
+class PhotoFactView:
+    """SI3: an own-row attribute value read from the photos (`source ai`, `image:` evidence)."""
+
+    key: str
+    value: FlatValue
+    confidence: float
+    image_id: uuid.UUID
+    confirmed: bool
+    confirmed_at: datetime | None
+
+
+def photo_facts_of(facts: Mapping[str, Any]) -> tuple[PhotoFactView, ...]:
+    """The photo facts of a stored `attributes` map, by key; a ref that does not parse is
+    skipped (the DB pattern allows more than a UUID)."""
+    out: list[PhotoFactView] = []
+    for key in sorted(facts):
+        fact = facts[key]
+        if not isinstance(fact, Mapping) or fact.get("source") != "ai":
+            continue
+        ref = fact.get("evidence_ref")
+        if not isinstance(ref, str) or not ref.startswith("image:"):
+            continue
+        try:
+            image_id = uuid.UUID(ref.removeprefix("image:"))
+        except ValueError:
+            continue
+        value = _flat(fact)
+        confidence = fact.get("confidence")
+        if value is None or not isinstance(confidence, int | float):
+            continue
+        at = fact.get("confirmed_at")
+        confirmed_at = None
+        if isinstance(at, str):
+            try:
+                confirmed_at = datetime.fromisoformat(at)
+            except ValueError:
+                confirmed_at = None
+        out.append(
+            PhotoFactView(
+                key=key,
+                value=value,
+                confidence=float(confidence),
+                image_id=image_id,
+                confirmed=at is not None,
+                confirmed_at=confirmed_at,
+            )
+        )
+    return tuple(out)
+
+
+@dataclass(frozen=True, slots=True)
 class ProductView:
     id: uuid.UUID
     sku: str
@@ -129,6 +180,7 @@ class ProductView:
     image_details: tuple[ImageDetail, ...] = ()
     colourways: tuple[ColourwayRow, ...] = ()
     etag: str = ""
+    photo_facts: tuple[PhotoFactView, ...] = ()
 
 
 def _money(value: Any) -> str | None:
@@ -252,6 +304,7 @@ def _view(
         image_details=details,
         colourways=colourways,
         etag=product_etag(row.id, row.updated_at),
+        photo_facts=photo_facts_of(facts),
     )
 
 

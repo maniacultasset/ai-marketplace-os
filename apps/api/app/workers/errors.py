@@ -3,9 +3,10 @@
 - `RetryableJobError(code)`: a transport failure, a 5xx or a 429. With attempts left the row goes
   back to `queued` and the wrapper raises `RetryLater`; at the cap it is `dead_letter` with
   `RETRY_EXHAUSTED`.
-- `JobFailed(report, *, persist=None, zero_reservation=False)`: a domain failure, never retried;
-  the row ends `failed` with `report`; `persist` runs in the same fenced terminal transaction
-  (S18 T8: e.g. the failed run's `agent_runs`).
+- `JobFailed(report, *, persist=None, zero_reservation=False, result=None)`: a domain failure,
+  never retried; the row ends `failed` with `report`; `persist` runs in the same fenced terminal
+  transaction (S18 T8: e.g. the failed run's `agent_runs`); `result` is stored as `result_json`
+  (SI3: the photo set a no-version generation still records). `persist` may add keys to it.
 - `RetryLater(delay_s)`: raised by the wrapper only, after it has released the row; the queue's
   retry strategy re-runs the same queue entry after `delay_s`. `job_runs.attempt` is the only cap.
 """
@@ -27,12 +28,18 @@ class RetryableJobError(Exception):
 
 class JobFailed(Exception):  # noqa: N818 - the name later steps import
     def __init__(
-        self, report: ErrorReport, *, persist: Any = None, zero_reservation: bool = False
+        self,
+        report: ErrorReport,
+        *,
+        persist: Any = None,
+        zero_reservation: bool = False,
+        result: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(report.error_code.value if report.error_code else "failed")
         self.report = report
         self.persist = persist  # `registry.Persist | None` (typed there; no import cycle)
         self.zero_reservation = zero_reservation
+        self.result = result
 
 
 class RetryLater(Exception):  # noqa: N818 - a signal to the queue, not an error

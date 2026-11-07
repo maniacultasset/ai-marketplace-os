@@ -2113,7 +2113,7 @@
    "status": "covered",
    "owner": "backend-db",
    "ref": "DATABASE.md:1170",
-   "note": "color"
+   "note": "color; SI3 also reads it from the product photos for a standalone product (an unconfirmed ai fact the seller confirms)"
   },
   {
    "id": "R00973a",
@@ -2208,10 +2208,10 @@
   },
   {
    "id": "R00973n",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33",
-   "note": "No contradiction detector (e.g. 100% cotton vs blend); only a conflicting_facts task kind"
+   "ref": "DATABASE.md §5.7 SI3 note; apps/api/app/services/photo_facts.py screen; T33",
+   "note": "SI3: a seller value that contradicts a confident photo value (visual keys) opens one conflicting_facts task; a text fact-vs-fact contradiction (e.g. 100% cotton vs blend) is still not detected"
   },
   {
    "id": "R00975",
@@ -2222,10 +2222,10 @@
   },
   {
    "id": "R00975a",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:522; DATABASE.md:1343",
-   "note": "Missing flagged by CRITICAL_FACT_MISSING; no fact-vs-fact conflict detector (FACT_MISMATCH is listing vs facts)"
+   "ref": "DATABASE.md:522; DATABASE.md §5.7 SI3 note; apps/api/app/services/photo_facts.py screen",
+   "note": "Missing flagged by CRITICAL_FACT_MISSING; SI3 adds missing_fact for an unclear required photo value and conflicting_facts for a seller-vs-photo mismatch; no text fact-vs-fact detector"
   },
   {
    "id": "R00977",

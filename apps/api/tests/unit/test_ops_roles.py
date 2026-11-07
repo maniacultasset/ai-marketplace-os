@@ -69,6 +69,7 @@ Q7: dict[str, str] = {
     "issues_list": "tenant:read",
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",
+    "tasks_answer": "product:import",
     "listings_content_patch": "listing:edit",
     "listings_regenerate": "listing:regenerate",
     "listings_retry_fields": "listing:publish",
@@ -123,8 +124,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four
-    assert len(OPS) == 79
+    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one
+    assert len(OPS) == 80
     assert set(OPS) == set(Q7)
 
 
