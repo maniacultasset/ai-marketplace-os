@@ -67,3 +67,79 @@ async def test_family_children_pass_and_unpriced_child_flagged_parent_never() ->
     assert f"variants[{first.seller_sku}].facts.selling_price" in fields
     flagged = {e.field for e in _ptd(errors)}
     assert not any(parent.seller_sku in f and first.seller_sku not in f for f in flagged)
+
+
+# ---- SI8 T6 (AC7): the identity attributes against the stored fixtures ----
+
+
+@pytest.mark.parametrize(("category", "product_type"), CASES)
+@pytest.mark.parametrize("gender", ["women", "men", "unisex", "girls", "boys", "baby"])
+async def test_si8_family_payloads_pass_the_fixtures(
+    category: str, product_type: str, gender: str
+) -> None:
+    from app.adapters.amazon.constants import AUDIENCE_ATTRIBUTES
+    from tests.adapters.amazon_support import SELLER_FACTS, colour_family, with_facts
+
+    sellable = await ready(
+        _schema(f"{product_type}.listing.schema.json"), product_type=product_type
+    )
+    parent_only = await ready(_schema(f"{product_type}.schema.json"), product_type=product_type)
+    sent, _ = colour_family(green=True)
+    facts = dataclasses.replace(SELLER_FACTS, gender=gender, style_number="KS-24")
+    sent = with_facts(
+        dataclasses.replace(
+            sent,
+            template=template(category),
+            product_type_schema=sellable,
+            parent_type_schema=parent_only,
+        ),
+        facts,
+    )
+    items, errors = mapping.build(sent)
+    assert errors == [], [e.model_dump(mode="json") for e in errors]
+    for item in items:
+        attrs = item.payload["attributes"]
+        assert {"brand", "model_number", "part_number", *AUDIENCE_ATTRIBUTES} <= set(attrs)
+    alone = with_facts(
+        amazon_item(template=template(category), product_type_schema=sellable), facts
+    )
+    assert mapping.check(alone) == []
+
+
+async def test_si8_payload_without_brand_fails_the_fixture_at_facts_brand_name() -> None:
+    from app.adapters.amazon import schema_check
+
+    sellable = await ready(_schema("KURTA.listing.schema.json"))
+    (item,) = mapping.build(amazon_item())[0]
+    attrs = dict(item.payload["attributes"])
+    del attrs["brand"]
+    index = mapping.reverse_index(template().template)
+    (problem,) = schema_check.check_item(attrs, sellable, index)
+    assert (problem.field, problem.error_code) == ("facts.brand_name", ErrorCode.MISSING_ATTRIBUTE)
+    assert (problem.raw_code or "").startswith("ptd:")
+
+
+async def test_si8_unknown_target_gender_fails_the_fixture_at_facts_gender() -> None:
+    from app.adapters.amazon import schema_check
+
+    sellable = await ready(_schema("KURTA.listing.schema.json"))
+    (item,) = mapping.build(amazon_item())[0]
+    attrs = dict(item.payload["attributes"])
+    attrs["target_gender"] = [{**attrs["target_gender"][0], "value": "kids"}]
+    index = mapping.reverse_index(template().template)
+    (problem,) = schema_check.check_item(attrs, sellable, index)
+    assert (problem.field, problem.error_code) == ("facts.gender", ErrorCode.VALUE_NOT_ALLOWED)
+
+
+async def test_si8_missing_brand_reported_once_not_again_by_the_fixture() -> None:
+    from tests.adapters.amazon_support import SELLER_FACTS, with_facts
+
+    sellable = await ready(_schema("KURTA.listing.schema.json"))
+    sent = with_facts(
+        amazon_item(product_type_schema=sellable),
+        dataclasses.replace(SELLER_FACTS, brand_name=None),
+    )
+    errors = mapping.check(sent)
+    assert [(e.field, e.error_code) for e in errors] == [
+        ("facts.brand_name", ErrorCode.MISSING_ATTRIBUTE)
+    ]

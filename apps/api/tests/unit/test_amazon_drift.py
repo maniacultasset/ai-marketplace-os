@@ -44,11 +44,58 @@ def test_value_map_target_outside_enum() -> None:
         assert other not in drift.detail
 
 
-def test_drift_fixture_reports_rename_and_unfed_brand() -> None:
+def test_drift_fixture_reports_rename_and_unfed_item_type_keyword() -> None:
+    """SI8: brand is fed now; the drift fixture's unfed required name is `item_type_keyword`."""
     drifts = diff(_schema("KURTA.drift.schema.json"), _templates("KURTA"), "KURTA")
     assert {(d.kind, d.attribute) for d in drifts} == {
         ("unknown_attribute", "neck_style"),
-        ("unfed_required", "brand"),
+        ("unfed_required", "item_type_keyword"),
+    }
+
+
+# ---- SI8 T6 (AC8): the identity and audience names ----
+
+
+def test_listing_fixtures_have_no_drift() -> None:
+    for product_type in ("KURTA", "SHIRT"):
+        schema = _schema(f"{product_type}.listing.schema.json")
+        assert diff(schema, _templates(product_type), product_type) == []
+
+
+def test_audience_value_outside_the_enum() -> None:
+    schema = _schema()
+    enum = schema["properties"]["target_gender"]["items"]["properties"]["value"]["enum"]
+    enum.remove("female")
+    (drift,) = diff(schema, _templates("KURTA"), "KURTA")
+    assert (drift.kind, drift.attribute) == ("unknown_value", "target_gender")
+    assert "female" in drift.detail
+
+
+def test_apparel_schema_without_an_audience_name_drifts() -> None:
+    schema = _schema("SHIRT.schema.json")
+    del schema["properties"]["department"]
+    assert diff(schema, _templates("SHIRT"), "SHIRT") == [
+        Drift("unknown_attribute", "department", "not declared by SHIRT")
+    ]
+
+
+def test_brand_missing_from_a_schema_drifts() -> None:
+    schema = _schema()
+    del schema["properties"]["brand"]
+    schema["required"].remove("brand")
+    assert diff(schema, _templates("KURTA"), "KURTA") == [
+        Drift("unknown_attribute", "brand", "not declared by KURTA")
+    ]
+
+
+def test_lamp_without_target_gender_reports_nothing_for_it() -> None:
+    schema = _schema("LAMP.schema.json")
+    assert "target_gender" not in schema["properties"]
+    drifts = diff(schema, _templates("LAMP"), "LAMP")
+    assert [(d.kind, d.attribute) for d in drifts] == [("shape", "item_dimensions")]
+    schema["required"] = [*schema["required"], "target_gender"]
+    assert ("unfed_required", "target_gender") in {
+        (d.kind, d.attribute) for d in diff(schema, _templates("LAMP"), "LAMP")
     }
 
 

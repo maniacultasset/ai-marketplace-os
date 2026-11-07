@@ -12,6 +12,12 @@
 
 `templates` are the seed's Amazon templates for `product_type`; with none, only the constants
 are checked. `render` prints one sorted line per drift.
+
+SI8: the believed names include `brand`, `model_number` and `part_number` (every item sends
+them); for an apparel product type (`c.AUDIENCE_PRODUCT_TYPES`) the audience names
+(`audience_names()`) are checked as declared and counted as fed, and every `c.AUDIENCE` target is
+checked against that attribute's enum. All of them stay believed until the real LISTING
+definitions are stored and this diff runs on them (SI8 DL-A).
 """
 
 from __future__ import annotations
@@ -42,7 +48,15 @@ def believed_names() -> tuple[str, ...]:
         c.MAIN_IMAGE,
         *c.OTHER_IMAGES,
         *c.VARIATION_ATTRIBUTES,
+        c.BRAND_ATTRIBUTE,
+        c.MODEL_NUMBER,
+        c.PART_NUMBER,
     )
+
+
+def audience_names() -> tuple[str, ...]:
+    """SI8: the names an apparel item sends from its one `gender` fact."""
+    return c.AUDIENCE_ATTRIBUTES
 
 
 def sellable_names() -> tuple[str, ...]:
@@ -75,6 +89,24 @@ def diff(
     for name in believed_names():
         if name not in properties:
             found.add(Drift("unknown_attribute", name, f"not declared by {product_type}"))
+    if product_type in c.AUDIENCE_PRODUCT_TYPES:
+        for name in audience_names():
+            fed.add(name)
+            if name not in properties:
+                found.add(Drift("unknown_attribute", name, f"not declared by {product_type}"))
+                continue
+            enum = _enum(properties[name])
+            if enum is None:
+                continue
+            targets = {audience[name] for audience in c.AUDIENCE.values()}
+            for target in sorted(targets - {str(v) for v in enum}):
+                found.add(
+                    Drift(
+                        "unknown_value",
+                        name,
+                        f"audience value {target} is not among the {len(enum)} allowed values",
+                    )
+                )
     for template in templates:
         for key, spec in template.specs.items():
             if not spec.marketplace_field:
