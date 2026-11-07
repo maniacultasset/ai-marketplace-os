@@ -2758,6 +2758,11 @@ export interface components {
             /** Current Version Id */
             current_version_id?: string | null;
             /**
+             * External Id
+             * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
+             */
+            external_id?: string | null;
+            /**
              * Id
              * Format: uuid
              */
@@ -2812,6 +2817,11 @@ export interface components {
             created_at: string;
             /** Current Version Id */
             current_version_id?: string | null;
+            /**
+             * External Id
+             * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
+             */
+            external_id?: string | null;
             /**
              * Id
              * Format: uuid
@@ -3298,6 +3308,28 @@ export interface components {
             value: string | boolean | number;
         };
         /**
+         * PhotoReadOut
+         * @description SI9: the newest photo read of the product (the generation that saved a version).
+         *     `read` with counts, `unchanged` (same photos as last time), `failed` (the photo call failed,
+         *     the listing was still saved) or `not_read` (no photo, or nothing left to read).
+         */
+        PhotoReadOut: {
+            /** Asked */
+            asked: number;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "read" | "unchanged" | "failed" | "not_read";
+            /** Written */
+            written: number;
+        };
+        /**
          * PipelineStage
          * @description TRANSIENT progress only — never written to listings.status.
          * @enum {string}
@@ -3419,6 +3451,8 @@ export interface components {
             parent_product_id?: string | null;
             /** Photo Facts */
             photo_facts?: components["schemas"]["PhotoFactOut"][];
+            /** @description The newest photo read; product detail only, null on lists. */
+            photo_read?: components["schemas"]["PhotoReadOut"] | null;
             /**
              * Selling Price
              * @example 999.00
@@ -18496,6 +18530,21 @@ export interface operations {
                      *           "status": "needs_review",
                      *           "status_changed_at": "2026-10-05T09:31:00Z",
                      *           "updated_at": "2026-10-05T09:31:00Z"
+                     *         },
+                     *         {
+                     *           "approved_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
+                     *           "category": "ethnic_wear_kurta_sets",
+                     *           "created_at": "2026-10-05T09:30:00Z",
+                     *           "current_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
+                     *           "external_id": "B0EXAMPLE1",
+                     *           "id": "0b1c2d3e-0000-4000-8000-000000000203",
+                     *           "live_url": "https://www.amazon.in/dp/B0EXAMPLE1",
+                     *           "marketplace": "amazon",
+                     *           "marketplace_state": "inactive",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                     *           "status": "published",
+                     *           "status_changed_at": "2026-10-05T09:31:00Z",
+                     *           "updated_at": "2026-10-05T09:31:00Z"
                      *         }
                      *       ],
                      *       "page": {
@@ -27586,6 +27635,12 @@ export interface operations {
                      *           "value": "v-neck"
                      *         }
                      *       ],
+                     *       "photo_read": {
+                     *         "asked": 0,
+                     *         "at": "2026-10-05T09:31:00Z",
+                     *         "status": "read",
+                     *         "written": 1
+                     *       },
                      *       "sku": "FAB-KURTA-001",
                      *       "status": "draft",
                      *       "title": "Organic Cotton Kurta Set",

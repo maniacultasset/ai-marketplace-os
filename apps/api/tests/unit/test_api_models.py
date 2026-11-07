@@ -503,3 +503,78 @@ def test_published_contract_carries_the_tenant_slug_pattern() -> None:
     )
     slug = spec["components"]["schemas"]["TenantOut"]["properties"]["slug"]
     assert slug["pattern"] == _ck_tenants_slug_pattern()
+
+
+# ---- SI9 T2: ListingOut.external_id, ProductOut.photo_read ----
+
+_LISTING_OUT: dict[str, Any] = {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "product_id": "00000000-0000-4000-8000-000000000002",
+    "marketplace": "amazon",
+    "status": "published",
+    "marketplace_state": "inactive",
+    "status_changed_at": "2026-11-07T00:00:00Z",
+    "created_at": "2026-11-07T00:00:00Z",
+    "updated_at": "2026-11-07T00:00:00Z",
+}
+
+
+def test_listing_out_external_id_optional() -> None:
+    from app.api.v1.schemas.listings import ListingOut
+
+    assert ListingOut.model_validate(_LISTING_OUT).external_id is None
+    assert ListingOut.model_validate({**_LISTING_OUT, "external_id": "B0TEST1234"}).external_id == (
+        "B0TEST1234"
+    )
+    with pytest.raises(ValidationError):
+        ListingOut.model_validate({**_LISTING_OUT, "external_id": "x" * 129})
+
+
+_PHOTO_READ: dict[str, Any] = {
+    "status": "read",
+    "at": "2026-11-07T00:00:00Z",
+    "written": 2,
+    "asked": 1,
+}
+
+
+@pytest.mark.parametrize("status", ["read", "unchanged", "failed", "not_read"])
+def test_photo_read_statuses(status: str) -> None:
+    from app.api.v1.schemas.products import PhotoReadOut
+
+    assert PhotoReadOut.model_validate({**_PHOTO_READ, "status": status}).status == status
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"status": "reading"},
+        {"written": -1},
+        {"written": 17},
+        {"asked": -1},
+        {"asked": 17},
+        {"at": "2026-11-07T00:00:00"},
+    ],
+)
+def test_photo_read_refused(bad: dict[str, Any]) -> None:
+    from app.api.v1.schemas.products import PhotoReadOut
+
+    with pytest.raises(ValidationError):
+        PhotoReadOut.model_validate({**_PHOTO_READ, **bad})
+
+
+def test_product_out_photo_read_optional() -> None:
+    from app.api.v1.schemas.products import ProductOut
+
+    body = {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "sku": "FAB-KURTA-001",
+        "title": "Kurta",
+        "status": "draft",
+        "category": "ethnic_wear_kurta_sets",
+        "created_at": "2026-11-07T00:00:00Z",
+        "updated_at": "2026-11-07T00:00:00Z",
+    }
+    assert ProductOut.model_validate(body).photo_read is None
+    got = ProductOut.model_validate({**body, "photo_read": _PHOTO_READ}).photo_read
+    assert got is not None and got.written == 2

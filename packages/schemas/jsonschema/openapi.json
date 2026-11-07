@@ -2995,6 +2995,19 @@
             ],
             "title": "Current Version Id"
           },
+          "external_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.",
+            "title": "External Id"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -3156,6 +3169,19 @@
               }
             ],
             "title": "Current Version Id"
+          },
+          "external_id": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.",
+            "title": "External Id"
           },
           "id": {
             "format": "uuid",
@@ -4442,6 +4468,46 @@
         "title": "PhotoFactOut",
         "type": "object"
       },
+      "PhotoReadOut": {
+        "description": "SI9: the newest photo read of the product (the generation that saved a version).\n`read` with counts, `unchanged` (same photos as last time), `failed` (the photo call failed,\nthe listing was still saved) or `not_read` (no photo, or nothing left to read).",
+        "properties": {
+          "asked": {
+            "maximum": 16.0,
+            "minimum": 0.0,
+            "title": "Asked",
+            "type": "integer"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "read",
+              "unchanged",
+              "failed",
+              "not_read"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "written": {
+            "maximum": 16.0,
+            "minimum": 0.0,
+            "title": "Written",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "status",
+          "at",
+          "written",
+          "asked"
+        ],
+        "title": "PhotoReadOut",
+        "type": "object"
+      },
       "PipelineStage": {
         "description": "TRANSIENT progress only — never written to listings.status.",
         "enum": [
@@ -4833,6 +4899,17 @@
             },
             "title": "Photo Facts",
             "type": "array"
+          },
+          "photo_read": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PhotoReadOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest photo read; product detail only, null on lists."
           },
           "selling_price": {
             "anyOf": [
@@ -22198,6 +22275,21 @@
                       "status": "needs_review",
                       "status_changed_at": "2026-10-05T09:31:00Z",
                       "updated_at": "2026-10-05T09:31:00Z"
+                    },
+                    {
+                      "approved_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
+                      "category": "ethnic_wear_kurta_sets",
+                      "created_at": "2026-10-05T09:30:00Z",
+                      "current_version_id": "0b1c2d3e-0000-4000-8000-000000000202",
+                      "external_id": "B0EXAMPLE1",
+                      "id": "0b1c2d3e-0000-4000-8000-000000000203",
+                      "live_url": "https://www.amazon.in/dp/B0EXAMPLE1",
+                      "marketplace": "amazon",
+                      "marketplace_state": "inactive",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "status": "published",
+                      "status_changed_at": "2026-10-05T09:31:00Z",
+                      "updated_at": "2026-10-05T09:31:00Z"
                     }
                   ],
                   "page": {
@@ -31850,6 +31942,12 @@
                       "value": "v-neck"
                     }
                   ],
+                  "photo_read": {
+                    "asked": 0,
+                    "at": "2026-10-05T09:31:00Z",
+                    "status": "read",
+                    "written": 1
+                  },
                   "sku": "FAB-KURTA-001",
                   "status": "draft",
                   "title": "Organic Cotton Kurta Set",

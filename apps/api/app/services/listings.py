@@ -56,6 +56,7 @@ def listing_fields(listing: Any) -> dict[str, Any]:
         "current_version_id": listing.current_version_id,
         "approved_version_id": listing.approved_version_id,
         "live_url": getattr(listing, "live_url", None),
+        "external_id": getattr(listing, "external_id", None),
         "status_changed_at": listing.status_changed_at,
         "created_at": listing.created_at,
         "updated_at": listing.updated_at,
