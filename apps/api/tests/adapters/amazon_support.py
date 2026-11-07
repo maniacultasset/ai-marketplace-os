@@ -31,7 +31,7 @@ def image_refs(body: CanonicalListing) -> dict[uuid.UUID, str]:
     return {i.image_id: f"https://images.example.test/{i.image_id}.jpg" for i in body.images}
 
 
-# SI2 T2: the priced, compliant seller facts every built unit carries unless the caller passes
+# SI2 T2 (+ SI8 T3): the priced, compliant seller facts every built unit carries unless the caller passes
 # `unit_facts=`
 SELLER_FACTS = SellerFacts(
     mrp=Decimal("999.00"),
@@ -41,6 +41,11 @@ SELLER_FACTS = SellerFacts(
     manufacturer_name="Test Mills Pvt Ltd",
     manufacturer_address="1 Mill Road, Surat, GJ, 395003, IN",
     fiber_composition_text="100% Cotton",
+    # SI8 T3: the style identity facts (brand and audience; no style number, so model and part
+    # number fall back to the style SKU)
+    brand_name="Test Brand",
+    gender="women",
+    style_number=None,
 )
 
 

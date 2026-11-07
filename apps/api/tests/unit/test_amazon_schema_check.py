@@ -125,11 +125,11 @@ async def test_keyword_byte_budget_fails_both_paths() -> None:
 
 async def test_unfed_required_attribute_goes_on_listing() -> None:
     schema = kurta()
-    schema["required"] = [*schema["required"], "brand"]
+    schema["required"] = [*schema["required"], "item_type_keyword"]  # SI8: brand is now fed
     _, errors = built(amazon_item(), await ready(schema))
     (error,) = errors
     assert (error.field, error.error_code) == ("listing", ErrorCode.MISSING_ATTRIBUTE)
-    assert "brand" in error.message
+    assert "item_type_keyword" in error.message
 
 
 async def test_no_message_holds_a_submitted_value() -> None:
@@ -150,7 +150,7 @@ async def test_no_message_holds_a_submitted_value() -> None:
 
 async def test_not_enforced_downgrades_required_only() -> None:
     schema = kurta()
-    schema["required"] = [*schema["required"], "brand"]
+    schema["required"] = [*schema["required"], "item_type_keyword"]
     schema["properties"]["item_name"]["items"]["properties"]["value"]["maxLength"] = 3
     ready_schema = await ready(schema, enforced=False)
     _, errors = built(amazon_item(listing(fit=None)), ready_schema)
@@ -302,12 +302,13 @@ def test_no_definition_no_change(sent: AdapterListing) -> None:
 
 async def test_three_unfed_required_are_three_errors() -> None:
     schema = kurta()
-    schema["required"] = [*schema["required"], "brand", "department", "target_gender"]
+    # SI8: brand, department and target_gender are fed now; three names SI8 does not send
+    schema["required"] = [*schema["required"], "item_type_keyword", "closure_type", "lining"]
     _, errors = built(amazon_item(), await ready(schema))
     assert sorted(e.message.split(":")[0] for e in errors) == [
-        "Amazon brand",
-        "Amazon department",
-        "Amazon target_gender",
+        "Amazon closure_type",
+        "Amazon item_type_keyword",
+        "Amazon lining",
     ]
     assert all((e.field, e.error_code) == ("listing", ErrorCode.MISSING_ATTRIBUTE) for e in errors)
 

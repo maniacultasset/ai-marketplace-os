@@ -42,6 +42,13 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   An image locator must be an https URL (`locator_ok`; `http://` only when the listing allows
   it, the `image:<id>` tag only in a preview). An enum VALUE_NOT_ALLOWED suggests the nearest
   allowed values.
+- SI8: every item (parent, child, standalone) carries `brand` (the effective brand) and
+  `model_number` / `part_number` (the style number, else the style's or standalone's seller SKU);
+  an apparel product type (`AUDIENCE_PRODUCT_TYPES`) also carries `target_gender`, `department`
+  and `age_range_description` from the one `gender` fact (`c.AUDIENCE`). These facts are
+  style-owned, so a problem is reported once per family at `facts.brand_name` / `facts.gender`
+  for every role (CP-D2): no brand, or no gender on apparel, is MISSING_ATTRIBUTE; a gender
+  outside the map is VALUE_NOT_ALLOWED (CP-D15). Every name and value is believed (DL-A).
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -67,6 +74,7 @@ from app.adapters.amazon import schema_check
 from app.adapters.base import (
     FACT_SPEC_KEYS,
     PRICE_PATHS,
+    STYLE_FACT_KEYS,
     AdapterItem,
     AdapterListing,
     AdapterPreview,
@@ -386,6 +394,66 @@ def _fact_attributes(
     return out, sent, errors
 
 
+def _identity_attributes(
+    unit: AdapterItem,
+    product_type: str | None,
+    facts: SellerFacts | None,
+    style_sku: str,
+    marketplace_id: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str], list[ErrorItem]]:
+    """SI8 T3: (Amazon attribute -> entries, the `facts.*` paths sent, errors) for one item's
+    brand, audience and model/part number. Errors are at `facts.<key>` for every role (CP-D2)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    sent: list[str] = []
+    errors: list[ErrorItem] = []
+    brand = None if facts is None else facts.brand_name
+    if brand is None or _is_blank(brand):
+        errors.append(
+            error(
+                "facts.brand_name",
+                ErrorCode.MISSING_ATTRIBUTE,
+                "brand_name is required to list the item on Amazon.",
+            )
+        )
+    else:
+        out[c.BRAND_ATTRIBUTE] = [_entry(brand.strip(), marketplace_id)]
+        sent.append("facts.brand_name")
+    if product_type in c.AUDIENCE_PRODUCT_TYPES:
+        gender = None if facts is None else facts.gender
+        audience = None if gender is None else c.AUDIENCE.get(gender.strip().casefold())
+        if gender is None or _is_blank(gender):
+            errors.append(
+                error(
+                    "facts.gender",
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    "gender is required to list apparel on Amazon; set the product's gender "
+                    "(PATCH /api/v1/products/{product_id}).",
+                )
+            )
+        elif audience is None:
+            shown = gender[:64]
+            errors.append(
+                error(
+                    "facts.gender",
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    f"{shown} is not an audience Amazon apparel takes.",
+                    value=shown,
+                    suggestion="Allowed values include: "
+                    + ", ".join(nearest_values(shown, list(c.AUDIENCE))),
+                )
+            )
+        else:
+            for name in c.AUDIENCE_ATTRIBUTES:
+                out[name] = [_entry(audience[name], marketplace_id, text=name in c.TEXT_IDENTITY)]
+            sent.append("facts.gender")
+    number = None if facts is None else facts.style_number
+    model = number.strip() if number is not None and not _is_blank(number) else style_sku
+    for name in (c.MODEL_NUMBER, c.PART_NUMBER):
+        out[name] = [_entry(model, marketplace_id, text=False)]
+    sent.append("facts.style_number")  # CP-D12: the SKU fallback counts as sent
+    return out, sent, errors
+
+
 def _keywords(listing: CanonicalListing) -> str:
     """The Rules Engine's own joined keyword value, so what is sent is what was checked."""
     return submitted_keywords(listing.keywords)
@@ -485,6 +553,14 @@ def item_payload(
         attributes.setdefault(name, []).extend(entries)
     sent += fact_sent
     errors += fact_errors
+    if mapped is not None and template is not None:
+        style_sku = listing.seller_sku
+        ident, ident_sent, ident_errors = _identity_attributes(
+            unit, template.product_type, facts, style_sku, marketplace_id
+        )
+        attributes.update(ident)
+        sent += ident_sent
+        errors += ident_errors
     if unit.item_role != "parent":
         offer, offer_errors = _offer(unit, facts, marketplace_id)
         errors += offer_errors
@@ -564,6 +640,12 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     # fails `listing` and a price retry patches the offer only
     index[c.OFFER_ATTRIBUTE] = set(PRICE_PATHS)
     index[c.MANUFACTURER_CONTACT] = {"facts.manufacturer"}
+    # SI8: the style identity facts
+    index[c.BRAND_ATTRIBUTE] = {"facts.brand_name"}
+    for name in c.AUDIENCE_ATTRIBUTES:
+        index[name] = {"facts.gender"}
+    index[c.MODEL_NUMBER] = {"facts.style_number"}
+    index[c.PART_NUMBER] = {"facts.style_number"}
     if template is not None:
         for key, spec in template.specs.items():
             if spec.marketplace_field:
@@ -685,6 +767,13 @@ def build(
             if marker not in seen_values:
                 seen_values.add(marker)
                 errors.append(problem)
+    # SI8: a style fact the adapter already reported missing is not reported again by the schema
+    style_paths = {f"facts.{k}" for k in STYLE_FACT_KEYS}
+    seen |= {
+        e.field
+        for e in errors
+        if e.error_code is ErrorCode.MISSING_ATTRIBUTE and e.field in style_paths
+    }
     if schema:
         errors += _schema_errors(listing, items, template, seen)
     return items, errors
