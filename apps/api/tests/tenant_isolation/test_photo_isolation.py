@@ -102,3 +102,27 @@ async def test_iso_another_tenants_reject_is_404_and_the_marker_holds(world: Pho
         "SELECT photo_rejections FROM products WHERE id = %s", [pw.product_id]
     ).fetchone()
     assert row is not None and row[0] == {"neckline": "v-neck"}
+
+
+async def test_iso_a_reject_revalidates_none_of_another_tenants_listings(
+    world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SI9 T11: the re-validate on a reject reads only the product's own (tenant's) listings."""
+    from app.services import product_edit, products
+
+    pw = world
+    bharat = pw.world.tenant("bharat")
+    runs = pw.conn.execute(
+        "SELECT count(*) FROM validation_runs WHERE tenant_id = %s", [bharat]
+    ).fetchone()
+    spy_pipeline(pw, monkeypatch)
+    await generate(pw, "photo_ok")
+    principal = pw.world.principal("operator@acme.test")
+    view = await products.get_product(principal, pw.product_id)
+    await product_edit.update_product(
+        principal, pw.product_id, {"attributes": {"neckline": None}}, view.etag
+    )
+    after = pw.conn.execute(
+        "SELECT count(*) FROM validation_runs WHERE tenant_id = %s", [bharat]
+    ).fetchone()
+    assert after == runs

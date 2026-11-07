@@ -88,7 +88,8 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     facts = await uow.product_facts.resolve(listing.product_id)
     if facts is None:
         raise NotFoundError("product_id")
-    report = recheck(canonical, rules, for_rules(facts))
+    rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
+    report = recheck(canonical, rules, for_rules(facts), rejections=rejections)
     return Check(
         report=report,
         pins=Pins(

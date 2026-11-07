@@ -13,6 +13,8 @@ concurrent validates with equal pins write one run):
    never undone). Anything else: the run only.
 4. on the current version, SI4 A13's questions (`ask_after_check`), then the
    `human_task_opened` move when one opened and the status allows it;
+4a. SI9 B5: equal pins with different "facts changed, regenerate" items (a photo value was
+   rejected since the stored run) write a new run, as different pins do;
 4b. SI9 B4 (CP-D4): on the current version, the marketplace check runs before the equal-pins
    return (the stored definition is not a pin). Its items sync under `schema` and block as a
    Rules block does. With equal pins, a check whose blocking set equals the open `schema` error
@@ -26,6 +28,7 @@ from __future__ import annotations
 import uuid
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.errors import ErrorReport
 from mkos_schemas.validation import ValidationSummary
 
@@ -81,7 +84,7 @@ async def validate_listing(
     same = await uow.validation_runs.find_equal_pins(
         version.id, pins.rules_version, pins.template_id, pins.template_version, pins.facts_digest
     )
-    if same is not None:
+    if same is not None and _same_flags(same, check.report):
         if adapter is not None and await _schema_changed(uow, listing, adapter):
             await _sync_schema(uow, listing, version.id, adapter)
             listing = await _revalidate(uow, principal, listing, check, adapter)
@@ -96,6 +99,22 @@ async def validate_listing(
         # SI4 A13: the questions of the current version's check (never of a past version's)
         await ask_after_check(uow, listing, UserActor(principal.user_id), canonical.images)
     return summary_of([run])
+
+
+def _flags(report: ErrorReport) -> set[tuple[str, str, str]]:
+    return {
+        (item.field, item.severity.value, item.message)
+        for item in report.errors
+        if item.error_code is ErrorCode.FACT_MISMATCH and item.rule_id is None
+    }
+
+
+def _same_flags(run: Any, report: ErrorReport) -> bool:
+    """SI9 B5: the rejected photo values are the one Rules input that is not a pin (CP-D12), so
+    equal pins hold the same verdict only while the "facts changed" items are the same; after a
+    reject the run is written again (the replay rule then holds for that run)."""
+    stored = ErrorReport.model_validate(run.error_report_json)
+    return _flags(stored) == _flags(report)
 
 
 async def _schema_changed(uow: TenantUnitOfWork, listing: Any, adapter: ErrorReport) -> bool:

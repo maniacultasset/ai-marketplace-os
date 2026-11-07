@@ -227,6 +227,25 @@ class ListingRepository(TenantScopedRepository[Listing]):
         )
         return (await self.db.execute(stmt)).first() is not None
 
+    async def reviewable_for_product(self, product_id: uuid.UUID) -> list[Listing]:
+        """SI9 B5 (CP-D15): the product's listings a reject re-validates (`validated`,
+        `needs_review`, `approved`; not paused or archived), locked `FOR UPDATE SKIP LOCKED`, so
+        a listing another transaction holds (a generation, a publish) is skipped, never waited
+        on; its own run re-checks later."""
+        stmt = (
+            self._select()
+            .where(
+                Listing.product_id == product_id,
+                Listing.status.in_(("validated", "needs_review", "approved")),
+                Listing.paused_at.is_(None),
+                Listing.archived_at.is_(None),
+            )
+            .order_by(Listing.id)
+            .with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
     async def get_for_update(self, listing_id: uuid.UUID) -> Listing | None:
         stmt = (
             self._select()

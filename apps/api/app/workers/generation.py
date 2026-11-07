@@ -262,6 +262,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         marketplace=Marketplace(listing.marketplace),
         rules=rules,
         critical_keys=critical,
+        rejections=rejections,  # SI9 B5 (CP-D13): the port's ERROR flags
         product=product,
     )
     try:
@@ -336,7 +337,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         # listing; the fixed listing is what the version stores. A human edit never gets here (D6)
         fixed = auto_fix(
             trusted.listing,
-            lambda candidate: recheck(candidate, rules, product),
+            lambda candidate: recheck(candidate, rules, product, rejections=rejections),
             FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical),
         )
         trusted = dataclasses.replace(trusted, listing=fixed.listing)

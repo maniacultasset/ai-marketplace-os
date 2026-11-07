@@ -132,7 +132,7 @@ async def test_the_stored_listing_is_the_pure_pass_on_the_raw_output(
     product = for_rules(facts)
     raw = seen[0].model_copy(update={"images": [], "listing_id": listing.id})
     ctx = FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical)
-    again = auto_fix(raw, lambda item: recheck(item, rules, product), ctx)
+    again = auto_fix(raw, lambda item: recheck(item, rules, product, rejections={}), ctx)
     assert again.listing.content.model_dump(mode="json") == stored["content"]
     assert again.listing.attributes == stored["attributes"]
     assert len(again.records) == 1

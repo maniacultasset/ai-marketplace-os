@@ -32,6 +32,7 @@ def _deps(app_env: str = "local", **over: Any) -> Any:
         embedder=None,
         models=_ModelConfig.from_settings(cfg),
         critical_keys=frozenset(),
+        rejections={},
     )
 
 

@@ -449,5 +449,7 @@ async def test_photo_inject_needs_a_confirmed_construction(
         )
         facts = await uow.product_facts.resolve(pw.product_id)
     assert facts is not None
-    report = recheck(CanonicalListing.model_validate(content), rules, for_rules(facts))
+    report = recheck(
+        CanonicalListing.model_validate(content), rules, for_rules(facts), rejections={}
+    )
     assert "UNSUPPORTED_CLAIM" not in {e.error_code.value for e in report.errors}
