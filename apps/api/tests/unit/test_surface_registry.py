@@ -114,13 +114,16 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
     ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
     ("admin_signup_requests_reject", "POST", "/admin/signup-requests/{request_id}/reject"),
+    # SI10: the platform admin's AI credit card (80 + 2)
+    ("admin_ai_credit_get", "GET", "/admin/ai-credit"),
+    ("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume"),
 )
 
 E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 80
+    assert len(FROZEN) == 82
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -402,8 +405,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_80_operations() -> None:
-    assert len(OPS) == 80
+def test_82_operations() -> None:
+    assert len(OPS) == 82
 
 
 def test_error_codes_per_d2() -> None:
@@ -505,7 +508,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI10",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

@@ -51,6 +51,7 @@ from app.api.v1.examples import (
     GOOGLE_CALLBACK_LOCATION,
     SUCCESS_EXAMPLES,
 )
+from app.api.v1.schemas.ai_credit import AiCreditOut
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
@@ -740,6 +741,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
               conflict_code=E.INVALID_STATUS_TRANSITION,
               extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+    # SI10: the AI credit card (platform admins)
+    Operation("admin_ai_credit_get", "GET", "/admin/ai-credit", 200, AiCreditOut, "admin",
+              "The AI credit: pause, last key check, floor and today's platform spend", "SI10",
+              platform_admin=True),
+    Operation("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume", 200, AiCreditOut,
+              "admin", "Resume AI after a top-up or a key fix (repeatable)", "SI10",
+              platform_admin=True),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})
