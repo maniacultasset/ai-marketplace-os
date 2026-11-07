@@ -23,6 +23,7 @@ from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
+    PhotoFactOut,
     ProductCreate,
     ProductImageOut,
     ProductOut,
@@ -118,6 +119,7 @@ def _out(view: products.ProductView) -> ProductOut:
         parent_product_id=view.parent_product_id,
         created_at=view.created_at,
         updated_at=view.updated_at,
+        photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
     )
 
 
@@ -214,6 +216,8 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = size_chart_dict(value)
         elif name == "attributes":
             out[name] = dict(value)
+        elif name == "confirm_attributes":
+            out[name] = tuple(value)
         else:
             out[name] = value
     return out

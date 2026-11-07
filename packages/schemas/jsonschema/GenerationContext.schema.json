@@ -2440,6 +2440,49 @@
       "title": "Pattern",
       "type": "object"
     },
+    "PhotoTarget": {
+      "description": "One product key the backend asks the vision step about (SI3).\n\n`fill`: no trusted value is stored, so a confident photo value may become an unconfirmed fact.\n`check`: a value is stored; a photo value can only raise a question.",
+      "properties": {
+        "allowed_values": {
+          "items": {
+            "maxLength": 40,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 40,
+          "minItems": 1,
+          "title": "Allowed Values",
+          "type": "array"
+        },
+        "key": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "min_confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Min Confidence",
+          "type": "number"
+        },
+        "mode": {
+          "enum": [
+            "fill",
+            "check"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "mode",
+        "allowed_values",
+        "min_confidence"
+      ],
+      "title": "PhotoTarget",
+      "type": "object"
+    },
     "PolicyRef": {
       "properties": {
         "retrieved_on": {
@@ -2900,6 +2943,14 @@
       "minimum": 1,
       "title": "Max Attempts",
       "type": "integer"
+    },
+    "photo_targets": {
+      "items": {
+        "$ref": "#/$defs/PhotoTarget"
+      },
+      "maxItems": 16,
+      "title": "Photo Targets",
+      "type": "array"
     },
     "previous_version": {
       "anyOf": [

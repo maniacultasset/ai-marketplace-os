@@ -314,3 +314,25 @@ def test_job_report_retryable_follows_the_code() -> None:
     assert [(e.retryable, e.retry_class) for e in down.errors] == [(True, RetryClass.AUTO_RETRY)]
     internal = job_report(ErrorCode.INTERNAL_ERROR, "generation failed", ctx=ctx)
     assert internal.retryable is False and internal.errors[0].retryable is False
+
+
+# ---- SI3 T11: a failed photo call never fails generation ----
+
+
+def test_a_failed_photo_record_is_not_a_transient_generation_failure() -> None:
+    from app.workers.generation import runs_failed_transiently
+
+    photo = _record("timeout", None, "image").model_copy(
+        update={"trigger": "vision", "prompt_version": "photo_facts/v1"}
+    )
+    runs = [
+        _record("completed", None, "content"),
+        _record("completed", None, "keyword"),
+        _record("completed", None, "attribute"),
+        _record("completed", None, "image"),
+        photo,
+    ]
+    assert runs_failed_transiently(runs, []) is False
+    assert runs_failed_transiently([*runs[:3], photo], []) is False
+    failed_photo = photo.model_copy(update={"status": "failed"})
+    assert runs_failed_transiently([_record("completed", None, "content"), failed_photo]) is False

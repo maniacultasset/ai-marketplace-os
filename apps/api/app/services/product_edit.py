@@ -11,6 +11,10 @@ so a lost-response retry is safe (invariant 10). Every write goes through `FactW
 `product.fact_updated` audit row holds the changed keys' envelopes only, under `attributes` and
 `provenance` (the allow-list; never a party's name or address, CP4).
 
+SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_by`/`_at` on the
+`ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. A seller write of a key
+cancels any live fact question on it (`superseded`, CP-D11).
+
 Levels: a style-owned field (`style_number`, `size_chart`, an attribute outside the row's
 owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's own or inherited
 price is at most its own or inherited MRP. A style money change is checked against each live
@@ -40,6 +44,7 @@ from app.services.product_facts import (
     SIZE_CHART_LEVELS,
     STANDALONE,
     build_attributes,
+    fact_stamp,
     seller_column_fact,
     size_chart_fact,
 )
@@ -57,6 +62,7 @@ PATCH_FIELDS: Final = frozenset(
         "manufacturer",
         "size_chart",
         "attributes",
+        "confirm_attributes",
     }
 )
 # typed body field → (products column, dictionary key, owner levels)
@@ -88,10 +94,14 @@ class ProductChange:
     typed_clear: tuple[str, ...] = ()
     attrs_set: dict[str, dict[str, Any]] = field(default_factory=dict)
     attrs_clear: tuple[str, ...] = ()
+    # SI3: (index in `confirm_attributes`, key) of the photo values to confirm
+    confirm: tuple[tuple[int, str], ...] = ()
 
     @property
     def empty(self) -> bool:
-        return not (self.typed_set or self.typed_clear or self.attrs_set or self.attrs_clear)
+        return not (
+            self.typed_set or self.typed_clear or self.attrs_set or self.attrs_clear or self.confirm
+        )
 
 
 def _level(row: Any) -> str:
@@ -224,14 +234,48 @@ def plan_patch(
         typed_clear=tuple(cleared),
         attrs_set=attrs_set,
         attrs_clear=tuple(attrs_clear),
+        confirm=_plan_confirm(patch, stored, defs, attributes),
     )
+
+
+def _plan_confirm(
+    patch: Mapping[str, Any],
+    stored: Mapping[str, Any],
+    defs: Sequence[AttributeDef],
+    attributes: Mapping[str, Any],
+) -> tuple[tuple[int, str], ...]:
+    """SI3: the photo values to confirm. A key also sent in `attributes`, or one that holds no
+    photo value, is 422 `VALIDATION_FAILED`; an unknown key 422 `UNKNOWN_FACT_KEY`; both at
+    `confirm_attributes[<i>]`. An already confirmed value is no change."""
+    out: list[tuple[int, str]] = []
+    for i, name in enumerate(patch.get("confirm_attributes") or ()):
+        at = f"confirm_attributes[{i}]"
+        definition = next((d for d in defs if d.key == name or name in d.input_aliases), None)
+        if definition is None:
+            raise InputError(ErrorCode.UNKNOWN_FACT_KEY, at)
+        key = definition.key
+        sent = {d.key for d in defs for n in attributes if d.key == n or n in d.input_aliases}
+        if key in sent or name in attributes:
+            raise InputError(ErrorCode.VALIDATION_FAILED, at)
+        fact = stored.get(key)
+        ref = fact.get("evidence_ref") if isinstance(fact, Mapping) else None
+        if not (
+            isinstance(fact, Mapping)
+            and fact.get("source") == "ai"
+            and isinstance(ref, str)
+            and ref.startswith("image:")
+        ):
+            raise InputError(ErrorCode.VALIDATION_FAILED, at)
+        if fact.get("confirmed_at") is None:
+            out.append((i, key))
+    return tuple(out)
 
 
 def _envelopes(row: Any, change: ProductChange, column_keys: Mapping[str, str]) -> dict[str, Any]:
     """The stored envelopes of the changed keys (the audit `before`)."""
     attributes: Mapping[str, Any] = row.attributes or {}
     provenance: Mapping[str, Any] = row.provenance or {}
-    attr_keys = [*change.attrs_set, *change.attrs_clear]
+    attr_keys = [*change.attrs_set, *change.attrs_clear, *(k for _i, k in change.confirm)]
     prov_keys = [column_keys[c] for c in change.typed_set] + list(change.typed_clear)
     return {
         "attributes": {k: attributes.get(k) for k in attr_keys},
@@ -259,6 +303,7 @@ async def update_product(
         if patch.get("category") is not None and patch["category"] != row.category:
             has_listing = await uow.listings.any_for_product(row.id)
         attribute_names = list((patch.get("attributes") or {}).keys())
+        attribute_names += list(patch.get("confirm_attributes") or ())
         defs = await uow.attribute_definitions.resolve(attribute_names)
         party_id = None
         manufacturer = patch.get("manufacturer")
@@ -296,10 +341,28 @@ async def update_product(
             await uow.facts.set_attribute(row.id, key, fact)
         for key in change.attrs_clear:
             await uow.facts.clear_attribute(row.id, key)
+        stamp = fact_stamp(now)
+        confirmed: dict[str, Any] = {}
+        for i, key in change.confirm:
+            await uow.facts.confirm_attribute(
+                row.id, key, user_id=principal.user_id, at=stamp, field=f"confirm_attributes[{i}]"
+            )
+            stored_fact = (row.attributes or {}).get(key) or {}
+            confirmed[key] = {
+                **stored_fact,
+                "confirmed_by": str(principal.user_id),
+                "confirmed_at": stamp,
+                "updated_at": stamp,
+            }
+        if change.attrs_set:
+            await uow.human_tasks.cancel_fact_tasks(
+                row.id, [f"facts.attributes.{k}" for k in change.attrs_set]
+            )
         after: dict[str, Any] = {
             "attributes": {
                 **dict(change.attrs_set),
                 **dict.fromkeys(change.attrs_clear),
+                **confirmed,
             },
             "provenance": {
                 **{column_keys[c]: column_fact for c in change.typed_set},

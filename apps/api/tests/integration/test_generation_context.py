@@ -257,3 +257,63 @@ async def test_context_max_attempts_clamped(gen_world: GenWorld) -> None:
     accepted = await make_generating(gen_world)
     assert (await _context(gen_world, accepted.job_id, max_attempts=9)).max_attempts == 3
     assert (await _context(gen_world, accepted.job_id, max_attempts=1)).max_attempts == 1
+
+
+# ---- SI3 T14: provenance for the non-seller attribute facts ----
+
+
+def _put(world: GenWorld, sku: str, key: str, fact: dict[str, Any]) -> None:
+    world.conn.execute(
+        "UPDATE products SET attributes = attributes || jsonb_build_object(%s::text, %s::jsonb) "
+        "WHERE id = %s",
+        [key, Jsonb(fact), world.product("acme", sku)],
+    )
+
+
+def _photo(**extra: Any) -> dict[str, Any]:
+    return {
+        "value": "v-neck",
+        "source": "ai",
+        "captured_via": "agent",
+        "agent_run_id": str(uuid.uuid4()),
+        "confidence": 0.95,
+        "evidence_ref": f"image:{uuid.uuid4()}",
+        "updated_at": "2026-11-07T00:00:00Z",
+        **extra,
+    }
+
+
+async def test_context_seller_only_product_has_no_provenance(gen_world: GenWorld) -> None:
+    _put(
+        gen_world,
+        "KURTA-002",
+        "fit",
+        {
+            "value": "slim",
+            "source": "seller",
+            "captured_via": "api",
+            "updated_at": "2026-11-07T00:00:00Z",
+        },
+    )
+    accepted = await make_generating(gen_world)
+    assert (await _context(gen_world, accepted.job_id)).product_provenance == {}
+
+
+async def test_context_provenance_for_photo_facts(gen_world: GenWorld) -> None:
+    _put(gen_world, "KURTA-002", "neckline", _photo())
+    _put(
+        gen_world,
+        "KURTA-002",
+        "fit",
+        _photo(
+            value="slim fit", confirmed_by=str(uuid.uuid4()), confirmed_at="2026-11-07T00:00:00Z"
+        ),
+    )
+    accepted = await make_generating(gen_world)
+    ctx = await _context(gen_world, accepted.job_id)
+    got = {k: v.model_dump() for k, v in ctx.product_provenance.items()}
+    assert got == {
+        "attributes.neckline": {"source": "ai", "confidence": 0.95, "confirmed": False},
+        "attributes.fit": {"source": "ai", "confidence": 0.95, "confirmed": True},
+    }
+    assert ctx.product["attributes"]["neckline"] == "v-neck"  # the prompt still sees it

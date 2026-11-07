@@ -3,7 +3,12 @@
 applied when the same seller reconnects, cancelled (`superseded`) when the account is revoked.
 A new account that replaces a revoked one gets one already applied when a publish attempt was
 stranded by the revoke (`applied_by_connect`). The 0004 guard allows only `open -> answered|cancelled` and `answered -> applied|cancelled`, so
-applying is two steps. Inserts go through Core (the `request_id` column default stamps them)."""
+applying is two steps. Inserts go through Core (the `request_id` column default stamps them).
+
+SI3 adds the fact tasks a generation's photo screen opens (`missing_fact`, `conflicting_facts` on
+`facts.attributes.<key>`, `resume_from='generate'`): one live task per product and target
+(`ht_one_live_fact`, so a second run or the other marketplace opens no duplicate), cancelled
+(`superseded`) when the seller writes the key, answered and applied by `tasks_answer`."""
 
 from __future__ import annotations
 
@@ -12,9 +17,10 @@ import uuid
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import literal, text, tuple_, update
+from sqlalchemy import literal, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
+from app.db.models.catalog import Product
 from app.db.models.issues import HumanTask
 from app.repositories.base import TenantScopedRepository
 
@@ -50,6 +56,7 @@ _CANCEL: Final = text(
 
 
 TASK_PAGE_MAX: Final = 200
+FACT_TASK_KINDS: Final = ("missing_fact", "conflicting_facts")
 LIVE: Final = ("open", "answered")
 MISSING_FACT: Final = "missing_fact"
 IMAGE_REPLACEMENT: Final = "image_replacement"
@@ -310,6 +317,116 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
             .values(status="cancelled", cancelled_reason="issues_closed")
         ).returning(HumanTask.id)
         return (await self.db.execute(cancel)).scalar_one_or_none() is not None
+
+    # ---- SI3: fact tasks ----
+
+    async def open_photo_fact_task(
+        self,
+        *,
+        product_id: uuid.UUID,
+        kind: str,
+        target_path: str,
+        question: str,
+        reason: str,
+        expected_answer: dict[str, Any],
+        suggestions: builtins.list[dict[str, Any]],
+        evidence: builtins.list[dict[str, Any]],
+        image_id: uuid.UUID | None = None,
+    ) -> bool:
+        """Open one photo-screen fact question on a live product of this tenant; False when one
+        is already live for the target (`ht_one_live_fact`) or the product is not this tenant's.
+        Named apart from the issue-question opener `open_fact_task` (SI4), which returns the live
+        task's id; once both have merged, one opener can take kind, suggestions, evidence and
+        image or colourway and return the live id."""
+        if kind not in FACT_TASK_KINDS:
+            raise ValueError(f"{kind!r} is not a fact task kind")
+        live = select(Product.id).where(
+            self._criterion_for(Product), Product.id == product_id, Product.deleted_at.is_(None)
+        )
+        if (await self.db.execute(self._scoped_read(live))).first() is None:
+            return False
+        stmt = (
+            insert(HumanTask)
+            .values(
+                tenant_id=self.tenant_id,
+                kind=kind,
+                product_id=product_id,
+                target_path=target_path,
+                image_id=image_id,
+                question=question,
+                reason=reason,
+                expected_answer=expected_answer,
+                suggestions=suggestions,
+                evidence=evidence,
+                resume_from="generate",
+            )
+            .on_conflict_do_nothing()
+            .returning(HumanTask.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def cancel_fact_tasks(
+        self, product_id: uuid.UUID, target_paths: builtins.list[str] | tuple[str, ...]
+    ) -> int:
+        """Cancel (`superseded`) the live fact tasks on these targets of one product: the seller
+        wrote the value (CP-D11). The count."""
+        if not target_paths:
+            return 0
+        stmt = self._scoped_write(
+            update(HumanTask)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                HumanTask.product_id == product_id,
+                HumanTask.kind.in_(FACT_TASK_KINDS),
+                HumanTask.status.in_(LIVE),
+                HumanTask.target_path.in_(builtins.list(target_paths)),
+            )
+            .values(status="cancelled", cancelled_reason="superseded")
+        )
+        return _rowcount(await self.db.execute(stmt))
+
+    async def get_for_update(self, task_id: uuid.UUID) -> HumanTask | None:
+        """One task of this tenant, row-locked for the answer (two answers serialise here)."""
+        stmt = (
+            self._select()
+            .where(HumanTask.id == task_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        found: HumanTask | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
+    async def answer_and_apply(
+        self, task_id: uuid.UUID, *, answer: dict[str, Any], user_id: uuid.UUID
+    ) -> int:
+        """`open -> answered -> applied` in two guarded steps (the 0004 path); 1 when applied,
+        0 when the task was not open (cancelled, or another tenant's)."""
+        answered = self._scoped_write(
+            update(HumanTask)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                HumanTask.id == task_id,
+                HumanTask.status == "open",
+            )
+            .values(
+                status="answered",
+                answer=answer,
+                answered_by_user_id=user_id,
+                answered_at=text("now()"),
+            )
+        )
+        if _rowcount(await self.db.execute(answered)) == 0:
+            return 0
+        applied = self._scoped_write(
+            update(HumanTask)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                HumanTask.id == task_id,
+                HumanTask.status == "answered",
+            )
+            .values(status="applied", applied_at=text("now()"))
+        )
+        return _rowcount(await self.db.execute(applied))
 
     async def cancel_reconnect(self, account_id: uuid.UUID) -> int:
         return _rowcount(await self.db.execute(_CANCEL, {"t": self.tenant_id, "a": account_id}))

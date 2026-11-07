@@ -286,3 +286,56 @@ async def test_every_pushed_generation_context_passes_seam_walk(
         walk_seam_dicts_and_text(ctx)  # raises on a secret-shaped key at any depth
         assert find_seam_secret_key(json.loads(ctx.model_dump_json())) is None
         assert TOKEN_CANARY not in ctx.model_dump_json()
+
+
+# ---- SI3 T17 (AC13): product photo bytes never reach a log, a record or a job row ----
+
+from tests.integration.photo_support import (  # noqa: E402
+    PhotoWorld,
+    generate,
+    photo_world,
+    spy_pipeline,
+)
+
+__all__ += ["photo_world"]
+_LONG_B64 = __import__("re").compile(r"[A-Za-z0-9+/=]{65,}")
+
+
+async def test_si3_photo_bytes_never_logged(
+    photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch, log_lines: Any
+) -> None:
+    pw = photo_world
+    capture = log_lines()
+    spy_pipeline(pw, monkeypatch)
+    accepted = await generate(pw, "photo_ok")
+    images = pw.seen[-1].images
+    assert images and pw.seen[-1].photo_targets
+    sinks = {
+        "logs": capture.text(),
+        "agent_runs": "\n".join(
+            str(r[0])
+            for r in pw.conn.execute(
+                "SELECT row_to_json(a)::text FROM agent_runs a WHERE job_id = %s", [accepted.job_id]
+            ).fetchall()
+        ),
+        "job_runs": "\n".join(
+            str(r[0])
+            for r in pw.conn.execute(
+                "SELECT concat_ws('|', payload_json::text, result_json::text, "
+                "error_report_json::text) FROM job_runs WHERE id = %s",
+                [accepted.job_id],
+            ).fetchall()
+        ),
+        "audit": "\n".join(
+            str(r[0])
+            for r in pw.conn.execute(
+                "SELECT row_to_json(l)::text FROM audit_log l WHERE job_id = %s", [accepted.job_id]
+            ).fetchall()
+        ),
+    }
+    assert sinks["logs"] and sinks["agent_runs"] and sinks["job_runs"] and sinks["audit"]
+    for name, text in sinks.items():
+        assert not _LONG_B64.search(text), name
+        for image in images:
+            for start in range(0, len(image.data_b64) - 48, 97):
+                assert image.data_b64[start : start + 48] not in text, name

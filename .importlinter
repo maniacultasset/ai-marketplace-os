@@ -92,6 +92,25 @@ forbidden_modules =
     pgvector
     alembic
 
+# The SI3 photo-fact rules are pure: targets and the screen of observations import only
+# mkos_schemas and app.core, so the worker, the API and the tests share one deterministic copy.
+[importlinter:contract:photo-facts-are-pure]
+name = app.services.photo_facts is pure
+type = forbidden
+source_modules =
+    app.services.photo_facts
+forbidden_modules =
+    app.api
+    app.db
+    app.repositories
+    app.workers
+    app.adapters
+    sqlalchemy
+    psycopg
+    fastapi
+    starlette
+    alembic
+
 # The local mock (S3 D5) is dev tooling: the app never imports it, and it reads only openapi.json.
 [importlinter:contract:app-never-imports-mock]
 name = app never imports app_mock

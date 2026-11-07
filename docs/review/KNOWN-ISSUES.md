@@ -43,7 +43,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 
 | Item | State | Next |
 |---|---|---|
-| `facts_guard` PRV04 (a changed typed value needs a changed `provenance.<key>.updated_at`) and PRV05 (a party used as manufacturer … consumer care lists that role and is live), DATABASE.md:1184-1185 | Revision `0007_facts_guard` (S13b) ships PRV01-PRV03 only (CODE-PLAN S13 Q13); no step owns PRV04/PRV05 yet. The FactWriter always writes the provenance with the value, and the import's parties carry their role, so v1 writers keep both rules by construction. | Unowned: name the step (a new revision) before S18 writes facts from the AI. |
+| `facts_guard` PRV04 (a changed typed value needs a changed `provenance.<key>.updated_at`) and PRV05 (a party used as manufacturer … consumer care lists that role and is live), DATABASE.md:1184-1185 | Revision `0007_facts_guard` (S13b) ships PRV01-PRV03 only (CODE-PLAN S13 Q13); no step owns PRV04/PRV05 yet. The FactWriter always writes the provenance with the value, and the import's parties carry their role, so v1 writers keep both rules by construction. | Unowned: name the step (a new revision) before S18 writes facts from the AI. SI3 (2026-11-07) writes AI facts to `attributes` only (unconfirmed photo values, never a typed column or a party), so PRV04/PRV05 stay unexercised by it. |
 
 ## C. Scaffold bugs (fix when the file moves into place in S1, then test)
 

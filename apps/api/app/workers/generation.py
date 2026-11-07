@@ -25,6 +25,15 @@ drop at deploy, T104). No session is open across the pipeline call. The steps:
    query embeds write their own `agent_runs`), and kept otherwise, because the pipeline's
    records of calls already made are lost with the exception (CP10).
 
+SI3 (photo facts): the read transaction also reads the product's newest recorded photo set; after
+the vision copies load, `build_targets` decides the `photo_targets` (none when the photo set is
+unchanged, so a second marketplace or a regeneration on the same photos makes no vision call).
+A trusted result's observations are screened (`screen`) and the decision rides on the persist
+plan of both the saved and the no-version path; the untrusted, timeout and exception paths carry
+none, so they record no photo set and the next run tries again. A failed photo call never fails
+generation (`runs_failed_transiently` ignores photo records). The claim-time reservation covers
+the vision call.
+
 A transient failure is not retried inside the job: `listing_generate` keeps `max_attempts=1`
 (`policy.py`); the seller regenerates.
 
@@ -64,6 +73,7 @@ from app.services.generation_result import (
     recheck,
     salvage_records,
 )
+from app.services.photo_facts import PHOTO_PROMPT_PREFIX, build_targets, photo_set, screen
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers import budget
@@ -103,6 +113,8 @@ def runs_failed_transiently(
     refused, which a new try repeats)."""
     last: dict[str, AgentRunRecord] = {}
     for record in records:
+        if (record.prompt_version or "").startswith(PHOTO_PROMPT_PREFIX):
+            continue  # SI3: a failed photo call never fails generation
         last[record.agent_name] = record
     ended_failed = [r for r in last.values() if r.status != "completed"]
     failed_blocks = {b.agent for b in blocks if b.status == "failed"}
@@ -202,12 +214,25 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         created_by = job.created_by
         image_rows = await uow.images.listing_set(listing.product_id)
         critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
+        seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
-    context_images = await load_context_images(get_storage(), tenant, pick_context(image_rows))
+    picked = pick_context(image_rows)
+    context_images = await load_context_images(get_storage(), tenant, picked)
     if context_images:
         gctx = gctx.model_copy(update={"images": context_images})
+    # SI3: the keys to read from the photos (none when the photo set is the last one recorded)
+    sent_set = photo_set(context_images, {r.image_id: r.clean_content_hash or "" for r in picked})
+    targets = (
+        []
+        if rules.template is None
+        else build_targets(
+            facts, rules.template, context_images, current_set=sent_set, last_set=seen_set
+        )
+    )
+    if targets:
+        gctx = gctx.model_copy(update={"photo_targets": targets})
 
     product = for_rules(facts)
     pins = Pins(
@@ -318,9 +343,33 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
+    photo: dict[str, Any] = {}
+    if targets:  # SI3: screen only a trusted result's observations, only for this run's targets
+        decision = screen(
+            trusted.result.photo_observations,
+            trusted.records,
+            targets=targets,
+            images=context_images,
+            facts=facts,
+            required=frozenset(rules.template.required_attributes if rules.template else ()),
+        )
+        log.info(
+            "generation.photo_screen",
+            job_run_id=str(job_id),
+            writes=len(decision.writes),
+            tasks=len(decision.tasks),
+            dropped=[reason for _key, reason in decision.dropped],
+        )
+        photo = {"photo": decision, "pre_facts": facts, "seen_set": seen_set, "sent_set": sent_set}
     if not move.saves_version:
+        failed_result: dict[str, Any] = {}
         plan = PersistPlan(
-            **plan_base, move=move, rules_calls=deps.rules_calls, records=trusted.records
+            **plan_base,
+            move=move,
+            rules_calls=deps.rules_calls,
+            records=trusted.records,
+            result=failed_result,
+            **photo,
         )
         transient = runs_failed_transiently(trusted.records, trusted.result.blocks)
         raise JobFailed(
@@ -334,6 +383,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             ),
             persist=make_persist(plan),
             zero_reservation=True,
+            result=failed_result,
         )
     version_id = uuid.uuid4()
     outcome_result: dict[str, Any] = {"listing_version_id": str(version_id), "status": move.to}
@@ -350,6 +400,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         attempts_used=attempts_used,
         version_id=version_id,
         result=outcome_result,
+        **photo,
     )
     error = None
     if move.to == "blocked" and report is not None:
