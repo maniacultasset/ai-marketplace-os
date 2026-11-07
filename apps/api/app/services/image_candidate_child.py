@@ -10,8 +10,8 @@ Ops:
 - `prepare`: the vision copy padded to a square with its border colour, JPEG q90, at most 1024 px
   (the model's input, CP-D5).
 - `finish_white`: decode the model output (PNG, JPEG or WebP only, pixel and side caps), judge it
-  against the padded clean copy (`fidelity`), keep the seller's pixels (`composite`), frame it and
-  run the main-image checks.
+  against the padded clean copy (`fidelity`), keep the seller's pixels (`composite`), whiten a
+  near-white uniform background left by the model, frame it and run the main-image checks.
 - `fix`: frame the clean copy (`image_fix.fix`) and run the main-image checks.
 - `size_chart`: render the size chart.
 
@@ -44,7 +44,14 @@ from PIL import Image, ImageOps
 from app.services.image_check_child import set_limits
 from app.services.image_checks import MAX_PIXELS, MAX_SIDE, check_image
 from app.services.image_fidelity import composite, judge, pad_square
-from app.services.image_fix import BorderProfile, FixRefused, border_profile, fix, frame_square
+from app.services.image_fix import (
+    BorderProfile,
+    FixRefused,
+    border_profile,
+    fix,
+    frame_square,
+    whiten_border,
+)
 from app.services.size_chart_image import ChartRefused, render_size_chart
 
 OPS: Final = frozenset({"prepare", "finish_white", "fix", "size_chart"})
@@ -169,6 +176,8 @@ def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[
     clean = _decode(_input(inputs, "clean"), CLEAN_FORMATS)
     if clean is None:
         return _refused("source_unusable")
+    if not border_profile(output).near_white:  # the edit left a coloured background
+        return _refused("not_white")
     prof = border_profile(clean)
     original = pad_square(clean, prof.colour)
     score = judge(original, output, prof)
@@ -176,7 +185,13 @@ def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[
     if not score.passed:
         return _refused("fidelity", fidelity=fidelity)
     try:
-        framed = frame_square(composite(original, output))
+        merged = composite(original, output)
+        # The model's background may itself be a near-white grey: whiten it deterministically,
+        # as `fix` does (the seller's product pixels are outside the background mask).
+        merged_border = border_profile(merged)
+        if merged_border.uniform and merged_border.near_white:
+            merged = whiten_border(merged, merged_border)
+        framed = frame_square(merged)
     except FixRefused as refused:
         return _refused(refused.reason, fidelity=fidelity)
     return _framed(framed, params, fidelity=fidelity)

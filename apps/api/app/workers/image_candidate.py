@@ -20,6 +20,9 @@ reason only, never pixels, keys or signed URLs.
 
 from __future__ import annotations
 
+import asyncio
+import base64
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Final
 from uuid import UUID
@@ -39,6 +42,7 @@ from app.db.models.catalog_assets import Image, ImageCandidate
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services import image_runner
 from app.services.image_candidates import size_chart_source
+from app.services.image_edit_result import EditTrusted, EditUntrusted, check_edit_result
 from app.services.image_keys import CLEAN_NAMES, candidate_key, derived_key
 from app.services.image_runner import CandidateChildFailed, CandidateReply
 from app.services.rules_loader import RuleLoadError, load_rules
@@ -48,6 +52,8 @@ from app.workers.registry import JobContext, Outcome
 
 log = get_logger(__name__)
 MAX_IMAGE_BYTES: Final = 10_485_760
+# the hard deadline over the seam call: the credentials' timeout plus this grace
+SEAM_GRACE_S: Final = 15
 
 
 def candidate_id_of(ctx: JobContext) -> UUID:
@@ -231,6 +237,219 @@ async def run_image_candidate(ctx: JobContext) -> Outcome:
     return await _deterministic(ctx, candidate)
 
 
+# ---- T12: the AI white-background path ----
+
+
+def _zeroed(outcome: Outcome) -> Outcome:
+    return Outcome(outcome.status, outcome.result, zero_reservation=True)
+
+
+async def _ai_fail(
+    ctx: JobContext, candidate_id: UUID, reason: str, *, zero: bool, **extra: Any
+) -> Outcome:
+    outcome = await fail(ctx, candidate_id, reason, **extra)
+    return _zeroed(outcome) if zero else outcome
+
+
+@dataclass(frozen=True, slots=True)
+class _EditInputs:
+    category: str
+    clean_key: str
+    vision_key: str
+    rules: dict[str, Any]
+    claim_started_at: datetime
+
+
+async def _edit_inputs(ctx: JobContext, candidate: ImageCandidate) -> _EditInputs | None:
+    async with tenant_uow(ctx.tenant_id) as uow:
+        product = await uow.products.get_by_id(candidate.product_id)
+        row = (
+            None
+            if candidate.source_image_id is None
+            else await uow.images.get_live(candidate.source_image_id)
+        )
+        if product is None or not source_is_current(candidate, row):
+            return None
+        assert row is not None  # noqa: S101 - source_is_current
+        clean = clean_key_of(ctx.tenant_id, row)
+        if clean is None:
+            return None
+        job = await uow.job_runs.get_by_id(ctx.job_run_id)
+        return _EditInputs(
+            category=product.category,
+            clean_key=clean,
+            vision_key=derived_key(ctx.tenant_id, row.product_id, row.id, "vision.jpg"),
+            rules=await main_rules(uow, ctx, product.category),
+            claim_started_at=(job.started_at if job else None) or datetime.now(UTC),
+        )
+
+
+async def _call_model(
+    ctx: JobContext, candidate: ImageCandidate, inputs: _EditInputs, prepared: CandidateReply
+) -> Any:
+    """The seam call under a hard deadline. Returns the result, None (no `edit_image` in the
+    installed pipeline) or raises."""
+    from mkos_schemas.image_edit import ImageEditRequest
+    from mkos_schemas.jobs import ContextImage
+
+    from app.core.config import get_settings
+    from app.services.pipeline_deps import image_edit_credentials
+    from app.workers import image_edit_seam
+
+    assert prepared.image is not None and prepared.width and prepared.height  # noqa: S101
+    credentials = image_edit_credentials(get_settings())
+    request = ImageEditRequest(
+        tenant_id=ctx.tenant_id,
+        product_id=candidate.product_id,
+        job_id=ctx.job_run_id,
+        request_id=ctx.request_id,
+        attempt=min(max(ctx.attempt, 1), 3),
+        task="white_background",
+        image=ContextImage(
+            image_id=candidate.source_image_id,
+            slot="main",
+            width=prepared.width,
+            height=prepared.height,
+            data_b64=base64.b64encode(prepared.image).decode("ascii"),
+        ),
+        category=inputs.category[:64],
+    )
+    return await asyncio.wait_for(
+        image_edit_seam.call_edit_image(request, credentials),
+        timeout=credentials.timeout_seconds + SEAM_GRACE_S,
+    )
+
+
+async def _store_runs(ctx: JobContext, candidate: ImageCandidate, trusted: EditTrusted) -> None:
+    """Invariant 7: every model call's record, before any pixel work, in one short unit."""
+    record = trusted.records[0] if trusted.records else None
+    async with tenant_uow(ctx.tenant_id) as uow:
+        for each in trusted.records:
+            await uow.agent_runs.insert(each)
+        if record is not None:
+            await uow.image_candidates.record_run(
+                candidate.id,
+                ctx.job_run_id,
+                agent_run_id=record.id,
+                cost_usd=record.cost_usd,
+                served_provider=trusted.result.served_provider,
+            )
+    log.info(
+        "image_candidate.model_done",
+        candidate_id=str(candidate.id),
+        job_run_id=str(ctx.job_run_id),
+        status=trusted.result.status,
+        served_provider=trusted.result.served_provider,
+        cost_usd=str(record.cost_usd) if record is not None else "0",
+    )
+
+
 async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
-    """The AI path (T12)."""
-    return await fail(ctx, candidate.id, "model_failed")
+    """One paid edit, never retried (`max_attempts=1`). The reservation is zeroed whenever no
+    model call was made or its record is stored; an untrusted result, a seam exception or a
+    timeout keeps it counted (the call may have been billed, its record is lost)."""
+    from mkos_schemas.codes import ErrorCode as Code
+
+    from app.core.config import get_settings
+    from app.services.pipeline_deps import SeamPortError
+    from app.workers.budget import (
+        IMAGE_EDIT_RESERVATION_USD,
+        BudgetRefused,
+        ImageEditLimits,
+        reserve,
+    )
+
+    settings = get_settings()
+    if not settings.image_edit_enabled:
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    inputs = await _edit_inputs(ctx, candidate)
+    if inputs is None:
+        return await _ai_fail(ctx, candidate.id, "source_unusable", zero=True)
+    try:
+        reserved = await reserve(
+            ctx.tenant_id,
+            ctx.job_run_id,
+            ctx.attempt,
+            amount=IMAGE_EDIT_RESERVATION_USD,
+            image_edit=ImageEditLimits.from_settings(settings, exclude_id=candidate.id),
+        )
+    except BudgetRefused:
+        return await _ai_fail(ctx, candidate.id, "budget", zero=True)
+    if not reserved:  # the fence moved: a newer attempt owns the row
+        raise _failed("the candidate job lost its claim", ctx)
+    try:
+        vision = await read_object(inputs.vision_key)
+        clean = await read_object(inputs.clean_key)
+    except (StorageNotFound, StorageObjectTooLarge):
+        return await _ai_fail(ctx, candidate.id, "source_unusable", zero=True)
+    except RetryableJobError:
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    try:
+        prepared = await image_runner.run_candidate_isolated("prepare", {"vision": vision}, {})
+    except CandidateChildFailed:
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    if not prepared.ok:
+        return await _ai_fail(ctx, candidate.id, prepared.reason or "source_unusable", zero=True)
+    try:
+        result = await _call_model(ctx, candidate, inputs, prepared)
+    except SeamPortError:
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    except Exception as error:
+        log.info(
+            "image_candidate.seam_failed",
+            candidate_id=str(candidate.id),
+            job_run_id=str(ctx.job_run_id),
+            error=type(error).__name__,
+        )
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=False)
+    if result is None:  # the installed pipeline has no edit_image: no call was made
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    checked = check_edit_result(
+        result,
+        tenant_id=ctx.tenant_id,
+        product_id=candidate.product_id,
+        job_id=ctx.job_run_id,
+        request_id=ctx.request_id,
+        attempt=min(max(ctx.attempt, 1), 3),
+        claim_started_at=inputs.claim_started_at,
+        now=datetime.now(UTC),
+    )
+    if isinstance(checked, EditUntrusted):
+        log.info(
+            "image_candidate.untrusted",
+            candidate_id=str(candidate.id),
+            job_run_id=str(ctx.job_run_id),
+            check=checked.check,
+        )
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=False)
+    await _store_runs(ctx, candidate, checked)
+    edit = checked.result
+    if edit.status == "failed" or edit.image_b64 is None:
+        code = edit.error.error_code if edit.error is not None else None
+        reason = "credit_used_up" if code is Code.BUDGET_EXCEEDED else "model_failed"
+        return await _ai_fail(ctx, candidate.id, reason, zero=True)
+    output = base64.b64decode(edit.image_b64)
+    params = {
+        "rules": inputs.rules,
+        "image_id": str(candidate.id),
+        "now": datetime.now(UTC).isoformat(),
+    }
+    try:
+        reply = await image_runner.run_candidate_isolated(
+            "finish_white", {"output": output, "clean": clean}, params
+        )
+    except CandidateChildFailed:  # CP-D19: never cached; the record is already stored
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    if not reply.ok:
+        return await _ai_fail(
+            ctx,
+            candidate.id,
+            reply.reason or "source_unusable",
+            zero=True,
+            fidelity=reply.fidelity,
+        )
+    try:
+        stored = await store_ready(ctx, candidate, reply, fidelity=reply.fidelity)
+    except RetryableJobError:  # no retry for a paid job: the seller asks again
+        return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    return _zeroed(stored)

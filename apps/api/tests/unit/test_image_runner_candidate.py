@@ -221,3 +221,26 @@ def test_parse_derived_with_and_without_border() -> None:
     assert new is not None and new.border == border
     bad = parse_derived(json.dumps({**body, "border": {"uniform": "yes"}}).encode())
     assert bad is not None and bad.border is None
+
+
+async def test_finish_white_whitens_an_off_white_echo() -> None:
+    """The stub echoes the off-white input: the backend's own whitening makes it pass."""
+    clean_img = _scene((245, 245, 245), (2000, 2000))
+    echo = _scene((245, 245, 245), (1024, 1024))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean_img, "PNG"), "output": fx.encode(echo, "JPEG", quality=90)},
+        _params(),
+    )
+    assert reply.ok, reply.reason
+
+
+async def test_finish_white_grey_echo_is_not_white() -> None:
+    clean_img = _scene((200, 200, 200), (2000, 2000))
+    echo = _scene((200, 200, 200), (1024, 1024))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean_img, "PNG"), "output": fx.encode(echo, "JPEG", quality=90)},
+        _params(),
+    )
+    assert not reply.ok and reply.reason == "not_white"

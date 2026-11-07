@@ -73,7 +73,27 @@ def source_main(
         "image/png",
         datetime.now(UTC),
     )
+    vision = PILImage.open(io.BytesIO(data)).convert("RGB")
+    vision.thumbnail((1024, 1024))
+    out = io.BytesIO()
+    vision.save(out, format="JPEG", quality=85)
+    store.objects[derived_key(tenant, p, image_id, "vision.jpg")] = (
+        out.getvalue(),
+        "image/jpeg",
+        datetime.now(UTC),
+    )
     return p, image_id, digest
+
+
+@pytest.fixture
+def edit_on(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """The AI edit switched on for the test (the local direct gateway: the stub pipeline)."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("IMAGE_EDIT_ENABLED", "true")
+    get_settings.cache_clear()
+    yield monkeypatch
+    get_settings.cache_clear()
 
 
 def chart_product(conn: Conn, tenant: uuid.UUID, chart: dict[str, Any] | None = None) -> uuid.UUID:
