@@ -226,3 +226,39 @@ def reject(app: Any, fail: Any) -> None:
             names.append(c.CONDITION_ATTRIBUTE)
         for name in names:
             app.state.fake.spapi_reject[name] = (code, text)
+
+
+def colour_family(
+    *, green: bool = False, extra_red: int = 0
+) -> tuple[AdapterListing, dict[str, int]]:
+    """SI8 AC5: a size x colour family whose colourways carry their own images. Style S (main)
+    and Z (size chart); red R1 (main), R2 (and `extra_red` more); black B1 (main); with `green`,
+    a green colourway with no images. Returns the listing and each image's version index."""
+    from mkos_schemas.enums import ImageSlot
+    from mkos_schemas.listing import ImageRef
+
+    names = ["S", "Z", "R1", "B1", "R2", *(f"R{3 + n}" for n in range(extra_red))]
+    slots = {"S": "main", "Z": "size_chart", "R1": "main", "B1": "main"}
+    ids = {name: uuid.uuid4() for name in names}
+    images = [
+        ImageRef(image_id=ids[n], slot=ImageSlot(slots.get(n, "secondary")), position=i)
+        for i, n in enumerate(names)
+    ]
+    body = listing().model_copy(update={"images": images})
+    colours = ["red", "black", *(["green"] if green else [])]
+    rows = [{"size": size, "color": colour} for colour in colours for size in ("M", "L")]
+    sent = amazon_family(body, children=rows)
+    kids = tuple(
+        dataclasses.replace(u, colour_key=u.variant_attributes.get("color")) for u in sent.items
+    )
+    colour_ids = {
+        "red": tuple(ids[n] for n in names if n.startswith("R")),
+        "black": (ids["B1"],),
+    }
+    built = dataclasses.replace(
+        sent,
+        items=kids,
+        colour_image_ids=colour_ids,
+        image_refs={ids[n]: f"https://images.example.test/{n}.jpg" for n in names},
+    )
+    return built, {n: i for i, n in enumerate(names)}

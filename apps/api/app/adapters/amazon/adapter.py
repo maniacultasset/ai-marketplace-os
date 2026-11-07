@@ -52,6 +52,7 @@ from app.adapters.amazon.mapping import (
     build,
     error,
     is_mapped,
+    item_index,
     preview,
     reverse_index,
 )
@@ -393,7 +394,12 @@ class AmazonAdapter(MarketplaceAdapter):
             self._sink.put(one.unit.seller_sku, "put", response.raw)
             try:
                 outcome = self._outcome(
-                    response, one, index, one.paths, one.submitted, party_secrets(item)
+                    response,
+                    one,
+                    item_index(index, one),
+                    one.paths,
+                    one.submitted,
+                    party_secrets(item),
                 )
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
@@ -429,12 +435,13 @@ class AmazonAdapter(MarketplaceAdapter):
         applied = 0
         ordered = [m for m in mapped if m.unit.seller_sku in per_sku]
         for position, one in enumerate(ordered):
-            scope = _expand(per_sku[one.unit.seller_sku], index, one.paths)
+            own = item_index(index, one)  # SI8 CP-D4: this item's own image slots
+            scope = _expand(per_sku[one.unit.seller_sku], own, one.paths)
             blocked = {e.field: e for e in errors if e.field in scope}
             names = sorted(
                 {
                     name
-                    for name, feeds in index.items()
+                    for name, feeds in own.items()
                     if name in one.payload["attributes"]
                     and any(p in scope and p not in blocked for p in feeds)
                 }
@@ -457,7 +464,9 @@ class AmazonAdapter(MarketplaceAdapter):
                     raise type(exc)(exc.report, completed=()) from None
                 results.append(self._failed_item(one.unit, sent, exc.report))
                 results += [
-                    self._skipped_item(m.unit, _expand(per_sku[m.unit.seller_sku], index, m.paths))
+                    self._skipped_item(
+                        m.unit, _expand(per_sku[m.unit.seller_sku], item_index(index, m), m.paths)
+                    )
                     for m in ordered[position + 1 :]
                 ]
                 return self._result(
@@ -468,7 +477,7 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
             try:
-                outcome = self._outcome(response, one, index, scope, sent, party_secrets(item))
+                outcome = self._outcome(response, one, own, scope, sent, party_secrets(item))
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}

@@ -86,6 +86,7 @@ from app.adapters.base import (
     locator_ok,
     nearest_values,
     submitted_fields,
+    unit_images,
 )
 from app.services.rules_engine.text import submitted_keywords
 
@@ -105,6 +106,9 @@ class MappedItem:
     errors: tuple[ErrorItem, ...] = ()
     paths: tuple[str, ...] = field(default=())
     """Every field path this item answers for: `submitted` + `skipped`, sorted."""
+    image_names: Mapping[str, str] = field(default_factory=dict)
+    """SI8 CP-D4: the Amazon image attribute -> the `images[<version index>]` path it carries,
+    for each image this item sent (a child's slots do not line up with the version index)."""
 
 
 def normalize(value: str) -> str:
@@ -569,11 +573,13 @@ def item_payload(
             sent += list(PRICE_PATHS)
     skipped += list(fact_paths(unit))
 
+    image_names: dict[str, str] = {}
+    skipped += [f"images[{i}]" for i in range(len(body.images))]  # the ones it does not send
     if unit.item_role != "parent":
-        for index, image in enumerate(body.images):
-            path = f"images[{index}]"
-            locator = listing.image_refs.get(image.image_id)
-            if index >= c.MAX_IMAGES or not locator:
+        # SI8 T4: a colour child sends its own colourway's images, then the style-level ones
+        for position, one in enumerate(unit_images(listing, unit)):
+            path, locator = f"images[{one.index}]", one.locator
+            if position >= c.MAX_IMAGES or not locator:
                 skipped.append(path)
                 continue
             if not locator_ok(locator, preview=preview, allow_http=listing.allow_http_images):
@@ -586,11 +592,10 @@ def item_payload(
                 )
                 skipped.append(path)
                 continue
-            name = c.MAIN_IMAGE if index == 0 else c.OTHER_IMAGES[index - 1]
+            name = c.MAIN_IMAGE if position == 0 else c.OTHER_IMAGES[position - 1]
             attributes[name] = [{"media_location": locator, "marketplace_id": marketplace_id}]
+            image_names[name] = path
             sent.append(path)
-    else:
-        skipped += [f"images[{i}]" for i in range(len(body.images))]
 
     axes = _axes(listing)
     if unit.item_role == "parent" and axes is not None and axes in c.AMAZON_THEMES:
@@ -622,7 +627,21 @@ def item_payload(
         skipped=tuple(sorted(set(skipped) - set(sent))),
         errors=tuple(errors),
         paths=tuple(sorted(set(sent) | set(skipped))),
+        image_names=image_names,
     )
+
+
+IMAGE_NAMES: Final = frozenset({c.MAIN_IMAGE, *c.OTHER_IMAGES})
+
+
+def item_index(
+    index: Mapping[str, tuple[str, ...]], item: MappedItem
+) -> Mapping[str, tuple[str, ...]]:
+    """SI8 CP-D4: `index` for one item: the listing-wide image rows replaced by the image
+    attributes this item sent, each feeding its own `images[<version index>]` path."""
+    out = {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
+    out.update({name: (path,) for name, path in item.image_names.items()})
+    return dict(sorted(out.items()))
 
 
 def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, ...]]:
@@ -813,7 +832,8 @@ def _schema_errors(
         if schema is None:
             continue
         attributes = item.payload.get("attributes") or {}
-        for problem in schema_check.check_item(attributes, schema, index, reported=reported):
+        own = item_index(index, item)
+        for problem in schema_check.check_item(attributes, schema, own, reported=reported):
             marker = (problem.field, problem.error_code.value, problem.raw_code, problem.message)
             if marker not in markers:
                 markers.add(marker)
