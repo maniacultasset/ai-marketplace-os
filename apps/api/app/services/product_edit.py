@@ -15,8 +15,13 @@ SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_
 `ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. A seller write of a key
 cancels any live fact question on it (`superseded`, CP-D11).
 
-Levels: a style-owned field (`style_number`, `size_chart`, an attribute outside the row's
-owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's own or inherited
+SI8: `brand_name` must be one of the tenant's own brand names (`products.checked_brand`, CP-D9;
+422 VALUE_NOT_ALLOWED otherwise) and is stored in that name's spelling; `null` clears it back to
+the brand default. `gender` is one of the six audiences (the schema's `Literal`).
+
+Levels: a style-owned field (`style_number`, `brand_name`, `gender`, `size_chart`, an attribute
+outside the row's owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's
+own or inherited
 price is at most its own or inherited MRP. A style money change is checked against each live
 child: a child that inherits the changed price and goes over its MRP is 422 `selling_price`,
 any other child breach is 422 `mrp`.
@@ -48,7 +53,13 @@ from app.services.product_facts import (
     seller_column_fact,
     size_chart_fact,
 )
-from app.services.products import ProductView, full_view, party_fields, product_etag
+from app.services.products import (
+    ProductView,
+    checked_brand,
+    full_view,
+    party_fields,
+    product_etag,
+)
 
 __all__ = ["ProductChange", "plan_patch", "update_product"]
 
@@ -57,6 +68,8 @@ PATCH_FIELDS: Final = frozenset(
         "title",
         "category",
         "style_number",
+        "brand_name",
+        "gender",
         "mrp",
         "selling_price",
         "manufacturer",
@@ -70,6 +83,9 @@ TYPED: Final[Mapping[str, tuple[str, str, frozenset[str]]]] = {
     "title": ("title", "title", frozenset({"style", "variant", "standalone"})),
     "category": ("category", "category", frozenset({"style", "variant", "standalone"})),
     "style_number": ("style_number", "style_number", frozenset({"style", "standalone"})),
+    # SI8: the brand override and the audience are style-owned (`ck_products_style_owned`)
+    "brand_name": ("brand_name", "brand_name", frozenset({"style", "standalone"})),
+    "gender": ("gender", "gender", frozenset({"style", "standalone"})),
     "mrp": ("mrp", "mrp", frozenset({"style", "variant", "standalone"})),
     "selling_price": (
         "selling_price",
@@ -312,6 +328,11 @@ async def update_product(
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "manufacturer")
             # decision 16: a product route links the matching party, never rewrites it
             party_id = await uow.parties.match_or_create(party_fields(manufacturer))
+        if patch.get("brand_name") is not None:
+            if level not in TYPED["brand_name"][2]:
+                raise InputError(ErrorCode.FACT_LEVEL_INVALID, "brand_name")
+            # SI8 CP-D9: one of the tenant's own brand names, stored in that name's spelling
+            patch = {**patch, "brand_name": await checked_brand(uow, patch["brand_name"])}
         change = plan_patch(
             row,
             style,

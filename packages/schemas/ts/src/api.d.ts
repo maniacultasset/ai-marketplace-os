@@ -3332,8 +3332,18 @@ export interface components {
             attributes?: {
                 [key: string]: string | boolean | number;
             };
+            /**
+             * Brand Name
+             * @description SI8: the brand this product lists under, style or standalone level; one of your brand names (the store name or a brand profile name; 422 VALUE_NOT_ALLOWED otherwise), stored in that name's spelling. Absent: the brand default applies.
+             */
+            brand_name?: string | null;
             /** Category */
             category: string;
+            /**
+             * Gender
+             * @description SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.
+             */
+            gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
             /**
              * Id
              * @description The product id minted by `POST /images/upload-url`; needs `image_uploads`.
@@ -3386,6 +3396,17 @@ export interface components {
             attributes?: {
                 [key: string]: string | boolean | number;
             };
+            /**
+             * Brand Name
+             * @description SI8: on single reads the effective brand (own, style, else the brand default); on lists the product's own value.
+             */
+            brand_name?: string | null;
+            /**
+             * Brand Name Inherited
+             * @description SI8: true when neither the product nor its style holds a brand and the brand default supplied it. Meaningful on single reads only (false on lists).
+             * @default false
+             */
+            brand_name_inherited: boolean;
             /** Category */
             category: string;
             /** Colourways */
@@ -3399,6 +3420,11 @@ export interface components {
             currency?: string | null;
             /** Fiber Composition */
             fiber_composition?: components["schemas"]["FibreOut"][] | null;
+            /**
+             * Gender
+             * @description SI8: the audience; own or the style's on single reads, own on lists.
+             */
+            gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
             /**
              * Id
              * Format: uuid
@@ -3446,6 +3472,13 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /**
+             * Variant Attributes
+             * @description SI8: a variant's axes (`color`, `size`); `{}` on styles and standalones.
+             */
+            variant_attributes?: {
+                [key: string]: string;
+            };
         };
         /** ProductPage */
         ProductPage: {
@@ -3455,15 +3488,21 @@ export interface components {
         };
         /**
          * ProductPatch
-         * @description A JSON merge patch: an absent field is unchanged; `null` clears `style_number`, `mrp`,
-         *     `selling_price`, `size_chart`, `manufacturer` (back to the inherited party) and an
-         *     attribute key. `sku` is immutable and not a field.
+         * @description A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,
+         *     `brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,
+         *     `manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not
+         *     a field.
          */
         ProductPatch: {
             /** Attributes */
             attributes?: {
                 [key: string]: string | boolean | number | null;
             } | null;
+            /**
+             * Brand Name
+             * @description SI8: the brand this product lists under, style or standalone level; one of your brand names (the store name or a brand profile name; 422 VALUE_NOT_ALLOWED otherwise), stored in that name's spelling. Absent: the brand default applies.
+             */
+            brand_name?: string | null;
             /** Category */
             category?: string | null;
             /**
@@ -3471,6 +3510,11 @@ export interface components {
              * @description SI3: photo-derived attribute keys the seller confirms as they are.
              */
             confirm_attributes?: string[] | null;
+            /**
+             * Gender
+             * @description SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.
+             */
+            gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
             manufacturer?: components["schemas"]["PartyIn"] | null;
             /** Mrp */
             mrp?: string | null;
@@ -27571,8 +27615,11 @@ export interface operations {
                      *         "material": "organic cotton",
                      *         "size": "M"
                      *       },
+                     *       "brand_name": "Fabindia",
+                     *       "brand_name_inherited": true,
                      *       "category": "ethnic_wear_kurta_sets",
                      *       "created_at": "2026-10-05T09:30:00Z",
+                     *       "gender": "women",
                      *       "id": "0b1c2d3e-0000-4000-8000-000000000101",
                      *       "images": [
                      *         "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg"
@@ -27589,7 +27636,8 @@ export interface operations {
                      *       "sku": "FAB-KURTA-001",
                      *       "status": "draft",
                      *       "title": "Organic Cotton Kurta Set",
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "variant_attributes": {}
                      *     }
                      */
                     "application/json": components["schemas"]["ProductOut"];
@@ -27920,9 +27968,12 @@ export interface operations {
                      *         "material": "organic cotton",
                      *         "size": "M"
                      *       },
+                     *       "brand_name": "Fabindia",
+                     *       "brand_name_inherited": false,
                      *       "category": "ethnic_wear_kurta_sets",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "currency": "INR",
+                     *       "gender": "women",
                      *       "id": "0b1c2d3e-0000-4000-8000-000000000101",
                      *       "images": [
                      *         "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg"
@@ -27943,7 +27994,8 @@ export interface operations {
                      *       "status": "draft",
                      *       "style_number": "KS-24",
                      *       "title": "Organic Cotton Kurta Set",
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "variant_attributes": {}
                      *     }
                      */
                     "application/json": components["schemas"]["ProductOut"];

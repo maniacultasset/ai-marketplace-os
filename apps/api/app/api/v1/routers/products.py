@@ -95,6 +95,10 @@ def _out(view: products.ProductView) -> ProductOut:
     fibres = view.fiber_composition
     return ProductOut.model_construct(
         style_number=view.style_number,
+        brand_name=view.brand_name,
+        brand_name_inherited=view.brand_name_inherited,
+        gender=view.gender,  # type: ignore[arg-type]  # the DB CHECK holds the six values
+        variant_attributes=view.variant_attributes,
         mrp=view.mrp,
         selling_price=view.selling_price,
         currency=view.currency,
@@ -138,6 +142,8 @@ async def products_create(
             images=tuple(body.images),
             attributes=dict(body.attributes),
             style_number=body.style_number,
+            brand_name=body.brand_name,
+            gender=body.gender,
             mrp=None if body.mrp is None else Decimal(body.mrp),
             selling_price=None if body.selling_price is None else Decimal(body.selling_price),
             manufacturer=None if body.manufacturer is None else party_input(body.manufacturer),

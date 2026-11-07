@@ -128,6 +128,11 @@ PRODUCT_FIELDS = frozenset(
         "colourways",
         # SI3: photo-sourced facts the seller can confirm
         "photo_facts",
+        # SI8: the brand, the audience and a variant's axes
+        "brand_name",
+        "brand_name_inherited",
+        "gender",
+        "variant_attributes",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

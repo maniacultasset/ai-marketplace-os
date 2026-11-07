@@ -25,7 +25,7 @@ import json
 import math
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final, Literal
@@ -34,6 +34,7 @@ from mkos_schemas.codes import ErrorCode
 
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
+from app.core.resolved_facts import match_brand
 from app.repositories.images import ImageDetail
 from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
@@ -84,6 +85,8 @@ class NewProduct:
     images: tuple[str, ...]
     attributes: Mapping[str, AttributeValue]
     style_number: str | None = None
+    brand_name: str | None = None
+    gender: str | None = None
     mrp: Decimal | None = None
     selling_price: Decimal | None = None
     manufacturer: PartyInput | None = None
@@ -170,6 +173,10 @@ class ProductView:
     created_at: datetime
     updated_at: datetime
     style_number: str | None = None
+    brand_name: str | None = None
+    brand_name_inherited: bool = False
+    gender: str | None = None
+    variant_attributes: dict[str, str] = field(default_factory=dict)
     mrp: str | None = None
     selling_price: str | None = None
     currency: str | None = None
@@ -274,6 +281,8 @@ def _view(
     details: tuple[ImageDetail, ...] = (),
     party: PartyView | None = None,
     colourways: tuple[ColourwayRow, ...] = (),
+    brand: tuple[str | None, bool] | None = None,
+    gender: str | None = None,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
     are the product's live image keys in slot order (S17b CP7)."""
@@ -294,6 +303,12 @@ def _view(
         created_at=row.created_at,
         updated_at=row.updated_at,
         style_number=row.style_number,
+        brand_name=row.brand_name if brand is None else brand[0],
+        brand_name_inherited=False if brand is None else brand[1],
+        gender=row.gender if gender is None else gender,
+        variant_attributes={
+            str(k): str(v) for k, v in (row.variant_attributes or {}).items() if v is not None
+        },
         mrp=_money(row.mrp),
         selling_price=_money(row.selling_price),
         currency=row.currency,
@@ -309,8 +324,9 @@ def _view(
 
 
 async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
-    """A single read: the image details, a style's colourways and the effective manufacturer
-    (own → style → brand default)."""
+    """A single read: the image details, a style's colourways, the effective manufacturer
+    (own → style → brand default) and (SI8) the effective brand (own → style → the brand
+    default, `brand_name_inherited` then true) and gender (own → style)."""
     style = None
     if row.parent_product_id is not None:
         style = await uow.products.get_by_id(row.parent_product_id)
@@ -327,7 +343,23 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
-    return _view(row, keys[row.id], details=details, party=party, colourways=colourways)
+    brand_name = (
+        row.brand_name if row.brand_name is not None else getattr(style, "brand_name", None)
+    )
+    brand_inherited = False
+    if brand_name is None:
+        brand_name = await uow.brand_profile.default_brand_name()
+        brand_inherited = brand_name is not None
+    gender = row.gender if row.gender is not None else getattr(style, "gender", None)
+    return _view(
+        row,
+        keys[row.id],
+        details=details,
+        party=party,
+        colourways=colourways,
+        brand=(brand_name, brand_inherited),
+        gender=gender,
+    )
 
 
 def _refuse_nul(cmd: NewProduct) -> None:
@@ -340,6 +372,8 @@ def _refuse_nul(cmd: NewProduct) -> None:
             raise InputError(ErrorCode.VALIDATION_FAILED, f"attributes.{key}")
     if cmd.style_number is not None and _NUL in cmd.style_number:
         raise InputError(ErrorCode.VALIDATION_FAILED, "style_number")
+    if cmd.brand_name is not None and _NUL in cmd.brand_name:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "brand_name")
     if cmd.manufacturer is not None and cmd.manufacturer.has_nul():
         raise InputError(ErrorCode.VALIDATION_FAILED, "manufacturer")
 
@@ -360,6 +394,19 @@ def party_fields(party: PartyInput, role: str = "manufacturer") -> PartyFields:
     )
 
 
+async def checked_brand(uow: TenantUnitOfWork, value: str | None) -> str | None:
+    """SI8 CP-D9 (DATABASE.md:439, the Identity gate): a brand override is accepted only when it
+    is one of the tenant's own brand names (its non-blank brand profile names or its tenant name,
+    casefold after strip), and is stored in that name's spelling; else 422 VALUE_NOT_ALLOWED at
+    `brand_name`. None stays None."""
+    if value is None:
+        return None
+    matched = match_brand(value, await uow.brand_profile.brand_choices())
+    if matched is None:
+        raise InputError(ErrorCode.VALUE_NOT_ALLOWED, "brand_name")
+    return matched
+
+
 async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     _refuse_nul(cmd)
     if cmd.category is None:
@@ -375,6 +422,7 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        brand_name = await checked_brand(uow, cmd.brand_name)
         defs = await uow.attribute_definitions.resolve(cmd.attributes.keys())
         facts = build_attributes(cmd.attributes, defs, now=now)
         if cmd.size_chart is not None:
@@ -401,6 +449,8 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             await register_on_create(uow, principal, row.id, checked)
         typed: dict[str, Any] = {
             "style_number": cmd.style_number,
+            "brand_name": brand_name,
+            "gender": cmd.gender,
             "mrp": cmd.mrp,
             "selling_price": cmd.selling_price,
         }

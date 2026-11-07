@@ -31,8 +31,11 @@ GOOD: dict[str, str] = {
 }
 
 
+BRANDS = ("Test Brand",)  # SI8: the tenant's brand names (`validate_row(..., brands=)`)
+
+
 def run(**cells: str) -> RowResult:
-    return validate_row(normalize_row({**GOOD, **cells}))
+    return validate_row(brands=BRANDS, norm=normalize_row({**GOOD, **cells}))
 
 
 def codes(result: RowResult) -> list[ErrorCode]:
@@ -63,7 +66,9 @@ def test_row_model_nan_infinity_row_error(cell: str) -> None:
 
 
 def test_row_model_lowercased_header_alias() -> None:
-    row = validate_row(normalize_row({**GOOD, "MRP_INR": "1299", "Price_INR": "999"})).row
+    row = validate_row(
+        brands=BRANDS, norm=normalize_row({**GOOD, "MRP_INR": "1299", "Price_INR": "999"})
+    ).row
     assert row is not None
     assert (row.mrp, row.selling_price) == (Decimal("1299"), Decimal("999"))
     assert check_header(["SELLER_SKU", "PRODUCT_NAME", "Category", "MRP_INR"]) == []
@@ -82,7 +87,7 @@ def test_row_model_short_row_blank_not_none() -> None:
     )
     (csv_row,) = list(iter_rows(data + b"\n"))
     assert csv_row.cells["mrp"] == ""
-    result = validate_row(normalize_row(csv_row.cells))
+    result = validate_row(brands=BRANDS, norm=normalize_row(csv_row.cells))
     assert result.errors == []
     assert result.row is not None and result.row.mrp is None
 
@@ -143,10 +148,10 @@ def test_row_model_package_weight_units(cell: str, grams: int | None) -> None:
 
 
 def test_row_model_package_weight_g_zero_error() -> None:
-    assert codes(validate_row(normalize_row({**GOOD, "package_weight_g": "0"}))) == [
-        ErrorCode.VALUE_NOT_ALLOWED
-    ]
-    row = validate_row(normalize_row({**GOOD, "weight_grams": "450"})).row
+    assert codes(
+        validate_row(brands=BRANDS, norm=normalize_row({**GOOD, "package_weight_g": "0"}))
+    ) == [ErrorCode.VALUE_NOT_ALLOWED]
+    row = validate_row(brands=BRANDS, norm=normalize_row({**GOOD, "weight_grams": "450"})).row
     assert row is not None and row.package_weight_g == 450
 
 
@@ -284,7 +289,7 @@ def test_row_model_dimension_bounds(case: str) -> None:
                                          "additional_images", "country_of_origin", "zzz"]),
                        st.text(max_size=40), max_size=14))  # fmt: skip
 def test_validate_row_never_raises(cells: dict[str, str]) -> None:
-    result = validate_row(normalize_row(cells))
+    result = validate_row(brands=BRANDS, norm=normalize_row(cells))
     assert (result.row is None) == bool(result.errors)
     assert all(e.value_submitted is None for e in result.errors)
 
@@ -389,7 +394,9 @@ def test_row_model_style_number_and_size_chart_url() -> None:
 
 
 def test_row_model_fabric_composition_header() -> None:
-    result = validate_row(normalize_row({**GOOD, "fabric_composition": "100% linen"}))
+    result = validate_row(
+        brands=BRANDS, norm=normalize_row({**GOOD, "fabric_composition": "100% linen"})
+    )
     assert result.row is not None and result.row.attributes["fiber_composition"] == "100% linen"
 
 
@@ -406,3 +413,31 @@ def test_row_model_gender_kids_refused_with_the_six_values() -> None:
     assert any(
         e.message == "gender must be men, women, unisex, boys, girls or baby" for e in result.errors
     )
+
+
+# ---- SI8 T9 (CP-D9): a `brand_name` cell must be one of the tenant's brand names ----
+
+
+def _brand(cell: str | None, brands: tuple[str, ...] = ("Kuinn", "Acme")) -> RowResult:
+    cells = {**GOOD} if cell is None else {**GOOD, "brand_name": cell}
+    return validate_row(normalize_row(cells), brands=brands)
+
+
+def test_row_model_brand_matches_a_tenant_name() -> None:
+    for cell, stored in (("Kuinn", "Kuinn"), ("kuinn", "Kuinn"), ("Acme", "Acme")):
+        result = _brand(cell)
+        assert result.errors == [] and result.row is not None
+        assert result.row.brand_name == stored
+
+
+def test_row_model_brand_not_yours_refused() -> None:
+    result = _brand("Nike")
+    assert result.row is None
+    assert [(e.error_code, e.message) for e in result.errors] == [
+        (ErrorCode.VALUE_NOT_ALLOWED, "brand_name must be one of your brand names")
+    ]
+
+
+def test_row_model_no_brand_cell_accepted() -> None:
+    result = _brand(None)
+    assert result.errors == [] and result.row is not None and result.row.brand_name is None

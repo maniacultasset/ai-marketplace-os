@@ -4527,10 +4527,44 @@
             "title": "Attributes",
             "type": "object"
           },
+          "brand_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: the brand this product lists under, style or standalone level; one of your brand names (the store name or a brand profile name; 422 VALUE_NOT_ALLOWED otherwise), stored in that name's spelling. Absent: the brand default applies.",
+            "title": "Brand Name"
+          },
           "category": {
             "pattern": "^[a-z0-9_]{2,64}$",
             "title": "Category",
             "type": "string"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "enum": [
+                  "women",
+                  "men",
+                  "unisex",
+                  "girls",
+                  "boys",
+                  "baby"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
+            "title": "Gender"
           },
           "id": {
             "anyOf": [
@@ -4725,6 +4759,24 @@
             "title": "Attributes",
             "type": "object"
           },
+          "brand_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: on single reads the effective brand (own, style, else the brand default); on lists the product's own value.",
+            "title": "Brand Name"
+          },
+          "brand_name_inherited": {
+            "default": false,
+            "description": "SI8: true when neither the product nor its style holds a brand and the brand default supplied it. Meaningful on single reads only (false on lists).",
+            "title": "Brand Name Inherited",
+            "type": "boolean"
+          },
           "category": {
             "pattern": "^[a-z0-9_]{2,64}$",
             "title": "Category",
@@ -4766,6 +4818,26 @@
               }
             ],
             "title": "Fiber Composition"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "enum": [
+                  "women",
+                  "men",
+                  "unisex",
+                  "girls",
+                  "boys",
+                  "baby"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: the audience; own or the style's on single reads, own on lists.",
+            "title": "Gender"
           },
           "id": {
             "format": "uuid",
@@ -4904,6 +4976,14 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "variant_attributes": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "SI8: a variant's axes (`color`, `size`); `{}` on styles and standalones.",
+            "title": "Variant Attributes",
+            "type": "object"
           }
         },
         "required": [
@@ -4940,7 +5020,7 @@
       },
       "ProductPatch": {
         "additionalProperties": false,
-        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`, `mrp`,\n`selling_price`, `size_chart`, `manufacturer` (back to the inherited party) and an\nattribute key. `sku` is immutable and not a field.",
+        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,\n`brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,\n`manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not\na field.",
         "properties": {
           "attributes": {
             "anyOf": [
@@ -4976,6 +5056,20 @@
             ],
             "title": "Attributes"
           },
+          "brand_name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: the brand this product lists under, style or standalone level; one of your brand names (the store name or a brand profile name; 422 VALUE_NOT_ALLOWED otherwise), stored in that name's spelling. Absent: the brand default applies.",
+            "title": "Brand Name"
+          },
           "category": {
             "anyOf": [
               {
@@ -5005,6 +5099,26 @@
             ],
             "description": "SI3: photo-derived attribute keys the seller confirms as they are.",
             "title": "Confirm Attributes"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "enum": [
+                  "women",
+                  "men",
+                  "unisex",
+                  "girls",
+                  "boys",
+                  "baby"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
+            "title": "Gender"
           },
           "manufacturer": {
             "anyOf": [
@@ -31835,8 +31949,11 @@
                     "material": "organic cotton",
                     "size": "M"
                   },
+                  "brand_name": "Fabindia",
+                  "brand_name_inherited": true,
                   "category": "ethnic_wear_kurta_sets",
                   "created_at": "2026-10-05T09:30:00Z",
+                  "gender": "women",
                   "id": "0b1c2d3e-0000-4000-8000-000000000101",
                   "images": [
                     "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg"
@@ -31853,7 +31970,8 @@
                   "sku": "FAB-KURTA-001",
                   "status": "draft",
                   "title": "Organic Cotton Kurta Set",
-                  "updated_at": "2026-10-05T09:30:00Z"
+                  "updated_at": "2026-10-05T09:30:00Z",
+                  "variant_attributes": {}
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ProductOut"
@@ -32215,9 +32333,12 @@
                     "material": "organic cotton",
                     "size": "M"
                   },
+                  "brand_name": "Fabindia",
+                  "brand_name_inherited": false,
                   "category": "ethnic_wear_kurta_sets",
                   "created_at": "2026-10-05T09:30:00Z",
                   "currency": "INR",
+                  "gender": "women",
                   "id": "0b1c2d3e-0000-4000-8000-000000000101",
                   "images": [
                     "t/0b1c2d3e-0000-4000-8000-000000000001/img/0b1c2d3e-0000-4000-8000-000000000101/main.jpg"
@@ -32238,7 +32359,8 @@
                   "status": "draft",
                   "style_number": "KS-24",
                   "title": "Organic Cotton Kurta Set",
-                  "updated_at": "2026-10-05T09:30:00Z"
+                  "updated_at": "2026-10-05T09:30:00Z",
+                  "variant_attributes": {}
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ProductOut"

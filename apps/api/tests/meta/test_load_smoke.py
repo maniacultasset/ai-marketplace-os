@@ -61,7 +61,7 @@ def test_load_smoke_csv_generator_1000_rows_valid(smoke: ModuleType) -> None:
     skus: set[str] = set()
     for row in iter_rows(data):
         assert row.error is None
-        result = validate_row(normalize_row(row.cells))
+        result = validate_row(normalize_row(row.cells), brands=())  # no brand cell
         assert result.errors == [], (row.row_number, result.errors)
         assert result.row is not None
         skus.add(row.cells["seller_sku"])

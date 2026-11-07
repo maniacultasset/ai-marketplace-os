@@ -52,7 +52,14 @@ async def imports_db(auth_db: Conn) -> AsyncIterator[JobWorld]:
     seed_templates(auth_db)
     get_queue_app.cache_clear()
     get_storage.cache_clear()
-    yield JobWorld(auth_db, build_world(auth_db))
+    world = build_world(auth_db)
+    # SI8 CP-D9: a CSV `brand_name` must be one of the tenant's own brand names; the import
+    # fixtures use these (the tenant name "Acme" already is one)
+    auth_db.execute(
+        "INSERT INTO brand_profiles (tenant_id, brand_names, provenance) VALUES (%s, %s, '{}')",
+        [world.tenants["acme"], ["Acme Apparel", "Other Brand"]],
+    )
+    yield JobWorld(auth_db, world)
     get_queue_app.cache_clear()
     get_storage.cache_clear()
 
