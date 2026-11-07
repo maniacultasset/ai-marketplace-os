@@ -331,7 +331,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
     async def latest_photo_set(self, product_id: uuid.UUID) -> tuple[tuple[str, str], ...] | None:
         """SI3 skip rule (CP-D2): the `photo_set` of the product's newest finished
         `listing_generate` job that recorded one, across its listings; None when there is none.
-        A malformed record reads as None (logged by job id), so the next run calls vision again."""
+        A malformed record reads as None (logged by job id), so the next run calls vision again.
+        The join follows the generate job's entity (`entity_type 'listing'`, `entity_id` = the
+        listing, as `enqueue_generate` writes it), so the plan is the product's listings
+        (`uq_listings_product_id_marketplace`) then `ix_job_runs_entity` probes, never a scan of
+        the tenant's finished jobs (no index on finished rows leads with `listing_id`)."""
         if not isinstance(product_id, uuid.UUID):
             raise ValueError("product_id must be a UUID")
         stmt = (
@@ -339,7 +343,12 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             .select_from(JobRun)
             .join(
                 Listing,
-                and_(Listing.tenant_id == JobRun.tenant_id, Listing.id == JobRun.listing_id),
+                and_(
+                    Listing.tenant_id == JobRun.tenant_id,
+                    JobRun.entity_type == "listing",
+                    JobRun.entity_id == Listing.id,
+                    JobRun.listing_id == Listing.id,
+                ),
             )
             .where(
                 self._criterion_for(JobRun),

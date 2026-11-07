@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
+import psycopg
 import pytest
 from psycopg.types.json import Jsonb
 
@@ -149,3 +151,74 @@ async def test_tenant_isolation(gen_world: GenWorld) -> None:
     _job(gen_world, bharat, bharat_listing, {"photo_set": SET_A})
     assert await _read(bharat, bharat_product) == tuple(tuple(p) for p in SET_A)
     assert await _read(acme, bharat_product) is None
+
+
+def _index_probes(plan: Any) -> list[tuple[str, str]]:
+    """(index name, index condition) of every index probe in an EXPLAIN (FORMAT JSON) plan."""
+    found: list[tuple[str, str]] = []
+    stack = [plan]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, list):
+            stack.extend(node)
+        elif isinstance(node, dict):
+            if "Index Name" in node:
+                found.append((node["Index Name"], str(node.get("Index Cond", ""))))
+            stack.extend(node.values())
+    return found
+
+
+async def test_the_read_probes_job_runs_by_entity(gen_world: GenWorld) -> None:
+    """Round 1 F3: the read reaches job_runs through ix_job_runs_entity (tenant, entity_type,
+    entity_id) per listing of the product, never by a scan of the tenant's job history."""
+    from app.db.session import get_engine
+    from sqlalchemy import event
+
+    acme = gen_world.tenant("acme")
+    product = gen_world.product("acme", "KURTA-002")
+    amazon = await _listing(gen_world, "KURTA-002", "amazon")
+    _job(gen_world, acme, amazon, {"photo_set": SET_A})
+    sent: list[tuple[str, Any]] = []
+
+    def record(_c: Any, _cur: Any, statement: str, params: Any, *_rest: Any) -> None:
+        if "FROM job_runs JOIN listings" in statement:
+            sent.append((statement, params))
+
+    engine = get_engine().sync_engine
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        assert await _read(acme, product) == tuple(tuple(p) for p in SET_A)
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    ((sql, params),) = sent
+    with gen_world.conn.transaction():
+        gen_world.conn.execute("SET LOCAL enable_seqscan = off")
+        cursor = psycopg.ClientCursor(gen_world.conn)
+        row = cursor.execute("EXPLAIN (FORMAT JSON) " + sql, params).fetchone()
+    assert row is not None
+    probes = _index_probes(row[0])
+    assert any(
+        name == "ix_job_runs_entity" and "entity_id" in cond for name, cond in probes
+    ), json.dumps(row[0])
+
+
+async def test_a_job_on_another_entity_of_the_listing_is_not_read(gen_world: GenWorld) -> None:
+    """The read follows the generate job's entity (the listing), as `enqueue_generate` writes it."""
+    acme = gen_world.tenant("acme")
+    product = gen_world.product("acme", "KURTA-002")
+    amazon = await _listing(gen_world, "KURTA-002", "amazon")
+    _job(gen_world, acme, amazon, {"photo_set": SET_A}, finished="2026-11-07T10:00:00Z")
+    insert_job(
+        gen_world.conn,
+        acme,
+        kind="listing_generate",
+        entity_type="image",
+        entity_id=uuid.uuid4(),
+        listing_id=amazon,
+        status="succeeded",
+        result_json=Jsonb({"photo_set": SET_B}),
+        finished_at="2026-11-07T11:00:00Z",
+        started_at="2026-11-07T11:00:00Z",
+        attempt=1,
+    )
+    assert await _read(acme, product) == tuple(tuple(p) for p in SET_A)
