@@ -8,18 +8,18 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,048 of 8,916 (79%) are covered by our plan**: 6,092 as written and
+- **7,049 of 8,916 (79%) are covered by our plan**: 6,093 as written and
   956 deliberately changed by an ADR, Canon row or recorded decision.
-- **495 are gaps** (backend/DB 245, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
+- **494 are gaps** (backend/DB 244, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,092 | 68.3% |
+| ✅ covered | 6,093 | 68.3% |
 | 🔁 covered-changed | 956 | 10.7% |
-| ⚠️ gap | 495 | 5.6% |
+| ⚠️ gap | 494 | 5.5% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -41,7 +41,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [06] Status Lifecycle & Dashboard Specs (§13–14) | 49 | 37 | 2 | 0 | 0 | 1 | 8 | 2 |
 | [07] Error Management, Anti-Loop & HITL (§15–16) | 64 | 6 | 1 | 0 | 0 | 0 | 0 | 1 |
 | [08] Quality Gates & Legal Metrology Matrix (§17–19) | 82 | 7 | 2 | 0 | 0 | 0 | 40 | 2 |
-| [09] Master Field Dictionary & E2E Walkthrough (§20–21) | 102 | 13 | 4 | 0 | 0 | 0 | 0 | 4 |
+| [09] Master Field Dictionary & E2E Walkthrough (§20–21) | 103 | 13 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
 | [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (245)
+## ⚠️ Gaps we own: backend + DB (244)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1127,7 +1127,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R03941 | L3941–3947 | Field `brand_name` (section identity): requirement "Yes"; business meaning "Brand". | docs/architecture/DATABASE.md:411, 1167 | brand_name stored but nullable; §20 "Yes" not enforced by NOT NULL, rule or dictionary flag |
 | R03997 | L3997–4003 | Field `sub_category` (section classification): requirement "Yes"; business meaning "Canonical sub-category". | docs/architecture/DATABASE.md:411, 1167 | sub_category stored but nullable; §20 "Yes" not enforced by NOT NULL, rule or dictionary flag |
 | R04005 | L4005–4011 | Field `product_type` (section classification): requirement "Yes"; business meaning "Specific product type". | docs/architecture/DATABASE.md:411, 1167 | product_type stored but nullable; §20 "Yes" not enforced by NOT NULL, rule or dictionary flag |
 | R04293 | L4293–4299 | Field `main_image` (section media): requirement "Yes"; business meaning "Main image". | docs/architecture/DATABASE.md:2193; docs/architecture/BACKEND-ARCHITECTURE.md:616 | main_image maps to slot main, but its "Yes" requirement is enforced by no row or gate rule |
