@@ -702,6 +702,93 @@
           },
           "issue_code": "IMAGE_NON_COMPLIANT"
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010012",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.bullets",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "more than {limit} bullets",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (KURTA)",
+            "url": null,
+            "section": "bullet_point",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_items",
+          "limit": 5,
+          "unique": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010013",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.bullets[*]",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "bullet longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (KURTA)",
+            "url": null,
+            "section": "bullet_point",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_length",
+          "limit": 500,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100010014",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "content.description",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "description longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (KURTA)",
+            "url": null,
+            "section": "product_description",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_length",
+          "limit": 2000,
+          "unit": "chars"
+        }
       }
     ],
     "rules_version": 0,
@@ -2829,6 +2916,93 @@
               "hand-stitched"
             ]
           }
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030012",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.bullets",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "more than {limit} bullets",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (SHIRT)",
+            "url": null,
+            "section": "bullet_point",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_items",
+          "limit": 5,
+          "unique": false
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030013",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.bullets[*]",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "bullet longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (SHIRT)",
+            "url": null,
+            "section": "bullet_point",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_length",
+          "limit": 500,
+          "unit": "chars"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100030014",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "content.description",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "description longer than {limit} characters",
+          "suggestion": null,
+          "error_code": "FIELD_TOO_LONG",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon LISTING product type definition (SHIRT)",
+            "url": null,
+            "section": "product_description",
+            "retrieved_on": "2026-11-07"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "max_length",
+          "limit": 2000,
+          "unit": "chars"
         }
       }
     ],

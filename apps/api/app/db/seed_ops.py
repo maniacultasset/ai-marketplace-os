@@ -92,6 +92,7 @@ SEED_MRP: Final = Decimal("1499.00")
 # manufacturer, so a demo publish sends a complete offer (Amazon) and price block (Flipkart)
 SEED_SELLING_PRICE: Final = Decimal("999.00")
 SEED_COUNTRY: Final = "IN"
+SEED_GENDER: Final = "women"  # SI8: the demo kurta family's audience
 # SI2: the seller's own colour and fabric of the two seeded kurtas (the AI never supplies them)
 SEED_ATTRIBUTES: Final[Mapping[str, Mapping[str, str]]] = {
     "KURTA-001": {"color": "indigo", "fabric_type": "cotton"},
@@ -727,12 +728,14 @@ async def seed_demo_family(session: AsyncSession) -> None:
             mrp=SEED_MRP,
             selling_price=SEED_SELLING_PRICE,
             country_of_origin=SEED_COUNTRY,
+            gender=SEED_GENDER,  # SI8: Amazon apparel needs the audience
             attributes={"fabric_type": _seller_fact("cotton")},
             provenance={
                 **provenance,
                 "mrp": _seller_fact(str(SEED_MRP)),
                 "selling_price": _seller_fact(str(SEED_SELLING_PRICE)),
                 "country_of_origin": _seller_fact(SEED_COUNTRY),
+                "gender": _seller_fact(SEED_GENDER),
             },
         )
         .on_conflict_do_nothing()
