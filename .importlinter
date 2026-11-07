@@ -407,6 +407,7 @@ source_modules =
     app.services.image_check_child
     app.services.image_derive_child
     app.services.image_derive
+    app.services.image_candidate_child
 forbidden_modules =
     app.core
     app.db

@@ -20,13 +20,13 @@ __all__ = ["FIXABLE_CHECKS", "fixes_for"]
 
 FixKind = Literal["fix", "white_background"]
 FIXABLE_CHECKS: Final = frozenset({"resolution", "aspect_ratio", "background"})
-MARKETPLACES: Final = ("amazon", "flipkart")
 
 
 def _failed(reports: Mapping[str, Any] | None) -> set[str]:
+    """The failed deterministic checks over every stored marketplace report (no marketplace
+    branch: invariant 4)."""
     failed: set[str] = set()
-    for market in MARKETPLACES:
-        report = (reports or {}).get(market)
+    for report in (reports or {}).values():
         if not isinstance(report, Mapping):
             continue
         for check in report.get("checks") or ():

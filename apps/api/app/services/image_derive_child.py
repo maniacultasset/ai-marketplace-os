@@ -4,7 +4,8 @@ A second child, after the checks, so a derive crash, kill or timeout never touch
 report. The worker starts it with the same environment allow-list, writes the raw image bytes to
 stdin and reads one JSON value from stdout:
 
-- `{"clean_b64", "clean_mime", "vision_b64", "vision_w", "vision_h"}`, or
+- `{"clean_b64", "clean_mime", "vision_b64", "vision_w", "vision_h", "border"}` (SI7: the border
+  profile `{uniform, near_white, colour}`), or
 - `null` when the image yields no derivatives (exit 0 either way).
 
 It caps its own CPU time and address space like the check child (Linux only) and imports only
@@ -32,6 +33,7 @@ def run(stdin: bytes) -> bytes:
         "vision_b64": base64.b64encode(found.vision).decode("ascii"),
         "vision_w": found.vision_w,
         "vision_h": found.vision_h,
+        "border": found.border,
     }
     return json.dumps(body, separators=(",", ":")).encode("ascii")
 

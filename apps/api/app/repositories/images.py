@@ -92,6 +92,8 @@ class CleanMeta:
     mime_type: str
     vision_w: int
     vision_h: int
+    # SI7: the border profile `{uniform, near_white, colour}`; None from an older derive child
+    border: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,17 +265,21 @@ class ImageRepository(TenantScopedRepository[Image]):
         }
         if clean is not None:
             vision = cast(literal(json.dumps({"w": clean.vision_w, "h": clean.vision_h})), JSONB)
+            border = cast(literal(json.dumps(clean.border)), JSONB)
             values["clean_content_hash"] = clean.content_hash
             values["clean_mime_type"] = clean.mime_type
-            values[Image.metadata_] = Image.metadata_.op("||")(
-                func.jsonb_build_object("vision", vision)
-            )
+            merged = Image.metadata_.op("||")(func.jsonb_build_object("vision", vision))
+            if clean.border is None:  # an older child: no stale profile is kept
+                values[Image.metadata_] = merged.op("-")("border")
+            else:
+                values[Image.metadata_] = merged.op("||")(func.jsonb_build_object("border", border))
         else:
             published = Image.public_id.is_not(None)
             values["clean_content_hash"] = case((published, Image.clean_content_hash), else_=None)
             values["clean_mime_type"] = case((published, Image.clean_mime_type), else_=None)
             values[Image.metadata_] = case(
-                (published, Image.metadata_), else_=Image.metadata_.op("-")("vision")
+                (published, Image.metadata_),
+                else_=Image.metadata_.op("-")("vision").op("-")("border"),
             )
         stmt = self._scoped_write(
             update(Image)
