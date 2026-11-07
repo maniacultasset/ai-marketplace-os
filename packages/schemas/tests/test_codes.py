@@ -128,9 +128,10 @@ def test_codes_match_sources() -> None:
         | {"BUDGET_EXCEEDED"}
         | canon_sources.ba_api_codes()
         | DPP_1_CODES
+        | SI10_CODES
     )
     assert {m.name for m in ErrorCode} == expected
-    assert len(ErrorCode) == 78
+    assert len(ErrorCode) == 81
 
 
 # 2.0.0 (DPP-1, ADR-0021; Tech Lead OK 2026-10-27): the two step-up and enrolment refusals (403).
@@ -144,6 +145,25 @@ def test_mfa_codes_are_listed_with_meta() -> None:
         assert _meta_tuple(ERROR_CODE_META[code]) == (None, "user_action", None)
     assert ErrorCode.MFA_STEP_UP_REQUIRED.value == "MFA_STEP_UP_REQUIRED"
     assert ErrorCode.MFA_ENROLLMENT_REQUIRED.value == "MFA_ENROLLMENT_REQUIRED"
+
+
+# 2.1.0 (SI10; Tech Lead via chat 2026-11-07, a recorded one-time out-of-window MAJOR exception): the AI credit
+# pause, the confirmed provider-key refusal and the suspended-tenant sign-in.
+SI10_CODES = frozenset({"AI_CREDIT_EXHAUSTED", "AI_PROVIDER_KEY_INVALID", "TENANT_SUSPENDED"})
+
+
+def test_si10_codes_are_listed_with_meta() -> None:
+    assert _meta_tuple(ERROR_CODE_META[ErrorCode.AI_CREDIT_EXHAUSTED]) == (
+        None,
+        "system_failure",
+        None,
+    )
+    assert _meta_tuple(ERROR_CODE_META[ErrorCode.AI_PROVIDER_KEY_INVALID]) == (
+        None,
+        "system_failure",
+        None,
+    )
+    assert _meta_tuple(ERROR_CODE_META[ErrorCode.TENANT_SUSPENDED]) == (None, "user_action", None)
 
 
 def test_ba_api_codes_line_names_the_eleven() -> None:
