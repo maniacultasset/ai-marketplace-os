@@ -16,7 +16,14 @@ PRV03 `FACT_LEVEL_INVALID`). Another tenant's (or a missing) product is a `RowCo
 SI1 T6 adds the two clears a PATCH `null` needs: `clear_attribute` removes a seller-written
 `attributes.<key>` (a Fact from a document, the PIM or a marketplace is 422: the seller never
 erases evidence they did not give), and `clear_typed` NULLs every column of one dictionary key and
-drops `provenance.<key>` in one statement. A repeat writes nothing.
+drops `provenance.<key>` in one statement. A repeat writes nothing. SI3: `clear_attribute` also
+removes an `ai` Fact, which is how the seller rejects a value read from the photos.
+
+SI3 adds the photo writes. `set_photo_attribute` writes an unconfirmed `ai` Fact only through a
+compare-and-set on the state the key had when the generation context was built (`expected`):
+still absent, or the same unconfirmed `ai` Fact with the same `updated_at`. A seller edit or a
+reject committed while the pipeline ran therefore wins, with no lock across the model call.
+`confirm_attribute` stamps `confirmed_by`/`confirmed_at` on a photo Fact (`image:` evidence).
 """
 
 from __future__ import annotations
@@ -28,7 +35,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
-from sqlalchemy import cast, func, literal, or_, select, tuple_, update
+from sqlalchemy import and_, cast, false, func, literal, not_, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError
 
@@ -169,9 +176,97 @@ class FactWriter(TenantScopedRepository[Product]):
         ).returning(Product.id)
         return await self._run(product_id, stmt, field)
 
+    async def set_photo_attribute(
+        self,
+        product_id: uuid.UUID,
+        key: str,
+        fact: Mapping[str, Any],
+        *,
+        expected: Mapping[str, Any] | None,
+    ) -> bool:
+        """Write one photo value as an unconfirmed `ai` Fact (module docstring); True only when a
+        row was written. `expected` is the own-row Fact the key held at context build, or None
+        for "absent". `ai` on a critical or override key is 422 `FACT_SOURCE_FORBIDDEN`."""
+        if fact.get("source") != "ai" or fact.get("captured_via") != "agent":
+            raise ValueError("a photo fact is source 'ai', captured_via 'agent'")
+        if expected is not None and (
+            expected.get("source") != "ai" or expected.get("confirmed_at") is not None
+        ):
+            raise ValueError("only an absent key or an unconfirmed ai fact can be filled")
+        field = f"attributes.{key}"
+        await self._check(product_id, key, fact, "attributes", field)
+        new = cast(literal(json.dumps(dict(fact))), JSONB)
+        old = Product.attributes[key]
+        changed = tuple_(old["value"], old["normalized"], old["source"]).is_distinct_from(
+            tuple_(new["value"], new["normalized"], new["source"])
+        )
+        if expected is None:
+            unchanged_since_build: Any = not_(Product.attributes.has_key(key))
+        elif not isinstance(expected.get("updated_at"), str):
+            unchanged_since_build = false()  # fail closed: nothing to compare against
+        else:
+            unchanged_since_build = and_(
+                old["source"].astext == "ai",
+                old["confirmed_at"].astext.is_(None),
+                old["updated_at"].astext == expected["updated_at"],
+            )
+        stmt = (
+            self._scoped_write(
+                update(Product)
+                .where(*self._where(product_id), unchanged_since_build, changed)
+                .values(attributes=Product.attributes.op("||")(func.jsonb_build_object(key, new)))
+            )
+        ).returning(Product.id)
+        return await self._run(product_id, stmt, field)
+
+    async def confirm_attribute(
+        self,
+        product_id: uuid.UUID,
+        key: str,
+        *,
+        user_id: uuid.UUID,
+        at: str,
+        field: str | None = None,
+    ) -> bool:
+        """Confirm a photo value as it is: set `confirmed_by` and `confirmed_at` together on an
+        `ai` Fact with `image:` evidence. True when written; an already confirmed one is False.
+        Any other stored state (none, a seller Fact, other evidence) is 422 `VALIDATION_FAILED`
+        at `field` (default `attributes.<key>`)."""
+        at_field = field or f"attributes.{key}"
+        old = Product.attributes[key]
+        stamp = func.jsonb_build_object(
+            "confirmed_by", str(user_id), "confirmed_at", at, "updated_at", at
+        )
+        photo_fact = and_(
+            old["source"].astext == "ai", old["evidence_ref"].astext.startswith("image:")
+        )
+        stmt = (
+            self._scoped_write(
+                update(Product)
+                .where(*self._where(product_id), photo_fact, old["confirmed_at"].astext.is_(None))
+                .values(
+                    attributes=Product.attributes.op("||")(
+                        func.jsonb_build_object(key, old.op("||")(stamp))
+                    )
+                )
+            )
+        ).returning(Product.id)
+        if await self._run(product_id, stmt, at_field):
+            return True
+        confirmed = (
+            await self.db.execute(
+                self._select()
+                .where(Product.id == product_id, photo_fact)
+                .with_only_columns(old["confirmed_at"].astext.is_not(None))
+            )
+        ).scalar_one_or_none()
+        if confirmed:
+            return False
+        raise InputError(ErrorCode.VALIDATION_FAILED, at_field)
+
     async def clear_attribute(self, product_id: uuid.UUID, key: str) -> bool:
-        """Remove a seller-written `attributes.<key>`; True when a row was written. A Fact with
-        another source is 422 `VALIDATION_FAILED` at `attributes.<key>`."""
+        """Remove a seller-written or photo-derived (`ai`) `attributes.<key>`; True when a row was
+        written. A Fact with another source is 422 `VALIDATION_FAILED` at `attributes.<key>`."""
         field = f"attributes.{key}"
         await self._check(product_id, key, _SELLER, "attributes", field)
         stmt = (
@@ -179,7 +274,7 @@ class FactWriter(TenantScopedRepository[Product]):
                 update(Product)
                 .where(
                     *self._where(product_id),
-                    Product.attributes[key]["source"].astext == "seller",
+                    Product.attributes[key]["source"].astext.in_(("seller", "ai")),
                 )
                 .values(attributes=Product.attributes.op("-")(key))
             )
