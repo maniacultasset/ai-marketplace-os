@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from app.core.alerts import AlertCap, AlertKind, emit_alert
+from app.core.alerts import AlertCap, AlertKind, AlertLevel, emit_alert
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.slack import SlackSender
@@ -27,6 +27,7 @@ async def alert(
     now: datetime | None = None,
     cap: AlertCap | None = None,
     summary: bool = False,
+    level: AlertLevel = "warning",
     **fields: Any,
 ) -> bool:
     try:
@@ -40,6 +41,7 @@ async def alert(
             cap_claim=rate_limits.claim_cap if cap is not None else None,
             slack=SlackSender(get_settings().alert_slack_webhook),
             summary=summary,
+            level=level,
             **fields,
         )
     except Exception as exc:

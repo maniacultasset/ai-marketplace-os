@@ -12,7 +12,8 @@ Sentry.
    the cap's window; above `cap.limit` it logs DEBUG `alert.suppressed reason=cap` only. The
    periodic check later emits one summary per closed over-cap window.
 4. Else: one WARNING log event `alert.<kind>` (below the Sentry logging integration's event
-   level, so no second Sentry event), one Sentry message with the fingerprint
+   level, so no second Sentry event; `level="error"` logs at ERROR on a logger that integration
+   ignores, SI10), one Sentry message (at that level) with the fingerprint
    `["alert", kind, key]` (dead letters: `["alert", kind, job_kind, error_code]`, grouped, never
    the job id), and a Slack post for `SLACK_KINDS`. A failing sink is logged by class name and
    never raised: an alert never fails the job or check that raised it.
@@ -28,14 +29,28 @@ from typing import Any, Final, Literal, Protocol, get_args
 from uuid import UUID
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import ignore_logger
 
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+# SI10: an error-level alert logs at ERROR on its own logger, which Sentry's logging integration
+# ignores, so the one Sentry event is the fingerprinted message (no second, untagged event).
+ERROR_LINE_LOGGER: Final = f"{__name__}.error_line"
+ignore_logger(ERROR_LINE_LOGGER)
+_error_log = get_logger(ERROR_LINE_LOGGER)
 
 AlertKind = Literal[
-    "token_refresh_failed", "job_dead_lettered", "job_error_rate", "llm_budget", "queue_latency"
+    "token_refresh_failed",
+    "job_dead_lettered",
+    "job_error_rate",
+    "llm_budget",
+    "queue_latency",
+    "llm_credit",  # SI10: the OpenRouter key's credit used, at 50/80/95 %
+    "llm_provider_refused",  # SI10: AI paused (credit or key) or the credit below the floor
 ]
+AlertLevel = Literal["warning", "error"]
+ALERT_LEVELS: Final[frozenset[str]] = frozenset(get_args(AlertLevel))
 ALERT_KINDS: Final[frozenset[str]] = frozenset(get_args(AlertKind))
 ALERT_FIELDS: Final = frozenset(
     {
@@ -54,10 +69,11 @@ ALERT_FIELDS: Final = frozenset(
         "spend_usd",
         "limit_usd",
         "oldest_s",
+        "remaining_usd",
     }
 )
 SLACK_KINDS: Final[frozenset[str]] = frozenset(
-    {"llm_budget", "queue_latency", "token_refresh_failed"}
+    {"llm_budget", "llm_provider_refused", "queue_latency", "token_refresh_failed"}
 )
 # kinds whose Sentry fingerprint groups by these fields instead of the dedupe key
 FINGERPRINT: Final[Mapping[str, tuple[str, ...]]] = {
@@ -135,11 +151,14 @@ async def emit_alert(
     cap_claim: CapClaim | None = None,
     slack: SlackSender | None = None,
     summary: bool = False,
+    level: AlertLevel = "warning",
     **fields: Any,
 ) -> bool:
     """Emit one alert event (module docstring). True when it reached the sinks."""
     if kind not in ALERT_KINDS:
         raise TypeError(f"unknown alert kind {kind!r}")
+    if level not in ALERT_LEVELS:
+        raise TypeError(f"unknown alert level {level!r}")
     values = _checked(fields)
     if not await claim(kind, key, window_start):
         log.debug("alert.suppressed", kind=kind, reason="dedupe")
@@ -151,7 +170,11 @@ async def emit_alert(
         if n > cap.limit:
             log.debug("alert.suppressed", kind=kind, reason="cap")
             return False
-    log.warning(f"alert.{kind}", **values)
+    if level == "error":
+        # the Sentry message below is the one event: the logging integration ignores this logger
+        _error_log.error(f"alert.{kind}", **values)
+    else:
+        log.warning(f"alert.{kind}", **values)
     marks = fingerprint(kind, key, values)
     if summary:  # one per closed over-cap window: `["alert", kind, job_kind, "summary"]`
         marks = ["alert", kind, values.get("job_kind", ""), "summary"]
@@ -161,7 +184,7 @@ async def emit_alert(
             for name, value in values.items():
                 scope.set_tag(name, value)
             scope.set_tag("alert_kind", kind)
-            sentry_sdk.capture_message(f"alert.{kind}", level="warning")
+            sentry_sdk.capture_message(f"alert.{kind}", level=level)
     except Exception as exc:  # a sink never fails the caller
         log.warning("alert.sentry_failed", kind=kind, error_class=type(exc).__name__)
     if slack is not None and kind in SLACK_KINDS:
