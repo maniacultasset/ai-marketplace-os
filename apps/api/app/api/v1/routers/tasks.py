@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, NoReturn
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi import Path as PathParam
 
-from app.api.errors import NotImplementedYet
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.tasks import TaskAnswerIn, TaskOut, TaskPage
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import tasks
 
@@ -39,12 +38,16 @@ async def tasks_list(
 
 
 @route(router, OPS["tasks_answer"])
-@stub
 async def tasks_answer(
     task_id: Annotated[UUID, PathParam()],
     body: TaskAnswerIn,
     idempotency_key: IdempotencyKey,
     principal: CurrentPrincipal,
-) -> NoReturn:
-    """Answer a fact question (SI3 T16)."""
-    raise NotImplementedYet("tasks_answer")
+    request: Request,
+) -> TaskOut:
+    """Answer a fact question (`missing_fact`, `conflicting_facts`): a `value` becomes the
+    seller's own fact, `skip: true` writes nothing; the task is then `applied`. The same answer
+    again is 200; another answer to a closed task is 409 INVALID_STATUS_TRANSITION. Regenerate
+    the listing to use the answer."""
+    stored = await tasks.answer_task(principal, idempotency_key, request.url.path, task_id, body)
+    return TaskOut.model_validate(stored)

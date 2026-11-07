@@ -34561,7 +34561,7 @@
     },
     "/api/v1/tasks/{task_id}/answer": {
       "post": {
-        "description": "Answer a fact question (SI3 T16).",
+        "description": "Answer a fact question (`missing_fact`, `conflicting_facts`): a `value` becomes the\nseller's own fact, `skip: true` writes nothing; the task is then `applied`. The same answer\nagain is 200; another answer to a closed task is 409 INVALID_STATUS_TRANSITION. Regenerate\nthe listing to use the answer.",
         "operationId": "tasks_answer",
         "parameters": [
           {

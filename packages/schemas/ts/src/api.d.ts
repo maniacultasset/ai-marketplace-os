@@ -1618,7 +1618,10 @@ export interface paths {
         put?: never;
         /**
          * Answer a fact question
-         * @description Answer a fact question (SI3 T16).
+         * @description Answer a fact question (`missing_fact`, `conflicting_facts`): a `value` becomes the
+         *     seller's own fact, `skip: true` writes nothing; the task is then `applied`. The same answer
+         *     again is 200; another answer to a closed task is 409 INVALID_STATUS_TRANSITION. Regenerate
+         *     the listing to use the answer.
          */
         post: operations["tasks_answer"];
         delete?: never;
