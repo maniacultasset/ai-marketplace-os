@@ -196,6 +196,7 @@ class Situation:
     linked_to_other: bool = False  # found by email, but linked to a different Google account
     has_membership: bool = False
     has_request: bool = False
+    has_suspended: bool = False  # SI10: an active membership in a suspended brand
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +217,8 @@ def decide(s: Situation) -> Decision:
     if s.by_sub:
         if s.has_membership:
             return Decision("sign_in")
+        if s.has_suspended:  # SI10 (AC13): a verified identity whose brands are all suspended
+            return Decision(None, "tenant_suspended")
         if s.has_request:
             return Decision("pending")
         return Decision(None, "no_active_membership")
@@ -547,7 +550,8 @@ async def _situation(
 ) -> Situation:
     if user is None:
         return Situation(by_sub=False, exists=False)
-    memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    members = MembershipRepository(session)
+    memberships = await members.list_active_for_user(user.id)
     latest = await SignupRepository(session).latest_for(user.id)
     return Situation(
         by_sub=by_sub,
@@ -558,6 +562,7 @@ async def _situation(
         linked_to_other=user.google_sub is not None and user.google_sub != identity.sub,
         has_membership=bool(memberships),
         has_request=latest is not None,
+        has_suspended=not memberships and await members.has_suspended(user.id),
     )
 
 
@@ -597,6 +602,8 @@ async def link(
         user_agent=user_agent,
         link_sub=row.identity.sub,
     )
+    if isinstance(result, auth.Refusal):  # SI10 CP-D6: the link step stays the one 401
+        result = None
     if result is not None:
         async with identity_session() as session:
             await LoginFlowRepository(session).consume(

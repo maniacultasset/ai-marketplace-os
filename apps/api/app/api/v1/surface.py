@@ -454,12 +454,15 @@ _MFA_BEARER: Final = MappingProxyType({403: (E.MFA_STEP_UP_REQUIRED,), 501: (E.N
 _GOOGLE_PUBLIC: Final = MappingProxyType(
     {401: (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), 501: (E.NOT_IMPLEMENTED,)}
 )
+# SI10: a verified sign-in whose only brands are suspended is told so (403)
+_401_SUSPENDED: Final = MappingProxyType({**_401, 403: (E.TENANT_SUSPENDED,)})
+_GOOGLE_COMPLETE: Final = MappingProxyType({**_GOOGLE_PUBLIC, 403: (E.TENANT_SUSPENDED,)})
 
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
     Operation("auth_login", "POST", "/auth/login", 200, LoginResult, "auth",
               "Log in with email and password: tokens, or the next sign-in step", "S10",
-              public=True, has_body=True, extra_codes=_401),
+              public=True, has_body=True, extra_codes=_401_SUSPENDED),
     Operation("auth_refresh", "POST", "/auth/refresh", 200, TokenResponse, "auth",
               "Rotate the refresh token", "S10", public=True, has_body=True,
               extra_codes=_401),
@@ -516,7 +519,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("auth_google_complete", "POST", "/auth/google/complete", 200, GoogleCompleteOut,
               "auth", "Finish the Google step: sign in (or the code step), pending, the "
               "prefilled sign-up, or the password step that links Google", "ADR-0020",
-              public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
+              public=True, has_body=True, extra_codes=_GOOGLE_COMPLETE),
     Operation("auth_google_link", "POST", "/auth/google/link", 200, LoginResult, "auth",
               "Link Google to an existing account: its password, then the usual code steps",
               "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),

@@ -103,7 +103,9 @@ def _strip(response: httpx.Response) -> dict[str, Any]:
 
 
 CANARY = "Canary-Pw-9z8y7x6w"
-FAILURES = ("unknown_email", "wrong_password", "inactive_user", "no_active_membership", "suspended")
+# SI10: a suspended-only member with the right password is told (403 TENANT_SUSPENDED), so that
+# case left the one-401 list; with a wrong password it is still the 401 (below)
+FAILURES = ("unknown_email", "wrong_password", "inactive_user", "no_active_membership")
 
 
 def _failing_login(world: World, auth_db: Conn, kind: str) -> tuple[str, str]:
@@ -176,10 +178,77 @@ async def test_login_no_active_membership_401(
     assert (await _login(api, email, password)).status_code == 401
 
 
-async def test_login_suspended_only_tenant_401(
+# ---- SI10 T15 (AC13): 403 TENANT_SUSPENDED after a verified password ----
+
+SUSPENDED_TEXT = "This brand's access is paused. Contact support."
+
+
+def _auth_state(auth_db: Conn, email: str) -> tuple[Any, ...]:
+    row = auth_db.execute(
+        "SELECT failed_auth_count, locked_until FROM users WHERE email = %s", [email]
+    ).fetchone()
+    assert row is not None
+    return tuple(row)
+
+
+def _failed_reasons(auth_db: Conn) -> list[str]:
+    from .auth_support import audit_rows
+
+    return [str(r[9]) for r in audit_rows(auth_db, "auth.login_failed")]
+
+
+async def test_login_suspended_only_tenant_403(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
     email, password = _failing_login(world, auth_db, "suspended")
+    before = _auth_state(auth_db, email)
+    response = await _login(api, email, password)
+    assert response.status_code == 403, response.text
+    body = response.json()
+    assert body["error"]["type"] == "TENANT_SUSPENDED"
+    assert body["error"]["message"] == SUSPENDED_TEXT
+    assert "access_token" not in response.text and "challenge_token" not in response.text
+    assert _auth_state(auth_db, email) == before  # not counted as a guess
+    assert _failed_reasons(auth_db) == ["tenant_suspended"]
+
+
+async def test_login_suspended_wrong_password_401_counted(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    email, _ = _failing_login(world, auth_db, "suspended")
+    response = await _login(api, email, CANARY)
+    assert response.status_code == 401
+    assert _auth_state(auth_db, email)[0] == 1
+
+
+async def test_login_offboarded_only_tenant_401(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    tenant = add_tenant(auth_db, "gone", status="offboarded")
+    user = add_user(auth_db, "owner@gone.test")
+    add_member(auth_db, tenant, user, "owner")
+    assert (await _login(api, "owner@gone.test", PASSWORD)).status_code == 401
+
+
+async def test_login_live_and_suspended_signs_in_to_the_live_tenant(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    frozen = add_tenant(auth_db, "frozen2", status="suspended")
+    add_member(auth_db, frozen, world.user("owner@acme.test"), "owner")
+    response = await _login(api, "owner@acme.test", PASSWORD)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "signed_in"
+    assert _claims(body["access_token"])["tid"] == str(world.tenant("acme"))
+
+
+async def test_login_locked_suspended_member_401(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    email, password = _failing_login(world, auth_db, "suspended")
+    auth_db.execute(
+        "UPDATE users SET locked_until = now() + interval '10 minutes' WHERE email = %s", [email]
+    )
     assert (await _login(api, email, password)).status_code == 401
 
 

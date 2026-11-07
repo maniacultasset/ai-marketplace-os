@@ -403,6 +403,21 @@ class MembershipRepository:
         )
         return [_membership_row(row) for row in (await self.db.execute(stmt)).all()]
 
+    async def has_suspended(self, user_id: uuid.UUID) -> bool:
+        """SI10: an active membership of this user in a `suspended` tenant (the sign-in then says
+        so, after a verified password). Needs `app.user_id` = `user_id`, as the list does."""
+        stmt = identity_scope(
+            select(TenantMembership.tenant_id)
+            .join(Tenant, Tenant.id == TenantMembership.tenant_id)
+            .where(
+                TenantMembership.user_id == user_id,
+                TenantMembership.is_active.is_(True),
+                Tenant.status == "suspended",
+            )
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).first() is not None
+
     async def probe(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> MembershipRow | None:
         """The one-lookup membership probe (DATABASE.md:312): an active membership of an active
         user in a `trial`/`active` tenant, or None. The role is the row's, never the token's."""

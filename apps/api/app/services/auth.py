@@ -172,6 +172,7 @@ RefusalKind = Literal[
     "reused",
     "reauth_required",
     "not_found",
+    "tenant_suspended",  # SI10: a verified sign-in whose only brands are suspended (403)
 ]
 
 
@@ -516,10 +517,12 @@ async def login(
     user_agent: str | None,
     link_sub: str | None = None,
     device_token: str | None = None,
-) -> SignInResult | None:
+) -> SignInResult | Refusal | None:
     """Email + password in; tokens or the next challenge out, or None for the one 401 (an
     unknown email, a wrong password, a locked account, an inactive user and no live membership
-    look the same: one argon2 verify each). A failure writes `auth.login_failed` and commits
+    look the same: one argon2 verify each). SI10: after a verified password, a user whose only
+    active memberships are in suspended brands gets `Refusal("tenant_suspended")` (403), never
+    counted as a guess. A failure writes `auth.login_failed` and commits
     before the caller answers 401 (Q10 (4)). `link_sub` (ADR-0020, the Google link step) links
     that Google account when this sign-in finishes; it never gets the grace period.
     `device_token` (ADR-0023) is read only after the password passed, and never while linking."""
@@ -555,8 +558,12 @@ async def login(
         if not user.is_active:
             await _login_failed(session, user.id, "inactive_user", ip)
             return None
-        memberships = await MembershipRepository(session).list_active_for_user(user.id)
+        members = MembershipRepository(session)
+        memberships = await members.list_active_for_user(user.id)
         if not memberships:
+            if await members.has_suspended(user.id):
+                await _login_failed(session, user.id, "tenant_suspended", ip)
+                return Refusal("tenant_suspended")
             await _login_failed(session, user.id, "no_active_membership", ip)
             return None
         compliant = not password_policy.check(
@@ -618,7 +625,10 @@ async def sign_in_with_google(
         return None
     if is_locked(state.locked_until, _now()):
         return Refusal("locked")
-    memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    members = MembershipRepository(session)
+    memberships = await members.list_active_for_user(user.id)
+    if not memberships and user.is_active and await members.has_suspended(user.id):
+        return Refusal("tenant_suspended")
     device = None
     if device_tokens and _enforcing() and user.is_active and memberships:
         device = await trusted.lookup(session, user.id, device_tokens, ip=inet(ip), now=_now())
