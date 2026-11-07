@@ -22,6 +22,8 @@
       "enum": [
         "ACCOUNT_PERMISSION_DENIED",
         "API_REJECTED_PARTIAL",
+        "AI_CREDIT_EXHAUSTED",
+        "AI_PROVIDER_KEY_INVALID",
         "AUTH_EXPIRED",
         "BANNED_TERM",
         "BATCH_TOO_LARGE",
@@ -89,6 +91,7 @@
         "SUBMISSION_ATTEMPTS_EXHAUSTED",
         "SUBMISSION_IN_FLIGHT",
         "SUBMISSION_NOT_APPLIED",
+        "TENANT_SUSPENDED",
         "TIMEOUT",
         "TOKEN_LIMIT",
         "UNAUTHENTICATED",

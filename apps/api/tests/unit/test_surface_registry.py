@@ -468,6 +468,8 @@ def test_error_codes_per_d2() -> None:
             assert codes[403] == (E.PERMISSION_DENIED, *step_up), op.op_id
         elif step_up:
             assert codes[403] == step_up, op.op_id
+        elif op.op_id in {"auth_login", "auth_google_complete"}:  # SI10: a suspended brand
+            assert codes[403] == (E.TENANT_SUSPENDED,), op.op_id
         else:
             assert 403 not in codes, op.op_id
         # ADR-0019: a platform row's unknown id is 404 too, but it is not tenant-owned, so the
