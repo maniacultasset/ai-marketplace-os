@@ -27,6 +27,7 @@ from app.adapters.base import (
     AdapterListing,
     ListingNotFound,
     MarketplaceAdapter,
+    fact_paths,
     submitted_fields,
 )
 from mkos_schemas.listing import CanonicalListing
@@ -107,7 +108,22 @@ def _is_result(value: object, where: str) -> ListingResult:
     return value
 
 
-async def run_contract_suite(factory: Factory, *, prepare: Prepare | None = None) -> list[str]:
+def answered_fields(sent: AdapterListing, *, seller_facts: bool) -> list[str]:
+    """The sorted paths a create of the one-item `sent` answers for: `submitted_fields`, plus
+    the item's `fact_paths` when the adapter sends seller facts (SI2; the same set the publish
+    worker asks for, `app/workers/publish.py` `_fields_for`)."""
+    paths = set(submitted_fields(sent.listing))
+    if seller_facts:
+        for unit in sent.units():
+            paths |= set(fact_paths(unit))
+    return sorted(paths)
+
+
+async def run_contract_suite(
+    factory: Factory, *, prepare: Prepare | None = None, seller_facts: bool = False
+) -> list[str]:
+    """`seller_facts`: the adapter maps the seller facts (SI2: Amazon, Flipkart), so a create
+    also answers one result per `facts.*` path of the item."""
     failures: list[str] = []
 
     def item(  # the suite's items go through `prepare`
@@ -137,7 +153,8 @@ async def run_contract_suite(factory: Factory, *, prepare: Prepare | None = None
         adapter = factory({})
         sent = item()
         result = _is_result(await adapter.create_listing(sent), "create_listing")
-        assert [f.field for f in result.fields] == submitted_fields(sent.listing), "fields differ"
+        expected = answered_fields(sent, seller_facts=seller_facts)
+        assert [f.field for f in result.fields] == expected, "fields differ"
         assert result.status == "published", result.status
 
     async def partial_keeps_raw() -> None:
@@ -153,14 +170,18 @@ async def run_contract_suite(factory: Factory, *, prepare: Prepare | None = None
 
     async def all_failed_is_failed() -> None:
         sent = item()
-        everything = dict.fromkeys(submitted_fields(sent.listing), ("X1", "Rejected."))
+        everything = dict.fromkeys(
+            answered_fields(sent, seller_facts=seller_facts), ("X1", "Rejected.")
+        )
         result = _is_result(await factory(everything).create_listing(sent), "create_listing")
         assert result.status == "failed", result.status
         assert result.error is not None and result.error.status == "failed", "no failed report"
 
     async def rejected_create_not_found() -> None:
         sent = item()
-        everything = dict.fromkeys(submitted_fields(sent.listing), ("X1", "Rejected."))
+        everything = dict.fromkeys(
+            answered_fields(sent, seller_facts=seller_facts), ("X1", "Rejected.")
+        )
         adapter = factory(everything)
         await adapter.create_listing(sent)
         try:

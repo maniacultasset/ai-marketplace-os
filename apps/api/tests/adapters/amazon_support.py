@@ -209,7 +209,15 @@ def attribute_names(path: str) -> list[str]:
 
 
 def reject(app: Any, fail: Any) -> None:
-    """Make the fake refuse every attribute the named paths feed, on every SKU."""
+    """Make the fake refuse every attribute the named paths feed, on every SKU. A refused price
+    path also refuses `condition_type`: it travels in the same offer, though the reverse index
+    leaves it out (an issue on it fails `listing`), so a fully refused create stores nothing."""
+    from app.adapters.amazon import constants as c
+    from app.adapters.base import PRICE_PATHS
+
     for path, (code, text) in fail.items():
-        for name in attribute_names(path):
+        names = attribute_names(path)
+        if path in PRICE_PATHS:
+            names.append(c.CONDITION_ATTRIBUTE)
+        for name in names:
             app.state.fake.spapi_reject[name] = (code, text)
