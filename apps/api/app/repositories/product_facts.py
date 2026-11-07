@@ -203,6 +203,29 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
         version = int(rows[0][2]) if rows else 0
         return {row.key: bool(row.is_critical) for row in rows}, version
 
+    async def resolve_family(
+        self, product_id: uuid.UUID
+    ) -> tuple[ProductFacts, tuple[ProductFacts, ...]] | None:
+        """SI2 T4: the product's facts and, for a style, each live child's (in SKU order); a
+        child that no longer resolves is skipped. None when the product does not resolve."""
+        main = await self.resolve(product_id)
+        if main is None:
+            return None
+        if main.level != "style":
+            return main, ()
+        stmt = (
+            self._select()
+            .with_only_columns(Product.id)
+            .where(Product.parent_product_id == product_id, Product.deleted_at.is_(None))
+            .order_by(Product.sku)
+        )
+        children: list[ProductFacts] = []
+        for child_id in (await self.db.execute(stmt)).scalars():
+            child = await self.resolve(child_id)
+            if child is not None:
+                children.append(child)
+        return main, tuple(children)
+
     async def resolve(self, product_id: uuid.UUID) -> ProductFacts | None:
         product = await self._live(product_id)
         if product is None:

@@ -237,3 +237,41 @@ def test_digest_changes_when_address_changes() -> None:
     assert facts_digest(facts(compliance=Compliance(manufacturer=moved))) != facts_digest(
         facts(compliance=Compliance(manufacturer=PARTY))
     )
+
+
+# ---- SI2 T4 (D9; AC5, AC12): the family digest ----
+
+
+def _child(n: int, price: str = "499.00") -> ProductFacts:
+    return facts(
+        product_id=uuid.UUID(int=n),
+        sku=f"KURTA-001-{n}",
+        level="variant",
+        commercial=Commercial(mrp="999.00", selling_price=price, currency="INR"),
+    )
+
+
+def test_listing_digest_without_children_is_facts_digest() -> None:
+    from app.core.resolved_facts import listing_facts_digest
+
+    assert listing_facts_digest(facts()) == facts_digest(facts())
+    assert listing_facts_digest(facts(), ()) == facts_digest(facts())
+
+
+def test_listing_digest_family() -> None:
+    from app.core.resolved_facts import listing_facts_digest
+
+    style = facts(level="style")
+    kids = [_child(1), _child(2)]
+    base = listing_facts_digest(style, kids)
+    assert len(base) == 32 and base != facts_digest(style)
+    assert listing_facts_digest(style, list(reversed(kids))) == base
+    assert listing_facts_digest(style, [_child(1), _child(2, "450.00")]) != base
+    assert listing_facts_digest(style, [*kids, _child(3)]) != base
+
+
+def test_address_never_in_prompt_or_rules() -> None:
+    body = facts()
+    for view in (for_prompt(body), for_rules(body)):
+        text = json.dumps(view)
+        assert "1 MG Road" not in text and "Bengaluru" not in text

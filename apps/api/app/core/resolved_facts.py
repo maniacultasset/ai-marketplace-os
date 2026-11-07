@@ -9,6 +9,9 @@ owner): `GenerationContext.product` stays a `dict` and gets `for_prompt(facts)`.
   dictionary version are left out.
 - `for_rules(facts)`: the mapping the Rules Engine's `product.*` paths read, and the only facts the
   pipeline deps object holds (CP13). Parties are `{legal_name}`; no contact, GSTIN or evidence.
+- `listing_facts_digest(main, children)` (SI2 D9): a standalone's `facts_digest`, unchanged; a
+  family's digest also covers each child's facts (child order does not matter), so a child's
+  price change after approval is caught.
 - `facts_digest(facts)`: sha256 of the canonical JSON (sorted keys, Decimals as strings, every
   `updated_at` dropped) of the full facts, parties, family, provenance and dictionary version
   included: it pins the facts a validation run checked.
@@ -18,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from typing import Any, Final, Literal
 from uuid import UUID
 
@@ -39,6 +43,7 @@ __all__ = [
     "facts_digest",
     "for_prompt",
     "for_rules",
+    "listing_facts_digest",
 ]
 
 FactLevel = Literal["brand", "style", "colour", "variant", "standalone"]
@@ -305,3 +310,13 @@ def canonical_facts_json(facts: ProductFacts) -> bytes:
 def facts_digest(facts: ProductFacts) -> bytes:
     """sha256 of `canonical_facts_json(facts)` (32 bytes, `validation_runs.facts_digest`)."""
     return hashlib.sha256(canonical_facts_json(facts)).digest()
+
+
+def listing_facts_digest(main: ProductFacts, children: Sequence[ProductFacts] = ()) -> bytes:
+    """`facts_digest(main)` with no children; else sha256 over a family tag, the style's digest
+    and each child's digest in `product_id` order (32 bytes)."""
+    if not children:
+        return facts_digest(main)
+    ordered = sorted(children, key=lambda c: c.product_id)
+    body = b"family:v1\0" + facts_digest(main) + b"".join(facts_digest(c) for c in ordered)
+    return hashlib.sha256(body).digest()
