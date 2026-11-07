@@ -14,7 +14,8 @@ Flipkart vertical), each spec's `marketplace_field` and `value_map` (DATABASE.md
   - Both keyword lists go as one `keywords` value: a retry of either path sends the combined
     value and reports both (C7, as S20 C6).
 - A family has **no parent row** (DATABASE.md:471, :754-755; T45): `family_payloads` sends the
-  children only, each carrying `style_code` (the style's seller SKU) and `colour_group` (its
+  children only, each carrying `style_code` (SI8: the style number, else the style's seller SKU;
+  reported at `facts.style_number`) and `colour_group` (its
   `colour_sku`, else its `colour_key`), its variation values, and the images the shared
   `base.unit_images` gives it (SI8: its colourway's images, then the style-level images;
   never another colourway's; DATABASE.md:438), at `images[<version index>]` (SI8 CP-D7).
@@ -476,7 +477,11 @@ def item_payload(
         attributes[c.IMAGE_ATTRIBUTE] = images
 
     if unit.item_role == "child":
-        attributes[c.STYLE_ATTRIBUTE] = [_entry(listing.seller_sku)]
+        # SI8 T7: the style number when the seller gave one, else the style's seller SKU
+        number = None if facts is None else facts.style_number
+        style = number.strip() if number is not None and number.strip() else listing.seller_sku
+        attributes[c.STYLE_ATTRIBUTE] = [_entry(style)]
+        sent.append("facts.style_number")
         group = colour_group(unit)
         if group is not None:
             attributes[c.COLOUR_GROUP_ATTRIBUTE] = [_entry(group)]
@@ -507,6 +512,9 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     index[c.IMAGE_ATTRIBUTE] = {f"images[{i}]" for i in range(MAX_LISTING_IMAGES)}
     for name in c.GROUP_ATTRIBUTES:
         index[name] = {"variants"}
+    # SI8 T7: `style_code` carries the style number too; it keeps the `variants` feed, so a
+    # regroup retry still sends it
+    index[c.STYLE_ATTRIBUTE] = {"variants", "facts.style_number"}
     index[c.PRICE_ATTRIBUTE] = set(PRICE_PATHS)  # SI2: the one price block
     if template is not None:
         for key, spec in template.specs.items():

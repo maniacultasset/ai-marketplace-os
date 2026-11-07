@@ -163,3 +163,35 @@ def test_flipkart_family_listing_values_shared() -> None:
     sent = fk_family(listing(fabric_type="organic cotton"))
     for one in _payloads(sent):
         assert _value(one, "Fabric") == ["Cotton"]
+
+
+# ---- SI8 T7 (AC4): `style_code` is the style number, else the style SKU ----
+
+
+def _numbered(number: str | None) -> Any:
+    from tests.adapters.flipkart_support import SELLER_FACTS, with_facts
+
+    sent = fk_family(style="KF-STYLE")
+    return with_facts(sent, dataclasses.replace(SELLER_FACTS, style_number=number))
+
+
+def test_flipkart_style_code_is_the_style_number() -> None:
+    for one in _payloads(_numbered(" KS-24 ")):
+        assert _value(one, "style_code") == ["KS-24"]
+        assert "facts.style_number" in one.submitted
+
+
+@pytest.mark.parametrize("number", [None, "", "   "])
+def test_flipkart_style_code_falls_back_to_the_style_sku(number: str | None) -> None:
+    for one in _payloads(_numbered(number)):
+        assert _value(one, "style_code") == ["KF-STYLE"]
+        assert "facts.style_number" in one.submitted
+
+
+def test_flipkart_reverse_index_style_code_keeps_the_group_feed() -> None:
+    from app.adapters.flipkart.mapping import reverse_index
+    from tests.adapters.flipkart_support import template
+
+    index = reverse_index(template().template)
+    assert index["style_code"] == ("facts.style_number", "variants")
+    assert index["colour_group"] == ("variants",)
