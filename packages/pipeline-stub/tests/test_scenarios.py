@@ -161,6 +161,28 @@ async def test_stub_scenario_failed() -> None:
     assert result.blocks and all(b.status == "failed" for b in result.blocks)
 
 
+@pytest.mark.parametrize(
+    ("name", "code"),
+    [
+        ("credit", ErrorCode.AI_CREDIT_EXHAUSTED),
+        ("credit_legacy", ErrorCode.BUDGET_EXCEEDED),
+        ("key_refused", ErrorCode.AI_PROVIDER_KEY_INVALID),
+    ],
+)
+async def test_stub_scenario_account_refusals(name: str, code: ErrorCode) -> None:
+    """SI10: one failed content record with the refusal code, no listing, USD 0."""
+    assert name in SCENARIOS
+    result = await _run(_ctx(user_instructions=f"stub:{name}"))
+    assert result.listing is None
+    assert result.terminal_state == "failed"
+    [record] = result.agent_runs
+    assert (record.agent_name, record.status) == ("content", "failed")
+    assert record.cost_usd == 0
+    assert record.error_report is not None and record.error_report.error_code is code
+    again = GenerationResult.model_validate_json(result.model_dump_json(by_alias=True))
+    assert again == result
+
+
 async def test_stub_unknown_scenario_is_ok() -> None:
     for text in ("stub:nope", "stub:", "make it pop", None):
         ctx = _ctx(user_instructions=text)

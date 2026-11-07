@@ -3,9 +3,9 @@
 The only module that imports `mkos_pipeline` (the S14b stub locally and in CI; the AI team's tagged
 drop at deploy, T104). No session is open across the pipeline call. The steps:
 
-1. `budget.reserve` (T7): the claim-time reservation against the tenant and global caps. A refusal
-   → `JobFailed(BUDGET_EXCEEDED)`; the terminal hook moves the listing to
-   `failed/generation_failed`.
+1. `budget.reserve` (T7): the claim-time reservation against the AI credit (SI10), the tenant and
+   the global caps. A refusal → `JobFailed(BUDGET_EXCEEDED)`, or the pause's credit code; the
+   terminal hook moves the listing to `failed/generation_failed`.
 2. One short read transaction: the job, the listing, `load_rules`, the resolved facts, then
    `build_context` (T11). A failure here made no model call: the reservation is zeroed.
 3. `build_pipeline_deps(..., product=for_rules(facts))` (CP13), then `run_listing_pipeline(ctx,
@@ -20,10 +20,13 @@ drop at deploy, T104). No session is open across the pipeline call. The steps:
    only) and the recorded rules runs kept: `MODEL_UNAVAILABLE` (retryable) for a transient
    model or embedding port failure (`is_transient_failure`: a transient code and `retryable`),
    else `INTERNAL_ERROR` (a missing key or embedder, or a refused embeddings call, included). The
-   reservation is zeroed when the run never reached a model stage
-   (`deps.model_stage_reached`: only the context load and the brand retrieval started, whose
-   query embeds write their own `agent_runs`), and kept otherwise, because the pipeline's
-   records of calls already made are lost with the exception (CP10).
+   reservation is zeroed on every terminal path (SI10 D6; DATABASE.md "Budget reservation"): the
+   key's credit limit is the backstop for the few unrecorded calls a timeout or exception loses.
+6. SI10 (D5, CP-D15): a provider account refusal (a query-embed 402, a failed record with
+   `AI_CREDIT_EXHAUSTED` or the legacy `BUDGET_EXCEEDED`) pauses AI for everyone and fails with
+   `AI_CREDIT_EXHAUSTED`; a key suspicion (a wire 401/403, a 0.3.2 `AI_PROVIDER_KEY_INVALID`
+   record) is confirmed with OpenRouter's `/key` first: refused → pause `key_invalid` and
+   `AI_PROVIDER_KEY_INVALID`; else this job alone fails `MODEL_UNAVAILABLE`, not retryable.
 
 SI3 (photo facts): the read transaction also reads the product's newest recorded photo set; after
 the vision copies load, `build_targets` decides the `photo_targets` (none when the photo set is
@@ -61,8 +64,10 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.resolved_facts import facts_digest, for_rules
 from app.repositories.uow import tenant_uow
+from app.services.ai_credit import REASON_CODE, EmbedRefusal, classify_refusal
 from app.services.auto_fix.apply import auto_fix
 from app.services.auto_fix.fixers import FixContext, FixRecord
+from app.services.budget import CREDIT_MESSAGES
 from app.services.generation_context import GenerationContextError, build_context
 from app.services.generation_images import load_context_images, order_for_listing, pick_context
 from app.services.generation_persist import PersistPlan, Pins, make_persist
@@ -162,12 +167,72 @@ def _fail(ctx: JobContext, code: ErrorCode, message: str, **kw: Any) -> JobFaile
     return JobFailed(job_report(code, message, ctx=ctx), **kw)
 
 
+REFUSED_MESSAGE: Final = "The AI service refused this request."
+
+
+def _refused_not_retryable(ctx: JobContext) -> ErrorReport:
+    """`MODEL_UNAVAILABLE` for this job only, not retryable (an unconfirmed 401/403)."""
+    return ErrorReport(
+        status="failed",
+        error_code=ErrorCode.MODEL_UNAVAILABLE,
+        retryable=False,
+        attempts_used=min(3, ctx.attempt),
+        max_attempts=1,
+        errors=[
+            ErrorItem(
+                field="listing",
+                error_code=ErrorCode.MODEL_UNAVAILABLE,
+                message=REFUSED_MESSAGE,
+                source=ErrorSource.SYSTEM,
+                retryable=False,
+            )
+        ],
+        request_id=ctx.request_id,
+    )
+
+
+def _refusal_of(exc: BaseException) -> EmbedRefusal | None:
+    """A credit refusal raised through a port (an exception group's leaves included)."""
+    if isinstance(exc, BaseExceptionGroup):
+        found = [_refusal_of(inner) for inner in exc.exceptions]
+        return "credit" if "credit" in found else None
+    if isinstance(exc, SeamPortError) and exc.code is ErrorCode.AI_CREDIT_EXHAUSTED:
+        return "credit"
+    return None
+
+
+async def _refusal_failure(ctx: JobContext, refusal: EmbedRefusal, **kw: Any) -> JobFailed:
+    """The one outcome of a provider account refusal (module docstring, step 6)."""
+    job_id = ctx.job_run_id
+    if refusal == "credit":
+        await budget.pause_ai("credit_exhausted", job_id=job_id)
+        report = job_report(
+            ErrorCode.AI_CREDIT_EXHAUSTED, CREDIT_MESSAGES["credit_exhausted"], ctx=ctx
+        )
+    elif await budget.confirm_key_refusal():
+        await budget.pause_ai("key_invalid", job_id=job_id)
+        report = job_report(
+            ErrorCode.AI_PROVIDER_KEY_INVALID, CREDIT_MESSAGES["key_invalid"], ctx=ctx
+        )
+    else:
+        report = _refused_not_retryable(ctx)
+    log.info("generation.failed", job_run_id=str(job_id), code=str(report.error_code))
+    return JobFailed(report, zero_reservation=True, **kw)
+
+
 async def run_listing_generate(ctx: JobContext) -> Outcome:
     settings = get_settings()
     tenant, job_id = ctx.tenant_id, ctx.job_run_id
     try:
         reserved = await budget.reserve(tenant, job_id, ctx.attempt)
-    except budget.BudgetRefused:
+    except budget.BudgetRefused as refused:
+        if refused.scope == "credit" and refused.reason is not None:
+            raise _fail(
+                ctx,
+                REASON_CODE[refused.reason],
+                CREDIT_MESSAGES[refused.reason],
+                zero_reservation=True,
+            ) from None
         raise _fail(ctx, ErrorCode.BUDGET_EXCEEDED, "The daily AI budget is used up.") from None
     if not reserved:  # the fence moved: a newer attempt owns the row; the wrapper drops the write
         raise _fail(ctx, ErrorCode.INTERNAL_ERROR, "generation failed")
@@ -273,7 +338,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         raise JobFailed(
             job_report(ErrorCode.JOB_TIMEOUT, "the model call passed its deadline", ctx=ctx),
             persist=make_persist(plan),
-            zero_reservation=not deps.model_stage_reached,
+            zero_reservation=True,  # SI10 D6: every terminal path releases the hold
         ) from None
     except Exception as exc:  # a port or the pipeline raised: recorded (step 5)
         transient = is_transient_failure(exc)
@@ -285,6 +350,9 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             model_stage_reached=deps.model_stage_reached,
         )
         plan = PersistPlan(**plan_base, move=None, rules_calls=deps.rules_calls)
+        refusal = deps.embed_refusal or _refusal_of(exc)
+        if refusal is not None:
+            raise await _refusal_failure(ctx, refusal, persist=make_persist(plan)) from None
         failure = (
             job_report(
                 ErrorCode.MODEL_UNAVAILABLE, TRANSIENT_MESSAGE, ctx=ctx, source=ErrorSource.AI_MODEL
@@ -292,9 +360,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             if transient
             else job_report(ErrorCode.INTERNAL_ERROR, "generation failed", ctx=ctx)
         )
-        raise JobFailed(
-            failure, persist=make_persist(plan), zero_reservation=not deps.model_stage_reached
-        ) from None
+        raise JobFailed(failure, persist=make_persist(plan), zero_reservation=True) from None
     finally:
         deps.close_spans()
 
@@ -371,6 +437,11 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             result=failed_result,
             **photo,
         )
+        refusal = classify_refusal(trusted.records, deps.embed_refusal)
+        if refusal is not None:
+            raise await _refusal_failure(
+                ctx, refusal, persist=make_persist(plan), result=failed_result
+            )
         transient = runs_failed_transiently(trusted.records, trusted.result.blocks)
         raise JobFailed(
             job_report(
