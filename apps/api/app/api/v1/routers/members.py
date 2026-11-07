@@ -3,20 +3,22 @@ active flag. Both need `team:manage` (owner, admin); only an owner grants or rem
 
 from __future__ import annotations
 
-from typing import Annotated, NoReturn
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError, NotImplementedYet
+from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.auth import MemberOut, MemberPage, MemberPatch
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.schemas.invites import ResetLinkOut
+from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError, ForbiddenError, NotFoundError
 from app.core.rbac import Principal
 from app.services import members
+from app.services import password_reset_links as reset_links
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -71,7 +73,16 @@ async def members_patch(user_id: UUID, body: MemberPatch, principal: CurrentPrin
 
 
 @route(router, OPS["members_password_reset"])
-@stub
-async def members_password_reset(user_id: UUID, principal: CurrentPrincipal) -> NoReturn:
-    """A copied password reset link for a member (SI5 T8)."""
-    raise NotImplementedYet("members_password_reset")
+async def members_password_reset(user_id: UUID, principal: CurrentPrincipal) -> ResetLinkOut:
+    """A password reset link for a member, shown once: copy it to them (24 hours, once; a new
+    link replaces the old one). Only for a member of this brand alone, with an authenticator,
+    while sign-in codes are required (`MFA_ENFORCEMENT=all`); anyone else, a platform admin
+    included, is 403 "Kuinn support resets this account". Only an owner resets an owner (403);
+    yourself is 422 (change your own password in Security). Needs a TOTP step-up."""
+    try:
+        url, expires_at = await reset_links.issue(principal, user_id)
+    except reset_links.NotEligibleError:
+        raise ApiError(403, ErrorCode.PERMISSION_DENIED, reset_links.NOT_ELIGIBLE_MESSAGE) from None
+    except ForbiddenError:
+        raise ApiError(403, ErrorCode.PERMISSION_DENIED) from None
+    return ResetLinkOut(reset_url=url, expires_at=expires_at)

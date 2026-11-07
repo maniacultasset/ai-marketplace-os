@@ -129,6 +129,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "invites_lookup",
         "invites_accept",
         "invites_join",
+        "members_password_reset",
+        "auth_password_reset",
     }
 )
 

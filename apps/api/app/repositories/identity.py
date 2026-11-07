@@ -489,6 +489,18 @@ class MembershipRepository:
         )
         return [_membership_row(row) for row in (await self.db.execute(stmt)).all()]
 
+    async def every_for_user(
+        self, user_id: uuid.UUID
+    ) -> builtins.list[tuple[uuid.UUID, str, bool]]:
+        """SI5: every membership of `user_id`, any status and any tenant state, as
+        `(tenant_id, role, is_active)`. Needs `app.user_id` = `user_id` (memberships_own)."""
+        stmt = identity_scope(
+            select(
+                TenantMembership.tenant_id, TenantMembership.role, TenantMembership.is_active
+            ).where(TenantMembership.user_id == user_id)
+        )
+        return [(r[0], str(r[1]), bool(r[2])) for r in (await self.db.execute(stmt)).all()]
+
     async def probe(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> MembershipRow | None:
         """The one-lookup membership probe (DATABASE.md:312): an active membership of an active
         user in a `trial`/`active` tenant, or None. The role is the row's, never the token's."""
