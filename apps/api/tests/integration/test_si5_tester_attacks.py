@@ -296,3 +296,141 @@ async def test_a_bom_and_upper_case_barcode_header_import(
     assert statuses == {"SKU-00060": "imported", "SKU-00061": "imported"}, statuses
     assert _stored(imports_db, "SKU-00060") == ("ean", "4006381333931", "provided")
     assert _stored(imports_db, "SKU-00061") == (None, None, None)
+
+
+# ---- round 2: accept for an account that cannot sign in (CR1 fix, 27c4b6f) ----
+
+
+def _stranded(conn: Conn, email: str) -> uuid.UUID:
+    """A users row with no membership anywhere (like a pending applicant): the login is 401."""
+    from .auth_support import add_user
+
+    return add_user(conn, email)
+
+
+def _member_rows(conn: Conn, email: str) -> list[tuple[Any, ...]]:
+    return conn.execute(
+        "SELECT m.tenant_id FROM tenant_memberships m JOIN users u ON u.id = m.user_id "
+        "WHERE u.email = %s",
+        [email],
+    ).fetchall()
+
+
+def _still_pending(conn: Conn, email: str) -> bool:
+    found = conn.execute(
+        "SELECT accepted_at IS NULL AND revoked_at IS NULL FROM invitations WHERE email = %s",
+        [email],
+    ).fetchone()
+    return bool(found and found[0])
+
+
+async def _accept(api: httpx.AsyncClient, token: str, password: str) -> httpx.Response:
+    return await api.post(f"{INVITES}/accept", json={"token": token, "password": password})
+
+
+async def test_a_locked_stranded_account_is_401_even_with_its_right_password(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """The lockout gate holds on the new accept path: a locked account joins nothing, and the
+    invite stays live for after the lock ends."""
+    email = "locked@elsewhere.test"
+    user = _stranded(auth_db, email)
+    token = await _invite_token(api, world, email)
+    auth_db.execute(
+        "UPDATE users SET locked_until = now() + interval '15 minutes' WHERE id = %s", [user]
+    )
+    response = await _accept(api, token, PASSWORD)
+    assert response.status_code == 401, response.text
+    assert response.json()["error"]["type"] == "UNAUTHENTICATED"
+    assert _member_rows(auth_db, email) == []
+    assert _still_pending(auth_db, email)
+    auth_db.execute("UPDATE users SET locked_until = NULL WHERE id = %s", [user])
+    assert (await _accept(api, token, PASSWORD)).status_code == 200
+
+
+async def test_wrong_passwords_on_accept_lock_the_account_for_the_login_too(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """Accept guesses share the login's per-user counter: enough wrong ones lock the account,
+    and then the right password is refused on accept and on the login."""
+    email = "guessed@elsewhere.test"
+    _stranded(auth_db, email)
+    token = await _invite_token(api, world, email)
+    for _ in range(12):
+        _reset_limits(auth_db)
+        wrong = await _accept(api, token, OTHER_PASSWORD)
+        assert wrong.status_code == 401, wrong.text
+    locked = auth_db.execute(
+        "SELECT locked_until > now() FROM users WHERE email = %s", [email]
+    ).fetchone()
+    assert locked == (True,)
+    _reset_limits(auth_db)
+    assert (await _accept(api, token, PASSWORD)).status_code == 401
+    assert _member_rows(auth_db, email) == []
+    assert _still_pending(auth_db, email)
+
+
+async def test_a_right_and_a_wrong_concurrent_accept_make_one_member(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    email = "both@elsewhere.test"
+    _stranded(auth_db, email)
+    token = await _invite_token(api, world, email)
+    right, wrong = await asyncio.gather(
+        _accept(api, token, PASSWORD), _accept(api, token, OTHER_PASSWORD)
+    )
+    assert right.status_code == 200, right.text
+    assert wrong.status_code in {401, 404, 409}, wrong.text
+    assert _member_rows(auth_db, email) == [(world.tenant("acme"),)]
+
+
+async def test_a_google_only_stranded_account_is_401_on_the_password_accept(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """The KNOWN-ISSUES residual, pinned: no hash to verify, so any password is 401 (counted),
+    never a second account or a 500."""
+    email = "google@elsewhere.test"
+    user = _stranded(auth_db, email)
+    auth_db.execute(
+        "UPDATE users SET hashed_password = NULL, auth_provider = 'google', "
+        "google_sub = 'g-stranded-1', email_verified_at = now() WHERE id = %s",
+        [user],
+    )
+    token = await _invite_token(api, world, email)
+    preview = await api.post(f"{INVITES}/lookup", json={"token": token})
+    assert preview.status_code == 200 and preview.json()["account"] == "new"
+    response = await _accept(api, token, NEW_PASSWORD)
+    assert response.status_code == 401, response.text
+    assert auth_db.execute(
+        "SELECT count(*), max(failed_auth_count) FROM users WHERE lower(email) = %s", [email]
+    ).fetchone() == (1, 1)
+    assert _member_rows(auth_db, email) == []
+
+
+async def test_an_applicant_who_joined_by_invite_can_still_be_approved(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """A pending applicant joins a brand by invite, then the platform admin approves the
+    sign-up: the approve still creates the applicant's own brand (two memberships)."""
+    applicant, password = "maker@kalakar.test", "Quiet-Harbour-Lamp-7305"
+    admin = "operator@acme.test"
+    auth_db.execute("UPDATE users SET is_platform_admin = true WHERE email = %s", [admin])
+    signed_up = await api.post(
+        f"{PREFIX}/signup",
+        json={
+            "brand_name": "Kalakar Weaves",
+            "owner_name": "Meera Iyer",
+            "email": applicant,
+            "password": password,
+        },
+    )
+    assert signed_up.status_code == 202, signed_up.text
+    token = await _invite_token(api, world, applicant)
+    assert (await _accept(api, token, password)).status_code == 200
+    request_id = signed_up.json()["request_id"]
+    approved = await api.post(
+        f"{PREFIX}/admin/signup-requests/{request_id}/approve", headers=_as(world, admin)
+    )
+    assert approved.status_code == 200, approved.text
+    assert len(_member_rows(auth_db, applicant)) == 2
+    assert (await login(api, applicant, password)).status_code == 200
