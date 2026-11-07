@@ -35,6 +35,7 @@ from app.repositories.invitations import InvitationRepository, InviteRow
 from app.repositories.members import MembersRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import identity_session, set_gucs, unit_of_work
+from app.services import google_signin
 
 __all__ = [
     "INVITE_TTL",
@@ -44,6 +45,7 @@ __all__ = [
     "InviteRow",
     "Joined",
     "Preview",
+    "accept_google",
     "accept_password",
     "create_invite",
     "join",
@@ -297,3 +299,30 @@ async def join(principal: Principal, raw: str) -> Joined:
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_member")
         await _accept(session, live, principal.user_id)
     return Joined(tenant_id=row.tenant_id, role=row.role)
+
+
+# ---- accept with Google (T7, PLAN D7) ----
+
+
+async def accept_google(
+    raw: str, *, handle: str, binding: str, display_name: str | None
+) -> Accepted:
+    """A new Google-only account (no password, the Google `sub`, a verified email) for the
+    invite's email, from a `needs_details` handle of `auth_google_complete`. The Google email
+    must be the invite's (422 at `google`); a taken email or Google account is 409. One
+    transaction: any refusal leaves the handle unconsumed and writes nothing. Raises
+    `google_signin.GoogleDisabled` (501) or `FlowInvalid` (401) for the handle."""
+    async with identity_session() as session:
+        identity = await google_signin.consume_details(session, handle, binding)
+        live = await _live(session, await _find(session, raw))
+        email = live.row.email
+        if identity.email.strip().lower() != email:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "google")
+        await set_gucs(session, login_email=email)
+        user_id = await UserRepository(session).insert_google_invitee(
+            email=email, sub=identity.sub, display_name=display_name or identity.display_name
+        )
+        if user_id is None:
+            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_account")
+        await _accept(session, live, user_id)
+    return Accepted(email=email, tenant_name=live.tenant_name)

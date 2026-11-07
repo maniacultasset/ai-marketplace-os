@@ -13,6 +13,7 @@ from app.api.errors import ApiError, password_rules_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.rate_limit import enforce_invite_limit
 from app.api.v1.deps import get_current_principal
+from app.api.v1.routers.google import DISABLED_MESSAGE, FLOW_MESSAGE
 from app.api.v1.schemas.invites import (
     InviteAccept,
     InviteAccepted,
@@ -28,7 +29,7 @@ from app.api.v1.surface import OPS, route
 from app.core.errors import ForbiddenError
 from app.core.password_policy import PolicyError
 from app.core.rbac import Principal
-from app.services import invites
+from app.services import google_signin, invites
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -120,8 +121,21 @@ async def invites_accept(body: InviteAccept, request: Request) -> InviteAccepted
     with each broken rule) or the matching Google identity. An email that already has an account
     is 409: sign in, then open the link. The person then signs in as usual."""
     await enforce_invite_limit(request)
-    if body.password is None:
-        raise ApiError(501, ErrorCode.NOT_IMPLEMENTED)
+    if body.google is not None:
+        try:
+            done = await invites.accept_google(
+                body.token,
+                handle=body.google.handle.get_secret_value(),
+                binding=body.google.binding.get_secret_value(),
+                display_name=body.display_name,
+            )
+        except google_signin.GoogleDisabled:
+            raise ApiError(501, ErrorCode.NOT_IMPLEMENTED, DISABLED_MESSAGE) from None
+        except google_signin.FlowInvalid:
+            raise ApiError(401, ErrorCode.OAUTH_STATE_INVALID, FLOW_MESSAGE) from None
+        return InviteAccepted(email=done.email, tenant_name=done.tenant_name)
+    if body.password is None:  # pragma: no cover - the model needs exactly one credential
+        raise ApiError(422, ErrorCode.VALIDATION_FAILED)
     try:
         done = await invites.accept_password(
             body.token,
