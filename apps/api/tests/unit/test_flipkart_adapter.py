@@ -579,3 +579,47 @@ async def test_flipkart_read_redacts_the_live_token() -> None:
     got = await adapter.get_listing("FK-R3")
     [title] = [f for f in got.fields if f.field == "content.title"]
     assert title.error is not None and live not in title.error.message
+
+
+# ---- SI4 round 3 F2 (AC13): every ERROR row of a read is its own item ----
+
+
+async def test_flipkart_read_two_errors_on_one_attribute_are_two_items() -> None:
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(fk_item(sku="FK-R4"))
+    _stored_errors(
+        app,
+        "FK-R4",
+        [
+            {"code": "X1", "description": "bad", "severity": "ERROR", "attribute": "title"},
+            {"code": "X2", "description": "worse", "severity": "ERROR", "attribute": "title"},
+        ],
+    )
+    got = await adapter.get_listing("FK-R4")
+    assert [(e.field, e.raw_code) for e in got.errors] == [
+        ("content.title", "X1"),
+        ("content.title", "X2"),
+    ]
+    assert all(e.source.value == "flipkart_adapter" for e in got.errors)
+
+
+async def test_flipkart_read_two_item_level_errors_are_two_items() -> None:
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(fk_item(sku="FK-R5"))
+    _stored_errors(
+        app,
+        "FK-R5",
+        [
+            {"code": "E1", "description": "refused", "severity": "ERROR"},
+            {"code": "E2", "description": "refused too", "severity": "ERROR"},
+            {"code": "W1", "description": "odd", "severity": "WARNING"},
+        ],
+    )
+    got = await adapter.get_listing("FK-R5")
+    assert [(e.field, e.raw_code, e.severity.value) for e in got.errors] == [
+        ("listing", "E1", "error"),
+        ("listing", "E2", "error"),
+        ("listing", "W1", "warning"),
+    ]

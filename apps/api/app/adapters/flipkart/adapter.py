@@ -51,7 +51,7 @@ from mkos_schemas.enums import (
     RetryClass,
     Severity,
 )
-from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.base import (
@@ -69,7 +69,7 @@ from app.adapters.base import (
     UpdateFields,
     fields_by_sku,
 )
-from app.adapters.error_map import ErrorMapper, fold_read_issue
+from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, read_issue
 from app.adapters.flipkart import constants as c
 from app.adapters.flipkart.client import FlipkartClient, FlipkartResponse, error_rows
 from app.adapters.flipkart.mapping import (
@@ -635,24 +635,28 @@ class FlipkartAdapter(MarketplaceAdapter):
             live = str(entry.get("status", "")).upper() == c.ACTIVE
             state = MarketplaceState.LIVE if live else MarketplaceState.PROCESSING
         external = entry.get("listing_id")
-        return ListingResult(
+        read_fields, read_errors = self._read_fields(sorted(paths), error_rows(entry), index)
+        return ListingRead(
             listing_id=listing_id or NO_LISTING_ID,
             marketplace=Marketplace.FLIPKART,
             external_id=str(external)[:64] if external else None,
             status=status,
             idempotency_key=f"get:{seller_sku}"[:255],
-            fields=self._read_fields(sorted(paths), error_rows(entry), index),
+            fields=read_fields,
+            errors=read_errors,
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
         )
 
     def _read_fields(
         self, paths: Sequence[str], issues: Sequence[Any], index: Mapping[str, tuple[str, ...]]
-    ) -> list[FieldResult]:
-        """SI4 A16 (AC13): the read's ERROR and WARNING rows as field results, mapped through
+    ) -> tuple[list[FieldResult], list[ErrorItem]]:
+        """SI4 A16 (AC13): the read's ERROR and WARNING rows as field results (one per path)
+        and as items (one per row, read order), mapped through
         this adapter's error map exactly as a write is (`marketplace=FLIPKART`, the session's
         tokens scrubbed), so the source is `flipkart_adapter` and no live token is kept."""
         fields = {p: FieldResult(field=p, status="succeeded") for p in paths}
+        errors: list[ErrorItem] = []  # every issue, in read order (round 3 F2)
         secrets = self._client.used_secrets()
         for issue in issues:
             if not isinstance(issue, dict):
@@ -675,8 +679,10 @@ class FlipkartAdapter(MarketplaceAdapter):
                     categories=[str(category)] if category else [],
                     secrets=secrets,
                 )
+                one = read_issue(one, warning=severity == c.WARNING)
+                errors.append(one)
                 fields = fold_read_issue(fields, one, warning=severity == c.WARNING)
-        return sorted(fields.values(), key=lambda f: f.field)
+        return sorted(fields.values(), key=lambda f: f.field), errors[:MAX_ERROR_ITEMS]
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

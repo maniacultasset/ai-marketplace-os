@@ -35,7 +35,7 @@ from app.services.status_sync import ItemRead
 from app.services.status_sync_outcome import apply_sync
 from app.workers.errors import JobFailed, RetryableJobError
 from app.workers.payloads import StatusSyncPayload
-from app.workers.readers import AccountInactive, ReadFailed, open_reader
+from app.workers.readers import AccountInactive, ListingRead, ReadFailed, open_reader
 from app.workers.registry import JobContext, Outcome, Persist
 
 log = get_logger(__name__)
@@ -104,7 +104,12 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
 
 
 def _read_errors(got: Any) -> list[ErrorItem]:
-    """SI4 A16: the field errors a read carried (an adapter maps them through its error map)."""
+    """SI4 A16: the issues a read carried (an adapter maps them through its error map). A real
+    reader returns every issue (`ListingRead.errors`, round 3 F2), so a second ERROR on one
+    path is its own item; a plain `ListingResult` gives its per-path field errors. A WARNING
+    item opens a warning row, which never blocks (the shared blocking rule)."""
+    if isinstance(got, ListingRead):
+        return list(got.errors)
     return [f.error for f in got.fields if f.error is not None]
 
 

@@ -18,7 +18,7 @@ from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind, Severity
-from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 
 from app.adapters.registry import live_url
 from app.core.logging import get_logger
@@ -106,7 +106,8 @@ def _merged_reads(
     scope = {"listing"}
     for read in reads:
         scope |= set(read.fields) | {e.field for e in read.errors}
-    return list(merged.values()), item_ids, sorted(scope)
+    # a read now carries every issue (round 3 F2): the one report holds at most MAX_ERROR_ITEMS
+    return list(merged.values())[:MAX_ERROR_ITEMS], item_ids, sorted(scope)
 
 
 async def _sync_read_issues(

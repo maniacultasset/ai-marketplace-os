@@ -195,3 +195,89 @@ async def test_amazon_read_item_level_error_is_a_listing_field() -> None:
 async def test_amazon_read_clean_has_no_errors() -> None:
     got = await _read([])
     assert all(f.error is None and f.status == "succeeded" for f in got.fields)
+
+
+# ---- SI4 round 3 F2 (AC13): every ERROR issue of a read is its own item ----
+
+
+def _read_items(got: Any) -> list[tuple[str, str | None, str]]:
+    return [(e.field, e.raw_code, e.severity.value) for e in got.errors]
+
+
+async def test_amazon_read_two_errors_on_one_attribute_are_two_items() -> None:
+    issues = [
+        {
+            "code": "90220",
+            "message": "Bad title.",
+            "severity": "ERROR",
+            "attributeNames": ["item_name"],
+        },
+        {
+            "code": "77777",
+            "message": "Also odd.",
+            "severity": "ERROR",
+            "attributeNames": ["item_name"],
+        },
+    ]
+    got = await _read(issues, rows=[_row()])
+    assert _read_items(got) == [
+        ("content.title", "90220", "error"),
+        ("content.title", "77777", "error"),
+    ]
+    assert _field(got, "content.title").status == "failed"  # the per-path fold is unchanged
+
+
+async def test_amazon_read_two_item_level_errors_are_two_items() -> None:
+    issues = [
+        {"code": "90220", "message": "Refused.", "severity": "ERROR"},
+        {"code": "77777", "message": "Also refused.", "severity": "ERROR"},
+    ]
+    got = await _read(issues, rows=[_row()])
+    assert _read_items(got) == [("listing", "90220", "error"), ("listing", "77777", "error")]
+    assert (got.status, got.marketplace_state) == ("failed", "rejected")
+
+
+async def test_amazon_read_keeps_a_warning_beside_an_error_in_read_order() -> None:
+    issues = [
+        {
+            "code": "77777",
+            "message": "Hmm.",
+            "severity": "WARNING",
+            "attributeNames": ["item_name"],
+        },
+        {"code": "90220", "message": "Bad.", "severity": "ERROR", "attributeNames": ["item_name"]},
+    ]
+    got = await _read(issues, rows=[_row()])
+    assert _read_items(got) == [
+        ("content.title", "77777", "warning"),
+        ("content.title", "90220", "error"),
+    ]
+
+
+async def test_status_sync_takes_every_read_error_from_a_real_read() -> None:
+    """The sync's items come from the adapter's own read (the real fold, no fake read)."""
+    from app.workers.status_sync import _read_errors
+
+    issues = [
+        {
+            "code": "90220",
+            "message": "Bad title.",
+            "severity": "ERROR",
+            "attributeNames": ["item_name"],
+        },
+        {
+            "code": "77777",
+            "message": "Also odd.",
+            "severity": "ERROR",
+            "attributeNames": ["item_name"],
+        },
+        {"code": "90220", "message": "Refused.", "severity": "ERROR"},
+        {"code": "77777", "message": "Also refused.", "severity": "ERROR"},
+    ]
+    got = await _read(issues, rows=[_row()])
+    assert sorted((e.field, e.raw_code) for e in _read_errors(got)) == [
+        ("content.title", "77777"),
+        ("content.title", "90220"),
+        ("listing", "77777"),
+        ("listing", "90220"),
+    ]
