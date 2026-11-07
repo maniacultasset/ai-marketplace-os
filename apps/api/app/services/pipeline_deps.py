@@ -61,6 +61,7 @@ from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
+from app.core.resolved_facts import ProductFacts
 from app.repositories.uow import tenant_uow
 from app.services.embeddings import (
     Embedder,
@@ -71,6 +72,7 @@ from app.services.embeddings import (
 )
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
+from app.services.seller_facts import seller_overlay
 
 log = get_logger(__name__)
 
@@ -204,6 +206,7 @@ class BackendPipelineDeps:
     __slots__ = (
         "_attempt",
         "_embedder",
+        "_facts",
         "_image_reports",
         "_job_id",
         "_marketplace",
@@ -231,8 +234,10 @@ class BackendPipelineDeps:
         embedder: Embedder | None,
         models: _ModelConfig,
         attempt: int = 1,
+        facts: ProductFacts | None = None,
     ) -> None:
         self._tenant_id = tenant_id
+        self._facts = facts
         self._job_id = job_id
         self._user_id = user_id
         self._marketplace = marketplace
@@ -354,6 +359,10 @@ class BackendPipelineDeps:
                 or listing.category != ruleset.category
             ):
                 raise ValueError("the listing is outside the RuleSet's scope")
+            if self._facts is not None:
+                # SI2 T16 (D5): the engine judges the seller's factual values, so a correction
+                # round never chases an AI fact the seller already gave (invariant 9)
+                listing = seller_overlay(listing, self._facts, self._rules.template)
             return evaluate(listing, ruleset, template=self._rules.template, product=self._product)
         except Exception as exc:  # fail closed: an internal error is a failed report, never a pass
             log.error(
@@ -467,6 +476,7 @@ async def build_pipeline_deps(
     marketplace: Marketplace,
     rules: LoadedRules,
     product: Mapping[str, object] | None = None,
+    facts: ProductFacts | None = None,
 ) -> BackendPipelineDeps:
     """One short unit of work preloads the product's stored image reports (D6)."""
     market = Marketplace(marketplace)
@@ -489,4 +499,5 @@ async def build_pipeline_deps(
         embedder=embedder,
         models=_ModelConfig.from_settings(settings),
         attempt=attempt,
+        facts=facts,
     )

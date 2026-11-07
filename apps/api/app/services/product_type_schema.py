@@ -49,15 +49,18 @@ async def current_schema(
 
 
 async def current_schemas(
-    uow: Any, *, marketplace: str, product_type: str | None
+    uow: Any, *, marketplace: str, product_type: str | None, with_parent: bool = True
 ) -> tuple[ProductTypeSchema | None, ProductTypeSchema | None]:
-    """(the sellable `LISTING` definition, the parent `LISTING_PRODUCT_ONLY` one)."""
+    """(the sellable `LISTING` definition, the parent `LISTING_PRODUCT_ONLY` one). With
+    `with_parent=False` (a listing with no parent item) the second is not read: None."""
     sellable = await current_schema(
         uow,
         marketplace=marketplace,
         product_type=product_type,
         requirements=amazon.PTD_REQUIREMENTS,
     )
+    if not with_parent:
+        return sellable, None
     parent = await current_schema(
         uow,
         marketplace=marketplace,

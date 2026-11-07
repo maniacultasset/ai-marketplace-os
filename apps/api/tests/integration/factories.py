@@ -132,6 +132,36 @@ def brand_manufacturer(conn: Conn, tenant_id: UUID, *, country: str | None = "IN
     return party_id
 
 
+def ensure_brand_manufacturer(conn: Conn, tenant_id: UUID) -> None:
+    """`brand_manufacturer` unless the tenant already has a brand-default manufacturer."""
+    row = conn.execute(
+        "SELECT default_manufacturer_party_id FROM brand_profiles WHERE tenant_id = %s",
+        [tenant_id],
+    ).fetchone()
+    if row is None or row[0] is None:
+        brand_manufacturer(conn, tenant_id)
+
+
+SELLER_PRICED: dict[str, Any] = {
+    "mrp": "999.00",
+    "selling_price": "499.00",
+    "country_of_origin": "IN",
+}
+
+
+def seller_product(conn: Conn, tenant_id: UUID, kind: str = "standalone", **columns: Any) -> UUID:
+    """SI2: a product the adapters can publish: priced, with a country, the seller's colour and
+    fabric (standalone) and the tenant's brand-default manufacturer. Columns override."""
+    ensure_brand_manufacturer(conn, tenant_id)
+    defaults: dict[str, Any] = dict(SELLER_PRICED)
+    if kind == "standalone":
+        defaults["attributes"] = {
+            "color": fact(value="navy blue"),
+            "fabric_type": fact(value="cotton"),
+        }
+    return product(conn, tenant_id, kind, **{**defaults, **columns})
+
+
 # Typed fact column → its `provenance` key (DATABASE.md §5.6 `ck_products_typed_facts_sourced`).
 TYPED_FACT_KEYS: dict[str, str] = {
     "mrp": "mrp",

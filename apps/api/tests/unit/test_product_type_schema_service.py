@@ -71,6 +71,9 @@ async def test_si2_current_schemas_asks_for_both() -> None:
     uow = Uow(None)
     assert await current_schemas(uow, marketplace="amazon", product_type="KURTA") == (None, None)
     assert [k["requirements"] for k in uow.ptd.current_calls] == ["LISTING", "LISTING_PRODUCT_ONLY"]
+    alone = Uow(None)
+    await current_schemas(alone, marketplace="amazon", product_type="KURTA", with_parent=False)
+    assert [k["requirements"] for k in alone.ptd.current_calls] == ["LISTING"]
     other = Uow(None)
     assert await current_schemas(other, marketplace="flipkart", product_type="kurta") == (
         None,

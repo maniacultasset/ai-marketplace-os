@@ -37,7 +37,7 @@ from app.core.vectors import hash_vector
 from app.db.base import metadata
 from app.db.models.audit_brand import BrandChunk
 from app.db.models.catalog import Product, ProductColourway, VariantMatrixCell
-from app.db.models.facts import BrandProfile
+from app.db.models.facts import BrandProfile, BusinessParty
 from app.db.models.listings import Listing, ListingVersion
 from app.db.models.platform import AttributeDefinition, CategoryTemplate
 from app.db.models.rules import Rule
@@ -88,6 +88,15 @@ TEMPLATE_CATEGORIES: Final = {
 }
 MARKETPLACES: Final = ("amazon", "flipkart")
 SEED_MRP: Final = Decimal("1499.00")
+# SI2: the demo products carry the seller's price and country, and each demo brand a default
+# manufacturer, so a demo publish sends a complete offer (Amazon) and price block (Flipkart)
+SEED_SELLING_PRICE: Final = Decimal("999.00")
+SEED_COUNTRY: Final = "IN"
+# SI2: the seller's own colour and fabric of the two seeded kurtas (the AI never supplies them)
+SEED_ATTRIBUTES: Final[Mapping[str, Mapping[str, str]]] = {
+    "KURTA-001": {"color": "indigo", "fabric_type": "cotton"},
+    "KURTA-002": {"color": "maroon", "fabric_type": "silk"},
+}
 GUIDELINES: Final[Mapping[str, list[str]]] = {
     "acme": ["Lead with fabric and fit.", "Never claim 'best' or 'guaranteed'."],
     "bharat": ["Name the material first.", "Keep titles under 150 characters."],
@@ -403,10 +412,15 @@ async def seed_products(session: AsyncSession, tenant: SeedTenant, profile: str)
                 category=category,
                 # SI1 D8: a unit without MRP is refused at publish, so the demo carries one
                 mrp=SEED_MRP,
+                selling_price=SEED_SELLING_PRICE,
+                country_of_origin=SEED_COUNTRY,
+                attributes={k: _seller_fact(v) for k, v in SEED_ATTRIBUTES.get(sku, {}).items()},
                 provenance={
                     "title": _seller_fact(title),
                     "category": _seller_fact(category),
                     "mrp": _seller_fact(str(SEED_MRP)),
+                    "selling_price": _seller_fact(str(SEED_SELLING_PRICE)),
+                    "country_of_origin": _seller_fact(SEED_COUNTRY),
                 },
             )
             .on_conflict_do_nothing(constraint="products_tenant_sku_idx")
@@ -426,7 +440,34 @@ async def seed_brand_data(session: AsyncSession, tenant: SeedTenant) -> None:
         guidelines=GUIDELINES[tenant.slug],
         glossary=GLOSSARY[tenant.slug],
     )
-    await session.execute(insert(BrandProfile).values(tenant_id=tenant_id).on_conflict_do_nothing())
+    # SI2: a brand-default manufacturer (and country) every demo product inherits; a brand
+    # profile seeded before SI2 keeps its (empty) defaults
+    maker = uuid.uuid5(SEED_NAMESPACE, f"manufacturer:{tenant.slug}")
+    await session.execute(
+        insert(BusinessParty)
+        .values(
+            id=maker,
+            tenant_id=tenant_id,
+            roles=["manufacturer"],
+            legal_name=f"{tenant.slug.title()} Textiles Pvt Ltd",
+            address_line1="1 Demo Mill Road",
+            city="Surat",
+            state_code="GJ",
+            postal_code="395003",
+            country_code="IN",
+            source="seller",
+        )
+        .on_conflict_do_nothing()
+    )
+    await session.execute(
+        insert(BrandProfile)
+        .values(
+            tenant_id=tenant_id,
+            default_manufacturer_party_id=maker,
+            default_country_of_origin=SEED_COUNTRY,
+        )
+        .on_conflict_do_nothing()
+    )
     model = get_settings().embedding_model
     source_id = uuid.uuid5(SEED_NAMESPACE, f"brand_profile:{tenant.slug}")
     for chunk_type in get_args(BrandChunkType):
@@ -682,9 +723,17 @@ async def seed_demo_family(session: AsyncSession) -> None:
             category=DEMO_LISTING_CATEGORY,
             variation_theme=DEMO_FAMILY_THEME,
             size_run=list(DEMO_FAMILY_SIZES),
-            # SI1 D8: the children inherit the style's MRP
+            # SI1 D8: the children inherit the style's MRP (SI2: and price, country, fabric)
             mrp=SEED_MRP,
-            provenance={**provenance, "mrp": _seller_fact(str(SEED_MRP))},
+            selling_price=SEED_SELLING_PRICE,
+            country_of_origin=SEED_COUNTRY,
+            attributes={"fabric_type": _seller_fact("cotton")},
+            provenance={
+                **provenance,
+                "mrp": _seller_fact(str(SEED_MRP)),
+                "selling_price": _seller_fact(str(SEED_SELLING_PRICE)),
+                "country_of_origin": _seller_fact(SEED_COUNTRY),
+            },
         )
         .on_conflict_do_nothing()
     )

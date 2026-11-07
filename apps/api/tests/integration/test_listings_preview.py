@@ -87,7 +87,7 @@ def _listing(
 def _standalone(world: World, conn: Conn, **over: Any) -> tuple[uuid.UUID, uuid.UUID]:
     acme = world.tenant("acme")
     image_id = uuid.uuid4()
-    product_id = f.product(conn, acme, category=CATEGORY, sku="KURTA-PV-1")
+    product_id = f.seller_product(conn, acme, category=CATEGORY, sku="KURTA-PV-1")
     fields: dict[str, Any] = {"content": _body(image_id), "template_id": _kurta_v2(conn)}
     fields.update(over)
     return _listing(conn, acme, product_id, **fields), image_id
@@ -145,12 +145,22 @@ async def test_listings_preview_report_lists_mapping_errors(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
     """A blank required attribute and an unmapped template are reported, still 200."""
-    listing_id, _ = _standalone(products_world, auth_db, content=_body(uuid.uuid4(), color="  "))
+    acme = products_world.tenant("acme")
+    # SI2: the colour is the seller's; with none (and an AI colour of "  "), it is missing
+    colourless = f.seller_product(
+        auth_db, acme, category=CATEGORY, attributes={"fabric_type": f.fact(value="cotton")}
+    )
+    listing_id = _listing(
+        auth_db,
+        acme,
+        colourless,
+        content=_body(uuid.uuid4(), color="  "),
+        template_id=_kurta_v2(auth_db),
+    )
     body = (await _get(api, products_world, listing_id)).json()
     assert {e["field"] for e in body["report"]["errors"]} >= {"attributes.color"}
     assert body["report"]["status"] == "failed"
-    acme = products_world.tenant("acme")
-    plain = f.product(auth_db, acme, category=CATEGORY)
+    plain = f.seller_product(auth_db, acme, category=CATEGORY)
     unmapped = _listing(auth_db, acme, plain, content=_body(uuid.uuid4()), template_id=None)
     response = await _get(api, products_world, unmapped)
     assert response.status_code == 200
@@ -525,3 +535,84 @@ async def test_listings_preview_reads_the_schema_once_per_digest(
     assert first.status_code == second.status_code == 200
     assert len(reads_first) == 1 and reads_second == []
     assert len(touched) == 1  # the light `current()` read only
+
+
+# ---- SI2 T12 (AC2, AC5, AC8, AC10; CP-D2): the seller's offer and facts in the preview ----
+
+
+async def test_si2_preview_shows_offer_and_manufacturer(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    listing_id, image_id = _standalone(products_world, auth_db)
+    payloads = []
+    for role in ROLES:
+        response = await _get(api, products_world, listing_id, f"{role}@acme.test")
+        assert response.status_code == 200, response.text
+        payloads.append(response.json()["items"])
+    assert all(p == payloads[0] for p in payloads)  # CP-D2: every tenant role sees the same
+    (item,) = payloads[0]
+    attributes = item["payload"]["attributes"]
+    assert item["payload"]["requirements"] == "LISTING"
+    offer = attributes["purchasable_offer"][0]
+    assert offer["our_price"][0]["schedule"][0]["value_with_tax"] == 499.0
+    assert offer["maximum_retail_price"][0]["schedule"][0]["value_with_tax"] == 999.0
+    contact = attributes["manufacturer_contact_information"][0]["value"]
+    assert contact.startswith("Test Mills Pvt Ltd, 1 Mill Road")
+    text = json.dumps(payloads[0])
+    assert f"image:{image_id}" in text and "https://" not in text
+
+
+async def test_si2_family_preview_per_child_price(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    style, kids = family(auth_db, acme, "KFAM-SI2", category=CATEGORY)
+    first = sorted(kids)[0]
+    auth_db.execute(
+        "UPDATE products SET selling_price = 450.00, provenance = provenance || %s WHERE id = %s",
+        [json.dumps({"selling_price": f.fact(value="450.00")}), kids[first]],
+    )
+    content = _body(uuid.uuid4())
+    del content["attributes"]["color"]
+    listing_id = _listing(auth_db, acme, style, content=content, template_id=_kurta_v2(auth_db))
+    body = (await _get(api, products_world, listing_id)).json()
+    assert body["report"]["errors"] == [], body["report"]
+    prices = {
+        i["seller_sku"]: i["payload"]["attributes"]["purchasable_offer"][0]["our_price"][0][
+            "schedule"
+        ][0]["value_with_tax"]
+        for i in body["items"]
+        if i["item_role"] == "child"
+    }
+    assert prices[first] == 450.0
+    assert {v for k, v in prices.items() if k != first} == {499.0}
+    parent = body["items"][0]
+    assert parent["item_role"] == "parent"
+    assert "purchasable_offer" not in parent["payload"]["attributes"]
+
+
+async def test_si2_unmappable_seller_colour_suggests(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    product_id = f.seller_product(
+        auth_db,
+        acme,
+        category=CATEGORY,
+        attributes={"color": f.fact(value="Neon Plaid"), "fabric_type": f.fact(value="cotton")},
+    )
+    listing_id = _listing(
+        auth_db, acme, product_id, content=_body(uuid.uuid4()), template_id=_kurta_v2(auth_db)
+    )
+    body = (await _get(api, products_world, listing_id)).json()
+    (bad,) = [e for e in body["report"]["errors"] if e["field"] == "attributes.color"]
+    assert bad["error_code"] == "VALUE_NOT_ALLOWED" and bad["value_submitted"] == "Neon Plaid"
+    assert bad["suggestion"].startswith("Allowed values include: ")
+
+
+async def test_si2_preview_other_tenant_404(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    listing_id, _ = _standalone(products_world, auth_db)
+    response = await _get(api, products_world, listing_id, "owner@bharat.test")
+    assert response.status_code == 404
