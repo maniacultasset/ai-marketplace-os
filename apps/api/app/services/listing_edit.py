@@ -9,7 +9,8 @@
 3. no change → the current detail, no version;
 4. otherwise a version (`origin=edit`, the parent, the top-level `changed_paths`, the parent's
    maker kept as `generated_by_user_id`, the caller as `edited_by_user_id`, the parent's pins);
-5. the Rules Engine on it, one run (attempt 1, linked);
+5. the Rules Engine on it, one run (attempt 1, linked); SI9 B4: the marketplace check on the
+   new content before the insert, its items synced under `schema` (cause `edit`);
 6. the move (event `edit`) to `validated`, `needs_review` or `blocked/validation_errors`, the
    approval cleared (an edit voids it; the editor can no longer approve, lv_guard);
 7. SI4 A13: the questions (`ask_after_check`): tasks whose issues all closed are cancelled, and
@@ -31,11 +32,13 @@ from pydantic import ValidationError
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
-from app.repositories.listings import NewVersion, UserActor
+from app.repositories.listings import NewVersion, SourceVersion, UserActor
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.validation_runs import summary_of
+from app.services.adapter_check import adapter_check
 from app.services.generation_context import previous_listing
 from app.services.issue_questions import ask_after_check
+from app.services.issues import sync_issues
 from app.services.listings import human_move, insert_run, rules_check, to_detail
 
 log = get_logger(__name__)
@@ -100,12 +103,22 @@ async def edit_content(
     from_status = listing.status
     number = await uow.listing_versions.next_version(listing.id)
     check = await rules_check(uow, listing, new)
-    to, reason = human_move(check.report)
+    # SI9 B4 (CP-D2): the marketplace check on the new content before the insert
+    new_id = uuid.uuid4()
+    adapter = await adapter_check(
+        uow,
+        listing.id,
+        version=SourceVersion(
+            new_id, number, new.model_dump(mode="json"), parent.category_template_id
+        ),
+    )
+    to, reason = human_move(check.report, adapter)
     stored = new.model_copy(
         update={"version": number, "status": ListingStatus(to), "created_at": None}
     )
     version = await uow.listing_versions.insert(
         NewVersion(
+            id=new_id,
             listing_id=listing.id,
             version=number,
             content_json=stored.model_dump(mode="json"),
@@ -121,6 +134,17 @@ async def edit_content(
         )
     )
     run = await insert_run(uow, listing, version.id, check, cause="edit")
+    if adapter is not None:
+        await sync_issues(
+            uow,
+            listing,
+            "schema",
+            adapter,
+            run_id=None,
+            cause="edit",
+            version_id=version.id,
+            critical_keys=await uow.product_facts.critical_keys(),
+        )
     listing = await uow.listings.move(
         listing,
         to=to,

@@ -3,7 +3,8 @@ DATABASE.md:1390-1394 step 4; spec L1015-1037 "ask seller", "one clear question"
 
 `open_questions(uow, listing, *, critical_keys, images)` runs after a check point's issue syncs
 (the generation persist, a content edit, a validate of the current version), for our own checks
-only, sources `rules_engine` and `vision_model` (CP-D5: adapter questions are phase B):
+only, sources `rules_engine`, `vision_model` and SI9's `schema` (the marketplace check before
+approval; CP-D5: real marketplace answers, `<marketplace>_adapter`, are phase B):
 
 - an open **error** row whose route asks `missing_fact` (an `ask` row, or a `deterministic` row
   with that fallback whose fix did not apply, CP-D15) on a dictionary key → one `missing_fact`
@@ -40,7 +41,7 @@ from app.services.generation_result import Move
 
 log = get_logger(__name__)
 
-QUESTION_SOURCES: Final = ("rules_engine", "vision_model")
+QUESTION_SOURCES: Final = ("rules_engine", "vision_model", "schema")
 QUESTION_MOVE: Final = Move("blocked", "human_task_opened", "human_task_open")
 FACT_ROOT: Final = "facts"
 _IMAGE_PREFIX: Final = "images["

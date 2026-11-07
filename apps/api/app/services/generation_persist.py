@@ -15,6 +15,9 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
 3. one `rules_engine` run per recorded `validate_rules` call (attempt k, version NULL) and, with a
    version, the backend's re-check (attempt n+1, linked to it), each with the pins and the
    `facts_digest`;
+3b. SI9 B4: before the version insert, the marketplace check (`adapter_check`) on the content;
+   a blocking check turns the move into `blocked` (`escalate`, CP-D1), and its items are synced
+   under source `schema` after the image findings;
 4. SI4 A10: the fix pass's trail (`record_auto_fixes`: each fixed item's row closed
    `auto_fixed` with its `action_taken`, one `listing.auto_fixed` audit row per fix), then the
    re-check's issue sync; then A13's questions: tasks whose issues all closed are cancelled, and
@@ -52,10 +55,11 @@ from mkos_schemas.validation import ValidationResult
 
 from app.core.logging import get_logger
 from app.core.resolved_facts import ProductFacts, recheck_digest
-from app.repositories.listings import JobActor, NewVersion
+from app.repositories.listings import JobActor, NewVersion, SourceVersion
 from app.repositories.uow import TenantUnitOfWork
+from app.services.adapter_check import adapter_check
 from app.services.auto_fix.fixers import FixRecord
-from app.services.generation_result import Move
+from app.services.generation_result import Move, escalate
 from app.services.image_gate import image_issue_report
 from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcile_tasks
 from app.services.issues import record_auto_fixes, sync_issues
@@ -245,10 +249,25 @@ def make_persist(plan: PersistPlan) -> Any:
             raise ValueError("a generation job needs the human who triggered it")
         number = await uow.listing_versions.next_version(listing.id)
         regeneration = await uow.review_decisions.has_regenerate_for_job(plan.job_id)
+        # SI9 B4 (CP-D2): the marketplace check on the content before the insert, so the
+        # version's status stamp is the move's
+        adapter = await adapter_check(
+            uow,
+            listing.id,
+            version=SourceVersion(
+                plan.version_id,
+                number,
+                plan.listing.model_dump(mode="json"),
+                plan.pins.template_id,
+            ),
+        )
+        move = escalate(plan.move, adapter)
+        if plan.result is not None and move is not plan.move:
+            plan.result["status"] = move.to
         content = plan.listing.model_copy(
             update={
                 "version": number,
-                "status": ListingStatus(plan.move.to),
+                "status": ListingStatus(move.to),
                 "listing_id": listing.id,
             }
         )
@@ -283,7 +302,7 @@ def make_persist(plan: PersistPlan) -> Any:
                 run_id=None if recheck is None else recheck.id,
                 version_id=version.id,
                 version=number,
-                status=plan.move.to,
+                status=move.to,
                 job_id=plan.job_id,
                 critical_keys=critical,
                 cause="regenerate" if regeneration else "generate",
@@ -315,7 +334,20 @@ def make_persist(plan: PersistPlan) -> Any:
                 job_id=plan.job_id,
                 critical_keys=critical,
             )
-        move = await _ask(uow, listing, plan, plan.move, plan.listing, critical)
+        if adapter is not None:
+            # SI9 B4 (D6): the check's items under `schema`, full scope
+            await sync_issues(
+                uow,
+                listing,
+                "schema",
+                adapter,
+                run_id=None,
+                cause="regenerate" if regeneration else "generate",
+                version_id=version.id,
+                job_id=plan.job_id,
+                critical_keys=critical,
+            )
+        move = await _ask(uow, listing, plan, move, plan.listing, critical)
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(
             listing,

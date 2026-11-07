@@ -158,6 +158,28 @@ async def make_generating(
 REASONS = {"blocked": "corrections_exhausted", "failed": "generation_failed"}
 
 
+def current_template(world: GenWorld, marketplace: str = "amazon") -> uuid.UUID:
+    """The current mapped template of the kurta category (the one a generation pins)."""
+    found = world.scalar(
+        "SELECT id FROM category_templates WHERE marketplace = %s AND category = %s "
+        "AND is_current",
+        [marketplace, CATEGORY],
+    )
+    assert found is not None
+    return uuid.UUID(str(found))
+
+
+def pin_current_template(world: GenWorld, version_id: uuid.UUID) -> None:
+    """SI9 B4: point a hand-made or demo version at the current mapped template, so the
+    marketplace check before approval reads it as a generation's (test arrangement only)."""
+    with world.conn.transaction():
+        world.conn.execute("SET LOCAL session_replication_role = replica")
+        world.conn.execute(
+            "UPDATE listing_versions SET category_template_id = %s WHERE id = %s",
+            [current_template(world), version_id],
+        )
+
+
 def set_status(
     world: GenWorld, listing_id: uuid.UUID, status: str, reason: str | None = None
 ) -> None:

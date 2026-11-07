@@ -215,6 +215,15 @@ def recheck(
         return _internal(listing)
 
 
+def escalate(move: Move, adapter: ErrorReport | None) -> Move:
+    """SI9 B4 (CP-D1, CP-D3): a blocking marketplace check turns a clean or warning outcome into
+    `blocked/corrections_exhausted` (no `generating → blocked/validation_errors` edge exists;
+    a question then makes it `human_task_open`). An adapter warning changes nothing."""
+    if adapter is not None and adapter.blocking and move in (VALIDATED, NEEDS_REVIEW):
+        return BLOCKED
+    return move
+
+
 def map_outcome(
     terminal_state: str,
     listing: CanonicalListing | None,

@@ -172,3 +172,39 @@ def test_recheck_engine_refusal_fails_closed() -> None:
     )
     report = recheck(listing, other_scope, None)
     assert not report.passed and report.error_code is ErrorCode.INTERNAL_ERROR
+
+
+# ---- SI9 T8 (CP-D1, CP-D3): a blocking marketplace check escalates a clean or warning move ----
+
+
+def _adapter(severity: str | None) -> Any:
+    from mkos_schemas.codes import ErrorCode
+    from mkos_schemas.enums import ErrorSource, Severity
+    from mkos_schemas.errors import ErrorItem, ErrorReport
+
+    if severity is None:
+        return ErrorReport(status="passed")
+    item = ErrorItem(
+        field="attributes.fit",
+        error_code=ErrorCode.MISSING_ATTRIBUTE,
+        severity=Severity(severity),
+        message="m",
+        source=ErrorSource.SCHEMA,
+        retryable=False,
+    )
+    blocking = severity == "error"
+    return ErrorReport(status="failed" if blocking else "passed", errors=[item])
+
+
+@pytest.mark.parametrize("move_name", ["VALIDATED", "NEEDS_REVIEW", "BLOCKED", "FAILED"])
+@pytest.mark.parametrize("severity", ["error", "warning", None, "none"])
+def test_escalate(move_name: str, severity: str | None) -> None:
+    from app.services import generation_result as g
+
+    move = getattr(g, move_name)
+    adapter = None if severity == "none" else _adapter(severity)
+    got = g.escalate(move, adapter)
+    if severity == "error" and move_name in ("VALIDATED", "NEEDS_REVIEW"):
+        assert got is g.BLOCKED
+    else:
+        assert got is move

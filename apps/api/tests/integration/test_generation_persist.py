@@ -77,6 +77,8 @@ def _body(world: GenWorld, product_id: uuid.UUID) -> CanonicalListing:
         content=ListingContent(
             title="Silk kurta", bullets=["soft weave"], description="A silk kurta."
         ),
+        # SI9 B4: what the Amazon mapping needs, so the marketplace check passes
+        attributes={"color": "Black", "fabric_type": "Cotton"},
     )
 
 

@@ -62,8 +62,10 @@ def _ptd_errors(amz: AmzWorld, listing_id: Any, job: dict[str, Any]) -> list[str
 
 
 async def test_invalid_listing_is_never_sent(api: httpx.AsyncClient, amz: AmzWorld) -> None:
-    store(amz.pub.conn, STRICT)
     made = await approved(amz.pub)
+    # SI9 B4: a definition stored before the generation blocks it before approval; this one
+    # arrives after the approval, so the publish job's own check is what refuses it
+    store(amz.pub.conn, STRICT)
     item = await publish_one(api, amz.pub, made)
     await _run(item["job_id"])
     assert amz.writes() == 0

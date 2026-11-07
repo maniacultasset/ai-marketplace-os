@@ -100,8 +100,10 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     )
 
 
-def human_move(report: ErrorReport) -> tuple[str, str | None]:
-    if report.blocking:
+def human_move(report: ErrorReport, adapter: ErrorReport | None = None) -> tuple[str, str | None]:
+    """The status a human check point moves to. SI9 B4: a blocking marketplace check blocks as
+    a Rules block does; its warnings change nothing (CP-D3)."""
+    if report.blocking or (adapter is not None and adapter.blocking):
         return "blocked", BLOCKED_REASON
     if report.errors:
         return "needs_review", None
