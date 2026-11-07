@@ -97,3 +97,54 @@ async def test_staff_requeue_keeps_image_lock(jobs_db: JobWorld) -> None:
         _, new = await JobRunRepository(session, tenant).requeue(job)
     assert new.queue_job_id is not None
     assert _lock(jobs_db, new.queue_job_id) == IMAGE_JOB_LOCK
+
+
+# ---- SI7 T11 (design §2.2): a candidate job keeps its tenant's lock on every re-defer ----
+
+
+async def _enqueue_candidate_job(tenant: uuid.UUID) -> tuple[uuid.UUID, str]:
+    async with unit_of_work(tenant) as session:
+        done = await JobRunRepository(session, tenant).enqueue(
+            EnqueueSpec(
+                kind=JobKind.IMAGE_COMPLIANCE,
+                entity_type="image_candidate",
+                entity_id=uuid.uuid4(),
+                created_by=None,
+                payload={"candidate_id": str(uuid.uuid4())},
+            )
+        )
+    assert done.job.queue_job_id is not None
+    return done.job.id, done.job.queue_job_id
+
+
+async def test_candidate_orphan_redefer_keeps_tenant_lock(jobs_db: JobWorld) -> None:
+    tenant = jobs_db.tenant("acme")
+    job, qid = await _enqueue_candidate_job(tenant)
+    assert _lock(jobs_db, qid) == f"image_candidate:{tenant}"
+    jobs_db.conn.execute("UPDATE job_runs SET status = 'queued', attempt = 1 WHERE id = %s", [job])
+    jobs_db.conn.execute(
+        "UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = %s",
+        [int(qid)],
+    )
+    result = await reap_once()
+    assert result.redeferred == [job]
+    new_qid = job_row(jobs_db.conn, job)["queue_job_id"]
+    assert _lock(jobs_db, new_qid) == f"image_candidate:{tenant}"
+
+
+async def test_candidate_lease_reaper_requeue_keeps_tenant_lock(jobs_db: JobWorld) -> None:
+    tenant = jobs_db.tenant("acme")
+    job, qid = await _enqueue_candidate_job(tenant)
+    jobs_db.conn.execute(
+        "UPDATE job_runs SET status = 'running', attempt = 1, max_attempts = 3, "
+        "started_at = now(), lease_expires_at = now() - interval '1 second' WHERE id = %s",
+        [job],
+    )
+    jobs_db.conn.execute(
+        "UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = %s",
+        [int(qid)],
+    )
+    await reap_once()
+    row = job_row(jobs_db.conn, job)
+    assert row["status"] == "queued"
+    assert _lock(jobs_db, row["queue_job_id"]) == f"image_candidate:{tenant}"

@@ -427,7 +427,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             kind=kind.value,
             queue=job.queue,
             job_run_id=job.id,
-            lock=spec.lock or lock_for(kind),
+            lock=spec.lock or lock_for(kind, spec.entity_type, self.tenant_id),
         )
         await self.db.execute(
             self._scoped_write(
@@ -719,7 +719,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 kind=done.kind,
                 queue=done.queue,
                 job_run_id=done.id,
-                lock=lock_for(done.kind),
+                lock=lock_for(done.kind, done.entity_type, done.tenant_id),
             )
             await self.db.execute(
                 self._scoped_write(
@@ -794,7 +794,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             return None
         await retire_on_session(self.db, job.queue_job_id)
         queue_job_id = await defer_on_session(
-            self.db, kind=job.kind, queue=job.queue, job_run_id=job.id, lock=lock_for(job.kind)
+            self.db,
+            kind=job.kind,
+            queue=job.queue,
+            job_run_id=job.id,
+            lock=lock_for(job.kind, job.entity_type, job.tenant_id),
         )
         await self.db.execute(
             self._scoped_write(
