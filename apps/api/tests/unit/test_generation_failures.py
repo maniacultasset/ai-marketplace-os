@@ -57,6 +57,28 @@ def no_db(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(pipeline_deps, "tenant_uow", fake_uow)
 
 
+@pytest.fixture
+def chunks_db(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SI10: the brand has active chunks (so retrieval embeds), and the search finds none."""
+    from app.services import pipeline_deps
+
+    class _Chunks:
+        async def has_active(self) -> bool:
+            return True
+
+        async def search(self, *_: Any, **__: Any) -> list[Any]:
+            return []
+
+    class _Uow:
+        brand_chunks = _Chunks()
+
+    @asynccontextmanager
+    async def fake_uow(*_: Any, **__: Any) -> Any:
+        yield _Uow()
+
+    monkeypatch.setattr(pipeline_deps, "tenant_uow", fake_uow)
+
+
 async def _started(deps: Any, *stages: str) -> None:
     from mkos_schemas.enums import PipelineStage
 
@@ -159,6 +181,7 @@ async def test_missing_generation_key_outside_local_is_not_retryable() -> None:
     assert is_transient_failure(caught.value) is False
 
 
+@pytest.mark.usefixtures("chunks_db")
 async def test_no_embedder_is_not_retryable() -> None:
     from app.services.pipeline_deps import SeamPortError
     from app.workers.generation import is_transient_failure
@@ -170,6 +193,7 @@ async def test_no_embedder_is_not_retryable() -> None:
     assert is_transient_failure(caught.value) is False
 
 
+@pytest.mark.usefixtures("chunks_db")
 @pytest.mark.parametrize(("retryable", "transient"), [(False, False), (True, True)])
 async def test_embedding_failure_keeps_its_retryable_flag(
     monkeypatch: pytest.MonkeyPatch, retryable: bool, transient: bool
@@ -336,3 +360,43 @@ def test_a_failed_photo_record_is_not_a_transient_generation_failure() -> None:
     assert runs_failed_transiently([*runs[:3], photo], []) is False
     failed_photo = photo.model_copy(update={"status": "failed"})
     assert runs_failed_transiently([_record("completed", None, "content"), failed_photo]) is False
+
+
+@pytest.mark.usefixtures("chunks_db")
+@pytest.mark.parametrize(
+    ("failure", "refusal"),
+    [
+        ({"code": "AI_CREDIT_EXHAUSTED", "status": 402}, "credit"),
+        ({"code": "MODEL_UNAVAILABLE", "status": 401, "key_suspect": True}, "key_suspect"),
+        ({"code": "MODEL_UNAVAILABLE", "status": 403}, None),
+    ],
+)
+async def test_embed_refusal_is_remembered(
+    monkeypatch: pytest.MonkeyPatch, failure: dict[str, Any], refusal: str | None
+) -> None:
+    """SI10 T9: the deps remember what a query-embed refusal means for the worker (T10)."""
+    from app.services import pipeline_deps
+    from app.services.embeddings import EmbeddingFailed
+    from app.services.pipeline_deps import SeamPortError
+    from mkos_schemas.codes import ErrorCode
+
+    calls: list[str] = []
+
+    async def refused(*_: Any, **__: Any) -> Any:
+        calls.append("embed")
+        raise EmbeddingFailed(
+            ErrorCode(failure["code"]),
+            retryable=False,
+            status=failure["status"],
+            key_suspect=failure.get("key_suspect", False),
+        )
+
+    monkeypatch.setattr(pipeline_deps, "embed_query", refused)
+    deps = _deps()
+    deps._embedder = object()
+    for _ in range(2):
+        with pytest.raises(SeamPortError) as caught:
+            await deps.retrieve_brand_chunks(deps._tenant_id, "kurta", 8)
+        assert caught.value.code.value == failure["code"]
+    assert calls == ["embed"]
+    assert deps.embed_refusal == refusal

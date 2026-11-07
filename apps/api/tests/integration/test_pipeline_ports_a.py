@@ -131,6 +131,7 @@ async def test_port_retrieve_brand_chunks_model_unavailable_outside_local(
     from app.services.pipeline_deps import SeamPortError
     from mkos_schemas.codes import ErrorCode
 
+    chunk(auth_db, products_world.tenant("acme"), "acme guidance")  # SI10: chunks need the embed
     deps = await build(products_world, auth_db, settings("staging"))
     with pytest.raises(SeamPortError) as caught:
         await deps.retrieve_brand_chunks(products_world.tenant("acme"), "guidance")
@@ -407,3 +408,144 @@ def test_pipeline_deps_satisfies_protocol() -> None:
         return None
 
     accepts(BackendPipelineDeps.__new__(BackendPipelineDeps))
+
+
+# ---- SI10 T9 (AC11, AC8): one query embed per run, or none ----
+
+# The three concurrent calls of the pipeline's retrieve_brand node (one query, three type sets).
+TYPE_SETS = (["tone_rule", "example"], ["glossary"], ["compliance"])
+
+
+class CountingEmbedder:
+    """The local hash embedder with a call counter, or a scripted failure."""
+
+    model = "text-embedding-3-small"
+
+    def __init__(self, failure: Exception | None = None) -> None:
+        self.calls = 0
+        self.failure = failure
+
+    async def embed(self, texts: Any) -> Any:
+        import asyncio
+
+        from app.core.vectors import hash_vector
+        from app.services.embeddings import EmbeddingBatch
+
+        self.calls += 1
+        await asyncio.sleep(0.01)  # concurrent callers overlap
+        if self.failure is not None:
+            raise self.failure
+        return EmbeddingBatch(
+            vectors=[hash_vector(t) for t in texts], input_tokens=len(texts), model=self.model
+        )
+
+
+async def _with_embedder(world: World, conn: Conn, embedder: Any) -> Any:
+    deps = await build(world, conn)
+    deps._embedder = embedder
+    return deps
+
+
+async def _three(deps: Any, tenant: uuid.UUID) -> list[Any]:
+    import asyncio
+
+    return list(
+        await asyncio.gather(
+            *(deps.retrieve_brand_chunks(tenant, "kurta guidance", 8, t) for t in TYPE_SETS),
+            return_exceptions=True,
+        )
+    )
+
+
+def _runs(conn: Conn, tenant: uuid.UUID) -> int:
+    row = conn.execute("SELECT count(*) FROM agent_runs WHERE tenant_id = %s", [tenant]).fetchone()
+    assert row is not None
+    return int(row[0])
+
+
+async def test_retrieve_no_chunks_no_embed(products_world: World, auth_db: Conn) -> None:
+    acme = products_world.tenant("acme")
+    embedder = CountingEmbedder()
+    deps = await _with_embedder(products_world, auth_db, embedder)
+    assert await _three(deps, acme) == [[], [], []]
+    assert embedder.calls == 0
+    assert _runs(auth_db, acme) == 0
+    assert deps.embed_refusal is None
+
+
+async def test_retrieve_with_chunks_one_embed(products_world: World, auth_db: Conn) -> None:
+    acme = products_world.tenant("acme")
+    tone = chunk(auth_db, acme, "acme tone", type="tone_rule")
+    gloss = chunk(auth_db, acme, "acme glossary", type="glossary")
+    embedder = CountingEmbedder()
+    deps = await _with_embedder(products_world, auth_db, embedder)
+    first, second, third = await _three(deps, acme)
+    assert embedder.calls == 1
+    assert _runs(auth_db, acme) == 1
+    assert {c.id for c in first} == {tone}
+    assert {c.id for c in second} == {gloss}
+    assert third == []
+
+
+@pytest.mark.parametrize(
+    ("failure", "code", "refusal"),
+    [
+        ("credit", "AI_CREDIT_EXHAUSTED", "credit"),
+        ("wire403", "MODEL_UNAVAILABLE", "key_suspect"),
+        ("body403", "MODEL_UNAVAILABLE", None),
+    ],
+)
+async def test_retrieve_failure_shared_by_all_three(
+    products_world: World, auth_db: Conn, failure: str, code: str, refusal: str | None
+) -> None:
+    from app.services.embeddings import EmbeddingFailed
+    from app.services.pipeline_deps import SeamPortError
+    from mkos_schemas.codes import ErrorCode
+
+    failures = {
+        "credit": EmbeddingFailed(ErrorCode.AI_CREDIT_EXHAUSTED, retryable=False, status=402),
+        "wire403": EmbeddingFailed(
+            ErrorCode.MODEL_UNAVAILABLE, retryable=False, status=403, key_suspect=True
+        ),
+        "body403": EmbeddingFailed(ErrorCode.MODEL_UNAVAILABLE, retryable=False, status=403),
+    }
+    acme = products_world.tenant("acme")
+    chunk(auth_db, acme, "acme tone")
+    embedder = CountingEmbedder(failures[failure])
+    deps = await _with_embedder(products_world, auth_db, embedder)
+    results = await _three(deps, acme)
+    assert embedder.calls == 1
+    assert all(isinstance(r, SeamPortError) for r in results), results
+    assert {r.code.value for r in results} == {code}
+    assert len({id(r) for r in results}) == 3, "each caller gets its own exception"
+    assert deps.embed_refusal == refusal
+
+
+async def test_retrieve_old_model_or_inactive_chunks_count_as_none(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    chunk(auth_db, acme, "old model", embedding_model="text-embedding-ada-002")
+    chunk(auth_db, acme, "retired", is_active=False)
+    embedder = CountingEmbedder()
+    deps = await _with_embedder(products_world, auth_db, embedder)
+    assert await _three(deps, acme) == [[], [], []]
+    assert embedder.calls == 0
+
+
+async def test_retrieve_no_embedder_no_chunks_is_empty(
+    products_world: World, auth_db: Conn
+) -> None:
+    deps = await build(products_world, auth_db, settings("staging"))
+    assert await deps.retrieve_brand_chunks(products_world.tenant("acme"), "guidance") == []
+
+
+async def test_retrieve_other_tenant_chunks_do_not_count(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme, bharat = products_world.tenant("acme"), products_world.tenant("bharat")
+    chunk(auth_db, bharat, "bharat guidance")
+    embedder = CountingEmbedder()
+    deps = await _with_embedder(products_world, auth_db, embedder)
+    assert await _three(deps, acme) == [[], [], []]
+    assert embedder.calls == 0

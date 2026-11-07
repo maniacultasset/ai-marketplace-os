@@ -62,6 +62,7 @@ from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
 from app.repositories.uow import tenant_uow
+from app.services.ai_credit import EmbedRefusal
 from app.services.auto_fix.apply import auto_fix
 from app.services.auto_fix.fixers import FixContext
 from app.services.embeddings import (
@@ -206,12 +207,16 @@ class BackendPipelineDeps:
     __slots__ = (
         "_attempt",
         "_critical_keys",
+        "_embed_refusal",
         "_embedder",
+        "_has_chunks",
         "_image_reports",
         "_job_id",
         "_marketplace",
         "_models",
         "_product",
+        "_query_vectors",
+        "_retrieval_lock",
         "_rules",
         "_rules_calls",
         "_spans",
@@ -251,6 +256,12 @@ class BackendPipelineDeps:
         self._rules_calls: list[RulesCall] = []
         self._spans: dict[str, Span] = {}
         self._stages: set[PipelineStage] = set()
+        # SI10 T9: one query embed per distinct query per run (or none for a brand with no
+        # chunks); a failure is remembered and re-raised to every caller.
+        self._retrieval_lock = asyncio.Lock()
+        self._has_chunks: bool | None = None
+        self._query_vectors: dict[str, list[float] | SeamPortError] = {}
+        self._embed_refusal: EmbedRefusal | None = None
 
     def __repr__(self) -> str:
         return f"BackendPipelineDeps(tenant_id={self._tenant_id}, job_id={self._job_id})"
@@ -258,6 +269,11 @@ class BackendPipelineDeps:
     @property
     def tenant_id(self) -> UUID:
         return self._tenant_id
+
+    @property
+    def embed_refusal(self) -> EmbedRefusal | None:
+        """SI10: `credit` after a query-embed 402, `key_suspect` after a wire 401/403, else None."""
+        return self._embed_refusal
 
     @property
     def job_id(self) -> UUID:
@@ -305,8 +321,6 @@ class BackendPipelineDeps:
             or any(not isinstance(t, str) or t not in CHUNK_TYPES for t in types)
         ):
             raise SeamPortError(ErrorCode.VALIDATION_FAILED, "types")
-        if self._embedder is None:
-            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
 
     async def retrieve_brand_chunks(
         self,
@@ -316,23 +330,43 @@ class BackendPipelineDeps:
         types: Sequence[str] | None = None,
     ) -> Sequence[BrandChunkDTO]:
         self._check_search(tenant_id, query, k, types)
-        embedder = self._embedder
-        if embedder is None:  # _check_search refused it already; this narrows the type
-            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
-        try:
-            vector = await embed_query(
-                embedder,
-                query,
-                tenant_id=self._tenant_id,
-                job_id=self._job_id,
-                attempt=self._attempt,
-                request_id=current_request_id() or new_request_id(),
-            )
-        except EmbeddingFailed as exc:
-            raise SeamPortError(exc.code, "embedding", retryable=exc.retryable) from None
+        async with self._retrieval_lock:
+            if self._has_chunks is None:
+                async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
+                    self._has_chunks = await uow.brand_chunks.has_active()
+            if not self._has_chunks:  # nothing to find: no embed, no row (CP-D12)
+                return []
+            vector = await self._query_vector(query)
         wanted = None if types is None else cast(list[BrandChunkType], list(types))
         async with tenant_uow(self._tenant_id, user_id=self._user_id) as uow:
             return await uow.brand_chunks.search(vector, k, wanted)
+
+    async def _query_vector(self, query: str) -> list[float]:
+        """The query's vector, embedded once per run; the caller holds `_retrieval_lock`."""
+        cached = self._query_vectors.get(query)
+        if cached is None:
+            embedder = self._embedder
+            if embedder is None:
+                raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "embedding")
+            try:
+                cached = await embed_query(
+                    embedder,
+                    query,
+                    tenant_id=self._tenant_id,
+                    job_id=self._job_id,
+                    attempt=self._attempt,
+                    request_id=current_request_id() or new_request_id(),
+                )
+            except EmbeddingFailed as exc:
+                if exc.code is ErrorCode.AI_CREDIT_EXHAUSTED:
+                    self._embed_refusal = "credit"
+                elif exc.key_suspect and self._embed_refusal is None:
+                    self._embed_refusal = "key_suspect"
+                cached = SeamPortError(exc.code, "embedding", retryable=exc.retryable)
+            self._query_vectors[query] = cached
+        if isinstance(cached, SeamPortError):  # a fresh exception for each caller
+            raise SeamPortError(cached.code, cached.field, retryable=cached.retryable)
+        return cached
 
     # ---- validate_rules (D7) ----
 
