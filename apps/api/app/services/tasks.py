@@ -16,6 +16,7 @@ Locks: the product row first, then the task (`FOR UPDATE`), the same order as a 
 from __future__ import annotations
 
 import json
+import math
 import re
 import uuid
 from datetime import UTC, datetime
@@ -26,6 +27,7 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import repositories_on, tenant_uow
+from app.services.intake_values import MoneyError, parse_money
 from app.services.photo_facts import ANSWER_MAX_PIECES, VOCAB, canonical, fold
 from app.services.product_facts import STANDALONE, build_attributes
 
@@ -90,18 +92,24 @@ def _snapshot(question: str, answer: object) -> dict[str, str]:
 
 def _answer_value(key: str, value: Any, expected: Any) -> Any:
     """The value to store, or 422 at `value`, checked against the task's AnswerSpec
-    (DATABASE.md:1411, :1422) whichever lane opened it. `enum` takes one of `allowed_values`
-    (the canonical form for a photo-vocabulary key, DATABASE.md:1417), `multi_enum` a non-empty
-    list of them, `number` an int within `min`..`max`. An enum spec without allowed values takes
-    nothing. A piece count is always an int 1..50, whatever the spec says."""
-    spec = expected if isinstance(expected, dict) else {}
-    kind = spec.get("kind")
+    (DATABASE.md:1411, :1422) whichever lane opened it:
+
+    - `enum` takes one of `allowed_values` (the canonical form for a photo-vocabulary key,
+      DATABASE.md:1417), `multi_enum` a non-empty list of them; without allowed values, nothing;
+    - `number` an int or float (not a bool) within `min`..`max`;
+    - `text` a string of at most `max_length` characters; `boolean` a bool;
+    - `money_inr` a positive decimal string; `percent_composition` a string (the composition
+      value type parses it in `build_attributes`);
+    - every other kind (`file`, `acknowledge`, `reconnect`, an unknown or missing kind) no value.
+
+    A piece count is always an int 1..50, whatever the spec says."""
     if key == "number_of_pieces":
-        return _number(value, 1, MAX_PIECES)
+        return _count(value, 1, MAX_PIECES)
+    kind = expected.get("kind") if isinstance(expected, dict) else None
     if kind == "number":
-        return _number(value, spec.get("min"), spec.get("max"))
+        return _number(value, expected.get("min"), expected.get("max"))
     if kind in ("enum", "multi_enum"):
-        allowed = spec.get("allowed_values")
+        allowed = expected.get("allowed_values")
         if not isinstance(allowed, list) or not allowed:
             raise InputError(ErrorCode.VALIDATION_FAILED, "value")
         if kind == "enum":
@@ -109,15 +117,42 @@ def _answer_value(key: str, value: Any, expected: Any) -> Any:
         if not isinstance(value, list) or not value:
             raise InputError(ErrorCode.VALIDATION_FAILED, "value")
         return [_member(key, item, allowed) for item in value]
+    if kind == "text":
+        limit = expected.get("max_length")
+        if isinstance(value, str) and (not _real(limit) or len(value) <= limit):
+            return value
+    elif kind == "boolean":
+        if isinstance(value, bool):
+            return value
+    elif kind == "money_inr":
+        try:
+            parse_money(value)
+        except MoneyError:
+            pass
+        else:
+            return value
+    elif kind == "percent_composition" and isinstance(value, str):
+        return value
+    raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+
+
+def _real(bound: Any) -> bool:
+    """An int or float bound (a bool is neither)."""
+    return isinstance(bound, int | float) and not isinstance(bound, bool)
+
+
+def _count(value: Any, low: int, high: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "value")
     return value
 
 
-def _number(value: Any, low: Any, high: Any) -> int:
-    if isinstance(value, bool) or not isinstance(value, int):
+def _number(value: Any, low: Any, high: Any) -> int | float:
+    if not _real(value) or math.isnan(value) or math.isinf(value):
         raise InputError(ErrorCode.VALIDATION_FAILED, "value")
-    if (isinstance(low, int) and value < low) or (isinstance(high, int) and value > high):
+    if (_real(low) and value < low) or (_real(high) and value > high):
         raise InputError(ErrorCode.VALIDATION_FAILED, "value")
-    return value
+    return value  # type: ignore[no-any-return]
 
 
 def _member(key: str, value: Any, allowed: list[Any]) -> Any:
