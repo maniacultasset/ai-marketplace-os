@@ -103,6 +103,7 @@ async def issue(principal: Principal, user_id: uuid.UUID) -> tuple[str, datetime
     raw = secrets.token_urlsafe(TOKEN_BYTES)
     async with unit_of_work(tenant, user_id=principal.user_id) as session:
         links = ResetLinkRepository(session, tenant)
+        await links.lock_member(user_id)  # a double-clicked reset queues here (tester R2)
         await links.revoke_open(user_id)
         link = await links.create(
             user_id=user_id, token_hash=_hash(raw), issued_by=principal.user_id, ttl=RESET_TTL

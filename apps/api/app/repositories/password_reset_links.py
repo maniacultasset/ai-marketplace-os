@@ -9,12 +9,16 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
 
-from sqlalchemy import func, update
+from sqlalchemy import func, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.errors import RowCountError
 from app.db.models.tenancy import PasswordResetLink
 from app.repositories.base import TenantScopedRepository
+
+_MEMBER_LOCK: Final = text(
+    "SELECT pg_advisory_xact_lock(hashtextextended('pwreset:' || :t || ':' || :u, 0))"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +58,13 @@ def _rowcount(result: Any) -> int:
 
 class ResetLinkRepository(TenantScopedRepository[PasswordResetLink]):
     model = PasswordResetLink
+
+    async def lock_member(self, user_id: uuid.UUID) -> None:
+        """A transaction-scoped advisory lock on (tenant, member), taken before `revoke_open`:
+        concurrent issues for one member queue; under READ COMMITTED each later one revokes the
+        link before it and inserts its own, so the last link wins and
+        `uq_password_reset_links_live` never fires (tester R2)."""
+        await self.db.execute(_MEMBER_LOCK, {"t": str(self.tenant_id), "u": str(user_id)})
 
     async def revoke_open(self, user_id: uuid.UUID) -> int:
         """Revoke the member's open link (live or expired): frees the one-live-link index."""

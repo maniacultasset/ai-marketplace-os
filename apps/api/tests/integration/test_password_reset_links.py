@@ -152,6 +152,27 @@ async def test_a_new_link_replaces_the_old(api: httpx.AsyncClient, world: World)
     assert (await _redeem(api, new)).status_code == 204
 
 
+async def test_concurrent_issues_for_one_member_leave_one_live_link(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """A double-clicked reset (tester R2): the per-member lock queues the issues, so every
+    caller gets 201, the last link wins and only one stays live (no 500 on
+    `uq_password_reset_links_live`)."""
+    import asyncio
+
+    responses = await asyncio.gather(*(_issue(api, world, "reviewer@acme.test") for _ in range(4)))
+    assert [r.status_code for r in responses] == [201] * 4, [r.text for r in responses]
+    tokens = [str(r.json()["reset_url"]).split("#token=", 1)[1] for r in responses]
+    live = auth_db.execute(
+        "SELECT token_hash FROM password_reset_links WHERE user_id = %s "
+        "AND used_at IS NULL AND revoked_at IS NULL",
+        [world.user("reviewer@acme.test")],
+    ).fetchall()
+    assert len(live) == 1
+    (winner,) = [t for t in tokens if hashlib.sha256(t.encode()).digest() == bytes(live[0][0])]
+    assert (await _redeem(api, winner)).status_code == 204
+
+
 async def test_redeem_rules_keep_the_link_live(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
