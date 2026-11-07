@@ -183,7 +183,7 @@ class AmazonAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=issue_text(str(issue.get("message", "")), names, index),
+                    raw_message=issue_text(str(issue.get("message", "")), names, index, secrets),
                     field=path,
                     value=values.get(path) if path else None,
                     categories=categories,

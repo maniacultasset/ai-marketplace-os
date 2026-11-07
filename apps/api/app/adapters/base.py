@@ -31,6 +31,7 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
 from __future__ import annotations
 
 import difflib
+import functools
 import math
 import re
 import unicodedata
@@ -51,6 +52,8 @@ from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.paths import is_valid_field_path
 from mkos_schemas.publish import ItemResult, ListingResult
 from pydantic import SecretStr
+
+from app.core.redaction import REDACTED
 
 ItemRole = Literal["standalone", "parent", "child"]
 ITEM_ROLES: Final = frozenset(get_args(ItemRole))
@@ -507,11 +510,39 @@ def party_secrets(listing: AdapterListing) -> tuple[str, ...]:
     return tuple(sorted(found, key=lambda s: (-len(s), s)))
 
 
-def issue_text(raw: str, names: Sequence[str], index: Mapping[str, Sequence[str]]) -> str:
+_WORD: Final = re.compile(r"[^\W_]+")
+
+
+@functools.lru_cache(maxsize=64)
+def _loose_patterns(parties: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
+    out: list[re.Pattern[str]] = []
+    for party in parties:
+        words = _WORD.findall(party)
+        if words and len(party) >= _PART_MIN:
+            out.append(re.compile(r"[\W_]+".join(map(re.escape, words)), re.IGNORECASE))
+    return tuple(out)
+
+
+def party_patterns(parties: Sequence[str]) -> tuple[re.Pattern[str], ...]:
+    """Loose matchers for the `party_secrets` strings (same order, longest first): the words
+    of each string of at least 4 characters, case-insensitive, joined by any run of
+    non-alphanumerics, so `"TEST MILLS PVT LTD; 1 MILL ROAD / SURAT"` still matches."""
+    return _loose_patterns(tuple(parties))
+
+
+def issue_text(
+    raw: str,
+    names: Sequence[str],
+    index: Mapping[str, Sequence[str]],
+    parties: Sequence[str] = (),
+) -> str:
     """The marketplace text to keep for one issue: `PARTY_REJECTED_MESSAGE` when any attribute
-    it names feeds `facts.manufacturer` (in scope or not), else `raw`."""
+    it names feeds `facts.manufacturer` (in scope or not), else `raw` with every loose echo of
+    the manufacturer strings (`parties`, from `party_secrets`) redacted, whatever it names."""
     if any(PARTY_PATH in index.get(n, ()) for n in names):
         return PARTY_REJECTED_MESSAGE
+    for pattern in party_patterns(parties):
+        raw = pattern.sub(REDACTED, raw)
     return raw
 
 

@@ -201,7 +201,9 @@ class FlipkartAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=issue_text(str(issue.get("description", "")), names, index),
+                    raw_message=issue_text(
+                        str(issue.get("description", "")), names, index, parties
+                    ),
                     field=path,
                     marketplace=Marketplace.FLIPKART,
                     categories=[str(category)] if category else [],
