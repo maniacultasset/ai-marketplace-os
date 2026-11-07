@@ -17,7 +17,9 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
    `facts_digest`;
 4. SI4 A10: the fix pass's trail (`record_auto_fixes`: each fixed item's row closed
    `auto_fixed` with its `action_taken`, one `listing.auto_fixed` audit row per fix), then the
-   re-check's issue sync;
+   re-check's issue sync; then A13's questions: tasks whose issues all closed are cancelled, and
+   the open error rows only the seller can fix open or reuse one task each (the move becomes
+   `blocked/human_task_open`);
 5. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
    one was saved;
 6. the move, with the job as actor.
@@ -45,6 +47,7 @@ from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
 from app.services.auto_fix.fixers import FixRecord
 from app.services.generation_result import Move
+from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcile_tasks
 from app.services.issues import record_auto_fixes, sync_issues
 from app.services.pipeline_deps import RulesCall
 
@@ -153,6 +156,27 @@ def _discard(plan: PersistPlan) -> None:
         plan.result.update({"listing_version_id": None, "discarded": True})
 
 
+async def _ask(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    plan: PersistPlan,
+    move: Move,
+    canonical: CanonicalListing,
+    critical: frozenset[str],
+) -> Move:
+    """SI4 A13 (CP-D6, CP-D14; the shared blocking rule): after the syncs, cancel the questions
+    whose issues all closed, then open the questions behind the open error rows whatever the
+    rules verdict. Any question means an open blocking issue stands behind it, so the move is
+    the seeded `generating → blocked/human_task_open`."""
+    await reconcile_tasks(uow, listing)
+    asked = await open_questions(uow, listing, critical_keys=critical, images=canonical.images)
+    if not asked:
+        return move
+    if plan.result is not None:
+        plan.result["status"] = QUESTION_MOVE.to
+    return QUESTION_MOVE
+
+
 def make_persist(plan: PersistPlan) -> Any:
     """The `registry.Persist` of one generation job (module docstring)."""
 
@@ -226,12 +250,13 @@ def make_persist(plan: PersistPlan) -> Any:
                 job_id=plan.job_id,
                 critical_keys=critical,
             )
+        move = await _ask(uow, listing, plan, plan.move, plan.listing, critical)
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(
             listing,
-            to=plan.move.to,
-            event=plan.move.event,
-            reason=plan.move.reason,
+            to=move.to,
+            event=move.event,
+            reason=move.reason,
             actor=JobActor(plan.job_id),
             current_version_id=version.id,
         )
@@ -240,7 +265,7 @@ def make_persist(plan: PersistPlan) -> Any:
             job_id=str(plan.job_id),
             listing_id=str(listing.id),
             version_id=str(version.id),
-            status=plan.move.to,
+            status=move.to,
         )
 
     return persist

@@ -11,7 +11,9 @@ concurrent validates with equal pins write one run):
    `needs_review`, `approved` (to a non-clean status, voiding the approval) and `blocked` only
    when its reason is `validation_errors` or `corrections_exhausted` (CP4: a human rejection is
    never undone). Anything else: the run only.
-4. always 200: a failed check is `passed: false`, never an error.
+4. on the current version, SI4 A13's questions (`ask_after_check`), then the
+   `human_task_opened` move when one opened and the status allows it;
+5. always 200: a failed check is `passed: false`, never an error.
 """
 
 from __future__ import annotations
@@ -28,6 +30,7 @@ from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.validation_runs import summary_of
 from app.services.generation_context import previous_listing
+from app.services.issue_questions import ask_after_check
 from app.services.listings import human_move, insert_run, rules_check
 
 log = get_logger(__name__)
@@ -76,7 +79,7 @@ async def validate_listing(
     to, reason = human_move(check.report)
     target = _target(listing, to) if version.id == listing.current_version_id else None
     if target is not None:
-        await uow.listings.move(
+        listing = await uow.listings.move(
             listing,
             to=target,
             event="revalidate",
@@ -85,6 +88,9 @@ async def validate_listing(
             clear_approval=listing.status == "approved",
         )
         log.info("listing.revalidated", listing_id=str(listing.id), status=target)
+    if current:
+        # SI4 A13: the questions of the current version's check (never of a past version's)
+        await ask_after_check(uow, listing, UserActor(principal.user_id), canonical.images)
     return summary_of([run])
 
 

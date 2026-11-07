@@ -152,6 +152,23 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def open_errors(
+        self, listing_id: uuid.UUID, sources: Sequence[str]
+    ) -> builtins.list[ListingIssue]:
+        """SI4 A13: this listing's open blocking (`error`) rows of the given sources, oldest
+        first: the rows a question may stand behind (a warning never asks, Approval record)."""
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.status == OPEN,
+                ListingIssue.severity == "error",
+                ListingIssue.source.in_(tuple(sources)),
+            )
+            .order_by(ListingIssue.created_at, ListingIssue.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def live_task_ids(self, listing_id: uuid.UUID) -> builtins.list[uuid.UUID]:
         """SI4 A12: the distinct human tasks linked to this listing's rows (any status) whose
         task is still live (`open`/`answered`): the ones to re-check after a sync."""
