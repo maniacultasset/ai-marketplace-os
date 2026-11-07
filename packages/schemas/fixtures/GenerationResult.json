@@ -165,5 +165,19 @@
       "after": "navy blue",
       "reason": "Matches the colour the seller confirmed."
     }
+  ],
+  "photo_observations": [
+    {
+      "key": "neckline",
+      "value": "v-neck",
+      "confidence": 0.95,
+      "image_id": "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11",
+      "alternatives": [
+        {
+          "value": "round neck",
+          "confidence": 0.03
+        }
+      ]
+    }
   ]
 }

@@ -44,6 +44,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "tenants_me_update": {"tone": "Warm and plain."},
     # SI1
     "products_update": {"title": "Organic Cotton Kurta"},
+    "tasks_answer": {"value": "maroon"},
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},

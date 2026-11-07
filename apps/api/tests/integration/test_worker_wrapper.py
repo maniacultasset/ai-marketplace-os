@@ -151,6 +151,37 @@ async def test_wrapper_job_failed_not_retried(
     assert hook_calls == [("failed", None)]
 
 
+async def test_wrapper_job_failed_keeps_its_result(
+    jobs_db: JobWorld, override_body: Any, hook_calls: list[Any]
+) -> None:
+    """SI3 T4: a failed job may still record a result (the photo set of a no-version run)."""
+    report = ErrorReport(status="failed", error_code=ErrorCode.GENERATION_FAILED, errors=[])
+
+    async def body(ctx: JobContext) -> Outcome:
+        raise JobFailed(report, result={"photo_set": [["a", "b"]]})
+
+    override_body(KIND, body)
+    job = insert_job(jobs_db.conn, jobs_db.tenant("acme"))
+    await wrapper.run_job(str(job))
+    row = job_row(jobs_db.conn, job)
+    assert (row["status"], row["error_code"]) == ("failed", "GENERATION_FAILED")
+    assert row["result_json"] == {"photo_set": [["a", "b"]]}
+
+
+async def test_wrapper_job_failed_without_result_stores_null(
+    jobs_db: JobWorld, override_body: Any, hook_calls: list[Any]
+) -> None:
+    report = ErrorReport(status="failed", error_code=ErrorCode.GENERATION_FAILED, errors=[])
+
+    async def body(ctx: JobContext) -> Outcome:
+        raise JobFailed(report)
+
+    override_body(KIND, body)
+    job = insert_job(jobs_db.conn, jobs_db.tenant("acme"))
+    await wrapper.run_job(str(job))
+    assert job_row(jobs_db.conn, job)["result_json"] is None
+
+
 async def test_wrapper_unknown_exception_no_traceback_text(
     jobs_db: JobWorld, override_body: Any, caplog: pytest.LogCaptureFixture
 ) -> None:

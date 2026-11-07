@@ -44,7 +44,8 @@ def _xdist_controller(config: pytest.Config) -> bool:
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Under pytest-xdist each worker runs on its own copy of mos_test (tests/support/xdist_db.py),
+    """Under pytest-xdist each worker runs on its own copy of the template DATABASE_URL names
+    (mos_test or a lane's mos_test_l<tag>; tests/support/xdist_db.py),
     set up here, before any test, settings object or engine exists; so does each mutmut child."""
     import os
 
@@ -87,6 +88,17 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
     if drop:
         config.hook.pytest_deselected(items=drop)
         items[:] = keep
+
+
+def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: pytest.Config) -> None:
+    """On GitHub Actions, name each failed test as an annotation (tests/support/gh_annotations.py)."""
+    if not os.environ.get("GITHUB_ACTIONS") or not _xdist_controller(config):
+        return
+    from tests.support.gh_annotations import annotation_lines
+
+    stats = terminalreporter.stats
+    for line in annotation_lines(stats.get("failed", []), stats.get("error", [])):
+        terminalreporter.write_line(line)
 
 
 def pytest_unconfigure(config: pytest.Config) -> None:

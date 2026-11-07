@@ -14,6 +14,9 @@ from mkos_schemas.enums import JobState
 from mkos_schemas.jobs import (
     MAX_CONTEXT_IMAGE_B64_CHARS,
     MAX_CONTEXT_IMAGES,
+    MAX_PHOTO_OBSERVATIONS,
+    MAX_PHOTO_TARGETS,
+    MAX_PHOTO_VALUES,
     MAX_RESULT_CHANGES,
     MAX_RESULT_QUESTIONS,
     AttributeSpec,
@@ -28,6 +31,9 @@ from mkos_schemas.jobs import (
     JobAccepted,
     JobEnvelope,
     ModelCredentials,
+    PhotoAlternative,
+    PhotoObservation,
+    PhotoTarget,
     Provenance,
     Question,
 )
@@ -746,3 +752,134 @@ def test_context_image_bytes_stay_out_of_context_errors() -> None:
     with pytest.raises(ValidationError) as err:
         _context(images=[_image(data_b64=png)])
     assert png[:64] not in str(err.value)
+
+
+# ---- SI3: photo targets and observations (CODE-PLAN T1) ----
+
+_IMG = UUID("6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11")
+
+
+def _target(key: object = "neckline", **overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "key": key,
+        "mode": "fill",
+        "allowed_values": ["round neck", "v-neck"],
+        "min_confidence": 0.7,
+    }
+    base.update(overrides)
+    return base
+
+
+def _observation(key: object = "neckline", **overrides: object) -> dict[str, object]:
+    base: dict[str, object] = {
+        "key": key,
+        "value": "v-neck",
+        "confidence": 0.95,
+        "image_id": _IMG,
+        "alternatives": [{"value": "round neck", "confidence": 0.03}],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_photo_caps() -> None:
+    assert (MAX_PHOTO_TARGETS, MAX_PHOTO_OBSERVATIONS, MAX_PHOTO_VALUES) == (16, 16, 40)
+
+
+def test_photo_fields_default_empty_and_old_payloads_parse() -> None:
+    assert _context().photo_targets == []
+    assert _result().photo_observations == []
+    raw = json.loads(_context().model_dump_json())
+    del raw["photo_targets"]
+    raw["schema_version"] = "1.2.0"
+    assert GenerationContext.model_validate(raw).photo_targets == []
+    res = json.loads(_result().model_dump_json())
+    del res["photo_observations"]
+    res["schema_version"] = "1.2.0"
+    assert GenerationResult.model_validate(res).photo_observations == []
+
+
+def test_photo_models_round_trip() -> None:
+    ctx = _context(photo_targets=[_target(), _target("color", mode="check")])
+    again = GenerationContext.model_validate_json(ctx.model_dump_json())
+    assert again == ctx and again.photo_targets[1].mode == "check"
+    res = _result(photo_observations=[_observation(), _observation("color", value="maroon")])
+    back = GenerationResult.model_validate_json(res.model_dump_json())
+    assert back == res
+    assert back.photo_observations[0].alternatives[0] == PhotoAlternative(
+        value="round neck", confidence=0.03
+    )
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"allowed_values": []},
+        {"allowed_values": [f"v{i}" for i in range(41)]},
+        {"allowed_values": ["x" * 41]},
+        {"allowed_values": [""]},
+        {"allowed_values": ["   "]},
+        {"allowed_values": ["V-neck", "v-neck"]},
+        {"mode": "guess"},
+        {"key": "Neckline"},
+        {"min_confidence": math.nan},
+        {"min_confidence": math.inf},
+        {"min_confidence": -0.01},
+        {"min_confidence": 1.01},
+    ],
+)
+def test_photo_target_refuses(bad: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        PhotoTarget.model_validate(_target(**bad))
+
+
+def test_photo_target_takes_forty_values_and_unicode() -> None:
+    PhotoTarget.model_validate(_target(allowed_values=[f"v{i}" for i in range(40)]))
+    target = PhotoTarget.model_validate(_target("embroidery", allowed_values=["चिकनकारी"]))
+    assert target.allowed_values == ["चिकनकारी"]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"value": "x" * 41},
+        {"value": ""},
+        {"value": "  "},
+        {"confidence": math.nan},
+        {"confidence": math.inf},
+        {"confidence": -0.01},
+        {"confidence": 1.01},
+        {"image_id": "not-a-uuid"},
+        {"alternatives": [{"value": "a", "confidence": 0.1}] * 3},
+        {"alternatives": [{"value": "a", "confidence": 1.5}]},
+    ],
+)
+def test_photo_observation_refuses(bad: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        PhotoObservation.model_validate(_observation(**bad))
+
+
+def test_photo_observation_takes_unicode_text() -> None:
+    obs = PhotoObservation.model_validate(_observation("embroidery", value="चिकनकारी"))
+    assert obs.value == "चिकनकारी"
+
+
+def test_photo_targets_cap_and_unique_keys() -> None:
+    _context(photo_targets=[_target(f"k{i}") for i in range(16)])
+    with pytest.raises(ValidationError):
+        _context(photo_targets=[_target(f"k{i}") for i in range(17)])
+    with pytest.raises(ValidationError):
+        _context(photo_targets=[_target(), _target(mode="check")])
+
+
+def test_photo_observations_cap() -> None:
+    _result(photo_observations=[_observation() for _ in range(16)])
+    with pytest.raises(ValidationError):
+        _result(photo_observations=[_observation() for _ in range(17)])
+
+
+def test_secret_walk_still_runs_with_photo_targets() -> None:
+    with pytest.raises(ValidationError):
+        _context(photo_targets=[_target()], product={"title": "P", "api_key": "x"})
+    with pytest.raises(ValidationError):
+        _context(photo_targets=[_target(allowed_values=['{"api_key": "x"}'])])

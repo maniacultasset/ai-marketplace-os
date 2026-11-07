@@ -88,5 +88,17 @@
       "height": 8,
       "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AcP/Z"
     }
+  ],
+  "photo_targets": [
+    {
+      "key": "neckline",
+      "mode": "fill",
+      "allowed_values": [
+        "round neck",
+        "v-neck",
+        "mandarin collar"
+      ],
+      "min_confidence": 0.7
+    }
   ]
 }

@@ -73,3 +73,54 @@ def test_claim_tenant_rule_runs() -> None:
     r = _claim(tenant_id=TENANT_ID, field="content.title")
     errs = _errors(listing(content=ORGANIC), r)
     assert [e.rule_id for e in errs] == [r.id]
+
+
+# ---- SI3 T13: an unconfirmed photo value never backs a claim ----
+
+
+def _handmade() -> Any:
+    return rule(
+        {
+            "type": "claim_requires_attribute",
+            "claim": "handmade",
+            "terms": ["handmade", "hand made"],
+            "match": "word",
+            "requires": {"attribute": "construction", "any_of": ["handmade"]},
+            "message": "{term} needs {attribute}",
+        },
+        field="*",
+    )
+
+
+def _product(source: str, confirmed: bool = False) -> Any:
+    import uuid
+
+    from app.core.resolved_facts import ProductFacts, ResolvedFact, for_rules
+
+    extra: dict[str, Any] = {}
+    if source == "ai":
+        extra = {"confidence": 0.95, "evidence_ref": "image:x", "captured_via": "agent"}
+    if confirmed:
+        extra |= {"confirmed_by": "u", "confirmed_at": "2026-11-07T00:00:00Z"}
+    fact = ResolvedFact(key="construction", value="handmade", source=source, **extra)
+    facts = ProductFacts(
+        product_id=uuid.UUID(int=1), sku="S", level="standalone", attributes={"construction": fact}
+    )
+    return for_rules(facts)
+
+
+def _claim_errors(product: Any) -> list[str]:
+    item = listing(
+        content={"title": "Handmade cotton kurta"}, attributes={"construction": "handmade"}
+    )
+    report = evaluate(item, ruleset(_handmade()), product=product)
+    return [e.error_code.value for e in report.errors]
+
+
+def test_unconfirmed_photo_construction_never_backs_handmade() -> None:
+    assert _claim_errors(_product("ai")) == ["UNSUPPORTED_CLAIM"]
+
+
+def test_confirmed_photo_or_seller_construction_backs_handmade() -> None:
+    assert _claim_errors(_product("ai", confirmed=True)) == []
+    assert _claim_errors(_product("seller")) == []

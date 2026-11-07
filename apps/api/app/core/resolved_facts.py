@@ -9,12 +9,19 @@ owner): `GenerationContext.product` stays a `dict` and gets `for_prompt(facts)`.
   dictionary version are left out.
 - `for_rules(facts)`: the mapping the Rules Engine's `product.*` paths read, and the only facts the
   pipeline deps object holds (CP13). Parties are `{legal_name}`; no contact, GSTIN or evidence.
+  SI3: an unconfirmed `ai` attribute (a value read from the photos the seller has not confirmed)
+  is left out, so it can never back a claim or satisfy a condition. `for_prompt` keeps it.
 - `listing_facts_digest(main, children)` (SI2 D9): a standalone's `facts_digest`, unchanged; a
   family's digest also covers each child's facts (child order does not matter), so a child's
   price change after approval is caught.
 - `facts_digest(facts)`: sha256 of the canonical JSON (sorted keys, Decimals as strings, every
-  `updated_at` dropped) of the full facts, parties, family, provenance and dictionary version
-  included: it pins the facts a validation run checked.
+  `updated_at` dropped, and `confirmed_by`/`confirmed_at` set to null, SI3 CP-D3) of the full
+  facts, parties, family, provenance and dictionary version included: it pins the facts a
+  validation run checked. Confirming a value therefore never voids an approval.
+- `stamp_reread(pre, reread)` / `recheck_digest`: SI3 design §2.3. The worker re-reads the facts
+  after writing photo facts; the re-check run may take the re-read digest only when the two
+  differ by unconfirmed `ai` attributes alone (so the rule result on `pre` holds on `reread`).
+  A family's re-read digest is its `listing_facts_digest` over the children read with `pre`.
 """
 
 from __future__ import annotations
@@ -43,7 +50,10 @@ __all__ = [
     "facts_digest",
     "for_prompt",
     "for_rules",
+    "is_unconfirmed_ai",
     "listing_facts_digest",
+    "recheck_digest",
+    "stamp_reread",
 ]
 
 FactLevel = Literal["brand", "style", "colour", "variant", "standalone"]
@@ -234,8 +244,21 @@ def _compliance_names(compliance: Compliance) -> dict[str, Any]:
     return out
 
 
+def is_unconfirmed_ai(fact: ResolvedFact | None) -> bool:
+    """A value the AI read (from the photos) that no seller has confirmed yet."""
+    return fact is not None and fact.source == "ai" and fact.confirmed_at is None
+
+
 def _attribute_values(facts: ProductFacts) -> dict[str, Any]:
     return {key: fact.resolved for key, fact in sorted(facts.attributes.items())}
+
+
+def _trusted_attribute_values(facts: ProductFacts) -> dict[str, Any]:
+    return {
+        key: fact.resolved
+        for key, fact in sorted(facts.attributes.items())
+        if not is_unconfirmed_ai(fact)
+    }
 
 
 def for_prompt(facts: ProductFacts) -> dict[str, Any]:
@@ -277,7 +300,7 @@ def for_rules(facts: ProductFacts) -> dict[str, Any]:
         "package": facts.package.model_dump(mode="json"),
         "product_weight_g": facts.product_weight_g,
         "compliance": _compliance_names(facts.compliance),
-        "attributes": _attribute_values(facts),
+        "attributes": _trusted_attribute_values(facts),
         "family": None if facts.family is None else facts.family.model_dump(mode="json"),
     }
 
@@ -302,8 +325,21 @@ def _drop_party_parts(body: dict[str, Any]) -> dict[str, Any]:
     return body
 
 
+def _null_confirmation(body: dict[str, Any]) -> dict[str, Any]:
+    """CP-D3: confirming a value leaves the digest. The keys are set to null, not dropped, so a
+    digest taken before SI3 (when both were always null) keeps its bytes."""
+    for section in ("attributes", "provenance"):
+        entries = body.get(section)
+        if isinstance(entries, dict):
+            for entry in entries.values():
+                if isinstance(entry, dict):
+                    entry["confirmed_by"] = None
+                    entry["confirmed_at"] = None
+    return body
+
+
 def canonical_facts_json(facts: ProductFacts) -> bytes:
-    body = _drop_party_parts(_drop_updated_at(facts.model_dump(mode="json")))
+    body = _null_confirmation(_drop_party_parts(_drop_updated_at(facts.model_dump(mode="json"))))
     return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
@@ -320,3 +356,39 @@ def listing_facts_digest(main: ProductFacts, children: Sequence[ProductFacts] = 
     ordered = sorted(children, key=lambda c: c.product_id)
     body = b"family:v1\0" + facts_digest(main) + b"".join(facts_digest(c) for c in ordered)
     return hashlib.sha256(body).digest()
+
+
+def stamp_reread(pre: ProductFacts, reread: ProductFacts) -> bool:
+    """True when `reread` differs from `pre` by unconfirmed `ai` attributes only (design §2.3).
+
+    Every attribute that differs must be an unconfirmed `ai` fact in `reread` and absent or an
+    unconfirmed `ai` fact in `pre`: a removed `ai` fact (a seller reject during the run), a
+    confirmation, a seller value, or any change outside `attributes` keeps the old pin."""
+    if for_rules(reread) != for_rules(pre):
+        return False
+    rest_pre = canonical_facts_json(pre.model_copy(update={"attributes": {}}))
+    rest_reread = canonical_facts_json(reread.model_copy(update={"attributes": {}}))
+    if rest_pre != rest_reread:
+        return False
+    for key in pre.attributes.keys() | reread.attributes.keys():
+        before, after = pre.attributes.get(key), reread.attributes.get(key)
+        if before == after:
+            continue
+        if not is_unconfirmed_ai(after):
+            return False
+        if before is not None and not is_unconfirmed_ai(before):
+            return False
+    return True
+
+
+def recheck_digest(
+    pre: ProductFacts,
+    reread: ProductFacts,
+    pinned: bytes,
+    children: Sequence[ProductFacts] = (),
+) -> bytes:
+    """The digest the version-linked re-check run stamps: the re-read one when `stamp_reread`
+    holds, else the pre-pipeline pin (so a seller change made during the run is caught). For a
+    family (SI2 D9) the re-read one is `listing_facts_digest(reread, children)` over the children
+    pinned at read time, so a child changed during the run still voids the approval."""
+    return listing_facts_digest(reread, children) if stamp_reread(pre, reread) else pinned

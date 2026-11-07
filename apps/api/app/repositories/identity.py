@@ -938,7 +938,7 @@ async def consume_oauth_state(
 _AUDIT_SQL: Final = text(
     "SELECT public.audit(:tenant_id, :actor_type, :actor_user_id, :action, :entity_type, "
     ":entity_id, CAST(:before AS jsonb), CAST(:after AS jsonb), :reason, :request_id, "
-    "NULL, CAST(:ip AS inet), :actor_email)"
+    "CAST(:job_id AS uuid), CAST(:ip AS inet), :actor_email)"
 )
 
 
@@ -963,8 +963,10 @@ class AuditRepository:
         reason: str | None = None,
         ip: str | None = None,
         actor_email: str | None = None,
+        job_id: uuid.UUID | None = None,
     ) -> None:
-        """`actor_email` names a staff actor (`actor_type='staff'`, DATABASE.md:312)."""
+        """`actor_email` names a staff actor (`actor_type='staff'`, DATABASE.md:312); `job_id`
+        the job a system write came from (SI3: a generation's photo facts)."""
         if entity_type not in AUDITED_ENTITIES:
             raise ValueError(f"{entity_type} is not in AUDITED_ENTITIES")
         await self.db.execute(
@@ -982,5 +984,6 @@ class AuditRepository:
                 "request_id": current_request_id(),
                 "ip": ip,
                 "actor_email": actor_email,
+                "job_id": job_id,
             },
         )

@@ -8,10 +8,12 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
-from mkos_schemas.base import WireModel
-from pydantic import AwareDatetime
+from mkos_schemas.base import StrictModel, WireModel
+from pydantic import AwareDatetime, model_validator
+from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
+from app.api.v1.schemas.products import AnswerScalar
 
 TaskStatus = Literal["open", "answered", "applied", "cancelled"]
 TaskKind = Literal[
@@ -51,3 +53,20 @@ class TaskOut(WireModel):
 
 class TaskPage(Page[TaskOut]):
     pass
+
+
+class TaskAnswerIn(StrictModel):
+    """SI3: the seller's answer to a fact question: a `value`, or `skip: true`. Exactly one."""
+
+    value: AnswerScalar | None = None
+    skip: Literal[True] | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> TaskAnswerIn:
+        sent_null = any(
+            name in self.model_fields_set and getattr(self, name) is None
+            for name in ("value", "skip")
+        )
+        if sent_null or (self.value is None) == (self.skip is None):
+            raise PydanticCustomError("mkos_invalid", "Send exactly one of `value` and `skip`.")
+        return self

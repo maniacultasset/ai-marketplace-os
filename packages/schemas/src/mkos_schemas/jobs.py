@@ -235,6 +235,54 @@ def _unique_images(images: list[ContextImage]) -> list[ContextImage]:
     return images
 
 
+# SI3: photo-derived listing details. The backend names the keys it wants checked from the product
+# photos and the values each may take; the pipeline answers with observations, which are suggestions
+# only. The backend is the only writer, and it re-screens every observation.
+MAX_PHOTO_TARGETS: Final = 16
+MAX_PHOTO_OBSERVATIONS: Final = 16
+MAX_PHOTO_VALUES: Final = 40
+PhotoValue = Annotated[NonBlankStr, Field(max_length=40)]
+Confidence = Annotated[float, Field(ge=0.0, le=1.0, allow_inf_nan=False)]
+
+
+class PhotoTarget(WireModel):
+    """One product key the backend asks the vision step about (SI3).
+
+    `fill`: no trusted value is stored, so a confident photo value may become an unconfirmed fact.
+    `check`: a value is stored; a photo value can only raise a question.
+    """
+
+    key: AttrKey
+    mode: Literal["fill", "check"]
+    allowed_values: Annotated[list[PhotoValue], Field(min_length=1, max_length=MAX_PHOTO_VALUES)]
+    min_confidence: Confidence
+
+    @field_validator("allowed_values")
+    @classmethod
+    def _unique_values(cls, values: list[str]) -> list[str]:
+        folded = [value.casefold() for value in values]
+        if len(set(folded)) != len(folded):
+            raise ValueError("allowed_values repeat a value")
+        return values
+
+
+class PhotoAlternative(WireModel):
+    value: PhotoValue
+    confidence: Confidence
+
+
+class PhotoObservation(WireModel):
+    """What the vision step saw for one target key, and on which context image (SI3)."""
+
+    key: AttrKey
+    value: PhotoValue
+    confidence: Confidence
+    image_id: UUID
+    alternatives: Annotated[list[PhotoAlternative], Field(max_length=2)] = Field(
+        default_factory=list
+    )
+
+
 class GenerationContext(WireModel):
     schema_version: str = SCHEMA_VERSION
     request_id: RequestId
@@ -263,6 +311,18 @@ class GenerationContext(WireModel):
     images: Annotated[list[ContextImage], Field(max_length=MAX_CONTEXT_IMAGES)] = Field(
         default_factory=list
     )
+    # SI3: keys to read from the product photos; empty means make no photo call.
+    photo_targets: Annotated[list[PhotoTarget], Field(max_length=MAX_PHOTO_TARGETS)] = Field(
+        default_factory=list
+    )
+
+    @field_validator("photo_targets")
+    @classmethod
+    def _targets_unique(cls, targets: list[PhotoTarget]) -> list[PhotoTarget]:
+        keys = [target.key for target in targets]
+        if len(set(keys)) != len(keys):
+            raise ValueError("a photo target key appears more than once")
+        return targets
 
     @field_validator("images")
     @classmethod
@@ -355,3 +415,7 @@ class GenerationResult(WireModel):
     changes: Annotated[list[FieldChange], Field(max_length=MAX_RESULT_CHANGES)] = Field(
         default_factory=list
     )  # 1.2.0
+    # SI3: only when the context had photo_targets; suggestions the backend screens and writes.
+    photo_observations: Annotated[
+        list[PhotoObservation], Field(max_length=MAX_PHOTO_OBSERVATIONS)
+    ] = Field(default_factory=list)

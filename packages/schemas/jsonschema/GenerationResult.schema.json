@@ -1207,6 +1207,71 @@
       "title": "Marketplace",
       "type": "string"
     },
+    "PhotoAlternative": {
+      "properties": {
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "value": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "confidence"
+      ],
+      "title": "PhotoAlternative",
+      "type": "object"
+    },
+    "PhotoObservation": {
+      "description": "What the vision step saw for one target key, and on which context image (SI3).",
+      "properties": {
+        "alternatives": {
+          "items": {
+            "$ref": "#/$defs/PhotoAlternative"
+          },
+          "maxItems": 2,
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "key": {
+          "pattern": "^[a-z0-9_]{1,64}$",
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "confidence",
+        "image_id"
+      ],
+      "title": "PhotoObservation",
+      "type": "object"
+    },
     "Question": {
       "description": "One plain question for the seller about a missing, conflicting or unverified fact (1.2.0).",
       "properties": {
@@ -1542,6 +1607,14 @@
         }
       ],
       "default": null
+    },
+    "photo_observations": {
+      "items": {
+        "$ref": "#/$defs/PhotoObservation"
+      },
+      "maxItems": 16,
+      "title": "Photo Observations",
+      "type": "array"
     },
     "questions": {
       "items": {
