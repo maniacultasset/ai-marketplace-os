@@ -1,5 +1,6 @@
-"""SI4 A9 (AC5, AC7, AC8): the generation job fixes the pipeline's final listing with the same
-pure pass the correction loop ran, stores the fixed listing, and never fixes a human edit."""
+"""SI4 A9, A10 (AC5-AC8): the generation job fixes the pipeline's final listing with the same
+pure pass the correction loop ran, stores the fixed listing with its trail, and never fixes a
+human edit."""
 
 from __future__ import annotations
 
@@ -161,3 +162,105 @@ async def test_patch_never_auto_fixed(api: httpx.AsyncClient, gen_world: GenWorl
     too_long = [r for r in rows if r["error_code"] == "FIELD_TOO_LONG"]
     assert [r["status"] for r in too_long] == ["open"]
     assert [r for r in rows if r["status"] == "auto_fixed"] == []
+
+
+# ---- A10 (AC6): the trail ----
+
+
+def audits(world: GenWorld, listing_id: uuid.UUID) -> list[tuple[Any, ...]]:
+    return world.conn.execute(
+        "SELECT actor_type, actor_user_id, after, reason FROM audit_log "
+        "WHERE entity_id = %s AND action = 'listing.auto_fixed' ORDER BY occurred_at",
+        [listing_id],
+    ).fetchall()
+
+
+async def test_the_trail_row_and_audit(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    made = await generated(gen_world, scenario="stub:long_title")
+    fixed = [r for r in issues(gen_world, made.listing_id) if r["status"] == "auto_fixed"]
+    assert len(fixed) == 1
+    row = fixed[0]
+    assert (row["resolution"], row["fix_action"], row["auto_fixable"]) == (
+        "deterministic_fix",
+        "reformat",
+        True,
+    )
+    assert (row["field_path"], row["error_code"], row["source"]) == (
+        "content.title",
+        "FIELD_TOO_LONG",
+        "rules_engine",
+    )
+    assert row["action_taken"] and "title" in row["action_taken"]
+    assert STUB_LONG_TITLE not in row["action_taken"]
+    assert row["listing_version_id"] == made.version_id
+    assert row["resolved_by_user_id"] is None
+    [(actor, user, after, reason)] = audits(gen_world, made.listing_id)
+    assert (actor, user) == ("system", None)
+    assert after == {"status": "validated"}
+    tag = reason[reason.index("[") :]
+    assert tag.startswith("[reformat content.title v")
+    assert len(tag.split()[-1].split("\u2192")[0]) == 16
+    assert STUB_LONG_TITLE[:40] not in reason
+    stored = content(gen_world, made.version_id)["content"]["content"]["title"]
+    assert stored not in reason
+
+    headers = bearer_for(gen_world, OPERATOR)
+    listed = await api.get(
+        "/api/v1/issues",
+        params={"status": "auto_fixed", "listing_id": str(made.listing_id)},
+        headers=headers,
+    )
+    assert listed.status_code == 200, listed.text
+    [shown] = listed.json()["data"]
+    assert shown["id"] == str(row["id"])
+    assert shown["action_taken"] == row["action_taken"]
+    history = await api.get(f"/api/v1/listings/{made.listing_id}/history", headers=headers)
+    assert history.status_code == 200, history.text
+    assert "listing.auto_fixed" in [h["action"] for h in history.json()["data"]]
+
+
+async def test_a_replayed_persist_writes_no_second_trail(
+    gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.repositories.uow import tenant_uow
+    from app.services.generation_persist import make_persist as real
+    from app.workers import generation
+
+    plans: list[Any] = []
+
+    def keep(plan: Any) -> Any:
+        plans.append(plan)
+        return real(plan)
+
+    monkeypatch.setattr(generation, "make_persist", keep)
+    made = await generated(gen_world, scenario="stub:long_title")
+    before = (len(issues(gen_world, made.listing_id)), len(audits(gen_world, made.listing_id)))
+    async with tenant_uow(gen_world.tenant("acme")) as uow:
+        await real(plans[-1])(uow)
+    after = (len(issues(gen_world, made.listing_id)), len(audits(gen_world, made.listing_id)))
+    assert before == after == (1, 1)
+
+
+async def test_an_older_open_row_is_the_one_closed(gen_world: GenWorld) -> None:
+    """CP-D2: the trail runs before the sync, so the row an older version left open is reused
+    (occurrences 2) and closed `auto_fixed`, never closed by the sync and then reopened."""
+    from app.repositories.uow import tenant_uow
+    from app.services.generation import request_regeneration
+
+    from .review_support import run_job
+
+    first = await generated(gen_world, scenario="stub:blocked")
+    [open_row] = [r for r in issues(gen_world, first.listing_id) if r["status"] == "open"]
+    assert open_row["error_code"] == "FIELD_TOO_LONG"
+    principal = gen_world.principal(OPERATOR)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        accepted = await request_regeneration(
+            uow, principal, str(uuid.uuid4()), first.listing_id, "stub:long_title"
+        )
+    await run_job(accepted.job_id)
+    assert gen_world.listing(first.listing_id)["status"] == "validated"
+    rows = issues(gen_world, first.listing_id)
+    assert [(r["id"], r["status"], r["occurrences"]) for r in rows] == [
+        (open_row["id"], "auto_fixed", 2)
+    ]
+    assert [r for r in rows if r["resolution"] in ("regenerated", "revalidated_clean")] == []

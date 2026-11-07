@@ -15,9 +15,12 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
 3. one `rules_engine` run per recorded `validate_rules` call (attempt k, version NULL) and, with a
    version, the backend's re-check (attempt n+1, linked to it), each with the pins and the
    `facts_digest`;
-4. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
+4. SI4 A10: the fix pass's trail (`record_auto_fixes`: each fixed item's row closed
+   `auto_fixed` with its `action_taken`, one `listing.auto_fixed` audit row per fix), then the
+   re-check's issue sync;
+5. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
    one was saved;
-5. the move, with the job as actor.
+6. the move, with the job as actor.
 
 Every insert is idempotent or fenced, so a replayed terminal write writes nothing twice.
 """
@@ -42,7 +45,7 @@ from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
 from app.services.auto_fix.fixers import FixRecord
 from app.services.generation_result import Move
-from app.services.issues import sync_issues
+from app.services.issues import record_auto_fixes, sync_issues
 from app.services.pipeline_deps import RulesCall
 
 log = get_logger(__name__)
@@ -195,6 +198,21 @@ def make_persist(plan: PersistPlan) -> Any:
             )
         )
         recheck = await _insert_runs(uow, plan, version.id)
+        critical = await uow.product_facts.critical_keys()
+        if plan.fixes:
+            # SI4 A10 (CP-D2): the trail first, so a same-key row an older version left open is
+            # the one closed `auto_fixed`, not closed by the sync and then reopened
+            await record_auto_fixes(
+                uow,
+                listing,
+                plan.fixes,
+                run_id=None if recheck is None else recheck.id,
+                version_id=version.id,
+                version=number,
+                status=plan.move.to,
+                job_id=plan.job_id,
+                critical_keys=critical,
+            )
         if recheck is not None and plan.recheck is not None:
             # S19 T18 (CP-D2): only the version-linked re-check feeds the issue inbox
             await sync_issues(
@@ -206,7 +224,7 @@ def make_persist(plan: PersistPlan) -> Any:
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,
                 job_id=plan.job_id,
-                critical_keys=await uow.product_facts.critical_keys(),
+                critical_keys=critical,
             )
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(

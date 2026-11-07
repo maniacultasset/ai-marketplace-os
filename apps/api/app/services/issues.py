@@ -32,7 +32,7 @@ from datetime import datetime
 from typing import Any, Final
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import FixAction
+from mkos_schemas.enums import ErrorSource, FixAction, RetryClass, Severity
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.errors import ConflictError, NotFoundError
@@ -40,6 +40,7 @@ from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.auto_fix.fixers import FixRecord
 from app.services.auto_fix.policy import override_reason
 
 log = get_logger(__name__)
@@ -54,6 +55,7 @@ RESOLUTIONS: Final = {
 }
 VALUE_MAX: Final = 600
 TEMPLATE_PREFIX: Final = "attributes."
+RULES_SOURCE: Final = "rules_engine"
 Keyset = tuple[datetime, uuid.UUID]
 
 
@@ -198,6 +200,86 @@ async def sync_issues(
             closed=closed,
         )
     return result
+
+
+# ---- SI4 A10: the trail of the fix pass ----
+
+AUTO_FIXED_ACTION: Final = "listing.auto_fixed"
+REASON_MAX: Final = 1000
+
+
+def _fixed_item(record: FixRecord) -> ErrorItem:
+    """The pre-fix item a record fixed (the recheck's source, `rules_engine`)."""
+    meta = ERROR_CODE_META.get(record.error_code)
+    retry = None if meta is None else meta.retry_class
+    return ErrorItem(
+        field=record.field,
+        error_code=record.error_code,
+        severity=Severity.ERROR,
+        message=record.message or record.action_taken,
+        source=ErrorSource.RULES_ENGINE,
+        retryable=retry in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT),
+        rule_id=record.rule_id,
+        auto_fixable=True,
+        fix_action=record.fix_action,
+    )
+
+
+def trail_reason(record: FixRecord, version: int) -> str:
+    """The audit `reason`: the trail text, then the fix action, the field, the version and the
+    two digests (never the slot text; the `listing` audit allow-list keeps only status keys)."""
+    tag = (
+        f" [{record.fix_action.value} {record.field} v{version} "
+        f"{record.before_sha[:16]}\u2192{record.after_sha[:16]}]"
+    )
+    return (record.action_taken + tag)[:REASON_MAX]
+
+
+async def record_auto_fixes(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    records: Sequence[FixRecord],
+    *,
+    run_id: uuid.UUID | None,
+    version_id: uuid.UUID | None,
+    version: int,
+    status: str,
+    job_id: uuid.UUID | None,
+    critical_keys: frozenset[str],
+) -> int:
+    """Per record: upsert the pre-fix item's open row (a same-key row an older version left open
+    is reused), close it `auto_fixed` with the trail text, and write one `system` audit row.
+    Runs before the re-check's `sync_issues` (CP-D2). Returns the rows closed."""
+    closed = 0
+    for record in records:
+        item = _fixed_item(record)
+        key = dedupe_key(RULES_SOURCE, item)
+        new = _issue(
+            listing,
+            RULES_SOURCE,
+            item,
+            key,
+            run_id=run_id,
+            version_id=version_id,
+            job_id=job_id,
+            critical_keys=critical_keys,
+        )
+        row, _created = await uow.listing_issues.upsert_open(new)
+        if await uow.listing_issues.close_auto_fixed(row.id, record.action_taken):
+            closed += 1
+        await uow.audit.write(
+            tenant_id=listing.tenant_id,
+            actor_type="system",
+            actor_user_id=None,
+            action=AUTO_FIXED_ACTION,
+            entity_type="listing",
+            entity_id=listing.id,
+            after=json.dumps({"status": status}),
+            reason=trail_reason(record, version),
+        )
+    if records:
+        log.info("issues.auto_fixed", listing_id=str(listing.id), fixes=len(records))
+    return closed
 
 
 # ---- the inbox routes ----

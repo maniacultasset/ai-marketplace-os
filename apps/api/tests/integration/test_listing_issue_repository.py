@@ -229,3 +229,33 @@ async def test_upsert_other_tenant_listing_refused(gen_world: GenWorld) -> None:
     bharat = await generated(gen_world, "operator@bharat.test")
     with pytest.raises(ConflictError):
         await _upsert(gen_world, new_issue(bharat))
+
+
+# ---- SI4 A10: close_auto_fixed ----
+
+
+async def _close_fixed(world: GenWorld, issue_id: Any, email: str = REVIEWER) -> bool:
+    async def go(repo: Any) -> bool:
+        return await repo.close_auto_fixed(issue_id, "Shortened the title.")  # type: ignore[no-any-return]
+
+    return await _uow(world, go, email)  # type: ignore[no-any-return]
+
+
+async def test_close_auto_fixed_cas(gen_world: GenWorld) -> None:
+    made = await generated(gen_world)
+    (issue_id, _, _), _ = await _upsert(gen_world, new_issue(made, severity="error"))
+    assert await _close_fixed(gen_world, issue_id) is True
+    row = gen_world.conn.execute(
+        "SELECT status, resolution, action_taken, resolved_by_user_id, resolved_at IS NOT NULL "
+        "FROM listing_issues WHERE id = %s",
+        [issue_id],
+    ).fetchone()
+    assert row == ("auto_fixed", "deterministic_fix", "Shortened the title.", None, True)
+    assert await _close_fixed(gen_world, issue_id) is False  # a closed row: 0 rows
+
+
+async def test_close_auto_fixed_other_tenant_zero_rows(gen_world: GenWorld) -> None:
+    made = await generated(gen_world)
+    (issue_id, _, _), _ = await _upsert(gen_world, new_issue(made, severity="error"))
+    assert await _close_fixed(gen_world, issue_id, "reviewer@bharat.test") is False
+    assert gen_world.scalar("SELECT status FROM listing_issues WHERE id = %s", [issue_id]) == "open"

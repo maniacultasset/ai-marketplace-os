@@ -53,6 +53,7 @@ class FixRecord:
     after_size: int
     unit: str
     action_taken: str
+    message: str = ""  # the engine's message on the item it fixed (the trail row's text)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -184,6 +185,7 @@ def _record(
         after_size=after_size,
         unit=unit,
         action_taken=text,
+        message=item.message,
     )
 
 

@@ -246,6 +246,25 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         ).returning(ListingIssue.id)
         return len((await self._run(stmt)).all())
 
+    async def close_auto_fixed(self, issue_id: uuid.UUID, action_taken: str) -> bool:
+        """SI4 A10 (CP-D2): the compare-and-set that closes one open row the fix pass fixed,
+        `auto_fixed` / `deterministic_fix` with the trail text; the system resolves it (no user).
+        False for a closed row or another tenant's id (0 rows)."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingIssue)
+            .where(criterion, ListingIssue.id == issue_id, ListingIssue.status == OPEN)
+            .values(
+                status="auto_fixed",
+                resolution="deterministic_fix",
+                action_taken=action_taken,
+                resolved_at=func.now(),
+                resolved_by_user_id=None,
+            )
+        ).returning(ListingIssue.id)
+        return len((await self._run(stmt)).all()) == 1
+
     async def page(
         self,
         filters: IssueFilter,
