@@ -461,3 +461,20 @@ def listing_issue(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any)
         prefix = f"{values['source']}|{values['field_path']}|{values['error_code']}|"
         values["dedupe_key"] = prefix + str(values.get("rule_id") or "")
     return insert(conn, "listing_issues", **values)  # type: ignore[no-any-return]
+
+
+def image_candidate(
+    conn: Conn, tenant_id: UUID, product_id: UUID, source_image_id: UUID | None, **columns: Any
+) -> UUID:
+    """SI7: a queued `fix` candidate of `source_image_id` (or a `size_chart` one without a
+    source), with a fresh cache key."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "product_id": product_id,
+        "source_image_id": source_image_id,
+        "kind": "fix" if source_image_id is not None else "size_chart",
+        "source_hash": f"{n:064x}",
+        "generator_key": "fix/v1",
+    }
+    return insert(conn, "image_candidates", **{**defaults, **columns})  # type: ignore[no-any-return]

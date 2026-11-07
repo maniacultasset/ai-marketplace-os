@@ -43,6 +43,8 @@ ALLOWLIST: dict[str, set[str]] = {
         "locale",
         "product_type_version",
     },
+    # 0018 (SI7)
+    "image_candidate": {"kind", "status"},
 }
 AUDIT_SQL = "SELECT audit(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 

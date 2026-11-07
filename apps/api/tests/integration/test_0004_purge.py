@@ -118,6 +118,25 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
         style = f.product(db, side.tenant_id, "style", size_run=["s"])
         colourway = f.colourway(db, side.tenant_id, style)
         f.cell(db, side.tenant_id, style, colourway_id=colourway, size_key="s")
+        # 0018 (SI7): an accepted AI candidate, its model run and the image it became
+        main = f.image(db, side.tenant_id, style, slot="main")
+        run = f.agent_run(db, side.tenant_id, agent_name="image", trigger="vision")
+        candidate = f.image_candidate(
+            db, side.tenant_id, style, main, kind="white_background", agent_run_id=run
+        )
+        made = f.image(
+            db,
+            side.tenant_id,
+            style,
+            origin="generated",
+            parent_image_id=main,
+            candidate_id=candidate,
+        )
+        db.execute(
+            "UPDATE image_candidates SET status = 'accepted', storage_key = 'k', "
+            "accepted_image_id = %s WHERE id = %s",
+            (made, candidate),
+        )
         party = f.party(db, side.tenant_id)
         f.brand_profile(db, side.tenant_id, default_manufacturer_party_id=party)
         f.insert(
