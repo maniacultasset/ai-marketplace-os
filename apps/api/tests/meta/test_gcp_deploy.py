@@ -1395,8 +1395,8 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
     prod, staging = found["prod"], found["staging"]
     assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
     assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
-    # SI5 (PLAN D24): 20 USD for the platform, 5 a brand, 600 requests a minute per tenant
-    assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("20", "5")
+    assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
+    # SI5: 600 requests a minute per tenant on the api
     assert prod["RATE_LIMIT_PER_TENANT_PER_MIN"] == "600"
     assert staging["RATE_LIMIT_PER_TENANT_PER_MIN"] == ""
     # prod pins a full mkos-pipeline commit (ADR-0024), so its worker runs the real pipeline
@@ -1491,10 +1491,10 @@ def test_api_gets_the_caps_but_no_model_route_or_key(toolkit: Path, tmp_path: Pa
     """The api's generate precheck and the worker refuse at the same caps; only the worker calls
     a model, so only it gets the gateway, the provider, the model and the key."""
     _openrouter_staging(toolkit)
-    for env_name, caps in (("staging", ("3", "1")), ("prod", ("20", "5"))):
+    for env_name in ("staging", "prod"):
         out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
         env = _api_env(out)
-        assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == caps
+        assert (env["LLM_DAILY_BUDGET_USD"], env["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
         for name in ("LLM_GATEWAY", "LLM_PROVIDER", "LLM_MODEL_DEFAULT"):
             assert name not in env, (env_name, name)
         deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
