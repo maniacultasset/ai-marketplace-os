@@ -30,10 +30,11 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, Severity
 from mkos_schemas.errors import ErrorItem
 
-from app.core.identifiers import IDENTIFIER_TYPES, gtin_valid
+from app.core.identifiers import IDENTIFIER_TYPES, check, gtin_valid, type_from_length
 from app.services.composition import CompositionError, normalized, parse_composition
 from app.services.imports.headers import (
     GRAMS_COLUMN,
+    IDENTIFIER_ALIASES,
     IGNORED_WITH_WARNING,
     check_header,
     normalize_header,
@@ -120,6 +121,8 @@ class ProductImportRow:
     manufacturer_address: str | None = None
     identifier_type: str | None = None
     identifier_value: str | None = None
+    # SI5: `identifier_exemption` (a style row's value reaches its children that give neither)
+    identifier_exemption: bool | None = None
     color_name: str | None = None
     normalized_color: str | None = None
     size_name: str | None = None
@@ -359,7 +362,7 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
     if address is not None and manufacturer is None and c.get("manufacturer_name") is None:
         c.fail(ErrorCode.REQUIRED_FIELD_MISSING, "manufacturer_address needs manufacturer_name")
 
-    id_type, id_value = _identifier(c)
+    id_type, id_value, exemption = _identifier(c)
 
     colour = c.text("color_name", MAX_COLOUR)
     size_name = c.get("size_name")
@@ -452,6 +455,7 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
         manufacturer_address=address,
         identifier_type=id_type,
         identifier_value=id_value,
+        identifier_exemption=exemption,
         color_name=colour,
         normalized_color=c.get("normalized_color"),
         size_name=size_name,
@@ -477,27 +481,65 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
     return RowResult(row, [], c.warnings)
 
 
-def _identifier(c: _Checker) -> tuple[str | None, str | None]:
+_YES: Final = frozenset({"yes", "true", "y", "1"})
+_NO: Final = frozenset({"no", "false", "n", "0"})
+
+
+def _exemption(c: _Checker) -> bool | None:
+    raw = c.get("identifier_exemption")
+    if raw is None:
+        return None
+    word = raw.strip().lower()
+    if word in _YES:
+        return True
+    if word in _NO:
+        return False
+    c.fail(ErrorCode.VALUE_NOT_ALLOWED, "identifier_exemption must be yes or no")
+    return None
+
+
+def _identifier(c: _Checker) -> tuple[str | None, str | None, bool | None]:
+    """The barcode `(type, value)` from the A.6 pair or one alias column (`ean`, `upc`, `gtin`,
+    `barcode`), checked for its check digit and the type's length, and the exemption."""
+    exemption = _exemption(c)
     id_type = c.get("product_identifier_type")
     id_value = c.get("product_identifier")
-    if id_type is not None:
+    aliases = [(name, c.get(name)) for name in IDENTIFIER_ALIASES if c.get(name) is not None]
+    if len(aliases) > 1 or (aliases and (id_type is not None or id_value is not None)):
+        c.fail(ErrorCode.CROSS_FIELD_MISMATCH, "send one barcode column")
+        return None, None, exemption
+    if aliases:
+        name, id_value = aliases[0]
+        assert id_value is not None  # noqa: S101 - filtered above
+        id_type = IDENTIFIER_ALIASES[name] or type_from_length(id_value)
+        if id_type is None:
+            c.fail(ErrorCode.IDENTIFIER_INVALID, "barcode must be 8, 12, 13 or 14 digits")
+            return None, None, exemption
+    elif id_type is not None:
         id_type = id_type.lower()
         if id_type not in IDENTIFIER_TYPES:
             c.fail(ErrorCode.VALUE_NOT_ALLOWED, "product_identifier_type must be gtin, ean or upc")
-            return None, None
+            return None, None, exemption
     if (id_type is None) != (id_value is None):
         c.fail(
             ErrorCode.CROSS_FIELD_MISMATCH,
             "product_identifier_type and product_identifier go together",
         )
-        return None, None
-    if id_value is not None and not gtin_valid(id_value):
-        c.fail(
-            ErrorCode.IDENTIFIER_INVALID,
-            "product_identifier must be 8, 12, 13 or 14 digits with a valid check digit",
-        )
-        return None, None
-    return id_type, id_value
+        return None, None, exemption
+    if id_value is not None:
+        if not gtin_valid(id_value):
+            c.fail(
+                ErrorCode.IDENTIFIER_INVALID,
+                "product_identifier must be 8, 12, 13 or 14 digits with a valid check digit",
+            )
+            return None, None, exemption
+        if check(id_type, id_value) is not None:
+            c.fail(ErrorCode.IDENTIFIER_INVALID, f"{id_type} has the wrong number of digits")
+            return None, None, exemption
+        if exemption is True:
+            c.fail(ErrorCode.CROSS_FIELD_MISMATCH, "a barcode and identifier_exemption conflict")
+            return None, None, None
+    return id_type, id_value, exemption
 
 
 def _dimensions(c: _Checker) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
