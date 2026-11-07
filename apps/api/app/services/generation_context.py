@@ -67,6 +67,20 @@ def previous_listing(listing: Listing, version: ListingVersion | None) -> Canoni
         return None
 
 
+def product_provenance(facts: ProductFacts) -> dict[str, dict[str, Any]]:
+    """SI3 (CP-D7): where each non-seller attribute value came from, keyed `attributes.<key>` (the
+    `answered_keys` form). A seller value has no entry: absent means seller-confirmed."""
+    return {
+        f"attributes.{key}": {
+            "source": fact.source,
+            "confidence": fact.confidence,
+            "confirmed": fact.confirmed_at is not None,
+        }
+        for key, fact in sorted(facts.attributes.items())
+        if fact.source not in (None, "seller")
+    }
+
+
 async def build_context(
     uow: TenantUnitOfWork,
     job: JobRun,
@@ -107,6 +121,7 @@ async def build_context(
                 "max_attempts": max(1, min(3, max_attempts)),
                 "locale": brand.get("content_locale") or "en-IN",
                 "review_feedback": feedback,
+                "product_provenance": product_provenance(facts),
             }
         )
     except ValidationError:
