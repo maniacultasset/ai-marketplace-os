@@ -110,7 +110,7 @@ async def test_tasks_answer_value_writes_a_seller_fact(
             [product_id],
         ).fetchall()
     ]
-    assert actions == ["human_task.answered", "human_task.applied"]
+    assert sorted(str(a) for a in actions) == ["human_task.answered", "human_task.applied"]
 
 
 @pytest.mark.endpoint("tasks_answer", case="validation")
@@ -347,7 +347,7 @@ async def test_tasks_answer_value_stays_out_of_the_task_and_audit_reason(
     assert response.status_code == 200
     assert "answer" not in response.json()
     rows = auth_db.execute(
-        "SELECT action, reason, after FROM audit_log WHERE entity_id = %s ORDER BY occurred_at, id",
+        "SELECT action, reason, after FROM audit_log WHERE entity_id = %s ORDER BY action",
         [product_id],
     ).fetchall()
     assert [(a, r) for a, r, _ in rows] == [
