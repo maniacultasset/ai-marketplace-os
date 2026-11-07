@@ -991,8 +991,10 @@ export interface paths {
          * Accept an invite with a new account (a password, or the matching Google identity)
          * @description Create the invited account and join the brand: a password (12+ characters, an upper-case
          *     and a lower-case letter, a digit and a symbol, not the name or the email's first part: 422
-         *     with each broken rule) or the matching Google identity. An email that already has an account
-         *     is 409: sign in, then open the link. The person then signs in as usual.
+         *     with each broken rule) or the matching Google identity. An email whose account can sign in
+         *     is 409: sign in, then open the link. An account that cannot sign in yet (a pending sign-up,
+         *     or no active brand) joins with its own password: a wrong one is 401 and counts toward the
+         *     lockout. The person then signs in as usual.
          */
         post: operations["invites_accept"];
         delete?: never;
@@ -1034,8 +1036,10 @@ export interface paths {
         put?: never;
         /**
          * What an invite link is for: the brand, the role and whether the email has an account
-         * @description What an invite link is for: the brand, the role, the invited email and whether it already
-         *     has an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every
+         * @description What an invite link is for: the brand, the role, the invited email and whether it has an
+         *     account that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,
+         *     which for an account that cannot sign in yet, such as a pending sign-up, takes that
+         *     account's own password). Every
          *     refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
          *     lost the role) is the same 404.
          */
@@ -2903,7 +2907,7 @@ export interface components {
         InvitePreview: {
             /**
              * Account
-             * @description `existing`: the email already has a Kuinn account, so sign in and call `invites_join`; `new`: create the account with `invites_accept`.
+             * @description `existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign in yet, such as a pending sign-up, gives its own password).
              * @enum {string}
              */
             account: "new" | "existing";

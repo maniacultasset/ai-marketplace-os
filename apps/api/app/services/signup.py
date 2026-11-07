@@ -73,6 +73,7 @@ __all__ = [
     "signup_status",
     "slug_base",
     "slug_candidates",
+    "verify_existing_user",
 ]
 
 
@@ -161,7 +162,7 @@ async def signup(
             await set_gucs(session, user_id=user_id)
         else:
             # every answer for an existing email is a fresh id (right, wrong or locked password)
-            if await _existing_user_verified(session, user, password, ip=ip):
+            if await verify_existing_user(session, user, password, ip=ip):
                 await set_gucs(session, user_id=user.id)
                 if await requests.latest_for(user.id, pending_only=True) is None:
                     await _request(session, user.id, brand_name, owner_name, phone, website, ip)
@@ -170,11 +171,12 @@ async def signup(
     return SignupAccepted(request_id)
 
 
-async def _existing_user_verified(
+async def verify_existing_user(
     session: Any, user: UserRow, password: str, *, ip: str | None
 ) -> bool:
     """The lockout gate, then one argon2 verify (always, for timing parity). True only for the
-    right password of an active, unlocked user; a wrong password counts a failure."""
+    right password of an active, unlocked user; a wrong password counts a failure. Also the
+    invite accept for an account that cannot sign in yet (`invites.accept_password`)."""
     users = UserRepository(session)
     await set_gucs(session, user_id=user.id)
     state = await users.begin_auth_attempt(user.id)
@@ -239,7 +241,7 @@ async def signup_status(email: str, password: str, *, ip: str | None = None) -> 
         if user is None:
             await off_loop(verify_password, password, dummy_hash())
             return None
-        if not await _existing_user_verified(session, user, password, ip=ip):
+        if not await verify_existing_user(session, user, password, ip=ip):
             return None
         return await SignupRepository(session).latest_for(user.id)
 

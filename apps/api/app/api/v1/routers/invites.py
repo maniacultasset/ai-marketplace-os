@@ -11,7 +11,7 @@ from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError, password_rules_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
-from app.api.rate_limit import enforce_invite_limit
+from app.api.rate_limit import enforce_invite_limit, request_ip
 from app.api.v1.deps import get_current_principal
 from app.api.v1.routers.google import DISABLED_MESSAGE, FLOW_MESSAGE
 from app.api.v1.schemas.invites import (
@@ -99,8 +99,10 @@ async def invites_revoke(invite_id: UUID, principal: CurrentPrincipal) -> Invite
 
 @route(router, OPS["invites_lookup"])
 async def invites_lookup(body: InviteTokenIn, request: Request) -> InvitePreview:
-    """What an invite link is for: the brand, the role, the invited email and whether it already
-    has an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every
+    """What an invite link is for: the brand, the role, the invited email and whether it has an
+    account that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,
+    which for an account that cannot sign in yet, such as a pending sign-up, takes that
+    account's own password). Every
     refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
     lost the role) is the same 404."""
     await enforce_invite_limit(request)
@@ -118,8 +120,10 @@ async def invites_lookup(body: InviteTokenIn, request: Request) -> InvitePreview
 async def invites_accept(body: InviteAccept, request: Request) -> InviteAccepted:
     """Create the invited account and join the brand: a password (12+ characters, an upper-case
     and a lower-case letter, a digit and a symbol, not the name or the email's first part: 422
-    with each broken rule) or the matching Google identity. An email that already has an account
-    is 409: sign in, then open the link. The person then signs in as usual."""
+    with each broken rule) or the matching Google identity. An email whose account can sign in
+    is 409: sign in, then open the link. An account that cannot sign in yet (a pending sign-up,
+    or no active brand) joins with its own password: a wrong one is 401 and counts toward the
+    lockout. The person then signs in as usual."""
     await enforce_invite_limit(request)
     if body.google is not None:
         try:
@@ -141,9 +145,12 @@ async def invites_accept(body: InviteAccept, request: Request) -> InviteAccepted
             body.token,
             password=body.password.get_secret_value(),
             display_name=body.display_name,
+            ip=request_ip(request),
         )
     except PolicyError as exc:
         raise password_rules_error([b.message for b in exc.breaches]) from None
+    except invites.AccountRefusedError:
+        raise ApiError(401, ErrorCode.UNAUTHENTICATED) from None
     return InviteAccepted(email=done.email, tenant_name=done.tenant_name)
 
 

@@ -2645,7 +2645,7 @@
       "InvitePreview": {
         "properties": {
           "account": {
-            "description": "`existing`: the email already has a Kuinn account, so sign in and call `invites_join`; `new`: create the account with `invites_accept`.",
+            "description": "`existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign in yet, such as a pending sign-up, gives its own password).",
             "enum": [
               "new",
               "existing"
@@ -23322,7 +23322,7 @@
     },
     "/api/v1/invites/accept": {
       "post": {
-        "description": "Create the invited account and join the brand: a password (12+ characters, an upper-case\nand a lower-case letter, a digit and a symbol, not the name or the email's first part: 422\nwith each broken rule) or the matching Google identity. An email that already has an account\nis 409: sign in, then open the link. The person then signs in as usual.",
+        "description": "Create the invited account and join the brand: a password (12+ characters, an upper-case\nand a lower-case letter, a digit and a symbol, not the name or the email's first part: 422\nwith each broken rule) or the matching Google identity. An email whose account can sign in\nis 409: sign in, then open the link. An account that cannot sign in yet (a pending sign-up,\nor no active brand) joins with its own password: a wrong one is 401 and counts toward the\nlockout. The person then signs in as usual.",
         "operationId": "invites_accept",
         "requestBody": {
           "content": {
@@ -24085,7 +24085,7 @@
     },
     "/api/v1/invites/lookup": {
       "post": {
-        "description": "What an invite link is for: the brand, the role, the invited email and whether it already\nhas an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every\nrefusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who\nlost the role) is the same 404.",
+        "description": "What an invite link is for: the brand, the role, the invited email and whether it has an\naccount that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,\nwhich for an account that cannot sign in yet, such as a pending sign-up, takes that\naccount's own password). Every\nrefusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who\nlost the role) is the same 404.",
         "operationId": "invites_lookup",
         "requestBody": {
           "content": {

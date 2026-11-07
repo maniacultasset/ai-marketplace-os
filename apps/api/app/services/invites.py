@@ -8,7 +8,11 @@
 - `list_invites`, `revoke_invite`: the tenant's invites, newest first; revoking an accepted invite
   is 409, an owner invite only by an owner, a replay answers the stored row.
 - `lookup`, `accept_password`, `accept_google`, `join`: the public steps and the signed-in join.
-  Every refusal of a well-formed token is one `NotFoundError("token")` (`_live`).
+  Every refusal of a well-formed token is one `NotFoundError("token")` (`_live`). An email whose
+  account can sign in (active, with a live membership) is `existing` and joins signed in; any
+  other email is `new` and accepts. An account that cannot sign in yet (a pending or rejected
+  applicant, deactivated from every brand, or its only brands suspended or offboarded) accepts
+  with its own password under the lockout gate (`signup.verify_existing_user`), never a new one.
 
 Audit rows carry the role only (`audit_allowlist('invitation')`), never the email or the token.
 """
@@ -30,17 +34,25 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError, ForbiddenError, InputError, NotFoundError
 from app.core.passwords import hash_password, off_loop
 from app.core.rbac import Principal
-from app.repositories.identity import AuditRepository, InvitationLookup, UserRepository
+from app.repositories.identity import (
+    AuditRepository,
+    InvitationLookup,
+    MembershipRepository,
+    UserRepository,
+    UserRow,
+)
 from app.repositories.invitations import InvitationRepository, InviteRow
 from app.repositories.members import MembersRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import identity_session, set_gucs, unit_of_work
 from app.services import google_signin
+from app.services.signup import verify_existing_user
 
 __all__ = [
     "INVITE_TTL",
     "MAX_PENDING_INVITES",
     "Accepted",
+    "AccountRefusedError",
     "InvitePage",
     "InviteRow",
     "Joined",
@@ -186,6 +198,11 @@ class LiveInvite:
     tenant_name: str
 
 
+class AccountRefusedError(Exception):
+    """The existing account's own password did not verify (wrong, locked or inactive): the
+    route's 401. Raised after the session commits, so a wrong password stays counted."""
+
+
 def _gone() -> NotFoundError:
     """The one refusal of a well-formed token: every body is the same (no oracle)."""
     return NotFoundError("token")
@@ -223,18 +240,29 @@ async def _live(session: Any, found: InvitationLookup) -> LiveInvite:
     return LiveInvite(row=row, tenant_name=profile.name)
 
 
+async def _can_sign_in(session: Any, user: UserRow) -> bool:
+    """The login's own test (`auth.login`): an active user with an active membership in a live
+    tenant. Sets `app.user_id` = the user (memberships_own)."""
+    if not user.is_active:
+        return False
+    await set_gucs(session, user_id=user.id)
+    return bool(await MembershipRepository(session).list_active_for_user(user.id))
+
+
 async def lookup(raw: str) -> Preview:
-    """What the link is for, and whether its email already has an account."""
+    """What the link is for, and whether its email has an account that can sign in (`existing`:
+    sign in, then join) or not (`new`: accept, with the account's own password if it has one)."""
     async with identity_session() as session:
         live = await _live(session, await _find(session, raw))
         await set_gucs(session, login_email=live.row.email)
-        existing = await UserRepository(session).by_email(live.row.email)
+        user = await UserRepository(session).by_email(live.row.email)
+        existing = user is not None and await _can_sign_in(session, user)
     return Preview(
         tenant_name=live.tenant_name,
         role=live.row.role,
         email=live.row.email,
         expires_at=live.row.expires_at,
-        account="new" if existing is None else "existing",
+        account="existing" if existing else "new",
     )
 
 
@@ -257,10 +285,31 @@ async def _accept(session: Any, live: LiveInvite, user_id: uuid.UUID) -> None:
     )
 
 
-async def accept_password(raw: str, *, password: str, display_name: str | None) -> Accepted:
-    """A new account with a password for the invite's email, its membership, and the invite
-    accepted, in one transaction. The DPP rules use the invite's email (`PolicyError`). An email
-    that already has an account is 409: sign in, then join."""
+async def _join_existing(
+    session: Any, live: LiveInvite, user: UserRow, password: str, *, ip: str | None
+) -> bool:
+    """CR1: an existing account joins only when it cannot sign in (else 409: sign in, then
+    join) and only with its own password under the lockout gate. False for a wrong password, a
+    locked or an inactive account (counted by the gate); a membership here already is 409."""
+    if await _can_sign_in(session, user):
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_account")
+    if await MembersRepository(session, live.row.tenant_id).role_for_share(user.id) is not None:
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_member")
+    if not await verify_existing_user(session, user, password, ip=ip):
+        return False
+    await _accept(session, live, user.id)
+    return True
+
+
+async def accept_password(
+    raw: str, *, password: str, display_name: str | None, ip: str | None = None
+) -> Accepted:
+    """The invite accepted with a password, in one transaction. The DPP rules use the invite's
+    email (`PolicyError`). A new email gets a new account and its membership. An existing
+    account that can sign in is 409 (sign in, then join); one that cannot joins with its own
+    password (`_join_existing`; `display_name` is ignored), and a wrong one is `AccountRefusedError`
+    (401), raised after the session commits so the failure stays counted."""
+    refused = False
     async with identity_session() as session:
         found = await _find(session, raw)
         breaches = password_policy.check(password, email=found.email, display_name=display_name)
@@ -272,18 +321,22 @@ async def accept_password(raw: str, *, password: str, display_name: str | None) 
         users = UserRepository(session)
         if not await users.lock_login_email(email):
             raise _gone()
-        if await users.by_email(email) is not None:
-            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_account")
-        user_id = uuid.uuid4()
-        created = await users.insert_signup_user(
-            user_id=user_id,
-            email=email,
-            password_hash=await off_loop(hash_password, password),
-            display_name=display_name,
-        )
-        if not created:  # a concurrent account for the email won `uq_users_email_lower`
-            raise _gone()
-        await _accept(session, live, user_id)
+        user = await users.by_email(email)
+        if user is not None:
+            refused = not await _join_existing(session, live, user, password, ip=ip)
+        else:
+            user_id = uuid.uuid4()
+            created = await users.insert_signup_user(
+                user_id=user_id,
+                email=email,
+                password_hash=await off_loop(hash_password, password),
+                display_name=display_name,
+            )
+            if not created:  # a concurrent account for the email won `uq_users_email_lower`
+                raise _gone()
+            await _accept(session, live, user_id)
+    if refused:
+        raise AccountRefusedError
     return Accepted(email=email, tenant_name=live.tenant_name)
 
 

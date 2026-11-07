@@ -494,6 +494,102 @@ async def test_accept_for_an_existing_account_is_409(
     ).fetchone() == (1,)
 
 
+APPLICANT = "founder@kalakar.test"
+APPLICANT_PASSWORD = "Quiet-Harbour-Lamp-7305"
+
+
+def _members(conn: Conn, email: str) -> list[tuple[Any, ...]]:
+    return conn.execute(
+        "SELECT m.tenant_id, m.role, m.is_active FROM tenant_memberships m "
+        "JOIN users u ON u.id = m.user_id WHERE u.email = %s ORDER BY m.created_at",
+        [email],
+    ).fetchall()
+
+
+async def test_a_pending_applicant_joins_with_its_own_password(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """CR1: a self-serve applicant has a users row and no membership, so the login is 401 and
+    `invites_join` is out of reach. Lookup says `new`, and accept takes the account's own
+    password under the lockout gate: a wrong one is 401 and counted, the right one joins."""
+    from .mfa_support import login
+
+    signed_up = await api.post(
+        f"{PREFIX}/signup",
+        json={
+            "brand_name": "Kalakar Weaves",
+            "owner_name": "Meera Iyer",
+            "email": APPLICANT,
+            "password": APPLICANT_PASSWORD,
+        },
+    )
+    assert signed_up.status_code == 202, signed_up.text
+    assert (await login(api, APPLICANT, APPLICANT_PASSWORD)).status_code == 401
+    token = await _token_for(api, world, APPLICANT)
+    preview = await api.post(f"{INVITES}/lookup", json={"token": token})
+    assert preview.status_code == 200 and preview.json()["account"] == "new"
+    wrong = await _accept(api, token, password=NEW_PASSWORD)
+    assert wrong.status_code == 401, wrong.text
+    assert wrong.json()["error"]["type"] == "UNAUTHENTICATED"
+    assert auth_db.execute(
+        "SELECT failed_auth_count FROM users WHERE email = %s", [APPLICANT]
+    ).fetchone() == (1,)
+    assert _members(auth_db, APPLICANT) == []
+    done = await _accept(api, token, password=APPLICANT_PASSWORD, display_name="Someone Else")
+    assert done.status_code == 200, done.text
+    assert done.json() == {"email": APPLICANT, "tenant_name": "Acme"}
+    assert auth_db.execute(
+        "SELECT count(*), max(display_name) FROM users WHERE email = %s", [APPLICANT]
+    ).fetchone() == (1, "Meera Iyer")
+    assert _members(auth_db, APPLICANT) == [(world.tenant("acme"), "reviewer", True)]
+    signed = await login(api, APPLICANT, APPLICANT_PASSWORD)
+    assert signed.status_code == 200 and signed.json()["status"] == "signed_in", signed.text
+
+
+@pytest.mark.parametrize("lost", ["deactivated", "suspended", "offboarded"])
+async def test_an_account_with_no_live_brand_joins_with_its_password(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, lost: str
+) -> None:
+    """CR1: deactivated from every brand, or the only brand suspended or offboarded: the login
+    is 401, so lookup says `new` and accept with the account's own password joins."""
+    from .auth_support import PASSWORD, add_member, add_user
+    from .mfa_support import login
+
+    email = f"{lost}@elsewhere.test"
+    bharat = world.tenant("bharat")
+    add_member(auth_db, bharat, add_user(auth_db, email), "reviewer", active=lost != "deactivated")
+    if lost != "deactivated":
+        auth_db.execute(
+            "UPDATE tenants SET status = %s, offboarded_at = CASE WHEN %s = 'offboarded' "
+            "THEN now() END WHERE id = %s",
+            [lost, lost, bharat],
+        )
+    assert (await login(api, email, PASSWORD)).status_code == 401
+    token = await _token_for(api, world, email)
+    preview = await api.post(f"{INVITES}/lookup", json={"token": token})
+    assert preview.json()["account"] == "new", preview.text
+    done = await _accept(api, token, password=PASSWORD)
+    assert done.status_code == 200, done.text
+    assert (world.tenant("acme"), "reviewer", True) in _members(auth_db, email)
+    assert (await login(api, email, PASSWORD)).status_code == 200
+
+
+async def test_accept_into_a_brand_it_already_belongs_to_is_409(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """CR1 edge: a membership here that appeared after the invite (inactive, so the login is
+    401) is the join's 409, never the membership key's 500."""
+    from .auth_support import PASSWORD, add_member, add_user
+
+    token = await _token_for(api, world, "late@acme.test")
+    add_member(
+        auth_db, world.tenant("acme"), add_user(auth_db, "late@acme.test"), "reviewer", active=False
+    )
+    response = await _accept(api, token, password=PASSWORD)
+    assert response.status_code == 409, response.text
+    assert response.json()["error"]["type"] == "INVALID_STATUS_TRANSITION"
+
+
 def _second_owner(conn: Conn, world: World) -> None:
     """Another active owner, so the last-owner guard lets the inviter go."""
     from .auth_support import add_member, add_user

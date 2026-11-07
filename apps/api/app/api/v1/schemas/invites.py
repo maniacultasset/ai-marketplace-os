@@ -91,8 +91,9 @@ class InvitePreview(WireModel):
     email: Email
     expires_at: datetime
     account: Literal["new", "existing"] = Field(
-        description="`existing`: the email already has a Kuinn account, so sign in and call "
-        "`invites_join`; `new`: create the account with `invites_accept`."
+        description="`existing`: the email has a Kuinn account that can sign in, so sign in and "
+        "call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign "
+        "in yet, such as a pending sign-up, gives its own password)."
     )
 
 
