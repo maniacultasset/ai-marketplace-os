@@ -98,13 +98,19 @@ class PhotoWorld:
             [key, Jsonb(fact), self.product_id],
         )
 
-    def drop_seller_colour(self) -> None:
+    def drop_seller_colour(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """SI2 seeds the seller's colour on the demo kurtas, so colour is no photo target; a test
-        that reads colour from the photos drops it first (a test arrangement)."""
+        that reads colour from the photos drops it first. The listing's own AI colour then
+        counts as confident (SI2 keeps one at or above the dictionary floor; the stub gives no
+        score), so the required colour raises no issue and no Inbox question of its own (SI4)
+        before the photo lane asks (a test arrangement)."""
+        from app.services import seller_facts
+
         self.conn.execute(
             "UPDATE products SET attributes = attributes - 'color' WHERE id = %s",
             [self.product_id],
         )
+        monkeypatch.setattr(seller_facts, "_ai_colour_kept", lambda listing: True)
 
     def job(self, job_id: uuid.UUID) -> dict[str, Any]:
         cur = self.conn.execute("SELECT * FROM job_runs WHERE id = %s", [job_id])

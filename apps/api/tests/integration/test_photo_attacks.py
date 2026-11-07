@@ -143,7 +143,7 @@ async def test_answer_on_a_deleted_product_is_404_and_writes_nothing(
     from app.core.errors import NotFoundError
 
     pw = photo_world
-    pw.drop_seller_colour()
+    pw.drop_seller_colour(monkeypatch)
     spy_pipeline(pw, monkeypatch)
     await generate(pw, "photo_low")
     (task,) = [t for t in pw.tasks() if t["target_path"] == "facts.attributes.color"]
@@ -158,7 +158,7 @@ async def test_a_synonym_answer_is_stored_canonical_and_survives_new_photos(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
-    pw.drop_seller_colour()
+    pw.drop_seller_colour(monkeypatch)
     spy_pipeline(pw, monkeypatch)
     first = await generate(pw, "photo_low")
     (task,) = [t for t in pw.tasks() if t["target_path"] == "facts.attributes.color"]

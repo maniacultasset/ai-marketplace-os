@@ -353,3 +353,13 @@ async def test_resolve_family_other_tenant_children_never_returned(world: Any) -
         assert await _family(acme, child) is None
     mine = await _family(bharat, style)
     assert mine is not None and len(mine[1]) == len(children)
+
+
+async def test_critical_keys_from_the_dictionary(world: Any) -> None:
+    """SI4 A6 (CP-D9): the `is_critical` dictionary keys (DATABASE.md:1229)."""
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(world.tenant("acme")) as uow:
+        keys = await uow.product_facts.critical_keys()
+    assert {"fiber_composition", "country_of_origin"} <= keys
+    assert "color" not in keys

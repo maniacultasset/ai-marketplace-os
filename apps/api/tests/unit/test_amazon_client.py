@@ -235,3 +235,19 @@ async def test_amazon_tokens_never_leak(log_lines: Any, sentry_events: Any) -> N
         caught.value.report.model_dump_json(),
     ):
         assert CANARY not in text
+
+
+async def test_amazon_used_secrets() -> None:
+    """SI4 A16: every token the session sent, a forced refresh's included; none before a call."""
+    app = build_fake()
+    tokens = FakeTokens(app)
+    client = spapi_client(app, tokens=tokens)
+    assert client.used_secrets() == []
+    first = tokens.token
+    await client.get("SKU-1")
+    await client.get("SKU-1")
+    assert client.used_secrets() == [first]
+    await _control(app, spapi_auth={"mode": "expired", "times": 1})
+    await client.get("SKU-1")
+    assert tokens.refreshes == 1
+    assert client.used_secrets() == [first, tokens.token]

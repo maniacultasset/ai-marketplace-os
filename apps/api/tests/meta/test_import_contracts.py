@@ -43,3 +43,32 @@ def test_kms_client_contract_present(repo_root: Path) -> None:
     assert _lines(contract["source_modules"]) == {"app", "mkos_schemas"}
     assert _lines(contract["forbidden_modules"]) == {"google"}
     assert _lines(contract["ignore_imports"]) == {"app.adapters.kms -> google"}
+
+
+AUTO_FIX_CONTRACT = "importlinter:contract:auto-fix-pure"
+
+
+def test_auto_fix_contract_present(repo_root: Path) -> None:
+    """SI4 A5: `app.services.auto_fix` is pure, like the Rules Engine it calls."""
+    parser = configparser.ConfigParser()
+    parser.read(repo_root / ".importlinter", encoding="utf-8")
+    assert AUTO_FIX_CONTRACT in parser.sections()
+    contract = parser[AUTO_FIX_CONTRACT]
+    assert contract["name"].strip() == "app.services.auto_fix is pure"
+    assert contract["type"] == "forbidden"
+    assert _lines(contract["source_modules"]) == {"app.services.auto_fix"}
+    assert _lines(contract["forbidden_modules"]) == {
+        "sqlalchemy",
+        "psycopg",
+        "fastapi",
+        "starlette",
+        "app.db",
+        "app.repositories",
+        "app.api",
+        "app.workers",
+        "app.adapters",
+        "app.core",
+        "app.cli",
+    }
+    assert contract.get("allow_indirect_imports", "False").strip() in ("False", "false")
+    assert "ignore_imports" not in contract

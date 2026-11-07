@@ -52,6 +52,7 @@ async def build(world: World, conn: Conn, cfg: Any = None, slug: str = "acme", *
         "product_id": add_product(conn, tenant),
         "marketplace": "amazon",
         "rules": rules(),
+        "critical_keys": frozenset(),
         **over,
     }
     return await build_pipeline_deps(**values)

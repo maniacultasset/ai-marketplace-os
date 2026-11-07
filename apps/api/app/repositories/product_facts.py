@@ -226,6 +226,12 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
                 children.append(child)
         return main, tuple(children)
 
+    async def critical_keys(self) -> frozenset[str]:
+        """The `is_critical` dictionary keys (DATABASE.md:1229; T34): never fixed by code or the
+        AI on their own (SI4 A6, CP-D9)."""
+        flags, _version = await self._dictionary()
+        return frozenset(key for key, critical in flags.items() if critical)
+
     async def resolve(self, product_id: uuid.UUID) -> ProductFacts | None:
         product = await self._live(product_id)
         if product is None:

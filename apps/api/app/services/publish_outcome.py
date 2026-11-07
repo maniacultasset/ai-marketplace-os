@@ -48,13 +48,12 @@ from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
 from app.repositories.submissions import NewFieldResult
 from app.repositories.uow import TenantUnitOfWork, repositories_on
-from app.services.issues import sync_issues
+from app.services.issues import adapter_source, sync_issues
 from app.services.publish_ledger import Decision
 from app.workers.registry import Outcome
 
 log = get_logger(__name__)
 
-SOURCE: Final = "amazon_adapter"
 FIRST_POLL: Final = timedelta(minutes=2)
 ENDED: Final = frozenset({"failed", "dead_letter", "cancelled"})
 AGGREGATE_ORDER: Final = ("processing", "pending_review", "rejected", "inactive")
@@ -211,16 +210,19 @@ async def apply_decision(uow: TenantUnitOfWork, ctx: AttemptCtx, decision: Decis
         return False
     item_ids, states = await _items(uow, ctx, decision)
     await _field_rows(uow, ctx, decision, item_ids)
+    # SI4 A15 (C:118): the marketplace's own adapter source, never `amazon_adapter` for all
+    source = adapter_source(listing.marketplace)
     await sync_issues(
         uow,
         listing,
-        SOURCE,
+        source,
         _issue_report(decision),
         run_id=None,
         cause="publish",
         scope_fields=_scope(ctx, decision),
         version_id=ctx.version_id,
         job_id=ctx.job_id,
+        critical_keys=await uow.product_facts.critical_keys(),
     )
     await _move(uow, ctx, listing, decision, states)
     await _open_task(uow, ctx, listing, decision)

@@ -11,7 +11,10 @@
    maker kept as `generated_by_user_id`, the caller as `edited_by_user_id`, the parent's pins);
 5. the Rules Engine on it, one run (attempt 1, linked);
 6. the move (event `edit`) to `validated`, `needs_review` or `blocked/validation_errors`, the
-   approval cleared (an edit voids it; the editor can no longer approve, lv_guard).
+   approval cleared (an edit voids it; the editor can no longer approve, lv_guard);
+7. SI4 A13: the questions (`ask_after_check`): tasks whose issues all closed are cancelled, and
+   an open error row only the seller can fix opens or reuses one task; then the
+   `human_task_opened` move to `blocked/human_task_open`. An edit is never auto-fixed (D6).
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ from app.repositories.listings import NewVersion, UserActor
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.validation_runs import summary_of
 from app.services.generation_context import previous_listing
+from app.services.issue_questions import ask_after_check
 from app.services.listings import human_move, insert_run, rules_check, to_detail
 from app.services.seller_facts import FACTUAL_KEYS
 
@@ -138,6 +142,7 @@ async def edit_content(
         current_version_id=version.id,
         clear_approval=True,
     )
+    listing = await ask_after_check(uow, listing, UserActor(principal.user_id), stored.images)
     # `audit()` keeps only the listing's allow-listed keys (0004: status, status_reason, ...);
     # the version link is in listing_versions (origin=edit, parent_version_id).
     await uow.audit.write(
