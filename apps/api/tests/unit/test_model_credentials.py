@@ -31,6 +31,7 @@ def _deps(app_env: str = "local", **over: Any) -> Any:
         image_reports={},
         embedder=None,
         models=_ModelConfig.from_settings(cfg),
+        critical_keys=frozenset(),
     )
 
 

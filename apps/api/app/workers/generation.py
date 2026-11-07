@@ -199,6 +199,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         claim_started_at = job.started_at or datetime.now(UTC)
         created_by = job.created_by
         image_rows = await uow.images.listing_set(listing.product_id)
+        critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
@@ -232,6 +233,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         product_id=listing.product_id,
         marketplace=Marketplace(listing.marketplace),
         rules=rules,
+        critical_keys=critical,
         product=product,
     )
     try:
