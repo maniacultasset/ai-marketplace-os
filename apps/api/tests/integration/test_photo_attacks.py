@@ -9,6 +9,7 @@ import uuid
 from typing import Any
 
 import pytest
+from app.services import photo_facts as pf
 from mkos_schemas.jobs import PhotoObservation
 
 from .conftest import LOCAL_HOSTS
@@ -81,7 +82,9 @@ async def test_new_photos_replace_an_unconfirmed_photo_value(
     second_value = next(t for t in pw.seen[-1].photo_targets if t.key == "neckline").allowed_values[
         1
     ]
-    assert after["value"] == second_value != before["value"]
+    # SI9 CP-D25: written in the template's spelling of the vocabulary value
+    assert pf.canonical("neckline", after["value"]) == second_value
+    assert after["value"] != before["value"]
     (record,) = pw.photo_records(again.job_id)
     assert after["agent_run_id"] == str(record["id"]) and after["source"] == "ai"
     # the re-check digest took the refreshed value: approve at once is not STALE_VERSION

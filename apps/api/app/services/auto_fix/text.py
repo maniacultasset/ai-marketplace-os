@@ -11,6 +11,7 @@ from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import FixAction
+from mkos_schemas.jobs import CategoryTemplate
 
 ACTION_MIN: Final = 5
 ACTION_MAX: Final = 1000
@@ -187,6 +188,25 @@ def question_for(
     question, reason = _QUESTIONS.get(code, _DEFAULT_QUESTION)
     hint = _EXAMPLES.get(value_type or "", "")
     return _fit(question.format(label=shown) + hint), _fit(reason.format(label=shown))
+
+
+def answer_choices(
+    vocabulary: Sequence[str] | None, template: CategoryTemplate | None, key: str
+) -> list[str] | None:
+    """SI9 CP-D23: the choices a question for `key` offers. With an enum spec on the listing's
+    template: the dictionary vocabulary kept to the template's accepted spellings (matched with
+    the Rules fold, `strip().casefold()`), else those spellings; otherwise the vocabulary."""
+    spec = None if template is None else template.specs.get(key)
+    spellings = (
+        None
+        if spec is None or (spec.allowed_values is None and not spec.value_map)
+        else [*(spec.allowed_values or []), *sorted(spec.value_map)]
+    )  # the Rules check's accepted list (`rules_engine.template.template_allowed`)
+    if spellings is None:
+        return list(vocabulary) if vocabulary else None
+    accepted = {s.strip().casefold() for s in spellings}
+    kept = [v for v in (vocabulary or ()) if v.strip().casefold() in accepted]
+    return kept or list(dict.fromkeys(spellings))
 
 
 def expected_answer(

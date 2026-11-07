@@ -3,7 +3,7 @@ expected answer. No template formats a value."""
 
 from __future__ import annotations
 
-from typing import get_args
+from typing import Any, get_args
 
 import pytest
 from app.db.platform_loads import DictionaryEntry
@@ -101,3 +101,29 @@ def test_no_template_formats_a_value(code: ErrorCode) -> None:
     # the signature takes no value at all: a value cannot reach the text
     with pytest.raises(TypeError):
         question_for(code, "fit", "Fit", value=SENTINEL)  # type: ignore[call-arg]
+
+
+# ---- SI9 T12 (CP-D23): answer choices from the template subset ----
+
+
+def _template(allowed: list[str] | None, value_map: dict[str, str] | None = None) -> Any:
+    from tests.unit.test_photo_targets import KURTA
+
+    spec = KURTA.specs["fit"].model_copy(
+        update={"allowed_values": allowed, "value_map": value_map or {}}
+    )
+    return KURTA.model_copy(update={"specs": {**KURTA.specs, "fit": spec}})
+
+
+def test_answer_choices() -> None:
+    from app.services.auto_fix.text import answer_choices
+
+    enum = _template(["Regular", "Slim"])
+    assert answer_choices(["regular", "loose", "SLIM "], enum, "fit") == ["regular", "SLIM "]
+    assert answer_choices(["loose"], enum, "fit") == ["Regular", "Slim"]  # empty intersection
+    assert answer_choices(None, enum, "fit") == ["Regular", "Slim"]
+    only_map = _template(None, {"Relaxed": "R"})
+    assert answer_choices(["relaxed", "x"], only_map, "fit") == ["relaxed"]
+    assert answer_choices(["a", "b"], _template(None), "fit") == ["a", "b"]  # no enum spec
+    assert answer_choices(["a"], None, "fit") == ["a"]
+    assert answer_choices(None, None, "fit") is None

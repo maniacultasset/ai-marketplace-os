@@ -88,7 +88,13 @@ async def validate_listing(
         if adapter is not None and await _schema_changed(uow, listing, adapter):
             await _sync_schema(uow, listing, version.id, adapter)
             listing = await _revalidate(uow, principal, listing, check, adapter)
-            await ask_after_check(uow, listing, UserActor(principal.user_id), canonical.images)
+            await ask_after_check(
+                uow,
+                listing,
+                UserActor(principal.user_id),
+                canonical.images,
+                template=check.template,
+            )
         return summary_of([same])
     # only the current version's issues are the listing's inbox (a past version's run is history)
     run = await insert_run(uow, listing, version.id, check, cause="revalidate" if current else None)
@@ -97,7 +103,13 @@ async def validate_listing(
     if current:
         listing = await _revalidate(uow, principal, listing, check, adapter)
         # SI4 A13: the questions of the current version's check (never of a past version's)
-        await ask_after_check(uow, listing, UserActor(principal.user_id), canonical.images)
+        await ask_after_check(
+            uow,
+            listing,
+            UserActor(principal.user_id),
+            canonical.images,
+            template=check.template,
+        )
     return summary_of([run])
 
 

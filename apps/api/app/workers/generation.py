@@ -243,6 +243,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         facts_digest=facts_digest(facts),
     )
     plan_base: dict[str, Any] = {
+        "template": rules.template,  # SI9 CP-D23
         "tenant_id": tenant,
         "job_id": job_id,
         "listing_id": listing.id,
@@ -346,7 +347,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
     photo: dict[str, Any] = {}
-    if targets:  # SI3: screen only a trusted result's observations, only for this run's targets
+    if targets and rules.template is not None:  # SI3: only a trusted result, this run's targets
         decision = screen(
             trusted.result.photo_observations,
             trusted.records,
@@ -355,6 +356,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             facts=facts,
             required=frozenset(rules.template.required_attributes if rules.template else ()),
             rejected=rejections,
+            template=rules.template,
         )
         log.info(
             "generation.photo_screen",

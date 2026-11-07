@@ -154,7 +154,9 @@ async def edit_content(
         current_version_id=version.id,
         clear_approval=True,
     )
-    listing = await ask_after_check(uow, listing, UserActor(principal.user_id), stored.images)
+    listing = await ask_after_check(
+        uow, listing, UserActor(principal.user_id), stored.images, template=check.template
+    )
     # `audit()` keeps only the listing's allow-listed keys (0004: status, status_reason, ...);
     # the version link is in listing_versions (origin=edit, parent_version_id).
     await uow.audit.write(

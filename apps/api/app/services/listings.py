@@ -17,6 +17,7 @@ from typing import Any, Final
 
 from mkos_schemas.enums import ErrorSource, Marketplace
 from mkos_schemas.errors import ErrorReport
+from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
@@ -34,6 +35,7 @@ BLOCKED_REASON: Final = "validation_errors"
 class Check:
     report: ErrorReport
     pins: Pins
+    template: CategoryTemplate | None = None  # SI9: the questions' template subset
 
 
 def to_detail(
@@ -91,6 +93,7 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
     report = recheck(canonical, rules, for_rules(facts), rejections=rejections)
     return Check(
+        template=rules.template,
         report=report,
         pins=Pins(
             rules_version=rules.ruleset.rules_version,

@@ -18,6 +18,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.jobs import ContextImage, PhotoObservation, PhotoTarget
+from tests.unit.test_photo_targets import KURTA
 
 _JPEG = b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 16 + b"\xff\xd9").decode("ascii")
 _TS = datetime(2026, 11, 7, tzinfo=UTC)
@@ -121,6 +122,7 @@ def test_screen_keeps_only_what_the_rules_allow(w: dict[str, Any]) -> None:
         ),
         required=w["required"],
         rejected={},
+        template=KURTA.model_copy(update={"specs": {}, "optional_attributes": list(pf.V1_KEYS)}),
     )
     complete = w["records"] == [_record()]
     if not complete:

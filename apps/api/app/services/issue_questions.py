@@ -31,12 +31,18 @@ from typing import Any, Final
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass, ErrorSource, FixAction
 from mkos_schemas.errors import ErrorItem
+from mkos_schemas.jobs import CategoryTemplate
 
 from app.core.logging import get_logger
 from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import TenantUnitOfWork
 from app.services.auto_fix.policy import IMAGE_REPLACEMENT, MISSING_FACT, ask_kind, fact_key, route
-from app.services.auto_fix.text import expected_answer, image_question, question_for
+from app.services.auto_fix.text import (
+    answer_choices,
+    expected_answer,
+    image_question,
+    question_for,
+)
 from app.services.generation_result import Move
 
 log = get_logger(__name__)
@@ -80,6 +86,7 @@ async def open_questions(
     listing: Any,
     *,
     critical_keys: frozenset[str],
+    template: CategoryTemplate | None,
     images: Sequence[Any] = (),
 ) -> list[uuid.UUID]:
     """Open (or reuse) the questions behind this listing's open error rows and link the rows;
@@ -104,6 +111,11 @@ async def open_questions(
             definition = known.get(key)
             if definition is None or definition.key != key:
                 continue  # no dictionary target: the row stays an open issue (P:§2.6)
+            # SI9 CP-D23: a template enum key offers the template's accepted values only
+            choices = answer_choices(definition.vocabulary, template, key)
+            value_type = definition.value_type
+            if value_type == "text" and choices is not None and not definition.vocabulary:
+                value_type = "enum"
             question, reason = question_for(
                 ErrorCode(group[0].error_code), key, "", value_type=definition.value_type
             )
@@ -112,11 +124,7 @@ async def open_questions(
                 fact_target(definition),
                 question,
                 reason,
-                expected_answer(
-                    definition.value_type,
-                    vocabulary=definition.vocabulary,
-                    unit=definition.unit,
-                ),
+                expected_answer(value_type, vocabulary=choices, unit=definition.unit),
             )
             await uow.listing_issues.link_ids([r.id for r in group], task)
             opened.append(task)
@@ -167,14 +175,21 @@ def can_question_move(status: str, reason: str | None) -> bool:
 
 
 async def ask_after_check(
-    uow: TenantUnitOfWork, listing: Any, actor: Any, images: Sequence[Any]
+    uow: TenantUnitOfWork,
+    listing: Any,
+    actor: Any,
+    images: Sequence[Any],
+    *,
+    template: CategoryTemplate | None,
 ) -> Any:
     """A human check point's step 4 (edit, validate): reconcile, open the questions, then the
     `human_task_opened` move when a question opened and the status just reached allows it.
     Returns the listing row (moved or not)."""
     critical = await uow.product_facts.critical_keys()
     await reconcile_tasks(uow, listing)
-    asked = await open_questions(uow, listing, critical_keys=critical, images=images)
+    asked = await open_questions(
+        uow, listing, critical_keys=critical, template=template, images=images
+    )
     if not asked or not can_question_move(listing.status, listing.status_reason):
         return listing
     return await uow.listings.move(

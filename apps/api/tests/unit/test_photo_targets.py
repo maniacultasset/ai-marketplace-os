@@ -229,10 +229,11 @@ def test_ac3_lamp_and_tshirt_without_pieces() -> None:
 
 def test_allowed_for_narrows_to_the_marketplace_enum() -> None:
     colours = pf.allowed_for("color", KURTA)
+    spec = KURTA.specs["color"]
+    # SI9 CP-D16: the enum and the value_map keys, read in vocabulary space
     assert set(colours) == {
-        pf.canonical("color", v) for v in KURTA.specs["color"].allowed_values or []
+        pf.canonical("color", v) for v in [*(spec.allowed_values or []), *spec.value_map]
     }
-    assert len(colours) == 11
     assert not {"mustard", "peach", "teal", "multicolour"} & set(colours)
     assert pf.allowed_for("fit", KURTA) == ("regular fit", "slim fit", "relaxed fit")
     assert "oversized" not in pf.allowed_for("fit", KURTA)
@@ -241,13 +242,18 @@ def test_allowed_for_narrows_to_the_marketplace_enum() -> None:
 
 
 def test_allowed_for_unmappable_spec_drops_the_target() -> None:
-    spec = KURTA.specs["neckline"].model_copy(update={"allowed_values": ["Zigzag", "Wavy"]})
+    spec = KURTA.specs["neckline"].model_copy(
+        update={"allowed_values": ["Zigzag", "Wavy"], "value_map": {}}
+    )
     template = KURTA.model_copy(update={"specs": {**KURTA.specs, "neckline": spec}})
     assert pf.allowed_for("neckline", template) == ()
     assert "neckline" not in _targets(template=template)
     unset = KURTA.model_copy(
         update={
-            "specs": {**KURTA.specs, "neckline": spec.model_copy(update={"allowed_values": None})}
+            "specs": {
+                **KURTA.specs,
+                "neckline": spec.model_copy(update={"allowed_values": None, "value_map": {}}),
+            }
         }
     )
     assert pf.allowed_for("neckline", unset) == pf.VOCAB["neckline"]
@@ -277,14 +283,11 @@ def test_every_seeded_apparel_value_maps_into_vocab() -> None:
                 assert pf.canonical(key, text) is not None, (template.category, key, text)
 
 
-def test_other_direction_every_target_value_fits_the_template() -> None:
+def test_every_target_carries_the_whole_vocabulary() -> None:
+    """SI9 CP-D16 (AC13): the pipeline reads in vocabulary space; the backend screens."""
     for template in APPAREL:
         for target in _targets(template=template).values():
-            spec = template.specs.get(target.key)
-            if spec is None or spec.allowed_values is None:
-                continue
-            for value in target.allowed_values:
-                assert any(pf.canonical(target.key, a) == value for a in spec.allowed_values)
+            assert target.allowed_values == list(pf.VOCAB[target.key])
 
 
 def test_pinned_marketplace_differences() -> None:
@@ -298,7 +301,8 @@ def test_pinned_marketplace_differences() -> None:
             found.setdefault(f"{left[1]}/{right[1]}", set()).update(
                 {("amazon", v) for v in only_a} | {("flipkart", v) for v in only_b}
             )
-    expected = {("amazon", "crew neck"), ("amazon", "polo collar"), ("flipkart", "collared neck")}
+    # SI9: the value_map keys count too, so Flipkart reaches crew neck and polo collar
+    expected = {("flipkart", "collared neck")}
     assert found == {"KURTA/kurta": expected, "SHIRT/t_shirt": expected}
 
 
@@ -353,3 +357,73 @@ def test_photo_set_sorted_and_photo_slots_only() -> None:
     a, b, label = _image("secondary", 2), _image("main", 1), _image("packaging_label", 3)
     got = pf.photo_set([a, b, label], {a.image_id: "x", b.image_id: "y", label.image_id: "z"})
     assert got == ((str(b.image_id), "y"), (str(a.image_id), "x"))
+
+
+# ---- SI9 T12 (AC13, AC15; CP-D16, CP-D18, CP-D25) ----
+
+FLIPKART_KURTA = TEMPLATES[("flipkart", "kurta")]
+
+
+def test_si9_subsets_in_vocabulary_space() -> None:
+    assert set(pf.allowed_for("neckline", KURTA)) == {
+        "crew neck",
+        "mandarin collar",
+        "polo collar",
+        "round neck",
+        "v-neck",
+    }
+    for template in (KURTA, FLIPKART_KURTA):
+        assert set(pf.allowed_for("fit", template)) == {"regular fit", "slim fit", "relaxed fit"}
+    assert "full sleeve" in pf.allowed_for("sleeve_length", KURTA)
+    flipkart_sleeves = pf.allowed_for("sleeve_length", FLIPKART_KURTA)
+    assert {"short sleeve", "three-quarter sleeve"} <= set(flipkart_sleeves)
+
+
+def test_si9_template_spelling() -> None:
+    assert pf.template_spelling("fit", "regular fit", KURTA) == "Regular"
+    assert pf.template_spelling("sleeve_length", "full sleeve", KURTA) == "Long Sleeve"
+    assert pf.template_spelling("sleeve_length", "short sleeve", FLIPKART_KURTA) == "Half Sleeve"
+    assert (
+        pf.template_spelling("sleeve_length", "three-quarter sleeve", FLIPKART_KURTA)
+        == "3/4 Sleeve"
+    )
+    assert pf.template_spelling("pattern", "floral", KURTA) == "floral"  # no enum spec
+    spec = KURTA.specs["fit"].model_copy(update={"allowed_values": [], "value_map": {"Slim": "S"}})
+    only_map = KURTA.model_copy(update={"specs": {**KURTA.specs, "fit": spec}})
+    assert pf.template_spelling("fit", "slim fit", only_map) == "Slim"
+
+
+def test_si9_empty_listed_subset_has_no_target() -> None:
+    spec = KURTA.specs["neckline"].model_copy(
+        update={"allowed_values": ["Zigzag"], "value_map": {}}
+    )
+    template = KURTA.model_copy(update={"specs": {**KURTA.specs, "neckline": spec}})
+    assert "neckline" not in _targets(template=template)
+
+
+def test_si9_unlisted_key_fill_only() -> None:
+    assert "garment_length" not in KURTA.specs
+    assert _targets()["garment_length"].mode == "fill"
+    filled = _targets(_facts(garment_length=_fact("garment_length", "knee length")))
+    assert "garment_length" not in filled
+
+
+def test_si9_exhaustive_seeded_templates() -> None:
+    """(a) every apparel template gives a `fit` target with a non-empty subset, and every listed
+    V1 key with an enum spec has a non-empty subset; (b) each subset value, written in the
+    template's spelling, passes the Rules template check (no VALUE_NOT_ALLOWED)."""
+    from app.services.rules_engine.template import template_allowed
+
+    for template in APPAREL:
+        assert "fit" in _targets(template=template), template.category
+        assert pf.allowed_for("fit", template), template.category
+        listed = pf._template_keys(template)
+        for key in pf.V1_KEYS:
+            if key in listed and template_allowed(template, key) is not None:
+                assert pf.allowed_for(key, template), (template.category, key)
+            accepted = {s.strip().casefold() for s in (template_allowed(template, key) or [])}
+            if not accepted:
+                continue
+            for value in pf.allowed_for(key, template):
+                spelled = pf.template_spelling(key, value, template)
+                assert spelled.strip().casefold() in accepted, (template.category, key, value)

@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from app.services import photo_facts as pf
 from mkos_schemas.codes import ErrorCode
 
 from .conftest import LOCAL_HOSTS
@@ -63,7 +64,8 @@ async def test_photo_ok_writes_the_fill_keys(
     written = _ai(pw.attributes())
     assert set(written) == FILL_KEYS
     for key, fact in written.items():
-        assert fact["value"] == targets[key].allowed_values[0]
+        # SI9 CP-D25: the template's spelling of the read vocabulary value
+        assert pf.canonical(key, fact["value"]) == targets[key].allowed_values[0]
         assert fact["captured_via"] == "agent" and fact["agent_run_id"] == str(run_id)
         assert fact["confidence"] == 0.95
         assert fact["evidence_ref"] == f"image:{pw.images['main']}"

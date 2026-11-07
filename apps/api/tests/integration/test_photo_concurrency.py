@@ -8,6 +8,7 @@ import asyncio
 from typing import Any
 
 import pytest
+from app.services import photo_facts as pf
 
 from .conftest import LOCAL_HOSTS
 from .generation_support import make_generating
@@ -120,7 +121,7 @@ async def test_different_values_still_apply_only_the_first(
         pw, monkeypatch, flipkart_change=other_neckline, amazon_change=_without_occasion
     )
     amazon_neck = {t.key: t for t in pw.seen[0].photo_targets}["neckline"].allowed_values[0]
-    assert pw.attributes()["neckline"]["value"] == amazon_neck
+    assert pf.canonical("neckline", pw.attributes()["neckline"]["value"]) == amazon_neck
     # Flipkart saw `occasion` too, but its decision was superseded: nothing moved the facts
     assert "occasion" not in pw.attributes()
     assert (await approve(pw, amazon.listing_id)).http_status == 200

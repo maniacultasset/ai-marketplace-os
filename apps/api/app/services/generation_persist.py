@@ -50,6 +50,7 @@ from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.enums import ErrorSource, ListingStatus, Marketplace
 from mkos_schemas.errors import ErrorReport
 from mkos_schemas.images import ImageReport
+from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.validation import ValidationResult
 
@@ -106,6 +107,8 @@ class PersistPlan:
     pre_facts: ProductFacts | None = None
     seen_set: PhotoSet | None = None
     sent_set: PhotoSet = ()
+    # SI9 CP-D23: the template the questions offer their answers from
+    template: CategoryTemplate | None = None
 
 
 def _run(
@@ -196,7 +199,9 @@ async def _ask(
     rules verdict. Any question means an open blocking issue stands behind it, so the move is
     the seeded `generating → blocked/human_task_open`."""
     await reconcile_tasks(uow, listing)
-    asked = await open_questions(uow, listing, critical_keys=critical, images=canonical.images)
+    asked = await open_questions(
+        uow, listing, critical_keys=critical, template=plan.template, images=canonical.images
+    )
     if not asked:
         return move
     if plan.result is not None:
