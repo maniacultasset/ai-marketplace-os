@@ -68,6 +68,7 @@ from app.adapters.base import (
     RawResponseSink,
     UpdateFields,
     fields_by_sku,
+    party_secrets,
 )
 from app.adapters.error_map import ErrorMapper
 from app.adapters.flipkart import constants as c
@@ -171,9 +172,14 @@ class FlipkartAdapter(MarketplaceAdapter):
     # ---- per-SKU answers -> field results ----
 
     def _issue_items(
-        self, result: Mapping[str, Any], index: Mapping[str, tuple[str, ...]], scope: Iterable[str]
+        self,
+        result: Mapping[str, Any],
+        index: Mapping[str, tuple[str, ...]],
+        scope: Iterable[str],
+        parties: Sequence[str] = (),
     ) -> tuple[dict[str, ErrorItem], dict[str, ErrorItem], list[ErrorItem]]:
-        """(failed path -> error, warned path -> warning, item-level errors)."""
+        """(failed path -> error, warned path -> warning, item-level errors). `parties` (SI2:
+        the manufacturer strings, `party_secrets`) are scrubbed from every issue text."""
         in_scope = set(scope)
         failed: dict[str, ErrorItem] = {}
         warned: dict[str, ErrorItem] = {}
@@ -198,7 +204,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                     field=path,
                     marketplace=Marketplace.FLIPKART,
                     categories=[str(category)] if category else [],
-                    secrets=self._client.used_secrets(),
+                    secrets=(*self._client.used_secrets(), *parties),
                 )
                 if severity == c.WARNING:
                     one = one.model_copy(update={"severity": Severity.WARNING})
@@ -219,6 +225,7 @@ class FlipkartAdapter(MarketplaceAdapter):
         index: Mapping[str, tuple[str, ...]],
         scope: Sequence[str],
         sent: Sequence[str],
+        parties: Sequence[str] = (),
     ) -> _Outcome:
         unit = mapped.unit
         if result is None:
@@ -232,7 +239,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                     }
                 ],
             }
-        failed, warned, loose = self._issue_items(result, index, scope)
+        failed, warned, loose = self._issue_items(result, index, scope, parties)
         invalid = str(result.get("status", "")).upper() != c.SUCCESS
         fields: list[FieldResult] = []
         for path in scope:
@@ -432,7 +439,12 @@ class FlipkartAdapter(MarketplaceAdapter):
             answers = _answers(response)
             for one in chunk:
                 outcome = self._outcome(
-                    answers(one.unit.seller_sku), one, index, one.paths, one.submitted
+                    answers(one.unit.seller_sku),
+                    one,
+                    index,
+                    one.paths,
+                    one.submitted,
+                    party_secrets(item),
                 )
                 results.append(_mark_not_created(outcome))
                 applied += int(outcome.applied)
@@ -571,7 +583,9 @@ class FlipkartAdapter(MarketplaceAdapter):
                     run.missing.append(_full_plan(p.mapped, p.errors, p.scope))
                     continue
                 run.found += int(operation == "update")
-                outcome = self._outcome(answer, p.mapped, index, p.scope, p.sent)
+                outcome = self._outcome(
+                    answer, p.mapped, index, p.scope, p.sent, party_secrets(item)
+                )
                 merged = {f.field: f for f in outcome.item.fields}
                 for path, problem in p.blocked.items():
                     merged[path] = FieldResult(field=path, status="failed", error=problem)
