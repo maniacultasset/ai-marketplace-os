@@ -19,14 +19,17 @@ from __future__ import annotations
 
 import json
 import unicodedata
+from collections import Counter
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from importlib import resources
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
-from mkos_schemas.jobs import CategoryTemplate, ContextImage, PhotoTarget
+from mkos_schemas.agent import AgentRunRecord
+from mkos_schemas.jobs import CategoryTemplate, ContextImage, PhotoObservation, PhotoTarget
 
-from app.core.resolved_facts import ProductFacts, is_unconfirmed_ai
+from app.core.resolved_facts import ProductFacts, ResolvedFact, is_unconfirmed_ai
 
 __all__ = [
     "ASK_FLOOR",
@@ -39,12 +42,16 @@ __all__ = [
     "SYNONYMS",
     "V1_KEYS",
     "VOCAB",
+    "PhotoDecision",
     "PhotoSet",
+    "PhotoTask",
+    "PhotoWrite",
     "allowed_for",
     "build_targets",
     "canonical",
     "fold",
     "photo_set",
+    "screen",
 ]
 
 V1_KEYS: Final = (
@@ -454,3 +461,239 @@ def build_targets(
             )
         )
     return targets
+
+
+# ---- screening (T7, T8) ----
+
+# Plain words for the question and reason templates; never pipeline text.
+LABELS: Final[Mapping[str, str]] = {
+    "neckline": "neckline",
+    "sleeve_length": "sleeve length",
+    "fit": "fit",
+    "garment_length": "length",
+    "embroidery": "embroidery",
+    "occasion": "occasion",
+    "color": "colour",
+    "pattern": "pattern",
+    "number_of_pieces": "number of pieces",
+}
+MAX_SUGGESTIONS: Final = 3
+_TASK_ORDER: Final = {"pieces": 0, "conflicting_facts": 1, "missing_fact": 2}
+
+
+@dataclass(frozen=True)
+class PhotoWrite:
+    """One photo value to store as an unconfirmed `ai` fact."""
+
+    key: str
+    value: str
+    confidence: float
+    image_id: UUID
+
+
+@dataclass(frozen=True)
+class PhotoTask:
+    """One question for the seller (`human_tasks`, a fact kind)."""
+
+    kind: str
+    key: str
+    question: str
+    reason: str
+    suggestions: tuple[dict[str, Any], ...]
+    evidence: tuple[dict[str, Any], ...]
+    expected_answer: dict[str, Any]
+    image_id: UUID
+
+    @property
+    def target_path(self) -> str:
+        return f"facts.attributes.{self.key}"
+
+
+@dataclass(frozen=True)
+class PhotoDecision:
+    """What the backend keeps from one result. `dropped` holds `(key or "-", reason)`, never a
+    value, so it is safe to log."""
+
+    run_id: UUID | None
+    writes: tuple[PhotoWrite, ...] = ()
+    tasks: tuple[PhotoTask, ...] = ()
+    dropped: tuple[tuple[str, str], ...] = ()
+
+
+def _photo_run(records: Sequence[AgentRunRecord]) -> UUID | None:
+    for rec in reversed(records):
+        if (
+            rec.agent_name == "image"
+            and rec.trigger == "vision"
+            and rec.status == "completed"
+            and (rec.prompt_version or "").startswith(PHOTO_PROMPT_PREFIX)
+        ):
+            return rec.id
+    return None
+
+
+def _log_key(key: str, targets: Mapping[str, PhotoTarget]) -> str:
+    """Only a key the backend itself knows is logged; anything else is "-"."""
+    return key if key in targets or key in VOCAB or key in FORBIDDEN_KEYS else "-"
+
+
+def _allowed_entry(value: str, target: PhotoTarget) -> str | None:
+    folded = fold(value)
+    hits = [entry for entry in target.allowed_values if fold(entry) == folded]
+    return hits[0] if len(hits) == 1 else None
+
+
+def _ai_suggestion(value: str, image_id: UUID) -> dict[str, Any]:
+    return {"value": value, "label": value, "source": "ai", "evidence_ref": f"image:{image_id}"}
+
+
+def _stored_suggestion(fact: ResolvedFact) -> dict[str, Any]:
+    value = fact.resolved
+    out: dict[str, Any] = {"value": value, "label": str(value)[:120], "source": fact.source}
+    if fact.evidence_ref:
+        out["evidence_ref"] = fact.evidence_ref
+    return out
+
+
+def _evidence(text: str, image_id: UUID) -> tuple[dict[str, Any], ...]:
+    return ({"kind": "source_value", "text": f"photos: {text}", "ref": f"image:{image_id}"},)
+
+
+def _expected(key: str) -> dict[str, Any]:
+    return {"type": "attribute", "key": key, "values": list(VOCAB[key])}
+
+
+def _missing(key: str, value: str, obs: PhotoObservation, target: PhotoTarget) -> PhotoTask:
+    suggestions: list[dict[str, Any]] = [_ai_suggestion(value, obs.image_id)]
+    for alt in obs.alternatives:
+        entry = _allowed_entry(alt.value, target)
+        if entry is not None and all(s["value"] != entry for s in suggestions):
+            suggestions.append(_ai_suggestion(entry, obs.image_id))
+    label = LABELS[key]
+    return PhotoTask(
+        kind="missing_fact",
+        key=key,
+        question=f"What is the {label} of this product?",
+        reason=f"The photos suggest {value}, but not clearly enough to use it.",
+        suggestions=tuple(suggestions[:MAX_SUGGESTIONS]),
+        evidence=_evidence(value, obs.image_id),
+        expected_answer=_expected(key),
+        image_id=obs.image_id,
+    )
+
+
+def _conflict(
+    key: str, value: str, stored: ResolvedFact, said: str, obs: PhotoObservation
+) -> PhotoTask:
+    label = LABELS[key]
+    return PhotoTask(
+        kind="conflicting_facts",
+        key=key,
+        question=f"Which {label} is right for this product?",
+        reason=f"The photos suggest {value}, but the product says {said}.",
+        suggestions=(_stored_suggestion(stored), _ai_suggestion(value, obs.image_id)),
+        evidence=_evidence(value, obs.image_id),
+        expected_answer=_expected(key),
+        image_id=obs.image_id,
+    )
+
+
+def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> PhotoTask | None:
+    """A piece count is critical: never written, never an `ai` suggestion (C:46-47)."""
+    if stored is None:
+        if obs.confidence < PIECES_ASK_FLOOR:
+            return None
+        return PhotoTask(
+            kind="missing_fact",
+            key="number_of_pieces",
+            question="How many pieces are in this set?",
+            reason=f"The photos seem to show {value} pieces. Please give the number of pieces.",
+            suggestions=(),
+            evidence=_evidence(value, obs.image_id),
+            expected_answer=_expected("number_of_pieces"),
+            image_id=obs.image_id,
+        )
+    said = canonical("number_of_pieces", stored.resolved)
+    if said is None or said == value or obs.confidence < CONFLICT_FLOOR:
+        return None
+    return PhotoTask(
+        kind="conflicting_facts",
+        key="number_of_pieces",
+        question="How many pieces are in this set?",
+        reason=f"The photos seem to show {value} pieces, but the product says {said}.",
+        suggestions=(_stored_suggestion(stored),),
+        evidence=_evidence(value, obs.image_id),
+        expected_answer=_expected("number_of_pieces"),
+        image_id=obs.image_id,
+    )
+
+
+def _rank(task: PhotoTask) -> tuple[int, int]:
+    group = "pieces" if task.key in CHECK_ONLY else task.kind
+    return (_TASK_ORDER[group], V1_KEYS.index(task.key))
+
+
+def screen(
+    observations: Sequence[PhotoObservation],
+    records: Sequence[AgentRunRecord],
+    *,
+    targets: Sequence[PhotoTarget],
+    images: Sequence[ContextImage],
+    facts: ProductFacts,
+    required: frozenset[str],
+) -> PhotoDecision:
+    """Keep only what the module docstring allows; everything else lands in `dropped`."""
+    by_key = {t.key: t for t in targets}
+    run_id = _photo_run(records)
+    if run_id is None:
+        return PhotoDecision(
+            None, dropped=tuple((_log_key(o.key, by_key), "no_run") for o in observations)
+        )
+    photos = {image.image_id for image in images if image.slot in PHOTO_SLOTS}
+    counts = Counter(o.key for o in observations)
+    dropped: list[tuple[str, str]] = []
+    writes: list[PhotoWrite] = []
+    tasks: list[PhotoTask] = []
+    for obs in observations:
+        target = by_key.get(obs.key)
+        if target is None:
+            dropped.append((_log_key(obs.key, by_key), "not_target"))
+            continue
+        if counts[obs.key] > 1:
+            dropped.append((target.key, "duplicate_key"))
+            continue
+        entry = _allowed_entry(obs.value, target)
+        if entry is None:
+            dropped.append((target.key, "not_allowed"))
+            continue
+        if obs.image_id not in photos:
+            dropped.append((target.key, "bad_image"))
+            continue
+        key = target.key
+        stored = facts.attributes.get(key)
+        if key in CHECK_ONLY:
+            task = _pieces(entry, stored, obs)
+            if task is not None:
+                tasks.append(task)
+            continue
+        if target.mode == "fill":
+            if obs.confidence >= target.min_confidence:
+                writes.append(PhotoWrite(key, entry, round(obs.confidence, 2), obs.image_id))
+            elif obs.confidence >= ASK_FLOOR and key in required and stored is None:
+                tasks.append(_missing(key, entry, obs, target))
+            continue
+        said = None if stored is None else canonical(key, stored.resolved)
+        if (
+            stored is not None
+            and said is not None
+            and said != entry
+            and obs.confidence >= CONFLICT_FLOOR
+        ):
+            tasks.append(_conflict(key, entry, stored, said, obs))
+    tasks.sort(key=_rank)
+    return PhotoDecision(
+        run_id,
+        writes=tuple(writes),
+        tasks=tuple(tasks[:MAX_PHOTO_TASKS]),
+        dropped=tuple(dropped),
+    )
