@@ -37,7 +37,7 @@ class FakeKey:
         self.calls = 0
 
     async def __call__(self, api_key: str, **_: Any) -> Any:
-        from app.adapters.openrouter_key import KeyInfo, KeyRefused, KeyUnavailable
+        from app.adapters.openrouter.key import KeyInfo, KeyRefused, KeyUnavailable
 
         self.calls += 1
         if self.answer == "refused":

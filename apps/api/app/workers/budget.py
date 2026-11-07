@@ -42,7 +42,7 @@ from uuid import UUID
 
 import httpx
 
-from app.adapters.openrouter_key import KeyRefused, KeyUnavailable, fetch_key
+from app.adapters.openrouter.key import KeyRefused, KeyUnavailable, fetch_key
 from app.core.alerts import floor_window
 from app.core.config import get_settings
 from app.core.logging import get_logger

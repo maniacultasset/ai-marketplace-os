@@ -10,7 +10,7 @@ from decimal import Decimal
 
 import httpx
 import pytest
-from app.adapters.openrouter_key import KeyInfo, KeyRefused, KeyUnavailable, fetch_key
+from app.adapters.openrouter.key import KeyInfo, KeyRefused, KeyUnavailable, fetch_key
 from app.core.config import OPENROUTER_BASE_URL
 
 KEY = "sk-or-v1-test-not-a-real-key-0123456789abcdef"  # pragma: allowlist secret

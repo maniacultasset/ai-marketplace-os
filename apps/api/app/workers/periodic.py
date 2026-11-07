@@ -53,7 +53,7 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   NULL in the same transaction, so a slow job is never enqueued twice and two workers never
   enqueue one slot twice. A listing that already has a live sync job is skipped.
 - `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
-  `GET /key` (`app.adapters.openrouter_key`). A 200, in one transaction, first runs the CP-D3
+  `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
   auto-clear against the stored previous check (`app_ai_credit_auto_clear`), then records the
   numbers; then `llm_credit` (50/80/95 % of the key's limit used, once a day each) and an
   error-level `llm_provider_refused` below the USD 0.50 floor (once a day). A 401/403 pauses AI
@@ -75,7 +75,7 @@ import httpx
 import procrastinate
 from mkos_schemas.codes import ErrorCode
 
-from app.adapters.openrouter_key import KeyRefused, KeyUnavailable, fetch_key
+from app.adapters.openrouter.key import KeyRefused, KeyUnavailable, fetch_key
 from app.adapters.storage import get_storage, images_bucket, submissions_bucket
 from app.core.alerts import (
     DEAD_LETTER_CAP,

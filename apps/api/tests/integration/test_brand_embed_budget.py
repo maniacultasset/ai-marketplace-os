@@ -172,7 +172,7 @@ def alerts(monkeypatch: pytest.MonkeyPatch) -> _AlertSpy:
 @pytest.fixture
 def key_answer(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
     """`/key` stand-in (no network): set `[0]` to `refused` or `ok`."""
-    from app.adapters.openrouter_key import KeyInfo, KeyRefused
+    from app.adapters.openrouter.key import KeyInfo, KeyRefused
     from app.core.config import get_settings
     from app.workers import budget
 
