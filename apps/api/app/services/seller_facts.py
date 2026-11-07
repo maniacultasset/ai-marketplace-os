@@ -99,6 +99,9 @@ def seller_facts(facts: ProductFacts) -> SellerFacts:
         manufacturer_address=None if name is None or party is None else party.address,
         fiber_composition_text=text,
         fiber_composition_parts=parts,
+        brand_name=facts.identity.brand_name,
+        gender=facts.identity.gender,
+        style_number=facts.identity.style_number,
     )
 
 

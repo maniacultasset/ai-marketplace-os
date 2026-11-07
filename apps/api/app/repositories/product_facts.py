@@ -6,7 +6,11 @@ Statements, in this order (a standalone product takes four):
    and its **available** matrix cells (an unavailable size never reaches the copy);
 2. the brand profile row (the brand defaults: parties and country of origin);
 3. the parties the product or the brand default names (one `IN` query; skipped when none);
-4. the dictionary: `is_critical` per key and `dictionary_version` = max `revision`.
+4. the dictionary: `is_critical` per key and `dictionary_version` = max `revision`;
+5. SI8 (CP-D1): only when neither the product nor its style holds a brand, the tenant's name
+   (`tenants.name`, tenant-scoped): `identity.brand_name` is then the first non-blank brand
+   profile `brand_names` entry, else the stripped tenant name (`brand_choices`).
+   `resolve_family` reads the choices once for the whole family.
 
 Priority per key: variant → colourway → style → brand default (for the keys whose levels include
 the brand). Another tenant's or a soft-deleted product is None.
@@ -34,10 +38,13 @@ from app.core.resolved_facts import (
     PartyFacts,
     ProductFacts,
     ResolvedFact,
+    brand_choices,
+    default_brand,
 )
 from app.db.models.catalog import Product, ProductColourway, VariantMatrixCell
 from app.db.models.facts import BrandProfile, BusinessParty
 from app.db.models.platform import AttributeDefinition
+from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
 
 PARTY_COLUMNS: Final = {
@@ -63,6 +70,10 @@ class _Brand(TenantScopedRepository[BrandProfile]):
 
 class _Parties(TenantScopedRepository[BusinessParty]):
     model = BusinessParty
+
+
+class _Tenant(TenantScopedRepository[Tenant]):
+    model = Tenant
 
 
 def _dec(value: Decimal | None) -> str | None:
@@ -208,7 +219,8 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
     ) -> tuple[ProductFacts, tuple[ProductFacts, ...]] | None:
         """SI2 T4: the product's facts and, for a style, each live child's (in SKU order); a
         child that no longer resolves is skipped. None when the product does not resolve."""
-        main = await self.resolve(product_id)
+        choices = await self.brand_choices()
+        main = await self.resolve(product_id, choices=choices)
         if main is None:
             return None
         if main.level != "style":
@@ -221,7 +233,7 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
         )
         children: list[ProductFacts] = []
         for child_id in (await self.db.execute(stmt)).scalars():
-            child = await self.resolve(child_id)
+            child = await self.resolve(child_id, choices=choices)
             if child is not None:
                 children.append(child)
         return main, tuple(children)
@@ -232,7 +244,25 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
         flags, _version = await self._dictionary()
         return frozenset(key for key, critical in flags.items() if critical)
 
-    async def resolve(self, product_id: uuid.UUID) -> ProductFacts | None:
+    async def brand_choices(self, brand: BrandProfile | None = None) -> tuple[str, ...]:
+        """SI8 (CP-D1): the tenant's brand names, its brand profile's (`brand`, else read) then
+        its tenant name, both read through this tenant's scope."""
+        if brand is None:
+            brand = (
+                await self.db.execute(_Brand(self.db, self.tenant_id)._select())
+            ).scalar_one_or_none()
+        name = (
+            await self.db.execute(
+                _Tenant(self.db, self.tenant_id)._select().with_only_columns(Tenant.name)
+            )
+        ).scalar_one_or_none()
+        return brand_choices(None if brand is None else brand.brand_names, name)
+
+    async def resolve(
+        self, product_id: uuid.UUID, *, choices: tuple[str, ...] | None = None
+    ) -> ProductFacts | None:
+        """The product's facts. `choices` (SI8): the tenant's brand names when the caller has
+        read them already (`resolve_family`); read here only when the product needs the default."""
         product = await self._live(product_id)
         if product is None:
             return None
@@ -279,6 +309,11 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
         if brand is not None:
             provenance.append(("brand", brand.provenance))
         variant_attrs = product.variant_attributes or {}
+        brand_name = typed("brand_name")
+        if brand_name is None:
+            if choices is None:
+                choices = await self.brand_choices(brand)
+            brand_name = default_brand(choices)
         return ProductFacts(
             product_id=product.id,
             sku=product.sku,
@@ -288,7 +323,7 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
             size_key=variant_attrs.get("size"),
             identity=Identity(
                 title=typed("title"),
-                brand_name=typed("brand_name"),
+                brand_name=brand_name,
                 style_number=typed("style_number"),
                 gender=typed("gender"),
                 product_type=typed("product_type"),

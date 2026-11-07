@@ -411,3 +411,82 @@ def test_stamp_reread_property(pre_ai: dict[str, str], changes: dict[str, str]) 
     )
     assert stamp_reread(pre, reread)
     assert for_rules(reread) == for_rules(pre)
+
+
+# ---- SI8 T2: the brand default and the override match (CP-D1, CP-D9, CP-D16) ----
+
+SI8_DIGEST_SHA = "4dd82d2cd8b38660aab42efb12584e7f6c10e825471e53211a945f2ba17128a3"
+"""sha256 of `canonical_facts_json` for `_si8_fixed()`, recorded on the base tree (b586a71) before
+SI8: SI8 adds no key to the digest body."""
+
+
+def _si8_fixed() -> ProductFacts:
+    return ProductFacts(
+        product_id=uuid.UUID(int=1),
+        sku="KS-24",
+        level="style",
+        identity=Identity(
+            title="Kurta",
+            brand_name="Kuinn",
+            style_number="KS-24",
+            gender="women",
+            product_type="kurta",
+        ),
+    )
+
+
+def test_brand_choices_skip_blank_profile_names() -> None:
+    from app.core.resolved_facts import brand_choices, default_brand
+
+    assert default_brand(brand_choices(["", "  ", "Kuinn"], "Acme")) == "Kuinn"
+    assert default_brand(brand_choices([], "Acme")) == "Acme"
+    assert default_brand(brand_choices(None, " Acme ")) == "Acme"
+    assert default_brand(brand_choices(None, None)) is None
+    assert default_brand(brand_choices(["  "], "   ")) is None
+    assert brand_choices(["कुइन"], None) == ("कुइन",)
+
+
+def test_brand_choices_casefold_dedupe_keeps_first_spelling() -> None:
+    from app.core.resolved_facts import brand_choices
+
+    assert brand_choices(["Kuinn"], "kuinn ") == ("Kuinn",)
+    assert brand_choices([" Kuinn ", "Acme"], "Store") == ("Kuinn", "Acme", "Store")
+
+
+def test_match_brand() -> None:
+    from app.core.resolved_facts import match_brand
+
+    choices = ("Kuinn", "Acme", "Straße")
+    assert match_brand(" kuinn", choices) == "Kuinn"
+    assert match_brand("Acme", choices) == "Acme"
+    assert match_brand("Nike", choices) is None
+    assert match_brand("STRASSE", choices) == "Straße"
+    assert match_brand("", choices) is None
+    assert match_brand("   ", choices) is None
+
+
+def test_identity_keys_unchanged() -> None:
+    """CP-D16: no inherited flag reaches the prompt identity."""
+    shown = for_prompt(_si8_fixed())
+    assert set(shown["identity"]) == {
+        "title",
+        "brand_name",
+        "style_number",
+        "gender",
+        "product_type",
+    }
+    assert set(Identity.model_fields) == {
+        "title",
+        "brand_name",
+        "style_number",
+        "gender",
+        "product_type",
+    }
+
+
+def test_canonical_digest_body_unchanged_by_si8() -> None:
+    import hashlib
+
+    from app.core.resolved_facts import canonical_facts_json
+
+    assert hashlib.sha256(canonical_facts_json(_si8_fixed())).hexdigest() == SI8_DIGEST_SHA
