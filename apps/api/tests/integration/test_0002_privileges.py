@@ -32,6 +32,7 @@ SECRET_COLUMNS = [
     ("audit_log", "actor_email"),
     ("audit_log", "ip"),
     ("images", "content_hash"),
+    ("images", "clean_content_hash"),  # SI1 0015: hash of the EXIF-free copy
     ("brand_documents", "content_hash"),
     ("brand_chunks", "content_hash"),
 ]

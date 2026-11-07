@@ -16,6 +16,12 @@ ALTER TABLE public.images
     CHECK (public_id IS NULL OR clean_content_hash IS NOT NULL OR deleted_at IS NOT NULL),
   ADD CONSTRAINT ck_images_public_written CHECK (public_written_at IS NULL OR public_id IS NOT NULL);
 
+-- images is column-granted to the read-only roles (0002 IMAGES_READABLE): the new non-secret
+-- columns are readable as the others are; clean_content_hash matches the §8.2 secret pattern
+-- `(token|hash|password|secret|verifier|_enc)$` and stays denied, as content_hash does.
+GRANT SELECT (clean_mime_type, public_id, public_written_at) ON public.images
+  TO app_ro, app_platform_ro;
+
 CREATE UNIQUE INDEX images_public_id_uq ON public.images (public_id) WHERE public_id IS NOT NULL;
 
 -- CP9: a purge cannot drop the only record of a public object
