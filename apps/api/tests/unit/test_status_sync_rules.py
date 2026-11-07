@@ -168,3 +168,91 @@ def test_status_sync_decision_skips_other_statuses(status: str, reason: str | No
 def test_count_never_exceeds_9(polls: int, state: str | None) -> None:
     d = _decide([ItemRead("A", state)], polls=min(polls, MAX_POLLS - 1))
     assert d.poll_count <= MAX_POLLS
+
+
+# ---- SI9 T6 (AC4, AC5): on the marketplace, not buyable ----
+
+
+def _nb(sku: str = "S1", **over: Any) -> ItemRead:
+    return ItemRead(sku, "inactive", external_id="B0X", not_buyable=True, **over)
+
+
+def test_not_buyable_first_read_stays_published() -> None:
+    d = _decide([_nb()], current="processing", polls=0)
+    assert (d.marketplace_state, d.event, d.listing_to, d.submission_to) == (
+        "inactive",
+        "sync",
+        None,
+        None,
+    )
+    assert (d.counted, d.poll_count, d.next_in, d.not_buyable) == (True, 1, next_slot(1), True)
+
+
+def test_not_buyable_same_state_no_event() -> None:
+    d = _decide([_nb()], current="inactive", polls=3)
+    assert d.event is None and d.listing_to is None
+    assert (d.counted, d.poll_count) == (True, 4)
+
+
+def test_not_buyable_ninth_poll_goes_daily() -> None:
+    d = _decide([_nb()], current="inactive", polls=MAX_POLLS - 1)
+    assert (d.counted, d.poll_count, d.next_in) == (True, MAX_POLLS, DAILY)
+    assert d.event is None and d.listing_to is None
+
+
+def test_not_buyable_after_nine_polls_daily_uncounted() -> None:
+    d = _decide([_nb()], current="inactive", polls=MAX_POLLS)
+    assert (d.counted, d.poll_count, d.next_in) == (False, MAX_POLLS, DAILY)
+    assert d.listing_to is None and d.event is None
+
+
+def test_mixed_not_buyable_and_plain_inactive_blocks() -> None:
+    d = _decide([_nb("S1"), ItemRead("S2", "inactive")])
+    assert (d.listing_to, d.reason) == ("blocked", "marketplace_action_required")
+    assert not d.not_buyable
+
+
+def test_not_buyable_child_and_processing_child_is_processing() -> None:
+    d = _decide([_nb("S1"), ItemRead("S2", "processing")])
+    assert (d.marketplace_state, d.counted, d.listing_to, d.not_buyable) == (
+        "processing",
+        True,
+        None,
+        False,
+    )
+
+
+def test_not_buyable_parent_and_live_child_is_live() -> None:
+    d = _decide([_nb("P", parent=True), ItemRead("C", "live")])
+    assert d.marketplace_state == "live" and d.stamp_live
+
+
+def test_live_then_not_buyable_reads_inactive() -> None:
+    d = _decide([_nb()], current="live", previous={"S1": "live"})
+    assert (d.marketplace_state, d.event, d.listing_to, d.submission_to) == (
+        "inactive",
+        "sync",
+        None,
+        None,
+    )
+
+
+def test_partial_with_not_buyable_read_keeps_partial_branch() -> None:
+    d = _decide([_nb()], status="failed", reason="publish_partial", polls=2)
+    assert (d.marketplace_state, d.counted, d.poll_count, d.listing_to) == (
+        "inactive",
+        True,
+        3,
+        None,
+    )
+    assert not d.not_buyable
+
+
+@pytest.mark.parametrize("read", [ItemRead("S1", "inactive"), ItemRead("S1", "removed")])
+def test_plain_inactive_or_removed_still_blocks(read: ItemRead) -> None:
+    d = _decide([read])
+    assert (d.listing_to, d.reason, d.submission_to) == (
+        "blocked",
+        "marketplace_action_required",
+        "error",
+    )

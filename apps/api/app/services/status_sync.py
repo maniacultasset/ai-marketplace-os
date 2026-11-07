@@ -12,7 +12,10 @@ invariant 9). No I/O.
   if it was live, else still `processing`. On a `published` listing: live or partially live →
   `live_*` stamped, the open submission `accepted → live`, the daily poll; rejected →
   `failed/marketplace_rejected` (submission `rejected`); inactive or removed →
-  `blocked/marketplace_action_required` (an open submission `error MARKETPLACE_UNCONFIRMED`);
+  `blocked/marketplace_action_required` (an open submission `error MARKETPLACE_UNCONFIRMED`),
+  except SI9 B3: every non-parent item `inactive` and read `not_buyable` (on the marketplace, no
+  offer or stock) stays `published/inactive` with the submission still `accepted`, polled on the
+  bounded gaps, then daily and uncounted (never `sync_exhausted`);
   still processing → a counted poll, the 9th → `sync_exhausted` (blocked, submission
   `error MARKETPLACE_UNCONFIRMED`, `next_sync_at` NULL). On `failed/publish_partial` (D7) only the
   items and `marketplace_state` change, polled on the same bounded schedule. Anything else (a
@@ -80,6 +83,8 @@ class ItemRead:
     # SI4 A16: the read's field errors (mapped by the adapter) and the paths it read
     errors: tuple[ErrorItem, ...] = ()
     fields: tuple[str, ...] = ()
+    # SI9 B3: the adapter read the product on the marketplace, not buyable yet
+    not_buyable: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -94,6 +99,7 @@ class SyncDecision:
     next_in: timedelta | None = None
     stamp_live: bool = False
     submission_to: SubmissionTo | None = None
+    not_buyable: bool = False
 
 
 def _item_state(read: ItemRead, previous: str | None) -> str:
@@ -143,6 +149,11 @@ def sync_decision(
             reason="marketplace_rejected",
             submission_to="rejected" if submission_open else None,
         )
+    considered = [r for r in reads if not r.parent] or list(reads)
+    if agg == "inactive" and all(
+        r.not_buyable and items[r.seller_sku] == "inactive" for r in considered
+    ):
+        return _not_buyable(items, current_state, poll_count)
     if agg in ("inactive", "removed"):
         return SyncDecision(
             items,
@@ -174,4 +185,24 @@ def sync_decision(
         counted=True,
         poll_count=count,
         next_in=next_slot(count),
+    )
+
+
+def _not_buyable(items: Mapping[str, str], current_state: str, poll_count: int) -> SyncDecision:
+    """SI9 B3 (D3): published and re-checked. The bounded counted polls first (the offer may be
+    on its way), then a daily uncounted poll, never `sync_exhausted`; the poll count stays within
+    the 0..9 CHECK."""
+    if poll_count < MAX_POLLS:
+        count, counted = poll_count + 1, True
+        next_in = next_slot(count) or DAILY
+    else:
+        count, counted, next_in = poll_count, False, DAILY
+    return SyncDecision(
+        items,
+        "inactive",
+        event="sync" if current_state != "inactive" else None,
+        counted=counted,
+        poll_count=count,
+        next_in=next_in,
+        not_buyable=True,
     )
