@@ -395,3 +395,29 @@ def test_copied_link_tokens_are_redacted() -> None:
     assert "R" * 43 not in redact_text(reset)
     body = redact({"invite_url": url, "reset_url": url, "invite": {"role": "admin"}})
     assert body == {"invite_url": REDACTED, "reset_url": REDACTED, "invite": {"role": "admin"}}
+
+
+ADDRESS_KEYS = [
+    "manufacturer_address",
+    "manufacturer_contact_information",
+    "Manufacturer Details",
+    "address",
+    "registered_address",
+]
+
+
+@pytest.mark.parametrize("key", ADDRESS_KEYS)
+def test_si2_address_keys_redacted(key: str) -> None:
+    """SI2 T1 (AC5): the manufacturer's address never reaches a log line or a Sentry event."""
+    address = "1 Mill Road, Surat, GJ, 395003, IN"
+    event: dict[str, Any] = {"event": "publish", key: address, "extra": {"nested": {key: address}}}
+    out = redact(event)
+    assert out[key] == REDACTED
+    assert out["extra"]["nested"][key] == REDACTED
+    assert address not in json.dumps(out)
+
+
+def test_si2_address_keys_keep_non_matches() -> None:
+    assert is_denied_key("ip_address")
+    line = {"idempotency_key": "k-1", "manufacturer": "Test Mills Pvt Ltd", "address_count": 2}
+    assert redact(line) == line

@@ -169,7 +169,7 @@ def test_dry_run_needs_no_database(
     assert code == 0
     assert stat.S_IMODE(saved.stat().st_mode) == 0o600
     assert json.loads(saved.read_text(encoding="utf-8")) == json.loads(
-        ptd_fixture("KURTA.schema.json")
+        ptd_fixture("KURTA.listing.schema.json")  # SI2: LISTING is the default
     )
     code, out, err = refresh(capsys, "--dry-run", "--save-schema", str(saved))
     assert code == 1 and "not saved" in err

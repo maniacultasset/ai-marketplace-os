@@ -597,7 +597,7 @@ def _kurta_001_pin(conn: Conn) -> int:
     return int(run_pin)
 
 
-async def test_seed_amazon_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
+async def test_seed_amazon_kurta_v3_promoted_once(superuser_conn: Conn) -> None:
     from app.db.seed_ops import _template_rows
 
     assert await _seed("demo") == 0
@@ -605,7 +605,8 @@ async def test_seed_amazon_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
     assert await _seed("demo") == 0
     rows = _templates(superuser_conn, "ethnic_wear_kurta_sets")
     assert rows == first
-    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (2, True, "KURTA")]
+    # SI2: the mapping is version 3 (a fresh database never held version 2)
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (3, True, "KURTA")]
     (v1_seed,) = [
         t
         for t in _template_rows()
@@ -613,13 +614,14 @@ async def test_seed_amazon_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
     ]
     assert rows[0][3] == v1_seed["attributes"]  # S9's v1 content unchanged
     assert rows[1][3]["specs"]["color"]["marketplace_field"] == "color"
+    assert rows[1][3]["specs"]["fabric_type"]["marketplace_field"] == "material"
     assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
 
 
-async def test_seed_amazon_tshirts_v1_current(superuser_conn: Conn) -> None:
+async def test_seed_amazon_tshirts_v2_current(superuser_conn: Conn) -> None:
     assert await _seed("isolation") == 0
     rows = _templates(superuser_conn, "tshirts")
-    assert [(r[0], r[1], r[2]) for r in rows] == [(1, True, "SHIRT")]
+    assert [(r[0], r[1], r[2]) for r in rows] == [(2, True, "SHIRT")]  # SI2
     assert _promotions(superuser_conn, "tshirts") == 1
 
 
@@ -648,7 +650,7 @@ async def test_seed_on_existing_v1_db_ok(
     assert await _seed("demo") == 0
     assert [(r[0], r[1]) for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [
         (1, False),
-        (2, True),
+        (3, True),  # SI2
     ]
     assert _kurta_001_pin(superuser_conn) == 1
 
@@ -751,7 +753,7 @@ async def test_seed_demo_family_once(superuser_conn: Conn) -> None:
     assert current == version
 
 
-async def test_seed_demo_family_pins_kurta_v2(superuser_conn: Conn) -> None:
+async def test_seed_demo_family_pins_kurta_v3(superuser_conn: Conn) -> None:
     from app.db.seed_ops import demo_family_ids
 
     assert await _seed("demo") == 0
@@ -761,7 +763,7 @@ async def test_seed_demo_family_pins_kurta_v2(superuser_conn: Conn) -> None:
         "JOIN category_templates t ON t.id = v.category_template_id WHERE v.id = %s",
         [version],
     ).fetchone()
-    assert row == (2, True, "KURTA")
+    assert row == (3, True, "KURTA")  # SI2
 
 
 async def test_seed_demo_family_preview_has_no_errors(superuser_conn: Conn) -> None:
@@ -809,7 +811,7 @@ def _fk_promotions(conn: Conn, category: str) -> int:
     )
 
 
-async def test_seed_flipkart_kurta_v2_promoted_once(superuser_conn: Conn) -> None:
+async def test_seed_flipkart_kurta_v3_promoted_once(superuser_conn: Conn) -> None:
     from app.db.seed_ops import _template_rows
 
     assert await _seed("demo") == 0
@@ -817,7 +819,7 @@ async def test_seed_flipkart_kurta_v2_promoted_once(superuser_conn: Conn) -> Non
     assert await _seed("demo") == 0
     rows = _fk_templates(superuser_conn, "ethnic_wear_kurta_sets")
     assert rows == first
-    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (2, True, "kurta")]
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (3, True, "kurta")]  # SI2
     (v1_seed,) = [
         t
         for t in _template_rows()
@@ -858,10 +860,10 @@ async def test_seed_lamp_mappings_v2_promoted_once(superuser_conn: Conn) -> None
     assert _fk_promotions(superuser_conn, "home_decor_lamps") == 1
 
 
-async def test_seed_flipkart_tshirts_v1_current(superuser_conn: Conn) -> None:
+async def test_seed_flipkart_tshirts_v2_current(superuser_conn: Conn) -> None:
     assert await _seed("isolation") == 0
     rows = _fk_templates(superuser_conn, "tshirts")
-    assert [(r[0], r[1], r[2]) for r in rows] == [(1, True, "t_shirt")]
+    assert [(r[0], r[1], r[2]) for r in rows] == [(2, True, "t_shirt")]  # SI2
 
 
 async def test_seed_demo_flipkart_once(superuser_conn: Conn) -> None:
@@ -876,7 +878,7 @@ async def test_seed_demo_flipkart_once(superuser_conn: Conn) -> None:
             "JOIN category_templates t ON t.id = v.category_template_id WHERE l.id = %s",
             [listing],
         ).fetchone()
-        assert row == ("flipkart", version, "flipkart", 2)
+        assert row == ("flipkart", version, "flipkart", 3)  # SI2
     count = _scalar(superuser_conn, "SELECT count(*) FROM listings WHERE marketplace = 'flipkart'")
     assert count == 2
 

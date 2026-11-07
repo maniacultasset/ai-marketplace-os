@@ -80,3 +80,14 @@ def test_product_type_without_a_template_checks_constants_only() -> None:
     assert diff(schema, _templates("LUGGAGE"), "LUGGAGE") == [
         Drift("unfed_required", "luggage_size", "required, and nothing here sends it")
     ]
+
+
+def test_si2_listing_fixture_has_no_drift_and_catches_a_lost_name() -> None:
+    """SI2 T18: the LISTING definition covers the new names (`material`, `manufacturer`, the
+    composition `fabric_type`, the `country_of_origin` enum); a removed one is reported."""
+    schema = _schema("KURTA.listing.schema.json")
+    assert diff(schema, _templates("KURTA"), "KURTA") == []
+    assert diff(_schema("SHIRT.listing.schema.json"), _templates("SHIRT"), "SHIRT") == []
+    del schema["properties"]["material"]
+    found = diff(schema, _templates("KURTA"), "KURTA")
+    assert [d.attribute for d in found] == ["material"]

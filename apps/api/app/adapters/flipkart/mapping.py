@@ -27,8 +27,14 @@ Flipkart vertical), each spec's `marketplace_field` and `value_map` (DATABASE.md
 - `preview(listing)`: what a create would send, per item, and the mapping report.
 - `reverse_index(template)`: Flipkart attribute -> the field paths that feed it.
 
-No key for price, MRP, stock, HSN, package or fulfilment is ever built (user decision). The
-adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant 2).
+SI2: each item carries the seller's price block (`price`: MRP, selling price, INR) and the
+seller facts `country_of_origin`, `fiber_composition` and `manufacturer` (`Manufacturer
+Details`: name and address) through the template spec of the same key, at `facts.<key>`
+(`variants[<sku>].facts.<key>` for a child). The error rules are Amazon's (SI2 T7-T8): missing
+-> MISSING_ATTRIBUTE, price above MRP -> PRICE_ABOVE_MRP, another currency or an out-of-range
+price -> VALUE_NOT_ALLOWED; an image locator must pass `locator_ok`; an enum VALUE_NOT_ALLOWED
+suggests the nearest allowed values. No stock, HSN, package or fulfilment key is ever built.
+The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant 2).
 """
 
 from __future__ import annotations
@@ -46,11 +52,18 @@ from mkos_schemas.listing import AttributeValue
 from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.base import (
+    FACT_SPEC_KEYS,
+    PRICE_PATHS,
     AdapterItem,
     AdapterListing,
     AdapterPreview,
     AdapterTemplate,
     PreviewItem,
+    SellerFacts,
+    composition_text,
+    fact_paths,
+    locator_ok,
+    nearest_values,
 )
 from app.adapters.flipkart import constants as c
 from app.services.rules_engine.text import submitted_keywords
@@ -90,6 +103,7 @@ def error(
     *,
     value: str | None = None,
     severity: Severity = Severity.ERROR,
+    suggestion: str | None = None,
 ) -> ErrorItem:
     meta = ERROR_CODE_META[code]
     return ErrorItem(
@@ -98,6 +112,7 @@ def error(
         severity=severity,
         message=message,
         value_submitted=value,
+        suggestion=suggestion,
         source=ErrorSource.FLIPKART_ADAPTER,
         retryable=meta.retry_class in _RETRYABLE,
         marketplace=Marketplace.FLIPKART,
@@ -112,6 +127,16 @@ def sku_path(unit: AdapterItem) -> str:
         path = f"variants[{unit.seller_sku}]"
         return path if is_valid_field_path(path) else "variants"
     return "listing"
+
+
+def fact_path(unit: AdapterItem, key: str) -> str:
+    """Where a seller-fact problem is reported: `facts.<key>`, or `variants[<sku>].facts.<key>`
+    for a child (falling back to `facts.<key>` when the SKU makes no legal path)."""
+    if unit.item_role == "child":
+        path = f"variants[{unit.seller_sku}].facts.{key}"
+        if is_valid_field_path(path):
+            return path
+    return f"facts.{key}"
 
 
 def unsafe_sku(sku: str) -> bool:
@@ -180,6 +205,7 @@ def _attribute_entries(
                     ErrorCode.VALUE_NOT_ALLOWED,
                     f"{shown} is not an allowed Flipkart value for {key}.",
                     value=shown,
+                    suggestion=_suggest(spec, shown),
                 )
             entries.append(_entry(mapped))
         elif spec.value_type in ("number", "measurement"):
@@ -204,6 +230,124 @@ def _attribute_entries(
         else:
             entries.append(_entry(str(one)))
     return entries, None
+
+
+def _suggest(spec: AttributeSpec, value: str) -> str | None:
+    if not spec.allowed_values:
+        return None
+    return "Allowed values include: " + ", ".join(nearest_values(value, spec.allowed_values))
+
+
+# ---- SI2: the price block and the seller-fact attributes ----
+
+
+def _price(
+    unit: AdapterItem, facts: SellerFacts | None
+) -> tuple[list[dict[str, Any]] | None, list[ErrorItem]]:
+    errors: list[ErrorItem] = []
+    mrp = None if facts is None else facts.mrp
+    price = None if facts is None else facts.selling_price
+    for key, amount in (("mrp", mrp), ("selling_price", price)):
+        if amount is None:
+            errors.append(
+                error(
+                    fact_path(unit, key),
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    f"{key} is required to list the item for sale on Flipkart.",
+                )
+            )
+        elif amount <= 0 or amount > c.MAX_MONEY:
+            errors.append(
+                error(
+                    fact_path(unit, key),
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    f"{key} must be above 0 and at most {c.MAX_MONEY}.",
+                    value=str(amount),
+                )
+            )
+    currency = c.CURRENCY if facts is None or facts.currency is None else facts.currency
+    if currency.strip().casefold() != c.CURRENCY.casefold():
+        errors.append(
+            error(
+                fact_path(unit, "currency"),
+                ErrorCode.VALUE_NOT_ALLOWED,
+                f"currency must be {c.CURRENCY} on Flipkart.",
+                value=currency[:64],
+            )
+        )
+    if not errors and mrp is not None and price is not None and price > mrp:
+        errors.append(
+            error(
+                fact_path(unit, "selling_price"),
+                ErrorCode.PRICE_ABOVE_MRP,
+                "selling_price must not be above mrp.",
+                value=str(price),
+            )
+        )
+    if errors or mrp is None or price is None:
+        return None, errors
+    block = {"mrp": float(mrp), "selling_price": float(price), "currency": c.CURRENCY}
+    return [_entry(block)], []
+
+
+def _fact_value(key: str, facts: SellerFacts | None) -> str | None:
+    if facts is None:
+        return None
+    if key == "country_of_origin":
+        return facts.country_of_origin
+    if key == "manufacturer":
+        name = (facts.manufacturer_name or "").strip()
+        if not name:
+            return None
+        address = (facts.manufacturer_address or "").strip()
+        return f"{name}, {address}" if address else name
+    return composition_text(facts.fiber_composition_text, facts.fiber_composition_parts)
+
+
+def _fact_attributes(
+    unit: AdapterItem, mapped: CategoryTemplate | None, facts: SellerFacts | None
+) -> tuple[dict[str, list[dict[str, Any]]], list[str], list[ErrorItem]]:
+    """(Flipkart attribute -> entries, the `facts.*` paths sent, errors) for one item."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    sent: list[str] = []
+    errors: list[ErrorItem] = []
+    if mapped is None:
+        return out, sent, errors
+    for key in FACT_SPEC_KEYS:
+        path = fact_path(unit, key)
+        try:
+            value = _fact_value(key, facts)
+        except ValueError:
+            errors.append(
+                error(
+                    path,
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    "fiber_composition must list each fibre with a percent, adding up to 100.",
+                )
+            )
+            continue
+        if key in ("manufacturer", "country_of_origin") and _is_blank(value):
+            errors.append(
+                error(
+                    path,
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    f"{key} is required to list the item on Flipkart.",
+                )
+            )
+            continue
+        if value is None or _is_blank(value) or _unsupported(mapped, key):
+            continue
+        spec = mapped.specs[key]
+        entries, problem = _attribute_entries(key, spec, value, path)
+        if problem is not None:
+            if key == "manufacturer":  # never echo a party value
+                problem = problem.model_copy(update={"value_submitted": None, "suggestion": None})
+            errors.append(problem)
+            continue
+        if entries:
+            out.setdefault(str(spec.marketplace_field), []).extend(entries)
+            sent.append(f"facts.{key}")
+    return out, sent, errors
 
 
 def keywords_value(listing: AdapterListing) -> str:
@@ -259,7 +403,11 @@ def unit_images(listing: AdapterListing, unit: AdapterItem) -> list[str | None]:
 
 
 def item_payload(
-    listing: AdapterListing, unit: AdapterItem, template: AdapterTemplate | None
+    listing: AdapterListing,
+    unit: AdapterItem,
+    template: AdapterTemplate | None,
+    *,
+    preview: bool = False,
 ) -> MappedItem:
     body = listing.listing
     attributes: dict[str, list[dict[str, Any]]] = {}
@@ -303,10 +451,30 @@ def item_payload(
         attributes.setdefault(str(spec.marketplace_field), []).extend(entries)
         sent.append(path)
 
+    facts = listing.unit_facts.get(unit.product_id)
+    extra, fact_sent, fact_errors = _fact_attributes(unit, mapped, facts)
+    for name, entries in extra.items():
+        attributes.setdefault(name, []).extend(entries)
+    sent += fact_sent
+    errors += fact_errors
+    if unit.item_role != "parent":
+        block, price_errors = _price(unit, facts)
+        errors += price_errors
+        if block is not None:
+            attributes[c.PRICE_ATTRIBUTE] = block
+            sent += list(PRICE_PATHS)
+    skipped += list(fact_paths(unit))
+
     images: list[dict[str, Any]] = []
     for index, locator in enumerate(unit_images(listing, unit)):
         path = f"images[{index}]"
         if index >= c.MAX_IMAGES or not locator:
+            skipped.append(path)
+            continue
+        if not locator_ok(locator, preview=preview, allow_http=listing.allow_http_images):
+            errors.append(
+                error(path, ErrorCode.VALUE_NOT_ALLOWED, "Each image must be a public https link.")
+            )
             skipped.append(path)
             continue
         images.append(_entry(locator))
@@ -345,10 +513,12 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     index[c.IMAGE_ATTRIBUTE] = {f"images[{i}]" for i in range(c.MAX_IMAGES)}
     for name in c.GROUP_ATTRIBUTES:
         index[name] = {"variants"}
+    index[c.PRICE_ATTRIBUTE] = set(PRICE_PATHS)  # SI2: the one price block
     if template is not None:
         for key, spec in template.specs.items():
             if spec.marketplace_field:
-                index.setdefault(spec.marketplace_field, set()).add(f"attributes.{key}")
+                path = f"facts.{key}" if key in FACT_SPEC_KEYS else f"attributes.{key}"
+                index.setdefault(spec.marketplace_field, set()).add(path)
     return {name: tuple(sorted(paths)) for name, paths in sorted(index.items())}
 
 
@@ -416,8 +586,11 @@ def _sku_errors(listing: AdapterListing) -> list[ErrorItem]:
     return errors
 
 
-def build(listing: AdapterListing) -> tuple[list[MappedItem], list[ErrorItem]]:
-    """Every item's mapping and every blocking error (`check`), in item order."""
+def build(
+    listing: AdapterListing, *, preview: bool = False
+) -> tuple[list[MappedItem], list[ErrorItem]]:
+    """Every item's mapping and every blocking error (`check`), in item order. `preview=True`
+    (only from `preview()`) lets the opaque `image:<id>` tags through."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -431,7 +604,7 @@ def build(listing: AdapterListing) -> tuple[list[MappedItem], list[ErrorItem]]:
         )
     errors += _family_errors(listing, mapped)
     errors += _sku_errors(listing)
-    items = [item_payload(listing, unit, template) for unit in listing.units()]
+    items = [item_payload(listing, unit, template, preview=preview) for unit in listing.units()]
     if mapped is not None:
         seen: set[str] = set()
         for unit in listing.units():
@@ -478,7 +651,7 @@ def report_for(errors: Sequence[ErrorItem], listing: AdapterListing) -> ErrorRep
 
 
 def preview(listing: AdapterListing) -> AdapterPreview:
-    items, errors = build(listing)
+    items, errors = build(listing, preview=True)
     template = listing.template
     product_type = template.product_type if template is not None and is_mapped(template) else None
     return AdapterPreview(

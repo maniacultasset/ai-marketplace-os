@@ -54,7 +54,13 @@ def test_flipkart_family_colour_key_fallback() -> None:
 
 
 def test_flipkart_colour_images_fanned_out() -> None:
-    refs = {"navy blue": ("img:navy-1", "img:navy-2"), "maroon": ("img:maroon-1",)}
+    refs = {
+        "navy blue": (
+            "https://images.example.test/navy-1.jpg",
+            "https://images.example.test/navy-2.jpg",
+        ),
+        "maroon": ("https://images.example.test/maroon-1.jpg",),
+    }
     sent = fk_family(colour_image_refs=refs)
     for one in _payloads(sent):
         expected = list(refs[one.unit.colour_key])
@@ -65,13 +71,13 @@ def test_flipkart_colour_images_fanned_out() -> None:
 
 
 def test_flipkart_colourway_without_images_uses_listing_images() -> None:
-    sent = fk_family(colour_image_refs={"navy blue": ("img:navy-1",)})
+    sent = fk_family(colour_image_refs={"navy blue": ("https://images.example.test/navy-1.jpg",)})
     listing_refs = [sent.image_refs[i.image_id] for i in sent.listing.images]
     for one in _payloads(sent):
         if one.unit.colour_key == "maroon":
             assert _value(one, "images") == listing_refs
         else:
-            assert _value(one, "images") == ["img:navy-1"]
+            assert _value(one, "images") == ["https://images.example.test/navy-1.jpg"]
 
 
 @pytest.mark.parametrize("axis", ["size", "color"])

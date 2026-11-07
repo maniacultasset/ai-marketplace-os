@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from . import factories as f
+from .adapter_facts import facts_of
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
 from .family_support import family
@@ -68,16 +69,17 @@ def _listing(
 
 
 async def _source(world: World, listing_id: uuid.UUID, slug: str = "acme") -> Any:
-    from app.repositories.uow import tenant_uow
+    from .adapter_facts import source_with_facts
 
-    async with tenant_uow(world.tenant(slug)) as uow:
-        return await uow.listings.preview_source(listing_id)
+    return await source_with_facts(world.tenant(slug), listing_id)
 
 
 def _build(source: Any) -> Any:
     from app.services.adapter_input import build_adapter_listing
 
-    return build_adapter_listing(source, image_refs={}, idempotency_key="preview")
+    return build_adapter_listing(
+        source, facts=facts_of(source), image_refs={}, idempotency_key="preview"
+    )
 
 
 async def test_adapter_input_standalone(products_world: World, auth_db: Conn) -> None:
@@ -178,7 +180,7 @@ async def test_adapter_input_content_parsed_as_canonical(
 ) -> None:
     acme = products_world.tenant("acme")
     image_id = uuid.uuid4()
-    product_id = f.product(auth_db, acme, category=CATEGORY)
+    product_id = f.seller_product(auth_db, acme, category=CATEGORY)  # SI2: the seller's facts
     listing_id = _listing(auth_db, acme, product_id, content=_full_body(image_id), version=3)
     body = _build(await _source(products_world, listing_id)).listing
     assert (body.listing_id, body.product_id) == (listing_id, product_id)
@@ -279,7 +281,9 @@ async def test_adapter_input_colour_image_refs_grouped(
     assert dict(source.colour_images) == {"maroon": (maroon,), "navy blue": (main, second)}
     ids = colour_image_ids(source)
     refs = {i: f"image:{i}" for i in ids}
-    built = build_adapter_listing(source, image_refs=refs, idempotency_key="k")
+    built = build_adapter_listing(
+        source, facts=facts_of(source), image_refs=refs, idempotency_key="k"
+    )
     assert dict(built.colour_image_refs) == {
         "maroon": (f"image:{maroon}",),
         "navy blue": (f"image:{main}", f"image:{second}"),
@@ -307,7 +311,9 @@ async def test_adapter_input_colour_images_only_from_approved_version(
     source = await _source(products_world, _fk_listing(auth_db, acme, style, approved))
     assert colour_image_ids(source) == {navy}
     refs = {i: f"image:{i}" for i in {style_image, navy, late, unapproved}}
-    built = build_adapter_listing(source, image_refs=refs, idempotency_key="k")
+    built = build_adapter_listing(
+        source, facts=facts_of(source), image_refs=refs, idempotency_key="k"
+    )
     assert dict(built.colour_image_refs) == {"navy blue": (f"image:{navy}",)}
     sent = {i.colour_key: unit_images(built, i) for i in built.items}
     assert sent["navy blue"] == [f"image:{navy}"]
@@ -371,3 +377,42 @@ async def test_adapter_input_other_tenant_colourway_invisible(
     assert await _source(products_world, listing_id, slug="bharat") is None
     source = await _source(products_world, listing_id)
     assert {c.colour_key for c in source.children} == {"navy blue", "maroon"}
+
+
+# ---- SI2 T12 (AC2, AC7): the seller's facts on the adapter input ----
+
+
+async def test_si2_family_unit_facts_for_every_unit(products_world: World, auth_db: Conn) -> None:
+    from decimal import Decimal
+
+    acme = products_world.tenant("acme")
+    style, kids = family(auth_db, acme, "SI2-FAM", category=CATEGORY)
+    listing_id = _listing(auth_db, acme, style, content=dict(CONTENT))
+    built = _build(await _source(products_world, listing_id))
+    units = {u.product_id for u in built.units()}
+    assert units <= set(built.unit_facts) and style in built.unit_facts
+    for kid in kids.values():
+        facts = built.unit_facts[kid]
+        # AC2: a child with no own price inherits the style's
+        assert (facts.mrp, facts.selling_price) == (Decimal("999.00"), Decimal("499.00"))
+        assert facts.manufacturer_name == "Test Mills Pvt Ltd"
+
+
+async def test_si2_old_version_ai_fabric_gives_the_seller_value(
+    products_world: World, auth_db: Conn
+) -> None:
+    acme = products_world.tenant("acme")
+    product_id = f.seller_product(
+        auth_db,
+        acme,
+        category=CATEGORY,
+        attributes={
+            "color": f.fact(value="navy blue"),
+            "fabric_type": f.fact(value="Cotton Lycra"),
+        },
+    )
+    body = {**_full_body(uuid.uuid4())}
+    body["attributes"] = {"fabric_type": "Silk", "color": "navy blue", "gsm": "180"}
+    listing_id = _listing(auth_db, acme, product_id, content=body)
+    built = _build(await _source(products_world, listing_id))
+    assert built.listing.attributes == {"fabric_type": "Cotton Lycra", "color": "navy blue"}

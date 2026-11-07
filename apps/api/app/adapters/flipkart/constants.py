@@ -6,13 +6,16 @@ and its Listing Management API shapes are not in the repo (spec L2276 only links
 replace them. They live only in this adapter and in the Flipkart template data (invariant 4):
 the canonical listing has none.
 
-v1 sends content only: no price, MRP, stock, HSN, package or fulfilment field ever (user
-decision; S20 D2). `FORBIDDEN_ATTRIBUTES` names them so a test can prove it.
+SI2 (T123 answered, user 2026-11-06): each item also carries the seller's own price block
+`price: [{"value": {"mrp", "selling_price", "currency": "INR"}}]` (believed, T127). No stock,
+HSN, package or fulfilment field ever, and `mrp` / `selling_price` are never standalone
+attribute names: `FORBIDDEN_ATTRIBUTES` names them so a test can prove it.
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from decimal import Decimal
 from types import MappingProxyType
 from typing import Final
 
@@ -61,12 +64,17 @@ FAILURE: Final = "FAILURE"
 ACTIVE: Final = "ACTIVE"
 WARNING: Final = "WARNING"
 
-# Never sent in v1 (user decision: content only). Any payload key here is a bug.
+# SI2 T10 (CP-D5): the one price block (believed, T127); a retry of either price path sends it
+PRICE_ATTRIBUTE: Final = "price"
+CURRENCY: Final = "INR"
+MAX_MONEY: Final = Decimal("9999999999.99")
+REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin")
+
+# Never sent in v1. Any payload key here is a bug (price travels only inside `price`).
 FORBIDDEN_ATTRIBUTES: Final = frozenset(
     {
         "mrp",
         "selling_price",
-        "price",
         "stock",
         "stock_count",
         "inventory",

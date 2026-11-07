@@ -972,7 +972,13 @@ def _ptd_get(state: FakeState, request: Request) -> Response:
         return _errors("InternalFailure" if code >= 500 else "QuotaExceeded", "fault", code)
     if marketplace == PTD_US_MARKETPLACE or _ptd_once(state, "deny"):
         return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    requirements = request.query_params.get("requirements") or "LISTING_PRODUCT_ONLY"
     name = state.ptd.get("schema") or f"{product_type}.schema.json"
+    if not state.ptd.get("schema") and requirements == "LISTING":
+        # SI2: the LISTING definition (the PRODUCT_ONLY one plus the offer), when one is written
+        listing_name = f"{product_type}.listing.schema.json"
+        if (PTD_FIXTURES / listing_name).is_file():
+            name = listing_name
     try:
         envelope = json.loads(ptd_fixture(f"{product_type}.envelope.json"))
         body = ptd_fixture(name)
@@ -988,6 +994,8 @@ def _ptd_get(state: FakeState, request: Request) -> Response:
     if _ptd_once(state, "bad_checksum"):
         checksum = ptd_checksum(body + b" ")
     envelope["productType"] = product_type
+    if "requirements" in envelope:
+        envelope["requirements"] = requirements
     envelope["schema"] = {
         "link": {
             "resource": f"https://{PTD_LINK_HOST}/__ptd_schema/{token}"

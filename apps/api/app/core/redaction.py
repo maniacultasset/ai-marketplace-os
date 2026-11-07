@@ -76,6 +76,12 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "x_forwarded_for",
         "x_real_ip",
         "forwarded",
+        # SI2: the manufacturer's address (DPDP, `db/models/facts.py:88`); Flipkart's
+        # `Manufacturer Details` normalises to `manufacturer_details`
+        "address",
+        "manufacturer_address",
+        "manufacturer_contact_information",
+        "manufacturer_details",
         # DPP-1 (ADR-0021): MFA secrets, codes and the sign-in challenge. `code` itself stays
         # query-only (below): as a dict key it is an error or rule code across the app. A TOTP
         # code travels only in request bodies, which nothing logs (the access line has no body,
@@ -121,6 +127,7 @@ DENY_SUFFIXES: Final[tuple[str, ...]] = (
     "_token_hash",
     "_secret_key",
     "_webhook",
+    "_address",
 )
 # Query parameter names refused on top of the denied keys: the OAuth callback (CANON.md:36)
 # carries the authorization code and state. `code` and `state` are query-only: as dict keys
@@ -143,7 +150,7 @@ QUERY_DENY_KEYS: Final[frozenset[str]] = DENY_KEYS | QUERY_ONLY_DENY_KEYS
 
 
 def _normalise(key: str) -> str:
-    return key.casefold().replace("-", "_")
+    return key.casefold().replace("-", "_").replace(" ", "_")
 
 
 def is_denied_key(key: object) -> bool:

@@ -174,8 +174,11 @@ def test_amazon_mapping_reverse_index_round_trip() -> None:
     assert index["color"] == ("attributes.color",)
     assert index["sleeve_length_description"] == ("attributes.sleeve_length",)
     assert index["main_product_image_locator"] == ("images[0]",)
+    from app.adapters.base import FACT_SPEC_KEYS
+
     for name, spec_path in (
-        (s.marketplace_field, f"attributes.{k}") for k, s in template().template.specs.items()
+        (s.marketplace_field, f"{'facts' if k in FACT_SPEC_KEYS else 'attributes'}.{k}")
+        for k, s in template().template.specs.items()
     ):
         assert spec_path in index[str(name)]
 
