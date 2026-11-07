@@ -385,3 +385,161 @@ async def test_stub_unknown_scenario_still_ok(text: str) -> None:
     result = await run_listing_pipeline(_ctx(user_instructions=text), FakeDeps())
     assert result.terminal_state == "generated"
     GenerationResult.model_validate_json(result.model_dump_json())
+
+
+# ---- SI3 T10: the photo scenarios ----
+
+MAIN = "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11"  # the fixture's main image
+LABEL = "6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d13"  # the fixture's packaging label
+PHOTO_TARGETS = [
+    {
+        "key": "neckline",
+        "mode": "fill",
+        "allowed_values": ["round neck", "v-neck"],
+        "min_confidence": 0.7,
+    },
+    {"key": "color", "mode": "fill", "allowed_values": ["maroon", "red"], "min_confidence": 0.7},
+    {
+        "key": "fit",
+        "mode": "check",
+        "allowed_values": ["regular fit", "slim fit"],
+        "min_confidence": 0.7,
+    },
+    {
+        "key": "number_of_pieces",
+        "mode": "check",
+        "allowed_values": [str(n) for n in range(1, 13)],
+        "min_confidence": 0.7,
+    },
+]
+
+
+def _photo_ctx(name: str, **over: Any) -> GenerationContext:
+    product = {"title": "Kurta", "attributes": {"fit": "Regular Fit"}}
+    base: dict[str, Any] = {
+        "user_instructions": f"stub:{name}",
+        "photo_targets": PHOTO_TARGETS,
+        "product": product,
+    }
+    base.update(over)
+    return _ctx(**base)
+
+
+def _photo_record(result: GenerationResult) -> Any:
+    found = [r for r in result.agent_runs if (r.prompt_version or "").startswith("photo_facts/")]
+    assert len(found) <= 1
+    return found[0] if found else None
+
+
+def _seen(result: GenerationResult) -> dict[str, tuple[str, float]]:
+    return {o.key: (o.value, o.confidence) for o in result.photo_observations}
+
+
+PHOTO_NAMES = (
+    "photo_ok",
+    "photo_low",
+    "photo_mix",
+    "photo_conflict",
+    "photo_pieces",
+    "photo_hostile",
+    "photo_timeout",
+    "photo_inject",
+)
+
+
+@pytest.mark.parametrize("name", PHOTO_NAMES)
+def test_photo_scenarios_are_known(name: str) -> None:
+    assert scenario(_photo_ctx(name)) == name
+
+
+async def test_photo_ok() -> None:
+    deps = FakeDeps()
+    result = await _run(_photo_ctx("photo_ok"), deps)
+    assert result.terminal_state == "generated"
+    assert _seen(result) == {"neckline": ("round neck", 0.95), "color": ("maroon", 0.95)}
+    assert {str(o.image_id) for o in result.photo_observations} == {MAIN}
+    record = _photo_record(result)
+    assert record.agent_name == "image" and record.trigger == "vision"
+    assert record.prompt_version == "photo_facts/v1" and record.status == "completed"
+    assert str(record.cost_usd) == "0.004000"
+    assert [a for n, a in deps.calls if n == "get_model_credentials"].count(("vision",)) == 1
+
+
+async def test_photo_low_and_mix() -> None:
+    low = await _run(_photo_ctx("photo_low"))
+    assert _seen(low) == {"neckline": ("round neck", 0.55), "color": ("maroon", 0.55)}
+    mix = await _run(_photo_ctx("photo_mix"))
+    assert _seen(mix) == {"neckline": ("round neck", 0.95), "color": ("maroon", 0.55)}
+
+
+async def test_photo_conflict_picks_a_different_value() -> None:
+    result = await _run(_photo_ctx("photo_conflict"))
+    assert _seen(result) == {"fit": ("slim fit", 0.95)}
+
+
+async def test_photo_pieces() -> None:
+    result = await _run(_photo_ctx("photo_pieces"))
+    assert _seen(result) == {"number_of_pieces": ("3", 0.95)}
+
+
+async def test_photo_hostile_validates_with_sixteen_items() -> None:
+    result = await _run(_photo_ctx("photo_hostile"))
+    assert len(result.photo_observations) == 16
+    again = GenerationResult.model_validate_json(result.model_dump_json())
+    keys = {o.key for o in again.photo_observations}
+    assert {"mrp", "fiber_composition"} <= keys
+    assert LABEL in {str(o.image_id) for o in again.photo_observations}
+
+
+async def test_photo_timeout_has_a_failed_record_and_no_observations() -> None:
+    result = await _run(_photo_ctx("photo_timeout"))
+    record = _photo_record(result)
+    assert record.status == "failed" and record.error_report.error_code is ErrorCode.TIMEOUT
+    assert result.photo_observations == [] and result.terminal_state == "generated"
+
+
+async def test_photo_inject() -> None:
+    result = await _run(_photo_ctx("photo_inject"))
+    assert result.listing is not None and "handmade" in result.listing.content.description.lower()
+    assert _seen(result) == {"construction": ("handmade", 0.95)}
+
+
+@pytest.mark.parametrize("name", PHOTO_NAMES)
+async def test_photo_scenarios_without_targets_are_ok(name: str) -> None:
+    deps = FakeDeps()
+    result = await _run(_photo_ctx(name, photo_targets=[]), deps)
+    assert result.photo_observations == [] and _photo_record(result) is None
+    assert ("vision",) not in [a for n, a in deps.calls if n == "get_model_credentials"]
+
+
+async def test_ok_with_targets_returns_no_observations() -> None:
+    result = await _run(_photo_ctx("ok"))
+    assert result.photo_observations == [] and _photo_record(result) is None
+
+
+@pytest.mark.parametrize("name", PHOTO_NAMES)
+async def test_photo_scenarios_byte_identical(name: str) -> None:
+    ctx = _photo_ctx(name)
+    assert (await _run(ctx)).model_dump_json() == (await _run(ctx)).model_dump_json()
+
+
+async def test_photo_record_id_is_stable() -> None:
+    from uuid import uuid5
+
+    ctx = _photo_ctx("photo_ok")
+    assert _photo_record(await _run(ctx)).id == uuid5(ctx.job_id, "photo:1")
+
+
+async def test_photo_observations_cap_holds_in_the_stub(monkeypatch: pytest.MonkeyPatch) -> None:
+    from mkos_pipeline import graph
+    from pydantic import ValidationError
+
+    real = graph._observations
+
+    def seventeen(ctx: GenerationContext, chosen: str, image_id: UUID) -> list[Any]:
+        items = real(ctx, "photo_hostile", image_id)
+        return [*items, items[0]]
+
+    monkeypatch.setattr(graph, "_observations", seventeen)
+    with pytest.raises(ValidationError):
+        await _run(_photo_ctx("photo_ok"))
