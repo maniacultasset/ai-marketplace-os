@@ -3369,11 +3369,21 @@ export interface components {
              * @enum {string}
              */
             compliance_status: "pending" | "passed" | "failed";
+            /** Fixes */
+            fixes?: ("fix" | "white_background")[];
             /**
              * Image Id
              * Format: uuid
              */
             image_id: string;
+            /**
+             * Origin
+             * @default seller
+             * @enum {string}
+             */
+            origin: "seller" | "generated" | "rendered";
+            /** Parent Image Id */
+            parent_image_id?: string | null;
             /** Position */
             position: number;
             slot: components["schemas"]["ImageSlot"];

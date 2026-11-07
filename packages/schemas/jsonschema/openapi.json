@@ -4675,10 +4675,43 @@
             "title": "Compliance Status",
             "type": "string"
           },
+          "fixes": {
+            "items": {
+              "enum": [
+                "fix",
+                "white_background"
+              ],
+              "type": "string"
+            },
+            "title": "Fixes",
+            "type": "array"
+          },
           "image_id": {
             "format": "uuid",
             "title": "Image Id",
             "type": "string"
+          },
+          "origin": {
+            "default": "seller",
+            "enum": [
+              "seller",
+              "generated",
+              "rendered"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "parent_image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Image Id"
           },
           "position": {
             "title": "Position",
