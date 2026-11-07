@@ -29,6 +29,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "google": ("google_signin.sh",),  # ADR-0020
     "trusted_devices": ("trusted_devices.sh",),  # ADR-0023
     "seller_intake": ("seller_intake.sh",),  # SI1
+    "auto_fix": ("auto_fix.sh",),  # SI4 A19
     "photo_facts": ("photo_facts.sh",),  # SI3
     "team": ("team_access.sh",),  # SI5 (ADR-0029)
 }

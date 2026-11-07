@@ -23,6 +23,7 @@ from app.adapters.base import (
     MarketplaceAdapter,
     NullSink,
 )
+from app.adapters.error_map import ListingRead as ListingRead  # the sync's read type
 
 ReaderFactory = Callable[[uuid.UUID, uuid.UUID], Awaitable[MarketplaceAdapter]]
 

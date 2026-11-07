@@ -166,6 +166,23 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   tenant prefix and can be removed later by prefix. A crash between a public PUT and its `public_written_at` mark
   leaves an object only the purge step finds (the name stays as a tombstone). Copies a marketplace or a CDN edge
   already fetched stay there (edge cache one day, ADR-0026).
+- **Auto-fix and the issue inbox (SI4 phase A, 2026-11-07).** Fixed on `feat/si4-auto-fix`:
+  a Flipkart publish result wrote its issues as `amazon_adapter` (`services/publish_outcome.py`,
+  now `<marketplace>_adapter`); a status read dropped the marketplace's issues, so a post-publish
+  rejection was a bare `PUBLISH_FAILED` report with no items and no issue (the readers now map the
+  read's ERROR and WARNING issues, and one merged sync per status sync opens and clears them); the
+  stored image checks never reached `listing_issues` (the generation persist now syncs them as
+  `vision_model`, and a failed one opens one `image_replacement` question). Carried:
+  - image findings re-sync only at the next generation (an image job that finishes later does not
+    refresh the inbox until then);
+  - the Amazon write path maps marketplace text without the session's live tokens
+    (`adapters/amazon/adapter.py` `_issue_items` passes no `secrets=`; the readers and Flipkart do);
+  - a fact question's `product_id` is the listing's product and `colourway_id` stays NULL: the
+    fact owner (style or colour) is not resolved yet;
+  - the seeded transitions have no `blocked → blocked` edge on `edit`, so an edit of a
+    `blocked/human_task_open` (or `blocked/corrections_exhausted`) listing that is still blocking
+    is refused by the status guard (LST01), as before SI4; a regenerate is the way out until a
+    migration adds the edge.
 
 ## S16 follow-ups
 

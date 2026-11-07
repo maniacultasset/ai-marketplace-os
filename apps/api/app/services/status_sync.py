@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Final, Literal
 
+from mkos_schemas.errors import ErrorItem
+
 MAX_POLLS: Final = 9
 DELTAS: Final[tuple[timedelta, ...]] = (
     timedelta(minutes=2),
@@ -75,6 +77,9 @@ class ItemRead:
     state: str | None
     external_id: str | None = None
     parent: bool = False
+    # SI4 A16: the read's field errors (mapped by the adapter) and the paths it read
+    errors: tuple[ErrorItem, ...] = ()
+    fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

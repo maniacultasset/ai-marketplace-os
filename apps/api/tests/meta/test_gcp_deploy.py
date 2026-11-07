@@ -1394,7 +1394,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
             assert name not in values, (env_name, name)
     prod, staging = found["prod"], found["staging"]
     assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
-    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-v4-flash"
     assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
     # SI5: 600 requests a minute per tenant on the api
     assert prod["RATE_LIMIT_PER_TENANT_PER_MIN"] == "600"
