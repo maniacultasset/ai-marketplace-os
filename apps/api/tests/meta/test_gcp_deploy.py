@@ -1394,7 +1394,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
             assert name not in values, (env_name, name)
     prod, staging = found["prod"], found["staging"]
     assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
-    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-v4-flash"
     assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
     # prod pins a full mkos-pipeline commit (ADR-0024), so its worker runs the real pipeline
     assert re.fullmatch(r"[0-9a-f]{40}", prod["PIPELINE_REF"])
