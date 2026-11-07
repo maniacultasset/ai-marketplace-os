@@ -78,7 +78,9 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     put("product_colourways", colourway)
     # 0004's matrix guard: a size_color cell names both axes, and its size is in the run
     put("variant_matrix_cells", f.cell(conn, t, style, colourway_id=colourway, size_key="s"))
-    put("images", f.image(conn, t, side.product_id))
+    image_id = f.image(conn, t, side.product_id)
+    put("images", image_id)
+    put("image_candidates", f.image_candidate(conn, t, side.product_id, image_id))
     put("brand_documents", f.brand_document(conn, t))
     put("brand_chunks", f.brand_chunk(conn, t))
     put("audit_log", f.audit(conn, t))

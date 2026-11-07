@@ -57,6 +57,10 @@ class NewImage:
     slot: ImageSlot
     bytes: int
     position: int
+    # SI7: write-once provenance (`seller` unless made from a candidate)
+    origin: str = "seller"
+    parent_image_id: UUID | None = None
+    candidate_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,12 +215,32 @@ class ImageRepository(TenantScopedRepository[Image]):
                 compliance_status="pending",
                 bytes=new.bytes,
                 position=new.position,
+                origin=new.origin,
+                parent_image_id=new.parent_image_id,
+                candidate_id=new.candidate_id,
             )
             .on_conflict_do_nothing(index_elements=[Image.tenant_id, Image.storage_key])
             .returning(Image)
         )
         row: Image | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return row
+
+    async def demote_main(self, image_id: UUID, position: int) -> bool:
+        """SI7: the live main becomes a `secondary` image at `position` (an accepted candidate
+        takes the main slot; `images_one_main` holds). False when it is not the live main."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.slot == ImageSlot.MAIN.value,
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(slot=ImageSlot.SECONDARY.value, position=position)
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     async def soft_delete(self, image_id: UUID) -> bool:
         """Mark a live row deleted (its object stays); False when it is not live."""

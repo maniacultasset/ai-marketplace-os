@@ -29,6 +29,8 @@ from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
 
 GLOBAL_LOCK_KEY: Final = "budget:global"
+# SI7: the prompt-version prefix of an image-edit run (photo facts share agent_name `image`)
+IMAGE_EDIT_PROMPT_PREFIX: Final = "image_edit/"
 # the job kinds that hold a budget reservation while they make paid model calls
 RESERVING_KINDS: Final = (JobKind.LISTING_GENERATE.value, JobKind.BRAND_EMBED.value)
 ZERO: Final = Decimal("0")
@@ -123,4 +125,26 @@ async def global_state(platform_session: Any, day: date, *, cap: Decimal) -> Bud
         spent=Decimal((await platform_session.execute(spent)).scalar_one()),
         reserved=Decimal((await platform_session.execute(reserved)).scalar_one()),
         cap=cap,
+    )
+
+
+async def image_edit_spend(platform_session: Any, day: date) -> Decimal:
+    """PLAN D21: today's platform spend on image edits (the stored `image_edit/` runs) plus the
+    open reservations of candidate jobs. Cross-tenant: only in the read-only `platform_scope()`
+    session (`app/workers/budget.py`, the create service through it)."""
+    start, end = day_bounds(day)
+    spent = select(func.coalesce(func.sum(AgentRun.cost_usd), ZERO)).where(
+        AgentRun.agent_name == "image",
+        AgentRun.prompt_version.like(f"{IMAGE_EDIT_PROMPT_PREFIX}%"),
+        AgentRun.started_at >= start,
+        AgentRun.started_at < end,
+    )
+    reserved = select(func.coalesce(func.sum(JobRun.cost_reserved_usd), ZERO)).where(
+        JobRun.kind == JobKind.IMAGE_COMPLIANCE.value,
+        JobRun.entity_type == "image_candidate",
+        JobRun.started_at >= start,
+        JobRun.started_at < end,
+    )
+    return Decimal((await platform_session.execute(spent)).scalar_one()) + Decimal(
+        (await platform_session.execute(reserved)).scalar_one()
     )
