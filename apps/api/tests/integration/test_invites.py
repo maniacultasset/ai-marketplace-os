@@ -115,6 +115,21 @@ async def test_reinvite_revokes_the_first(api: httpx.AsyncClient, world: World) 
     }
 
 
+async def test_concurrent_invites_for_one_email_leave_one_pending(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """A double-clicked Invite (tester R1): the per-email lock queues the creates, so every
+    caller gets 201 and exactly one invite stays pending (no `uq_invitations_pending` 500)."""
+    import asyncio
+
+    responses = await asyncio.gather(*(_invite(api, world, "race@acme.test") for _ in range(4)))
+    assert [r.status_code for r in responses] == [201] * 4, [r.text for r in responses]
+    rows = auth_db.execute(
+        "SELECT revoked_at IS NULL FROM invitations WHERE email = 'race@acme.test'"
+    ).fetchall()
+    assert sorted(rows) == [(False,)] * 3 + [(True,)]
+
+
 async def test_email_is_trimmed_and_lowered(api: httpx.AsyncClient, world: World) -> None:
     first = await _invite(api, world, "A@B.co ")
     assert first.status_code == 201 and first.json()["invite"]["email"] == "a@b.co"

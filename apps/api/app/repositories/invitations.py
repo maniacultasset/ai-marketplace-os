@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final
 
-from sqlalchemy import Select, case, func, literal, select, tuple_, update
+from sqlalchemy import Select, case, func, literal, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.errors import RowCountError
@@ -22,6 +22,9 @@ from app.db.models.tenancy import Invitation, TenantMembership, User
 from app.repositories.base import TenantScopedRepository
 
 STATUSES: Final = ("pending", "accepted", "revoked", "expired")
+_EMAIL_LOCK: Final = text(
+    "SELECT pg_advisory_xact_lock(hashtextextended('invite:' || :t || ':' || lower(:e), 0))"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +81,12 @@ class InvitationRepository(TenantScopedRepository[Invitation]):
 
     def _open(self) -> Any:
         return (Invitation.accepted_at.is_(None), Invitation.revoked_at.is_(None))
+
+    async def lock_email(self, email: str) -> None:
+        """A transaction-scoped advisory lock on (tenant, lower(email)), taken first in a create:
+        concurrent invites for one email queue, so the member check, the revoke, the cap and the
+        insert of each run alone and `uq_invitations_pending` never fires (tester R1)."""
+        await self.db.execute(_EMAIL_LOCK, {"t": str(self.tenant_id), "e": email})
 
     async def create(
         self,

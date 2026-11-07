@@ -86,6 +86,7 @@ async def create_invite(principal: Principal, *, email: str, role: str) -> tuple
     tenant = principal.tenant_id
     async with unit_of_work(tenant, user_id=principal.user_id) as session:
         invites = InvitationRepository(session, tenant)
+        await invites.lock_email(email)  # first: a double-clicked Invite queues here (tester R1)
         if await invites.email_is_member(email):
             raise InputError(ErrorCode.VALIDATION_FAILED, "email")
         await invites.revoke_open_for_email(email)
