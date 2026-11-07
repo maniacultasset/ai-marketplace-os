@@ -192,3 +192,29 @@ under MFA the usual code (or enrolment) step always follows.
 6. **One origin.** The binding lives in one tab's sessionStorage: the sign-in must finish in the tab
    that started it, on the dashboard origin the backend's `DASHBOARD_BASE_URL` names.
 
+## 8. Listing details from the product photos (contract 2.1.0; SI3)
+
+The backend reads a few visual details (neckline, sleeve length, fit, length, embroidery, occasion,
+and for a standalone product colour and pattern) from the product photos when a listing is
+generated. A photo value is a suggestion until the seller confirms it; it never backs a claim.
+
+1. **The "from photo" badge.** `ProductOut.photo_facts: [{key, value, confidence, image_id,
+   confirmed, confirmed_at}]` lists the values read from the photos (`attributes` holds them too).
+   Show each with a "From photo" badge and the photo (`image_id`) as its source; hide the badge once
+   `confirmed` is true.
+2. **Confirm or Change.** "Confirm" sends `PATCH /api/v1/products/{id}` with
+   `{"confirm_attributes": ["<key>", ...]}` under `If-Match` (409 `STALE_VERSION` when stale).
+   "Change" sends the new value in `attributes` as any seller edit; "Remove" sends
+   `{"attributes": {"<key>": null}}`. A confirm after an approval keeps the approval; a change voids
+   it at publish (`FACTS_CHANGED_SINCE_APPROVAL`). 422 at `confirm_attributes[<i>]` means the key
+   holds no photo value (`VALIDATION_FAILED`) or is unknown (`UNKNOWN_FACT_KEY`).
+3. **The Inbox answer box.** A `missing_fact` or `conflicting_facts` task (`target_path
+   facts.attributes.<key>`) gets an answer box: pick one of `suggestions` (or a value of
+   `expected_answer.values`) and POST `/api/v1/tasks/{task_id}/answer {"value": ...}` with an
+   `Idempotency-Key`, or `{"skip": true}`. 200 returns the task `applied`; 409
+   `INVALID_STATUS_TRANSITION` means it was already answered differently or cancelled; 422 at
+   `value` means the value is not one the task accepts. For `number_of_pieces` send an integer 1-50.
+   After the answer, tell the seller "Regenerate to use your answer"; the listing does not resume on
+   its own.
+4. **Never a block.** A photo question never blocks a listing by itself: keep the listing actions
+   available while it is open.
