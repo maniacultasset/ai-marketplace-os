@@ -57,7 +57,7 @@ _CANCEL: Final = text(
 
 TASK_PAGE_MAX: Final = 200
 FACT_TASK_KINDS: Final = ("missing_fact", "conflicting_facts")
-LIVE_STATUSES: Final = ("open", "answered")
+LIVE: Final = ("open", "answered")
 
 
 def _rowcount(result: Any) -> int:
@@ -184,7 +184,7 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
 
     # ---- SI3: fact tasks ----
 
-    async def open_fact_task(
+    async def open_photo_fact_task(
         self,
         *,
         product_id: uuid.UUID,
@@ -197,8 +197,11 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         evidence: builtins.list[dict[str, Any]],
         image_id: uuid.UUID | None = None,
     ) -> bool:
-        """Open one fact question on a live product of this tenant; False when one is already
-        live for the target (`ht_one_live_fact`) or the product is not this tenant's."""
+        """Open one photo-screen fact question on a live product of this tenant; False when one
+        is already live for the target (`ht_one_live_fact`) or the product is not this tenant's.
+        Named apart from the issue-question opener `open_fact_task` (SI4), which returns the live
+        task's id; once both have merged, one opener can take kind, suggestions, evidence and
+        image or colourway and return the live id."""
         if kind not in FACT_TASK_KINDS:
             raise ValueError(f"{kind!r} is not a fact task kind")
         live = select(Product.id).where(
@@ -239,7 +242,7 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
                 self._tenant_criterion(include_platform=False),
                 HumanTask.product_id == product_id,
                 HumanTask.kind.in_(FACT_TASK_KINDS),
-                HumanTask.status.in_(LIVE_STATUSES),
+                HumanTask.status.in_(LIVE),
                 HumanTask.target_path.in_(builtins.list(target_paths)),
             )
             .values(status="cancelled", cancelled_reason="superseded")

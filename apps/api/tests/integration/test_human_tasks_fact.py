@@ -41,7 +41,7 @@ def setup(products_world: World, auth_db: Conn) -> tuple[uuid.UUID, uuid.UUID, u
 
 async def _open(tenant: uuid.UUID, **task: Any) -> bool:
     async with unit_of_work(tenant) as session:
-        return await HumanTaskRepository(session, tenant).open_fact_task(**task)
+        return await HumanTaskRepository(session, tenant).open_photo_fact_task(**task)
 
 
 def _rows(conn: Conn, product_id: uuid.UUID) -> list[dict[str, Any]]:

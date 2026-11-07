@@ -10,7 +10,7 @@ inserted, in this order:
    nothing and records no set. Only the first decision applies, so both listings stay approvable.
 3. Each write, in its own SAVEPOINT, through `FactWriter.set_photo_attribute` with the build-time
    envelope as the compare-and-set (a seller edit or reject made during the run wins).
-4. Each question, in its own SAVEPOINT, through `HumanTaskRepository.open_fact_task`.
+4. Each question, in its own SAVEPOINT, through `HumanTaskRepository.open_photo_fact_task`.
 5. A refusal (an `InputError` or a guard SQLSTATE) is logged by key and code and skipped, so the
    version is never lost. Audit: one `product.fact_updated` row for the writes and one
    `human_task.opened` row for the questions, both `actor_type='system'` with the job id.
@@ -121,7 +121,7 @@ async def apply_photo_decision(
         for task in decision.tasks:
             try:
                 async with uow.session.begin_nested():
-                    landed = await uow.human_tasks.open_fact_task(
+                    landed = await uow.human_tasks.open_photo_fact_task(
                         product_id=product_id,
                         kind=task.kind,
                         target_path=task.target_path,

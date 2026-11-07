@@ -41,7 +41,7 @@ async def _open(
     tenant = world.tenant(slug)
     (product_id,) = insert_products(conn, tenant, 1, prefix=f"TA-{uuid.uuid4().hex[:6]}")
     async with unit_of_work(tenant) as session:
-        assert await HumanTaskRepository(session, tenant).open_fact_task(
+        assert await HumanTaskRepository(session, tenant).open_photo_fact_task(
             product_id=product_id,
             kind=kind,
             target_path=f"facts.attributes.{key}",

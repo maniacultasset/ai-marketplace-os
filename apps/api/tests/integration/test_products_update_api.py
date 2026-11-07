@@ -559,7 +559,7 @@ async def test_si3_a_seller_write_cancels_the_open_question(
     tenant = products_world.tenant("acme")
     product_id = uuid.UUID(created["id"])
     async with unit_of_work(tenant) as session:
-        assert await HumanTaskRepository(session, tenant).open_fact_task(
+        assert await HumanTaskRepository(session, tenant).open_photo_fact_task(
             product_id=product_id,
             kind="missing_fact",
             target_path="facts.attributes.neckline",
