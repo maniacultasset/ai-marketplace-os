@@ -33,6 +33,7 @@ from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.validation_runs import summary_of
 from app.services.generation_context import previous_listing
 from app.services.listings import human_move, insert_run, rules_check, to_detail
+from app.services.seller_facts import FACTUAL_KEYS
 
 log = get_logger(__name__)
 
@@ -48,6 +49,13 @@ def _gate(listing: Any, if_match: uuid.UUID) -> None:
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
     if if_match != listing.current_version_id:
         raise ConflictError(ErrorCode.STALE_VERSION, "listing_versions")
+
+
+def _factual_edit(old: CanonicalListing, new: CanonicalListing) -> str | None:
+    """SI2 T17 (D5, CP-D7): the first factual attribute (sorted) the edit changes, adds or
+    removes. A factual value is the seller's, edited on the product, never on the listing."""
+    touched = sorted(k for k in FACTUAL_KEYS if old.attributes.get(k) != new.attributes.get(k))
+    return f"attributes.{touched[0]}" if touched else None
 
 
 def _changed(old: CanonicalListing, new: CanonicalListing) -> list[str]:
@@ -88,6 +96,10 @@ async def edit_content(
         # a 422 on the first failing path, the value never echoed.
         loc = exc.errors(include_input=False)[0]["loc"]
         raise InputError(ErrorCode.VALIDATION_FAILED, ".".join(str(p) for p in loc)) from None
+    factual = _factual_edit(old, new)
+    if factual is not None:
+        # 422 VALIDATION_FAILED at the attribute (the declared code; the value never echoed)
+        raise InputError(ErrorCode.VALIDATION_FAILED, factual)
     changed = _changed(old, new)
     if not changed:
         summary = await uow.validation_runs.summary_for(parent.id)
