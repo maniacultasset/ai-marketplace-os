@@ -431,6 +431,8 @@ async def auth_me(principal: Caller) -> MeOut:
             "role": found.role,
             "memberships": _memberships(found.memberships),
             "is_platform_admin": found.is_platform_admin,
+            "trial_ends_at": found.trial_ends_at,
+            "ai_paused": found.ai_paused,
         }
     )
 

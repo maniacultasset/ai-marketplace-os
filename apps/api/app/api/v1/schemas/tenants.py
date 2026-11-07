@@ -6,7 +6,7 @@ from typing import Annotated, Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import AfterValidator, Field, model_validator
+from pydantic import AfterValidator, AwareDatetime, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 # The tenant slug is `ck_tenants_slug` (0001_core_tenancy; DATABASE.md tenants row): hyphens, no
@@ -41,6 +41,9 @@ class TenantOut(WireModel):
     guidelines: list[str] = Field(default_factory=list)
     glossary: dict[str, str] = Field(default_factory=dict)
     status: Literal["trial", "active", "suspended", "offboarded"]
+    trial_ends_at: AwareDatetime | None = Field(
+        default=None, description="When the trial ends, while the brand is on trial; else null."
+    )
 
 
 class TenantPatch(StrictModel):

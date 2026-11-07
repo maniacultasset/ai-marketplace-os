@@ -47,6 +47,7 @@ class TenantView:
     guidelines: list[str]
     glossary: dict[str, str]
     status: str
+    trial_ends_at: datetime | None = None  # SI10: only while the tenant is on trial (CP-D5)
 
 
 def etag(tenant_id: uuid.UUID, updated_at: datetime) -> str:
@@ -62,6 +63,7 @@ def _view(row: Any) -> TenantView:
         guidelines=list(row.guidelines or []),
         glossary=dict(row.glossary or {}),
         status=row.status,
+        trial_ends_at=row.trial_ends_at if row.status == "trial" else None,
     )
 
 
