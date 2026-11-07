@@ -516,3 +516,66 @@ async def test_flipkart_adapter_ambiguous_timeout_completed_empty() -> None:
     with pytest.raises(MarketplaceAmbiguous) as caught:
         await flipkart_adapter(app, transport=fault).create_listing(fk_item())
     assert caught.value.completed == ()
+
+
+# ---- SI4 A16 (AC13): the Flipkart read's errors come back as field errors ----
+
+
+def _stored_errors(app: Any, sku: str, errors: list[dict[str, Any]]) -> None:
+    [key] = [k for k in app.state.fake.fk_items if k[1] == sku]
+    app.state.fake.fk_items[key]["errors"] = errors
+
+
+async def test_flipkart_read_error_on_an_attribute() -> None:
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(fk_item(sku="FK-R1"))
+    _stored_errors(
+        app,
+        "FK-R1",
+        [{"code": "X1", "description": "bad", "severity": "ERROR", "attribute": "title"}],
+    )
+    got = await adapter.get_listing("FK-R1")
+    [title] = [f for f in got.fields if f.field == "content.title"]
+    assert title.status == "failed" and title.error is not None
+    assert (title.error.source.value, title.error.marketplace.value) == (
+        "flipkart_adapter",
+        "flipkart",
+    )
+    assert title.error.error_code == "MARKETPLACE_UNKNOWN_ERROR"
+    assert (got.status, got.marketplace_state) == ("partially_published", "partially_live")
+
+
+async def test_flipkart_read_warning_and_item_level() -> None:
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(fk_item(sku="FK-R2"))
+    _stored_errors(
+        app,
+        "FK-R2",
+        [
+            {"code": "W1", "description": "odd", "severity": "WARNING", "attribute": "title"},
+            {"code": "E1", "description": "refused", "severity": "ERROR"},
+        ],
+    )
+    got = await adapter.get_listing("FK-R2")
+    by = {f.field: f for f in got.fields}
+    assert by["content.title"].status == "succeeded"
+    assert by["content.title"].error is not None
+    assert by["content.title"].error.severity.value == "warning"
+    assert by["listing"].status == "failed"
+
+
+async def test_flipkart_read_redacts_the_live_token() -> None:
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(fk_item(sku="FK-R3"))
+    [live] = adapter._client.used_secrets()
+    _stored_errors(
+        app,
+        "FK-R3",
+        [{"code": "E1", "description": f"t={live};", "severity": "ERROR", "attribute": "title"}],
+    )
+    got = await adapter.get_listing("FK-R3")
+    [title] = [f for f in got.fields if f.field == "content.title"]
+    assert title.error is not None and live not in title.error.message

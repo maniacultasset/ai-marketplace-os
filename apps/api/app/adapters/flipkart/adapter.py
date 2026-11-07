@@ -69,7 +69,7 @@ from app.adapters.base import (
     UpdateFields,
     fields_by_sku,
 )
-from app.adapters.error_map import ErrorMapper
+from app.adapters.error_map import ErrorMapper, fold_read_issue
 from app.adapters.flipkart import constants as c
 from app.adapters.flipkart.client import FlipkartClient, FlipkartResponse, error_rows
 from app.adapters.flipkart.mapping import (
@@ -641,10 +641,42 @@ class FlipkartAdapter(MarketplaceAdapter):
             external_id=str(external)[:64] if external else None,
             status=status,
             idempotency_key=f"get:{seller_sku}"[:255],
-            fields=[FieldResult(field=p, status="succeeded") for p in sorted(paths)],
+            fields=self._read_fields(sorted(paths), error_rows(entry), index),
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
         )
+
+    def _read_fields(
+        self, paths: Sequence[str], issues: Sequence[Any], index: Mapping[str, tuple[str, ...]]
+    ) -> list[FieldResult]:
+        """SI4 A16 (AC13): the read's ERROR and WARNING rows as field results, mapped through
+        this adapter's error map exactly as a write is (`marketplace=FLIPKART`, the session's
+        tokens scrubbed), so the source is `flipkart_adapter` and no live token is kept."""
+        fields = {p: FieldResult(field=p, status="succeeded") for p in paths}
+        secrets = self._client.used_secrets()
+        for issue in issues:
+            if not isinstance(issue, dict):
+                continue
+            severity = str(issue.get("severity", "")).upper()
+            if severity not in ("ERROR", c.WARNING):
+                continue
+            attribute = issue.get("attribute")
+            names = [str(attribute)] if attribute else []
+            category = issue.get("category")
+            found: Sequence[str | None] = sorted(
+                {p for n in names for p in index.get(n, ()) if p != "variants"}
+            )
+            for path in found or [None]:
+                one = self._map.to_item(
+                    raw_code=str(issue.get("code", "")),
+                    raw_message=str(issue.get("description", "")),
+                    field=path,
+                    marketplace=Marketplace.FLIPKART,
+                    categories=[str(category)] if category else [],
+                    secrets=secrets,
+                )
+                fields = fold_read_issue(fields, one, warning=severity == c.WARNING)
+        return sorted(fields.values(), key=lambda f: f.field)
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

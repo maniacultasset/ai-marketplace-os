@@ -20,7 +20,7 @@ DW7; invariant 1).
 from __future__ import annotations
 
 import uuid
-from typing import Final
+from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource
@@ -89,6 +89,8 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
                     state=None if got is None else _state(got.marketplace_state),
                     external_id=None if got is None else got.external_id,
                     parent=parent,
+                    errors=() if got is None else tuple(_read_errors(got)),
+                    fields=() if got is None else tuple(f.field for f in got.fields),
                 )
             )
     finally:
@@ -99,6 +101,11 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
 
     log.info("sync.read", job_run_id=str(ctx.job_run_id), skus=len(reads), reason=payload.reason)
     return Outcome("succeeded", result={"skus": len(reads)}, persist=persist)
+
+
+def _read_errors(got: Any) -> list[ErrorItem]:
+    """SI4 A16: the field errors a read carried (an adapter maps them through its error map)."""
+    return [f.error for f in got.fields if f.error is not None]
 
 
 def _auth_expired() -> ErrorReport:

@@ -70,7 +70,7 @@ from app.adapters.base import (
     UpdateFields,
     fields_by_sku,
 )
-from app.adapters.error_map import ErrorMapper
+from app.adapters.error_map import ErrorMapper, fold_read_issue
 
 NO_LISTING_ID: Final = UUID(int=0)
 MAX_PERFORMANCE_DAYS: Final = 366
@@ -517,10 +517,41 @@ class AmazonAdapter(MarketplaceAdapter):
             external_id=str(asin)[:64] if asin else None,
             status=status,
             idempotency_key=f"get:{seller_sku}"[:255],
-            fields=[FieldResult(field=p, status="succeeded") for p in paths],
+            fields=self._read_fields(paths, issues, index),
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
         )
+
+    def _read_fields(
+        self, paths: Sequence[str], issues: Sequence[Any], index: Mapping[str, tuple[str, ...]]
+    ) -> list[FieldResult]:
+        """SI4 A16 (AC13): the read's ERROR and WARNING issues as field results, mapped through
+        this adapter's error map like a write's (`_issue_items`). A named path fails on that
+        path (a warning keeps it `succeeded` with the item); an item-level one is `listing`. The
+        raw text is scrubbed of this session's tokens; no value is read back."""
+        fields = {p: FieldResult(field=p, status="succeeded") for p in paths}
+        secrets = self._client.used_secrets()
+        for issue in issues:
+            if not isinstance(issue, dict):
+                continue
+            severity = str(issue.get("severity", "")).upper()
+            if severity not in ("ERROR", "WARNING"):
+                continue
+            names = _names(issue.get("attributeNames"))
+            found: Sequence[str | None] = sorted(
+                {p for n in names for p in index.get(n, ()) if p != "variants"}
+            )
+            for path in found or [None]:
+                one = self._map.to_item(
+                    raw_code=str(issue.get("code", "")),
+                    raw_message=str(issue.get("message", "")),
+                    field=path,
+                    marketplace=Marketplace.AMAZON,
+                    categories=_names(issue.get("categories")),
+                    secrets=secrets,
+                )
+                fields = fold_read_issue(fields, one, warning=severity == "WARNING")
+        return sorted(fields.values(), key=lambda f: f.field)
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import (
@@ -32,6 +32,7 @@ from mkos_schemas.enums import (
     Severity,
 )
 from mkos_schemas.errors import ErrorItem
+from mkos_schemas.publish import FieldResult
 
 from app.core.redaction import redact_text
 
@@ -164,3 +165,17 @@ class ErrorMapper:
             auto_fixable=row.auto_fixable,
             fix_action=row.fix_action,
         )
+
+
+def fold_read_issue(
+    fields: dict[str, FieldResult], item: ErrorItem, *, warning: bool
+) -> dict[str, FieldResult]:
+    """One read issue folded into the field results: the first error on a path wins, and a
+    warning never replaces an error (SI4 A16)."""
+    severity = Severity.WARNING if warning else Severity.ERROR
+    item = item.model_copy(update={"severity": severity})
+    held = fields.get(item.field)
+    if held is not None and held.error is not None and (warning or held.status == "failed"):
+        return fields
+    status: Literal["succeeded", "failed"] = "succeeded" if warning else "failed"
+    return {**fields, item.field: FieldResult(field=item.field, status=status, error=item)}
