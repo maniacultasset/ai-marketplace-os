@@ -76,6 +76,13 @@ def party_out(view: products.PartyView | None) -> PartyOut | None:
     )
 
 
+def _image_out(detail: Any) -> ProductImageOut:
+    """The wire fields only (SI7: the stored report and border stay server-side)."""
+    fields = {name: getattr(detail, name) for name in ProductImageOut.model_fields}
+    fields["fixes"] = list(detail.fixes)
+    return ProductImageOut.model_construct(**fields)
+
+
 def _chart(chart: dict[str, Any] | None) -> SizeChart | None:
     if chart is None:
         return None
@@ -104,7 +111,7 @@ def _out(view: products.ProductView) -> ProductOut:
         size_chart=_chart(view.size_chart),
         size_chart_url=view.size_chart_url,
         manufacturer=party_out(view.manufacturer),
-        image_details=[ProductImageOut.model_construct(**asdict(d)) for d in view.image_details],
+        image_details=[_image_out(d) for d in view.image_details],
         colourways=[
             ColourwayOut.model_construct(id=c.id, colour=c.colour, colour_sku=c.colour_sku)
             for c in view.colourways

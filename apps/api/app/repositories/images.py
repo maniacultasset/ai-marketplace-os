@@ -71,6 +71,13 @@ class ImageDetail:
     position: int
     status: str
     compliance_status: str
+    # SI7: provenance, and what the product read needs to offer `fixes` (the stored reports and
+    # border profile; neither is part of the wire model)
+    origin: str = "seller"
+    parent_image_id: UUID | None = None
+    fixes: tuple[str, ...] = ()
+    report: Mapping[str, Any] | None = None
+    border: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -531,6 +538,10 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.position,
                 Image.status,
                 Image.compliance_status,
+                Image.origin,
+                Image.parent_image_id,
+                Image.image_report_json,
+                Image.metadata_["border"].label("border"),
             )
             .order_by(slot_rank, Image.position, Image.created_at, Image.id)
         )
@@ -542,6 +553,10 @@ class ImageRepository(TenantScopedRepository[Image]):
                 position=row.position,
                 status=row.status,
                 compliance_status=row.compliance_status,
+                origin=row.origin,
+                parent_image_id=row.parent_image_id,
+                report=row.image_report_json,
+                border=row.border if isinstance(row.border, Mapping) else None,
             )
             for row in (await self.db.execute(stmt)).all()
         ]

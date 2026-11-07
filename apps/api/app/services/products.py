@@ -25,13 +25,14 @@ import json
 import math
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
+from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.images import ImageDetail
@@ -39,6 +40,7 @@ from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
+from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.product_facts import (
@@ -325,7 +327,16 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     party_row = None if party_id is None else await uow.parties.get(party_id)
     party = None if party_row is None else party_view(party_row, inherited=inherited)
     keys = await uow.images.live_keys_for_products([row.id])
-    details = tuple(await uow.images.details_for_product(row.id))
+    edit_enabled = get_settings().image_edit_enabled
+    details = tuple(
+        replace(
+            detail,
+            fixes=tuple(
+                fixes_for(detail.slot, detail.report, detail.border, edit_enabled=edit_enabled)
+            ),
+        )
+        for detail in await uow.images.details_for_product(row.id)
+    )
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
