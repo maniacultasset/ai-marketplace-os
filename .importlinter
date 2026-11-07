@@ -99,6 +99,8 @@ name = image candidate pixels are pure
 type = forbidden
 source_modules =
     app.services.image_fix
+    app.services.image_fidelity
+    app.services.image_fixes
 forbidden_modules =
     app.api
     app.db
