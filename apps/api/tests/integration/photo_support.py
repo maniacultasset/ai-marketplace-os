@@ -7,6 +7,7 @@ in-memory storage. Rows are read back on the admin connection.
 
 from __future__ import annotations
 
+import hashlib
 import io
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -62,12 +63,16 @@ class PhotoWorld:
             }
             for m in ("amazon", "flipkart")
         }
+        original = vision_jpeg() + image_id.bytes  # distinct bytes per image
+        storage_key = f"{self.tenant}/{self.product_id}/images/{image_id}"
+        self.store.objects[storage_key] = (original, "image/jpeg", datetime.now(UTC))
         f.image(
             self.conn,
             self.tenant,
             self.product_id,
             id=image_id,
-            storage_key=f"{self.tenant}/{self.product_id}/images/{image_id}",
+            storage_key=storage_key,
+            content_hash=hashlib.sha256(original).hexdigest(),
             slot=slot,
             clean_content_hash=content_hash or uuid.uuid4().hex * 2,
             clean_mime_type="image/jpeg",
