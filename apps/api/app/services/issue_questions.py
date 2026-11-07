@@ -132,7 +132,14 @@ async def open_questions(
 
 
 async def reconcile_tasks(uow: TenantUnitOfWork, listing: Any) -> int:
-    """Cancel each live task of the listing whose linked issues are all closed."""
+    """Cancel each live task of the listing whose linked issues are all closed.
+
+    The product's image lock comes first (round 3 F3): `cancel_if_closed` keeps each task row
+    it locks until commit, and `open_image_task` takes this lock before its row, so every task
+    row lock of a product's step 4 is taken under the one lock. Two listings of one product
+    (or crossed fact questions) then queue instead of deadlocking. The lock is per transaction
+    and re-entrant, so the later take inside `open_image_task` is a no-op."""
+    await uow.images.lock_product_images(listing.product_id)
     cancelled = 0
     for task_id in await uow.listing_issues.live_task_ids(listing.id):
         if await uow.human_tasks.cancel_if_closed(task_id):

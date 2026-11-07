@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
+from types import SimpleNamespace
 from typing import Any
 
 import psycopg
@@ -360,6 +361,108 @@ async def test_a_committed_cancel_makes_the_opener_open_a_new_task(gen_world: Ge
     assert _task(gen_world, fresh) == ("open", None)
     linked = gen_world.scalar("SELECT human_task_id FROM listing_issues WHERE id = %s", [new_issue])
     assert linked == fresh
+
+
+# ---- step 4 lock order (round 3 F3): reconcile and open take a product's locks in one order ----
+
+COUNTRY = "facts.attributes.country_of_origin"
+
+
+def _sibling(world: GenWorld, product: uuid.UUID) -> Any:
+    """The product's Flipkart listing beside the generated Amazon one."""
+    listing_id = f.listing(world.conn, world.tenant("acme"), product, marketplace="flipkart")
+    return SimpleNamespace(id=listing_id, product_id=product)
+
+
+def _linked(world: GenWorld, listing: Any, task: uuid.UUID, marketplace: str) -> uuid.UUID:
+    return f.listing_issue(
+        world.conn,
+        world.tenant("acme"),
+        listing.id,
+        marketplace=marketplace,
+        human_task_id=task,
+        dedupe_key=f"rules_engine|content.title|FIELD_TOO_LONG|{uuid.uuid4()}",
+    )
+
+
+async def _step4_race(
+    world: GenWorld,
+    a: Any,
+    b: Any,
+    a_opens: Callable[[Any], Awaitable[uuid.UUID]],
+    b_opens: Callable[[Any], Awaitable[uuid.UUID]],
+) -> list[uuid.UUID]:
+    """A reconciles (holding its linked task rows), B runs its whole step 4 and waits on a
+    lock, then A opens its question. With the locks taken in two orders the sessions deadlock
+    (40P01) and one of them fails; with one order B waits for A's commit."""
+    from app.repositories.uow import tenant_uow
+    from app.services.issue_questions import reconcile_tasks
+
+    a_reconciled, b_waiting = asyncio.Event(), asyncio.Event()
+
+    async def run_a() -> uuid.UUID:
+        async with tenant_uow(world.tenant("acme")) as uow:
+            await reconcile_tasks(uow, a)
+            a_reconciled.set()
+            await b_waiting.wait()
+            return await a_opens(uow)
+
+    async def run_b() -> uuid.UUID:
+        await a_reconciled.wait()
+        async with tenant_uow(world.tenant("acme")) as uow:
+            await reconcile_tasks(uow, b)
+            return await b_opens(uow)
+
+    first, second = asyncio.create_task(run_a()), asyncio.create_task(run_b())
+    await a_reconciled.wait()
+    await _wait_for_lock_wait(world)
+    b_waiting.set()
+    return list(await asyncio.gather(first, second))
+
+
+async def test_two_listings_of_one_product_ask_one_image_question_without_a_deadlock(
+    gen_world: GenWorld,
+) -> None:
+    made = await generated(gen_world)
+    product = _product(gen_world, made)
+    image = f.image(gen_world.conn, gen_world.tenant("acme"), product, slot="main")
+    task = await _open_image(gen_world, product, image)
+    amazon = SimpleNamespace(id=made.listing_id, product_id=product)
+    _linked(gen_world, amazon, task, "amazon")  # A's open vision row links the task
+    flipkart = _sibling(gen_world, product)
+
+    async def opens(uow: Any) -> uuid.UUID:
+        return await uow.human_tasks.open_image_task(  # type: ignore[no-any-return]
+            product, image, "Upload a new main image.", "The image failed its checks."
+        )
+
+    assert await _step4_race(gen_world, amazon, flipkart, opens, opens) == [task, task]
+    assert gen_world.count("human_tasks", "image_id = %s", [image]) == 1
+
+
+async def test_crossed_fact_questions_of_one_product_without_a_deadlock(
+    gen_world: GenWorld,
+) -> None:
+    made = await generated(gen_world)
+    product = _product(gen_world, made)
+    fiber = await _open_fact(gen_world, product)
+    country = await _open_fact(gen_world, product, target=COUNTRY)
+    amazon = SimpleNamespace(id=made.listing_id, product_id=product)
+    flipkart = _sibling(gen_world, product)
+    _linked(gen_world, amazon, fiber, "amazon")  # A links fiber and needs country
+    _linked(gen_world, flipkart, country, "flipkart")  # B links country and needs fiber
+
+    def opens(target: str) -> Callable[[Any], Awaitable[uuid.UUID]]:
+        async def go(uow: Any) -> uuid.UUID:
+            return await uow.human_tasks.open_fact_task(  # type: ignore[no-any-return]
+                product, target, QUESTION, REASON, dict(ANSWER)
+            )
+
+        return go
+
+    got = await _step4_race(gen_world, amazon, flipkart, opens(COUNTRY), opens(TARGET))
+    assert got == [country, fiber]
+    assert _live_tasks(gen_world, product) == 2
 
 
 # ---- tenants ----
