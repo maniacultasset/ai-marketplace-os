@@ -76,12 +76,14 @@ async def test_iso_issue_and_task_reads_other_tenant_empty(world: GenWorld) -> N
 # ---- SI4 A18 (AC14): the fix trail and the questions stay inside their tenant ----
 
 
-async def _generate(world: GenWorld, email: str, instructions: str | None) -> uuid.UUID:
+async def _generate(
+    world: GenWorld, email: str, instructions: str | None, sku: str = "KURTA-002"
+) -> uuid.UUID:
     from app.workers.tasks import register_bodies
     from app.workers.wrapper import run_job
 
     register_bodies()
-    accepted = await make_generating(world, email=email, instructions=instructions)
+    accepted = await make_generating(world, email=email, sku=sku, instructions=instructions)
     await run_job(str(accepted.job_id))
     return accepted.listing_id  # type: ignore[no-any-return]
 
@@ -138,8 +140,11 @@ async def test_iso_auto_fix_trail_and_questions_per_tenant(
     }
     _require_fiber(world)
     drop[0] = True
+    # The "fixed" pass moved KURTA-002 x amazon out of `created`, so a plain generate of it is
+    # refused (no force_regenerate); the "asked" pass uses its own product.
     asked = {
-        slug: await _generate(world, f"operator@{slug}.test", None) for slug in ("acme", "bharat")
+        slug: await _generate(world, f"operator@{slug}.test", None, sku="KURTA-001")
+        for slug in ("acme", "bharat")
     }
     for slug in ("acme", "bharat"):
         tenant = world.tenant(slug)
