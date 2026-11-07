@@ -120,6 +120,49 @@ class ProductRepository(TenantScopedRepository[Product]):
         )
         return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
 
+    async def identifier_taken(self, value: str, exclude_id: uuid.UUID | None) -> bool:
+        """SI5: a live product of this tenant (other than `exclude_id`) already holds this
+        barcode, compared as `products_identifier_uq` does (left-padded to 14)."""
+        stmt = self._select().where(
+            func.lpad(Product.identifier_value, 14, "0") == value.zfill(14),
+            Product.deleted_at.is_(None),
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(Product.id != exclude_id)
+        found = await self.db.execute(stmt.with_only_columns(Product.id).limit(1))
+        return found.first() is not None
+
+    async def style_exemptions(self, style_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, bool]:
+        """SI5 (CP-D18): per style, whether it has at least one live variant and every live
+        variant is GTIN-exempt; one aggregate for the whole list, none for an empty one."""
+        out = dict.fromkeys(style_ids, False)
+        if not out:
+            return out
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id.in_(list(out)), Product.deleted_at.is_(None))
+            .with_only_columns(
+                Product.parent_product_id,
+                func.bool_and(func.coalesce(Product.identifier_status == "exempt", False)),
+            )
+            .group_by(Product.parent_product_id)
+        )
+        for style_id, all_exempt in (await self.db.execute(stmt)).all():
+            out[style_id] = bool(all_exempt)
+        return out
+
+    async def child_identifier_states(
+        self, style_id: uuid.UUID
+    ) -> builtins.list[tuple[uuid.UUID, str | None]]:
+        """SI5: `(id, identifier_status)` of each live variant of `style_id` (the fan-out)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.id, Product.identifier_status)
+            .order_by(Product.id)
+        )
+        return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
+
     async def money_of(self, product_id: uuid.UUID) -> tuple[Decimal | None, Decimal | None]:
         """The stored `(selling_price, mrp)` of a live product (a fresh read, never the session's
         cached row: FactWriter writes these columns with Core statements)."""

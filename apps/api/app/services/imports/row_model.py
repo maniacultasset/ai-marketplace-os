@@ -30,6 +30,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, Severity
 from mkos_schemas.errors import ErrorItem
 
+from app.core.identifiers import IDENTIFIER_TYPES, gtin_valid
 from app.services.composition import CompositionError, normalized, parse_composition
 from app.services.imports.headers import (
     GRAMS_COLUMN,
@@ -61,7 +62,6 @@ TAX_PATTERN: Final = re.compile(r"[0-9]{1,3}(\.[0-9]{1,2})?")
 DIMENSION_PATTERN: Final = re.compile(r"[0-9]{1,5}(\.[0-9]{1,2})?")
 WEIGHT_PATTERN: Final = re.compile(r"([0-9]{1,7}(?:\.[0-9]{1,3})?)\s?(g|kg)", re.IGNORECASE)
 GRAMS_PATTERN: Final = re.compile(r"[0-9]{1,7}")
-GTIN_PATTERN: Final = re.compile(r"[0-9]{8}|[0-9]{12,14}")
 COUNTRY_PATTERN: Final = re.compile(r"[A-Za-z]{2}")
 SIZE_KEY_PATTERN: Final = re.compile(r"[a-z0-9][a-z0-9 ./+-]{0,31}")
 EMAIL_PATTERN: Final = re.compile(r"[^@\s]+@[^@\s]+")
@@ -70,7 +70,6 @@ _WHITESPACE: Final = re.compile(r"\s+")
 _URL_SPLIT: Final = re.compile(r"[|,;\s]+")
 
 GENDERS: Final = frozenset({"men", "women", "unisex", "boys", "girls"})
-IDENTIFIER_TYPES: Final = frozenset({"gtin", "ean", "upc"})
 MAX_TITLE: Final = 500
 MAX_BRAND: Final = 100
 MAX_PARTY_TEXT: Final = 300
@@ -177,15 +176,6 @@ def normalize_row(raw: Mapping[str, str | None]) -> dict[str, str | None]:
         text = _WHITESPACE.sub(" ", cell).strip() if isinstance(cell, str) else ""
         out[key] = text or None
     return out
-
-
-def gtin_valid(value: str) -> bool:
-    """The GS1 check digit over GTIN-8/12/13/14, left-padded to 14 (the SQL `gtin_valid` twin)."""
-    if not GTIN_PATTERN.fullmatch(value):
-        return False
-    digits = [int(d) for d in value.zfill(14)]
-    total = sum(d * (3 if i % 2 == 0 else 1) for i, d in enumerate(digits[:13]))
-    return (10 - total % 10) % 10 == digits[13]
 
 
 class _Checker:

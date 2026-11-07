@@ -33,11 +33,13 @@ from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
+from sqlalchemy.exc import DBAPIError
 
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import tenant_uow
+from app.services import product_identifier
 from app.services.intake_values import PartyInput
 from app.services.product_facts import (
     SIZE_CHART_KEY,
@@ -63,6 +65,9 @@ PATCH_FIELDS: Final = frozenset(
         "size_chart",
         "attributes",
         "confirm_attributes",
+        # SI5: the barcode and the GTIN exemption (`product_identifier.plan`)
+        "product_identifier",
+        "identifier_exemption",
     }
 )
 # typed body field → (products column, dictionary key, owner levels)
@@ -286,6 +291,19 @@ def _envelopes(row: Any, change: ProductChange, column_keys: Mapping[str, str]) 
 async def update_product(
     principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
 ) -> ProductView:
+    """SI5: a barcode used by another live product of the tenant (the pre-check, or the unique
+    index after the transaction rolled back) is 422 at `product_identifier.value`."""
+    try:
+        return await _update_product(principal, product_id, patch, if_match)
+    except (DBAPIError, ConflictError) as exc:
+        if product_identifier.is_duplicate(exc):
+            raise product_identifier.duplicate() from None
+        raise
+
+
+async def _update_product(
+    principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
+) -> ProductView:
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -323,7 +341,14 @@ async def update_product(
             party_id=party_id,
             children=children,
         )
-        if change.empty:
+        id_change = product_identifier.plan(
+            level,
+            row,
+            identifier=patch.get("product_identifier"),
+            exemption=patch.get("identifier_exemption"),
+            sent=product_identifier.FIELDS & set(patch),
+        )
+        if change.empty and id_change is None:
             return await full_view(uow, row)
         if product_etag(row.id, row.updated_at) != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "products_etag")
@@ -333,6 +358,15 @@ async def update_product(
             assert key is not None  # noqa: S101 - TYPED names dictionary columns
             column_keys[column] = key
         before = _envelopes(row, change, column_keys)
+        if id_change is not None:
+            if id_change.value is not None and await uow.products.identifier_taken(
+                id_change.value, row.id
+            ):
+                raise product_identifier.duplicate()
+            before["provenance"][product_identifier.IDENTIFIER_KEY] = (row.provenance or {}).get(
+                product_identifier.IDENTIFIER_KEY
+            )
+            await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
         for column, value in change.typed_set.items():
             await uow.facts.set_typed(row.id, column, value, column_fact)
         for key in change.typed_clear:
@@ -369,6 +403,10 @@ async def update_product(
                 **dict.fromkeys(change.typed_clear),
             },
         }
+        if id_change is not None:
+            after["provenance"][product_identifier.IDENTIFIER_KEY] = (
+                None if id_change.clears else column_fact
+            )
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",
