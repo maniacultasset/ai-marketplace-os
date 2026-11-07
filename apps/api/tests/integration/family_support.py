@@ -33,6 +33,7 @@ def family(
     priced = {
         **f.SELLER_PRICED,
         "attributes": {"fabric_type": f.fact(value="cotton")},
+        "gender": "women",  # SI8: Amazon apparel needs the audience
     }
     style_columns = {**priced, **style_columns}
     f.ensure_brand_manufacturer(conn, tenant_id)
