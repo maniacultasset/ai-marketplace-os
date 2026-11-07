@@ -9,17 +9,34 @@ a platform admin's `app.user_id`.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import ClassVar, cast
+from typing import ClassVar, Literal, cast
+from uuid import UUID
 
 from sqlalchemy import Numeric, func, literal, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.platform import AiCreditState
-from app.services.ai_credit import CreditRow, PauseReason
 
 ROW_ID = 1
+
+PauseReason = Literal["credit_exhausted", "key_invalid"]
+
+
+@dataclass(frozen=True, slots=True)
+class CreditRow:
+    """`ai_credit_state` row 1 (revision 0021)."""
+
+    paused_reason: PauseReason | None = None
+    paused_at: datetime | None = None
+    limit_usd: Decimal | None = None
+    usage_usd: Decimal | None = None
+    remaining_usd: Decimal | None = None
+    checked_at: datetime | None = None
+    resumed_at: datetime | None = None
+    resumed_by_user_id: UUID | None = None
 
 
 class AiCreditRepository:
@@ -103,4 +120,4 @@ class AiCreditRepository:
         )
 
 
-__all__ = ["ROW_ID", "AiCreditRepository"]
+__all__ = ["ROW_ID", "AiCreditRepository", "CreditRow", "PauseReason"]
