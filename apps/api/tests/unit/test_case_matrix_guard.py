@@ -131,6 +131,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "invites_join",
         "members_password_reset",
         "auth_password_reset",
+        "admin_tenants_list",
+        "admin_tenants_activate",
+        "admin_tenants_extend_trial",
     }
 )
 

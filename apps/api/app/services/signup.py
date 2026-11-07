@@ -17,7 +17,7 @@
   The admin is a normal principal (a member of some tenant, e.g. the staff tenant) whose own
   `users.is_platform_admin` is true; RLS on `signup_requests` checks the same flag
   (`app_is_platform_admin()`), so a non-admin reads and changes nothing even past the router.
-  Approve creates the tenant (`trial`, `trial_days` default 14) and its owner membership through
+  Approve creates the tenant (`trial`, `trial_days` default 30, ADR-0029) and its owner membership through
   the staff CLI's own statements, and audits as `staff` with the admin's email. Approving an
   approved request, or rejecting a rejected one, answers the stored row; the other crossing is
   409 `INVALID_STATUS_TRANSITION`.
@@ -53,7 +53,7 @@ from app.services import auth_events
 from app.services.auth import dummy_hash, inet
 from app.services.sign_in_policy import is_locked
 
-DEFAULT_TRIAL_DAYS: Final = 14
+DEFAULT_TRIAL_DAYS: Final = 30  # ADR-0029 (was 14, ADR-0019)
 SLUG_BASE_MAX: Final = 32  # leaves room for "-xxxx" within ck_tenants_slug's 40
 SLUG_ATTEMPTS: Final = 8
 SLUG_FALLBACK: Final = "brand"

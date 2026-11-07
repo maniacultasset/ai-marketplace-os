@@ -79,6 +79,9 @@ queue entry, the kind's requeue hook and a `staff` audit row naming E and R.
 
 `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`,
 `tenant add-member --slug S --email E --role R --staff-email F`,
+`tenant activate --slug S --reason R --staff-email F` and `tenant extend-trial --slug S --days
+1..90 --reason R --staff-email F` (SI5, ADR-0029: trial recovery; exit 4 for an unknown slug or a
+refused move),
 `user set-password --email E --staff-email F` and `user make-admin --email E --staff-email F`
 (ADR-0019: the platform admin who approves self-serve sign-ups; idempotent) are the staff
 onboarding tools (S16 PLAN D6;
@@ -826,6 +829,16 @@ def _trial_days(value: str) -> int:
     return days
 
 
+def _extend_days(value: str) -> int:
+    try:
+        days = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--days must be an integer") from None
+    if not 1 <= days <= 90:
+        raise argparse.ArgumentTypeError("--days must be in 1..90")
+    return days
+
+
 def _admin_engine() -> AsyncEngine:
     from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -906,6 +919,20 @@ async def run_tenant_command(args: argparse.Namespace, stdin: TextIO) -> int:
                     request_id=ctx.request_id,
                 )
                 sys.stdout.write(f"user_id={user_id} revoked={revoked}\n")
+            elif args.command == "activate":
+                tenant_id, outcome = await staff_ops.activate_tenant(
+                    engine, slug=args.slug, reason=args.reason, staff_email=args.staff_email
+                )
+                sys.stdout.write(f"tenant_id={tenant_id} outcome={outcome}\n")
+            elif args.command == "extend-trial":
+                tenant_id, outcome = await staff_ops.extend_trial(
+                    engine,
+                    slug=args.slug,
+                    days=args.days,
+                    reason=args.reason,
+                    staff_email=args.staff_email,
+                )
+                sys.stdout.write(f"tenant_id={tenant_id} outcome={outcome}\n")
             elif args.command == "create":
                 owner = await _new_user(engine, args.owner_email, stdin)
                 tenant_id = await staff_ops.create_tenant_with_owner(
@@ -1295,6 +1322,18 @@ def _add_onboarding(groups: Any) -> None:
     add.add_argument("--email", type=_member_email, required=True)
     add.add_argument("--role", choices=MEMBER_ROLES, required=True)
     add.add_argument("--staff-email", type=_member_email, required=True)
+    # SI5 (ADR-0029): trial recovery, the same 0017 functions a platform admin calls over HTTP
+    activate = tenant_commands.add_parser("activate", help="a trial or suspended tenant -> active")
+    activate.add_argument("--slug", type=_slug, required=True)
+    activate.add_argument("--reason", type=_reason, required=True)
+    activate.add_argument("--staff-email", type=_member_email, required=True)
+    extend = tenant_commands.add_parser(
+        "extend-trial", help="a trial ends later, or a trial-expired tenant reopens"
+    )
+    extend.add_argument("--slug", type=_slug, required=True)
+    extend.add_argument("--days", type=_extend_days, required=True)
+    extend.add_argument("--reason", type=_reason, required=True)
+    extend.add_argument("--staff-email", type=_member_email, required=True)
     user = groups.add_parser("user", help="staff user tools (S16)")
     user_commands = user.add_subparsers(dest="command", required=True)
     reset = user_commands.add_parser("set-password", help="a new password from stdin")
