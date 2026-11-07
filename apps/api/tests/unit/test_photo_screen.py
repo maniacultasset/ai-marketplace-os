@@ -132,11 +132,8 @@ def test_low_confidence_asks_only_for_required_missing_keys() -> None:
     assert all(
         s["source"] == "ai" and s["evidence_ref"] == f"image:{MAIN}" for s in task.suggestions
     )
-    assert task.expected_answer == {
-        "type": "attribute",
-        "key": "color",
-        "values": list(pf.VOCAB["color"]),
-    }
+    # the AnswerSpec shape (DATABASE.md:1411), round 1 F1
+    assert task.expected_answer == {"kind": "enum", "allowed_values": list(pf.VOCAB["color"])}
     assert "maroon" in task.reason and task.image_id == MAIN
     assert run([obs("color", "maroon", 0.3999)], [target("color")]).tasks == ()
     assert run([obs("neckline", "v-neck", 0.5)], [target("neckline")]).tasks == ()  # not required
@@ -274,6 +271,7 @@ def test_pieces_conflict_has_no_ai_suggestion() -> None:
     )
     (task,) = decision.tasks
     assert task.kind == "conflicting_facts" and decision.writes == ()
+    assert task.expected_answer == {"kind": "number", "min": 1, "max": 50}
     assert [s["source"] for s in task.suggestions] == ["seller"]
     assert task.suggestions[0]["value"] == 2
     assert task.evidence == ({"kind": "source_value", "text": "photos: 3", "ref": f"image:{MAIN}"},)
@@ -283,6 +281,7 @@ def test_pieces_missing_and_low() -> None:
     missing = run([obs("number_of_pieces", "3", 0.70)], [PIECES])
     (task,) = missing.tasks
     assert task.kind == "missing_fact" and task.suggestions == () and missing.writes == ()
+    assert task.expected_answer == {"kind": "number", "min": 1, "max": 50}
     assert run([obs("number_of_pieces", "3", 0.69)], [PIECES]).tasks == ()
 
 

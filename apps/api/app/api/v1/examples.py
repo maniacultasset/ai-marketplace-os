@@ -263,7 +263,7 @@ _FACT_TASK: Final[dict[str, Any]] = {
     "image_id": IMAGE,
     "question": "What is the colour of this product?",
     "reason": "The photos suggest maroon, but not clearly enough to use it.",
-    "expected_answer": {"type": "attribute", "key": "color", "values": ["maroon", "red"]},
+    "expected_answer": {"kind": "enum", "allowed_values": ["maroon", "red"]},
     "suggestions": [
         {"value": "maroon", "label": "maroon", "source": "ai", "evidence_ref": f"image:{IMAGE}"}
     ],

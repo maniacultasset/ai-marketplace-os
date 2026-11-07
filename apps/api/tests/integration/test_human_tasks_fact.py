@@ -24,7 +24,7 @@ def _task(product_id: uuid.UUID, **overrides: Any) -> dict[str, Any]:
         "target_path": TARGET,
         "question": "What is the colour of this product?",
         "reason": "The photos suggest maroon, but not clearly enough to use it.",
-        "expected_answer": {"type": "attribute", "key": "color", "values": ["maroon", "red"]},
+        "expected_answer": {"kind": "enum", "allowed_values": ["maroon", "red"]},
         "suggestions": [{"value": "maroon", "label": "maroon", "source": "ai"}],
         "evidence": [{"kind": "source_value", "text": "photos: maroon", "ref": "image:x"}],
     }

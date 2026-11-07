@@ -30130,12 +30130,11 @@ export interface operations {
                      *       "applied_at": "2026-10-05T09:31:00Z",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "expected_answer": {
-                     *         "key": "color",
-                     *         "type": "attribute",
-                     *         "values": [
+                     *         "allowed_values": [
                      *           "maroon",
                      *           "red"
-                     *         ]
+                     *         ],
+                     *         "kind": "enum"
                      *       },
                      *       "id": "0b1c2d3e-0000-4000-8000-000000001101",
                      *       "image_id": "0b1c2d3e-0000-4000-8000-000000000501",

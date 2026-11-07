@@ -565,7 +565,7 @@ async def test_si3_a_seller_write_cancels_the_open_question(
             target_path="facts.attributes.neckline",
             question="What is the neckline of this product?",
             reason="The photos suggest v-neck, but not clearly enough to use it.",
-            expected_answer={"type": "attribute", "key": "neckline", "values": ["v-neck"]},
+            expected_answer={"kind": "enum", "allowed_values": ["v-neck"]},
             suggestions=[],
             evidence=[],
         )

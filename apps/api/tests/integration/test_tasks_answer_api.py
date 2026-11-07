@@ -19,6 +19,10 @@ from .products_support import bad_bearer, bearer_for, insert_products
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 OPERATOR = "operator@acme.test"
 COLOURS = ["black", "red", "maroon", "navy blue"]
+# AnswerSpec shapes (DATABASE.md:1411): what the photo screen opens, and a canonical SI4 question
+COLOUR_SPEC: dict[str, Any] = {"kind": "enum", "allowed_values": COLOURS}
+PIECES_SPEC: dict[str, Any] = {"kind": "number", "min": 1, "max": 50}
+TEXT_SPEC: dict[str, Any] = {"kind": "text"}
 
 
 def _url(task_id: object) -> str:
@@ -32,13 +36,10 @@ async def _open(
     slug: str = "acme",
     key: str = "color",
     kind: str = "missing_fact",
-    values: list[str] | None = COLOURS,
+    expected: dict[str, Any] = COLOUR_SPEC,
 ) -> tuple[uuid.UUID, uuid.UUID]:
     tenant = world.tenant(slug)
     (product_id,) = insert_products(conn, tenant, 1, prefix=f"TA-{uuid.uuid4().hex[:6]}")
-    expected: dict[str, Any] = {"type": "attribute", "key": key}
-    if values is not None:
-        expected["values"] = values
     async with unit_of_work(tenant) as session:
         assert await HumanTaskRepository(session, tenant).open_fact_task(
             product_id=product_id,
@@ -283,7 +284,9 @@ async def test_tasks_answer_a_cancelled_task_is_409(
 async def test_tasks_answer_pieces_must_be_a_count(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn, value: object
 ) -> None:
-    task_id, product_id = await _open(products_world, auth_db, key="number_of_pieces", values=None)
+    task_id, product_id = await _open(
+        products_world, auth_db, key="number_of_pieces", expected=PIECES_SPEC
+    )
     response = await _answer(api, products_world, task_id, {"value": value})
     assert response.status_code == 422, response.text
     assert response.json()["error"]["details"][0]["loc"][-1] == "value"
@@ -293,7 +296,9 @@ async def test_tasks_answer_pieces_must_be_a_count(
 async def test_tasks_answer_pieces_count_is_written(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
-    task_id, product_id = await _open(products_world, auth_db, key="number_of_pieces", values=None)
+    task_id, product_id = await _open(
+        products_world, auth_db, key="number_of_pieces", expected=PIECES_SPEC
+    )
     response = await _answer(api, products_world, task_id, {"value": 3})
     assert response.status_code == 200, response.text
     assert _fact(auth_db, product_id, "number_of_pieces")["value"] == 3
@@ -308,11 +313,45 @@ async def test_tasks_answer_an_out_of_list_value_is_422(
     assert _task(auth_db, task_id)["status"] == "open"
 
 
+@pytest.mark.parametrize("value", ["banana", "maroon", 7])
+async def test_tasks_answer_a_canonical_enum_spec_takes_only_its_values(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn, value: object
+) -> None:
+    """Round 1 F1: a question in the canonical AnswerSpec shape (an SI4 issue question on the same
+    target) refuses a value outside its `allowed_values`, even one in the photo vocabulary."""
+    spec = {"kind": "enum", "allowed_values": ["red", "blue"]}
+    task_id, product_id = await _open(products_world, auth_db, expected=spec)
+    response = await _answer(api, products_world, task_id, {"value": value})
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["details"][0]["loc"][-1] == "value"
+    assert _task(auth_db, task_id)["status"] == "open"
+    assert _fact(auth_db, product_id, "color") is None
+
+
+async def test_tasks_answer_a_canonical_enum_spec_stores_the_canonical_value(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    spec = {"kind": "enum", "allowed_values": ["red", "blue"]}
+    task_id, product_id = await _open(products_world, auth_db, expected=spec)
+    response = await _answer(api, products_world, task_id, {"value": " Red "})
+    assert response.status_code == 200, response.text
+    assert _fact(auth_db, product_id, "color")["value"] == "red"
+
+
+async def test_tasks_answer_an_enum_spec_without_values_is_422(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    task_id, product_id = await _open(products_world, auth_db, expected={"kind": "enum"})
+    response = await _answer(api, products_world, task_id, {"value": "red"})
+    assert response.status_code == 422, response.text
+    assert _fact(auth_db, product_id, "color") is None
+
+
 @pytest.mark.parametrize("text", ["\N{DRAGON}" * 500, "\x01" * 500, "a" * 2000])
 async def test_tasks_answer_long_text_snapshot_is_bounded(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn, text: str
 ) -> None:
-    task_id, product_id = await _open(products_world, auth_db, key="occasion", values=None)
+    task_id, product_id = await _open(products_world, auth_db, key="occasion", expected=TEXT_SPEC)
     response = await _answer(api, products_world, task_id, {"value": text})
     assert response.status_code == 200, response.text
     fact = _fact(auth_db, product_id, "occasion")
@@ -323,7 +362,7 @@ async def test_tasks_answer_long_text_snapshot_is_bounded(
 async def test_tasks_answer_nul_is_422(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
-    task_id, _ = await _open(products_world, auth_db, key="occasion", values=None)
+    task_id, _ = await _open(products_world, auth_db, key="occasion", expected=TEXT_SPEC)
     response = await _answer(api, products_world, task_id, {"value": "a\x00b"})
     assert response.status_code == 422
 

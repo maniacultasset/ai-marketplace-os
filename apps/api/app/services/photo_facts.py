@@ -80,6 +80,8 @@ CONFLICT_FLOOR: Final = 0.90
 PIECES_ASK_FLOOR: Final = 0.70
 MAX_PHOTO_TASKS: Final = 3
 MAX_PIECES: Final = 12
+# the most pieces a seller may answer to a piece-count question (tasks_answer)
+ANSWER_MAX_PIECES: Final = 50
 
 # Regulated, commercial or measured facts: never a photo target (C:38-39, C:75).
 FORBIDDEN_KEYS: Final[frozenset[str]] = frozenset(
@@ -560,7 +562,11 @@ def _evidence(text: str, image_id: UUID) -> tuple[dict[str, Any], ...]:
 
 
 def _expected(key: str) -> dict[str, Any]:
-    return {"type": "attribute", "key": key, "values": list(VOCAB[key])}
+    """The task's AnswerSpec (DATABASE.md:1411): a piece count is a number, any other key one of
+    its vocabulary values."""
+    if key == "number_of_pieces":
+        return {"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES}
+    return {"kind": "enum", "allowed_values": list(VOCAB[key])}
 
 
 def _missing(key: str, value: str, obs: PhotoObservation, target: PhotoTarget) -> PhotoTask:

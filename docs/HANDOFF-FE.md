@@ -209,11 +209,13 @@ generated. A photo value is a suggestion until the seller confirms it; it never 
    it at publish (`FACTS_CHANGED_SINCE_APPROVAL`). 422 at `confirm_attributes[<i>]` means the key
    holds no photo value (`VALIDATION_FAILED`) or is unknown (`UNKNOWN_FACT_KEY`).
 3. **The Inbox answer box.** A `missing_fact` or `conflicting_facts` task (`target_path
-   facts.attributes.<key>`) gets an answer box: pick one of `suggestions` (or a value of
-   `expected_answer.values`) and POST `/api/v1/tasks/{task_id}/answer {"value": ...}` with an
+   facts.attributes.<key>`) gets an answer box built from its `expected_answer` (the AnswerSpec,
+   DATABASE.md §5.7): for `kind: "enum"` pick one of `suggestions` or of
+   `expected_answer.allowed_values`; for `kind: "number"` (`number_of_pieces`, `min` 1, `max` 50)
+   send an integer. POST `/api/v1/tasks/{task_id}/answer {"value": ...}` with an
    `Idempotency-Key`, or `{"skip": true}`. 200 returns the task `applied`; 409
    `INVALID_STATUS_TRANSITION` means it was already answered differently or cancelled; 422 at
-   `value` means the value is not one the task accepts. For `number_of_pieces` send an integer 1-50.
+   `value` means the value is not one the task accepts.
    After the answer, tell the seller "Regenerate to use your answer"; the listing does not resume on
    its own.
 4. **Never a block.** A photo question never blocks a listing by itself: keep the listing actions

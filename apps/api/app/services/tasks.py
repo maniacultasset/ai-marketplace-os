@@ -26,12 +26,12 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import repositories_on, tenant_uow
-from app.services.photo_facts import canonical
+from app.services.photo_facts import ANSWER_MAX_PIECES, VOCAB, canonical, fold
 from app.services.product_facts import STANDALONE, build_attributes
 
 FACT_KINDS: Final = frozenset({"missing_fact", "conflicting_facts"})
 FACT_TARGET: Final = re.compile(r"^facts\.attributes\.([a-z0-9_]{1,64})$")
-MAX_PIECES: Final = 50
+MAX_PIECES: Final = ANSWER_MAX_PIECES
 # DATABASE.md:1419 / fact_map_valid: an evidence snapshot is at most 2048 bytes as JSON text
 SNAPSHOT_BUDGET: Final = 1900
 
@@ -89,19 +89,51 @@ def _snapshot(question: str, answer: object) -> dict[str, str]:
 
 
 def _answer_value(key: str, value: Any, expected: Any) -> Any:
-    """The value to store, or 422 at `value`. A piece count is an int 1..50; a key whose task
-    lists its allowed values takes only one of them (its canonical form, DATABASE.md:1417)."""
+    """The value to store, or 422 at `value`, checked against the task's AnswerSpec
+    (DATABASE.md:1411, :1422) whichever lane opened it. `enum` takes one of `allowed_values`
+    (the canonical form for a photo-vocabulary key, DATABASE.md:1417), `multi_enum` a non-empty
+    list of them, `number` an int within `min`..`max`. An enum spec without allowed values takes
+    nothing. A piece count is always an int 1..50, whatever the spec says."""
+    spec = expected if isinstance(expected, dict) else {}
+    kind = spec.get("kind")
     if key == "number_of_pieces":
-        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= MAX_PIECES:
+        return _number(value, 1, MAX_PIECES)
+    if kind == "number":
+        return _number(value, spec.get("min"), spec.get("max"))
+    if kind in ("enum", "multi_enum"):
+        allowed = spec.get("allowed_values")
+        if not isinstance(allowed, list) or not allowed:
             raise InputError(ErrorCode.VALIDATION_FAILED, "value")
-        return value
-    values = expected.get("values") if isinstance(expected, dict) else None
-    if not isinstance(values, list):
-        return value
-    mapped = canonical(key, value)
-    if mapped is None or mapped not in values:
+        if kind == "enum":
+            return _member(key, value, allowed)
+        if not isinstance(value, list) or not value:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+        return [_member(key, item, allowed) for item in value]
+    return value
+
+
+def _number(value: Any, low: Any, high: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
         raise InputError(ErrorCode.VALIDATION_FAILED, "value")
-    return mapped
+    if (isinstance(low, int) and value < low) or (isinstance(high, int) and value > high):
+        raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+    return value
+
+
+def _member(key: str, value: Any, allowed: list[Any]) -> Any:
+    """The allowed entry `value` names: its canonical form when both are in the photo vocabulary,
+    else the one entry with the same folded text."""
+    if not isinstance(value, str):
+        raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+    if key in VOCAB:
+        mapped = canonical(key, value)
+        if mapped is not None and mapped in {canonical(key, entry) for entry in allowed}:
+            return mapped
+    folded = fold(value)
+    hits = [entry for entry in allowed if isinstance(entry, str) and fold(entry) == folded]
+    if not folded or len(hits) != 1:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+    return hits[0]
 
 
 async def _answer(
