@@ -153,15 +153,19 @@ class ProductRepository(TenantScopedRepository[Product]):
 
     async def child_identifier_states(
         self, style_id: uuid.UUID
-    ) -> builtins.list[tuple[uuid.UUID, str | None]]:
-        """SI5: `(id, identifier_status)` of each live variant of `style_id` (the fan-out)."""
+    ) -> builtins.list[tuple[uuid.UUID, str | None, Any]]:
+        """SI5: `(id, identifier_status, provenance.identifier)` of each live variant of
+        `style_id`, locked `FOR UPDATE` (the fan-out writes them)."""
         stmt = (
             self._select()
             .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
-            .with_only_columns(Product.id, Product.identifier_status)
+            .with_only_columns(
+                Product.id, Product.identifier_status, Product.provenance["identifier"]
+            )
             .order_by(Product.id)
+            .with_for_update(of=Product)
         )
-        return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
+        return [(row[0], row[1], row[2]) for row in (await self.db.execute(stmt)).all()]
 
     async def money_of(self, product_id: uuid.UUID) -> tuple[Decimal | None, Decimal | None]:
         """The stored `(selling_price, mrp)` of a live product (a fresh read, never the session's

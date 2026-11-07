@@ -181,7 +181,8 @@ async def test_exemption_on_a_standalone(
 async def _family(world: World, children: int = 1) -> tuple[uuid.UUID, list[uuid.UUID]]:
     acme = world.tenant("acme")
     sizes = [f"s{n}" for n in range(children)]
-    style = f.product(world.conn, acme, "style", variation_theme="size", size_run=sizes)
+    run = sizes or ["m"]  # a style keeps a size run even before its variants exist
+    style = f.product(world.conn, acme, "style", variation_theme="size", size_run=run)
     kids = []
     for size in sizes:
         with world.conn.transaction():
@@ -237,3 +238,90 @@ async def test_list_reads_the_style_value_in_one_query_a_page(
     with statements() as large:
         assert (await api.get(PRODUCTS, headers=_op(products_world))).status_code == 200
     assert len(large) == len(small)
+
+
+# ---- part 2 (T11, AC16): a style's exemption fans out ----
+
+
+async def _exempt_style(
+    api: httpx.AsyncClient, world: World, style: Any, value: bool, *, etag: str | None = None
+) -> httpx.Response:
+    return await _patch(api, world, style, {"identifier_exemption": value}, etag=etag)
+
+
+async def test_style_exemption_skips_the_variant_with_an_ean(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    style, kids = await _family(products_world, 3)
+    assert (
+        await _patch(api, products_world, kids[0], {"product_identifier": EAN})
+    ).status_code == 200
+    response = await _exempt_style(api, products_world, style, True)
+    assert response.status_code == 200, response.text
+    assert response.json()["identifier_exemption"] is False  # one variant keeps its EAN
+    assert _columns(auth_db, kids[0])[:3] == ("ean", EAN["value"], "provided")
+    for kid in kids[1:]:
+        assert _columns(auth_db, kid) == (None, None, "exempt", "seller")
+    audits = [r for r in audit_rows(auth_db, "product.fact_updated") if r[5] in kids[1:]]
+    assert len(audits) == 2
+    assert all(str(r[5]) != str(style) for r in audit_rows(auth_db, "product.fact_updated"))
+    assert (
+        await _patch(api, products_world, kids[0], {"identifier_exemption": True})
+    ).status_code == 200
+    assert (await _get(api, products_world, style)).json()["identifier_exemption"] is True
+    cleared = await _exempt_style(api, products_world, style, False)
+    assert cleared.json()["identifier_exemption"] is False
+    for kid in kids:
+        assert _columns(auth_db, kid) == (None, None, None, None)
+
+
+async def test_false_keeps_a_provided_barcode(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    style, kids = await _family(products_world, 2)
+    await _patch(api, products_world, kids[0], {"product_identifier": UPC})
+    await _exempt_style(api, products_world, style, True)
+    await _exempt_style(api, products_world, style, False)
+    assert _columns(auth_db, kids[0])[:3] == ("upc", UPC["value"], "provided")
+    assert _columns(auth_db, kids[1]) == (None, None, None, None)
+
+
+async def test_a_style_without_variants(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    style, _ = await _family(products_world, 0)
+    before = auth_db.execute("SELECT count(*) FROM audit_log").fetchone()
+    response = await _exempt_style(api, products_world, style, True)
+    assert response.status_code == 200 and response.json()["identifier_exemption"] is False
+    assert auth_db.execute("SELECT count(*) FROM audit_log").fetchone() == before
+
+
+async def test_a_stale_etag_writes_nothing(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    style, kids = await _family(products_world, 2)
+    response = await _exempt_style(api, products_world, style, True, etag='"' + "0" * 36 + '"')
+    assert response.status_code == 409
+    for kid in kids:
+        assert _columns(auth_db, kid) == (None, None, None, None)
+
+
+async def test_list_and_get_agree_on_the_style_value(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    exempt_style, _ = await _family(products_world, 2)
+    await _exempt_style(api, products_world, exempt_style, True)
+    mixed_style, mixed = await _family(products_world, 2)
+    await _patch(api, products_world, mixed[0], {"product_identifier": EAN})
+    await _exempt_style(api, products_world, mixed_style, True)
+    empty_style, _ = await _family(products_world, 0)
+    listed = {
+        p["id"]: p["identifier_exemption"]
+        for p in (
+            await api.get(PRODUCTS, params={"limit": 50}, headers=_op(products_world))
+        ).json()["data"]
+    }
+    expected = {str(exempt_style): True, str(mixed_style): False, str(empty_style): False}
+    for style, value in expected.items():
+        assert listed[style] is value, style
+        assert (await _get(api, products_world, style)).json()["identifier_exemption"] is value

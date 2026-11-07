@@ -19,6 +19,7 @@ and `standalone`: a style never holds one.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -34,6 +35,7 @@ __all__ = [
     "duplicate",
     "is_duplicate",
     "plan",
+    "plan_fan_out",
     "validate",
 ]
 
@@ -135,3 +137,22 @@ def is_duplicate(exc: BaseException) -> bool:
 
 def duplicate() -> InputError:
     return InputError(ErrorCode.VALIDATION_FAILED, VALUE_FIELD)
+
+
+# ---- a style's exemption (T11, PLAN D14) ----
+
+
+def plan_fan_out(
+    states: Sequence[tuple[uuid.UUID, str | None, Any]], exempt: bool
+) -> list[tuple[uuid.UUID, IdentifierChange, Any]]:
+    """The variants a style's `identifier_exemption` changes, each with its change and its
+    stored `provenance.identifier` (the audit `before`). `true`: every live variant without a
+    barcode becomes exempt; `false`: every exempt variant is cleared. A barcode is never touched.
+    The style row itself holds none and is not written (CP-D11)."""
+    out: list[tuple[uuid.UUID, IdentifierChange, Any]] = []
+    for variant_id, status, before in states:
+        if exempt and status not in ("provided", "exempt"):
+            out.append((variant_id, IdentifierChange(None, None, "exempt"), before))
+        elif not exempt and status == "exempt":
+            out.append((variant_id, IdentifierChange(None, None, None), before))
+    return out
