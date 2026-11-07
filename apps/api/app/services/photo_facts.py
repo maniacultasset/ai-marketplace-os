@@ -26,7 +26,7 @@ from uuid import UUID
 
 from mkos_schemas.jobs import CategoryTemplate, ContextImage, PhotoTarget
 
-from app.core.resolved_facts import ProductFacts, ResolvedFact
+from app.core.resolved_facts import ProductFacts, is_unconfirmed_ai
 
 __all__ = [
     "ASK_FLOOR",
@@ -414,10 +414,6 @@ def _template_keys(template: CategoryTemplate) -> set[str]:
         *template.conditional_attributes,
         *template.specs,
     }
-
-
-def is_unconfirmed_ai(fact: ResolvedFact | None) -> bool:
-    return fact is not None and fact.source == "ai" and fact.confirmed_at is None
 
 
 def build_targets(
