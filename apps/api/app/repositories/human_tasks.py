@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import literal, text, tuple_
+from sqlalchemy import literal, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models.issues import HumanTask
@@ -50,6 +50,10 @@ _CANCEL: Final = text(
 
 
 TASK_PAGE_MAX: Final = 200
+LIVE: Final = ("open", "answered")
+MISSING_FACT: Final = "missing_fact"
+IMAGE_REPLACEMENT: Final = "image_replacement"
+FILE_ANSWER: Final = {"kind": "file"}
 
 
 def _rowcount(result: Any) -> int:
@@ -173,6 +177,139 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         )
         await self.db.execute(stmt)
         return await self.live_account_task(account_id, kind, target_path)
+
+    # ---- SI4 A12: fact and image questions for the issue inbox ----
+
+    async def _live_fact(
+        self, product_id: uuid.UUID, colourway_id: uuid.UUID | None, target_path: str
+    ) -> uuid.UUID | None:
+        """The live fact task at the target, taken FOR UPDATE: a concurrent `cancel_if_closed`
+        waits for this transaction, so it sees the link the caller writes next. READ COMMITTED
+        re-checks the status after a wait, so a task a canceller committed first reads as gone."""
+        colourway = (
+            HumanTask.colourway_id.is_(None)
+            if colourway_id is None
+            else HumanTask.colourway_id == colourway_id
+        )
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.product_id == product_id,
+                colourway,
+                HumanTask.target_path == target_path,
+                HumanTask.marketplace_account_id.is_(None),
+                HumanTask.status.in_(LIVE),
+            )
+            .with_only_columns(HumanTask.id)
+            .with_for_update()
+        )
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
+    async def open_fact_task(
+        self,
+        product_id: uuid.UUID,
+        target_path: str,
+        question: str,
+        reason: str,
+        expected_answer: dict[str, Any],
+        *,
+        colourway_id: uuid.UUID | None = None,
+    ) -> uuid.UUID:
+        """One live `missing_fact` task per fact (`ht_one_live_fact`, ON CONFLICT DO NOTHING),
+        `resume_from='generate'`; a live task another lane opened at the same target is reused.
+        Returns the live task's id, locked until the caller commits. If a canceller committed
+        between the insert and the locked read, both run once more; a second miss raises, so an
+        issue is never left linked to nothing."""
+        for _attempt in range(2):
+            await self.db.execute(
+                insert(HumanTask)
+                .values(
+                    tenant_id=self.tenant_id,
+                    kind=MISSING_FACT,
+                    product_id=product_id,
+                    colourway_id=colourway_id,
+                    target_path=target_path,
+                    question=question,
+                    reason=reason,
+                    expected_answer=expected_answer,
+                    resume_from="generate",
+                )
+                .on_conflict_do_nothing()
+            )
+            found = await self._live_fact(product_id, colourway_id, target_path)
+            if found is not None:
+                return found
+        raise RuntimeError("no live fact task after a re-open")
+
+    async def open_image_task(
+        self, product_id: uuid.UUID, image_id: uuid.UUID, question: str, reason: str
+    ) -> uuid.UUID:
+        """One live `image_replacement` task per image (CP-D12: no unique index covers it). The
+        product's image lock serialises two marketplace listings of one product, then a live
+        task for the image is reused FOR UPDATE, else one is inserted (`resume_from='validate'`)."""
+        from app.repositories.images import ImageRepository
+
+        await ImageRepository(self.db, self.tenant_id).lock_product_images(product_id)
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.kind == IMAGE_REPLACEMENT,
+                HumanTask.image_id == image_id,
+                HumanTask.status.in_(LIVE),
+            )
+            .with_only_columns(HumanTask.id)
+            .order_by(HumanTask.created_at, HumanTask.id)
+            .limit(1)
+            .with_for_update()
+        )
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        if found is not None:
+            return found
+        created: uuid.UUID = (
+            await self.db.execute(
+                insert(HumanTask)
+                .values(
+                    tenant_id=self.tenant_id,
+                    kind=IMAGE_REPLACEMENT,
+                    product_id=product_id,
+                    image_id=image_id,
+                    question=question,
+                    reason=reason,
+                    expected_answer=dict(FILE_ANSWER),
+                    resume_from="validate",
+                )
+                .returning(HumanTask.id)
+            )
+        ).scalar_one()
+        return created
+
+    async def cancel_if_closed(self, task_id: uuid.UUID) -> bool:
+        """Cancel a live task (`issues_closed`) once at least one issue links to it and none of
+        its linked issues is open. A task no issue links to (another lane's photo task) is never
+        cancelled here. The row lock orders two closers, and an opener against a closer."""
+        from app.repositories.listing_issues import ListingIssueRepository
+
+        stmt = (
+            self._select()
+            .where(HumanTask.id == task_id, HumanTask.status.in_(LIVE))
+            .with_only_columns(HumanTask.id)
+            .with_for_update()
+        )
+        if (await self.db.execute(stmt)).scalar_one_or_none() is None:
+            return False
+        total, still_open = await ListingIssueRepository(self.db, self.tenant_id).task_link_counts(
+            task_id
+        )
+        if total == 0 or still_open:
+            return False
+        criterion = self._tenant_criterion(include_platform=False)
+        cancel = self._scoped_write(
+            update(HumanTask)
+            .where(criterion, HumanTask.id == task_id, HumanTask.status.in_(LIVE))
+            .values(status="cancelled", cancelled_reason="issues_closed")
+        ).returning(HumanTask.id)
+        return (await self.db.execute(cancel)).scalar_one_or_none() is not None
 
     async def cancel_reconnect(self, account_id: uuid.UUID) -> int:
         return _rowcount(await self.db.execute(_CANCEL, {"t": self.tenant_id, "a": account_id}))

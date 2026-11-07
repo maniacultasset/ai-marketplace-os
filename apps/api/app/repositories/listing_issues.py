@@ -152,6 +152,42 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def live_task_ids(self, listing_id: uuid.UUID) -> builtins.list[uuid.UUID]:
+        """SI4 A12: the distinct human tasks linked to this listing's rows (any status) whose
+        task is still live (`open`/`answered`): the ones to re-check after a sync."""
+        live = exists(
+            select(HumanTask.id).where(
+                HumanTask.tenant_id == ListingIssue.tenant_id,
+                HumanTask.id == ListingIssue.human_task_id,
+                HumanTask.status.in_(("open", "answered")),
+            )
+        )
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.human_task_id.is_not(None),
+                live,
+            )
+            .with_only_columns(ListingIssue.human_task_id)
+            .distinct()
+            .order_by(ListingIssue.human_task_id)
+        )
+        return [row for row in (await self.db.execute(stmt)).scalars() if row is not None]
+
+    async def task_link_counts(self, task_id: uuid.UUID) -> tuple[int, int]:
+        """SI4 A12: (rows linked to the task, of them still open), across every listing."""
+        stmt = (
+            self._select()
+            .where(ListingIssue.human_task_id == task_id)
+            .with_only_columns(
+                func.count(ListingIssue.id),
+                func.count(ListingIssue.id).filter(ListingIssue.status == OPEN),
+            )
+        )
+        total, still_open = (await self.db.execute(stmt)).one()
+        return int(total), int(still_open)
+
     async def link_ids(self, issue_ids: Sequence[uuid.UUID], task_id: uuid.UUID) -> int:
         """Link open issues, by id, to a human task."""
         self._own_session()
