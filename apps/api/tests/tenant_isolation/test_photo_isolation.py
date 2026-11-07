@@ -126,3 +126,20 @@ async def test_iso_a_reject_revalidates_none_of_another_tenants_listings(
         "SELECT count(*) FROM validation_runs WHERE tenant_id = %s", [bharat]
     ).fetchone()
     assert after == runs
+
+
+async def test_iso_photo_read_never_crosses_tenants(
+    world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SI9 T13: tenant B never reads A's product, and B's own product never shows A's job."""
+    from app.core.errors import NotFoundError
+    from app.services import products
+
+    pw = world
+    spy_pipeline(pw, monkeypatch)
+    await generate(pw, "photo_ok")
+    them = pw.world.principal("operator@bharat.test")
+    with pytest.raises(NotFoundError):
+        await products.get_product(them, pw.product_id)
+    theirs = await products.get_product(them, pw.world.product("bharat", "KURTA-002"))
+    assert theirs.photo_read is None

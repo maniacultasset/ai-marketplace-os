@@ -35,6 +35,7 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.images import ImageDetail
+from app.repositories.jobs import PhotoReadRow
 from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
@@ -181,6 +182,7 @@ class ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     etag: str = ""
     photo_facts: tuple[PhotoFactView, ...] = ()
+    photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
 
 
 def _money(value: Any) -> str | None:
@@ -274,6 +276,7 @@ def _view(
     details: tuple[ImageDetail, ...] = (),
     party: PartyView | None = None,
     colourways: tuple[ColourwayRow, ...] = (),
+    photo_read: PhotoReadRow | None = None,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
     are the product's live image keys in slot order (S17b CP7)."""
@@ -305,6 +308,7 @@ def _view(
         colourways=colourways,
         etag=product_etag(row.id, row.updated_at),
         photo_facts=photo_facts_of(facts),
+        photo_read=photo_read,
     )
 
 
@@ -327,7 +331,15 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
-    return _view(row, keys[row.id], details=details, party=party, colourways=colourways)
+    photo_read = await uow.job_runs.latest_photo_read(row.id)
+    return _view(
+        row,
+        keys[row.id],
+        details=details,
+        party=party,
+        colourways=colourways,
+        photo_read=photo_read,
+    )
 
 
 def _refuse_nul(cmd: NewProduct) -> None:

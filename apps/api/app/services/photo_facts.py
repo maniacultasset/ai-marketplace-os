@@ -23,7 +23,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib import resources
-from typing import Any, Final
+from typing import Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.agent import AgentRunRecord
@@ -50,6 +50,7 @@ __all__ = [
     "build_targets",
     "canonical",
     "fold",
+    "photo_read_skip",
     "photo_set",
     "same_as_rejected",
     "screen",
@@ -447,6 +448,29 @@ def _template_keys(template: CategoryTemplate) -> set[str]:
     }
 
 
+def photo_read_skip(
+    facts: ProductFacts,
+    template: CategoryTemplate,
+    images: Sequence[ContextImage],
+    *,
+    current_set: PhotoSet,
+    last_set: PhotoSet | None,
+) -> Literal["not_read", "unchanged"] | None:
+    """SI9 B7: why the photos are not read, or None when they are eligible: `not_read` for a
+    variant, a template without an apparel key, or no product photo; `unchanged` for the photo
+    set the last read recorded."""
+    if (
+        facts.level == "variant"
+        or not (_template_keys(template) & APPAREL_SIGNAL)
+        or not any(image.slot in PHOTO_SLOTS for image in images)
+        or not current_set
+    ):
+        return "not_read"
+    if last_set == current_set:
+        return "unchanged"
+    return None
+
+
 def build_targets(
     facts: ProductFacts,
     template: CategoryTemplate,
@@ -457,13 +481,7 @@ def build_targets(
 ) -> list[PhotoTarget]:
     """The keys to read from the photos for this listing (module docstring); `[]` means no call."""
     listed = _template_keys(template)
-    if (
-        facts.level == "variant"
-        or not (listed & APPAREL_SIGNAL)
-        or not any(image.slot in PHOTO_SLOTS for image in images)
-        or not current_set
-        or last_set == current_set
-    ):
+    if photo_read_skip(facts, template, images, current_set=current_set, last_set=last_set):
         return []
     targets: list[PhotoTarget] = []
     for key in V1_KEYS:

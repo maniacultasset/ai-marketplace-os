@@ -184,6 +184,7 @@ def _discard(plan: PersistPlan) -> None:
     )
     if plan.result is not None:
         plan.result.update({"listing_version_id": None, "discarded": True})
+        plan.result.pop("photo_read", None)  # SI9 CP-D19: recorded on a saved version only
 
 
 async def _ask(
@@ -213,6 +214,10 @@ async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -
     """SI3: the photo decision (module docstring); the re-check digest, or None without one."""
     if plan.photo is None or plan.pre_facts is None:
         return None
+    recorded = plan.result is not None and "photo_read" in plan.result  # a saved version only
+    if recorded and plan.photo.run_id is None and plan.result is not None:
+        # SI9 B7: the photo call failed (no completed record); the listing is still saved
+        plan.result["photo_read"] = {"status": "failed", "written": 0, "asked": 0}
     applied = await apply_photo_decision(
         uow,
         job_id=plan.job_id,
@@ -225,6 +230,12 @@ async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -
     )
     if applied.record_set is not None and plan.result is not None:
         plan.result["photo_set"] = [list(pair) for pair in applied.record_set]
+    if recorded and plan.photo.run_id is not None and plan.result is not None:
+        plan.result["photo_read"] = {
+            "status": "read",
+            "written": min(len(applied.written), 16),
+            "asked": min(int(applied.tasks), 16),
+        }
     log.info(
         "generation.photo_applied",
         job_id=str(plan.job_id),

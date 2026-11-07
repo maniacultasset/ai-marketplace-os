@@ -268,6 +268,28 @@ async def tenants_with_queued(session: Any, *, limit: int = 500) -> list[uuid.UU
     return [row.tenant_id for row in (await session.execute(stmt)).all()]
 
 
+PHOTO_READ_STATUSES: Final = frozenset({"read", "unchanged", "failed", "not_read"})
+
+
+@dataclass(frozen=True, slots=True)
+class PhotoReadRow:
+    """SI9 B7: the newest recorded photo read of a product (the job's `result_json`)."""
+
+    status: str
+    at: datetime
+    written: int
+    asked: int
+
+
+def _photo_read(raw: object, at: datetime | None) -> PhotoReadRow | None:
+    if not isinstance(raw, dict) or at is None or raw.get("status") not in PHOTO_READ_STATUSES:
+        return None
+    counts = [raw.get("written"), raw.get("asked")]
+    if not all(isinstance(n, int) and not isinstance(n, bool) and 0 <= n <= 16 for n in counts):
+        return None
+    return PhotoReadRow(str(raw["status"]), at, int(raw["written"]), int(raw["asked"]))
+
+
 def _photo_pairs(raw: object) -> tuple[tuple[str, str], ...] | None:
     if not isinstance(raw, list):
         return None
@@ -368,6 +390,44 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         parsed = _photo_pairs(raw)
         if parsed is None:
             log.warning("jobs.photo_set_malformed", job_run_id=str(job_id))
+        return parsed
+
+    async def latest_photo_read(self, product_id: uuid.UUID) -> PhotoReadRow | None:
+        """SI9 B7: the `photo_read` of the product's newest finished `listing_generate` job that
+        recorded one (the `latest_photo_set` join and indexes); None when there is none. A
+        malformed record reads as None, logged by job id."""
+        if not isinstance(product_id, uuid.UUID):
+            raise ValueError("product_id must be a UUID")
+        stmt = (
+            select(JobRun.id, JobRun.result_json["photo_read"], JobRun.finished_at)
+            .select_from(JobRun)
+            .join(
+                Listing,
+                and_(
+                    Listing.tenant_id == JobRun.tenant_id,
+                    JobRun.entity_type == "listing",
+                    JobRun.entity_id == Listing.id,
+                    JobRun.listing_id == Listing.id,
+                ),
+            )
+            .where(
+                self._criterion_for(JobRun),
+                self._criterion_for(Listing),
+                Listing.product_id == product_id,
+                JobRun.kind == JobKind.LISTING_GENERATE.value,
+                JobRun.finished_at.is_not(None),
+                JobRun.result_json.has_key("photo_read"),
+            )
+            .order_by(JobRun.finished_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        row = (await self.db.execute(self._scoped_read(stmt))).first()
+        if row is None:
+            return None
+        job_id, raw, finished_at = row
+        parsed = _photo_read(raw, finished_at)
+        if parsed is None:
+            log.warning("jobs.photo_read_malformed", job_run_id=str(job_id))
         return parsed
 
     # ---- enqueue (DW1, AC1-2) ----

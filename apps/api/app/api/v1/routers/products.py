@@ -24,6 +24,7 @@ from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
     PhotoFactOut,
+    PhotoReadOut,
     ProductCreate,
     ProductImageOut,
     ProductOut,
@@ -120,6 +121,16 @@ def _out(view: products.ProductView) -> ProductOut:
         created_at=view.created_at,
         updated_at=view.updated_at,
         photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
+        photo_read=(
+            None
+            if view.photo_read is None
+            else PhotoReadOut(
+                status=view.photo_read.status,
+                at=view.photo_read.at,
+                written=view.photo_read.written,
+                asked=view.photo_read.asked,
+            )
+        ),
     )
 
 

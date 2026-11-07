@@ -73,7 +73,13 @@ from app.services.generation_result import (
     recheck,
     salvage_records,
 )
-from app.services.photo_facts import PHOTO_PROMPT_PREFIX, build_targets, photo_set, screen
+from app.services.photo_facts import (
+    PHOTO_PROMPT_PREFIX,
+    build_targets,
+    photo_read_skip,
+    photo_set,
+    screen,
+)
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers import budget
@@ -234,6 +240,15 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     )
     if targets:
         gctx = gctx.model_copy(update={"photo_targets": targets})
+    # SI9 B7: the read status the saved version records (`read` until the persist knows more)
+    skip = (
+        "not_read"
+        if rules.template is None
+        else photo_read_skip(
+            facts, rules.template, context_images, current_set=sent_set, last_set=seen_set
+        )
+    )
+    photo_read = {"status": skip or ("read" if targets else "not_read"), "written": 0, "asked": 0}
 
     product = for_rules(facts)
     pins = Pins(
@@ -391,7 +406,11 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             result=failed_result,
         )
     version_id = uuid.uuid4()
-    outcome_result: dict[str, Any] = {"listing_version_id": str(version_id), "status": move.to}
+    outcome_result: dict[str, Any] = {
+        "listing_version_id": str(version_id),
+        "status": move.to,
+        "photo_read": photo_read,
+    }
     plan = PersistPlan(
         **plan_base,
         move=move,

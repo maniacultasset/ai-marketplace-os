@@ -427,3 +427,34 @@ def test_si9_exhaustive_seeded_templates() -> None:
             for value in pf.allowed_for(key, template):
                 spelled = pf.template_spelling(key, value, template)
                 assert spelled.strip().casefold() in accepted, (template.category, key, value)
+
+
+# ---- SI9 T13 (AC16): why the photos are not read ----
+
+
+def test_si9_photo_read_skip() -> None:
+    images = [_image("main", 1), _image("secondary", 2)]
+    current = pf.photo_set(images, {i.image_id: f"h{i.image_id.int}" for i in images})
+
+    def skip(**over: Any) -> Any:
+        args: dict[str, Any] = {
+            "facts": _facts(),
+            "template": KURTA,
+            "images": images,
+            "current_set": current,
+            "last_set": None,
+        }
+        args.update(over)
+        return pf.photo_read_skip(
+            args["facts"],
+            args["template"],
+            args["images"],
+            current_set=args["current_set"],
+            last_set=args["last_set"],
+        )
+
+    assert skip(facts=_facts("variant")) == "not_read"
+    assert skip(template=TEMPLATES[("amazon", "LAMP")]) == "not_read"
+    assert skip(images=[_image("packaging_label", 3)], current_set=()) == "not_read"
+    assert skip(last_set=current) == "unchanged"
+    assert skip() is None
