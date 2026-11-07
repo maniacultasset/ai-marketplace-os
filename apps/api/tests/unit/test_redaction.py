@@ -383,3 +383,15 @@ def test_error_code_field_not_redacted() -> None:
     assert redact(line) == line
     # in a URL query it is still the OAuth code and is redacted
     assert "123456" not in str(redact("https://x.test/cb?code=123456&state=s"))
+
+
+def test_copied_link_tokens_are_redacted() -> None:
+    """SI5 (ADR-0029): the invite and reset links carry their token in the URL fragment."""
+    from app.core.redaction import REDACTED, redact, redact_text
+
+    url = "https://kuinn.in/invite#token=" + "T" * 43
+    assert redact_text(url) == f"https://kuinn.in/invite#token={REDACTED}"
+    reset = "see https://kuinn.in/reset-password#token=" + "R" * 43 + " now"
+    assert "R" * 43 not in redact_text(reset)
+    body = redact({"invite_url": url, "reset_url": url, "invite": {"role": "admin"}})
+    assert body == {"invite_url": REDACTED, "reset_url": REDACTED, "invite": {"role": "admin"}}
