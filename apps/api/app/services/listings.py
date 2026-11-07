@@ -149,5 +149,6 @@ async def insert_run(
             run_id=run.id,
             cause=cause,
             version_id=version_id,
+            critical_keys=await uow.product_facts.critical_keys(),
         )
     return run

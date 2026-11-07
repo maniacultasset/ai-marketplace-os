@@ -280,3 +280,13 @@ async def test_style_override_reaches_its_variant(world: Any) -> None:
     facts = await _resolve(acme, child)
     assert facts is not None
     assert facts.compliance.manufacturer.legal_name == "Style Maker Pvt Ltd"
+
+
+async def test_critical_keys_from_the_dictionary(world: Any) -> None:
+    """SI4 A6 (CP-D9): the `is_critical` dictionary keys (DATABASE.md:1229)."""
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(world.tenant("acme")) as uow:
+        keys = await uow.product_facts.critical_keys()
+    assert {"fiber_composition", "country_of_origin"} <= keys
+    assert "color" not in keys

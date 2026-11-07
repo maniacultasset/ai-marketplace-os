@@ -221,6 +221,7 @@ async def apply_decision(uow: TenantUnitOfWork, ctx: AttemptCtx, decision: Decis
         scope_fields=_scope(ctx, decision),
         version_id=ctx.version_id,
         job_id=ctx.job_id,
+        critical_keys=await uow.product_facts.critical_keys(),
     )
     await _move(uow, ctx, listing, decision, states)
     await _open_task(uow, ctx, listing, decision)

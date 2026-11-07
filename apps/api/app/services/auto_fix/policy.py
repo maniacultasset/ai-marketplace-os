@@ -193,6 +193,13 @@ def _override(item: ErrorItem, source: str, critical_keys: frozenset[str]) -> Ro
     return None
 
 
+def override_reason(item: ErrorItem, *, source: str, critical_keys: frozenset[str]) -> str | None:
+    """The safety override that applies to ``item`` (a machine token), else None. A stored issue
+    row hit by one is never shown as auto-fixable, whatever the item or the error map says."""
+    found = _override(item, source, critical_keys)
+    return None if found is None else found.reason
+
+
 def _base(item: ErrorItem) -> Routing:
     row = POLICY[item.error_code]
     if item.fix_action is not None:

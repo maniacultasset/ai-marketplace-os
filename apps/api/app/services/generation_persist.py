@@ -204,6 +204,7 @@ def make_persist(plan: PersistPlan) -> Any:
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,
                 job_id=plan.job_id,
+                critical_keys=await uow.product_facts.critical_keys(),
             )
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(

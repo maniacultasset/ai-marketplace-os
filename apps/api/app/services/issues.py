@@ -1,6 +1,6 @@
 """The issue inbox (S19 T18-T20; DATABASE.md §5.7 :1304-1336; CP-D2).
 
-`sync_issues(uow, listing, source, report, *, run_id, cause, scope_fields=None, ...)` runs in the
+`sync_issues(uow, listing, source, report, *, run_id, cause, critical_keys, ...)` runs in the
 transaction that writes a version-linked `validation_runs` row (S18's backend re-check, the PATCH
 re-check, `validate`) or, from S21, an adapter result (`run_id=None`, `scope_fields` = the paths
 sent):
@@ -32,6 +32,7 @@ from datetime import datetime
 from typing import Any, Final
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
+from mkos_schemas.enums import FixAction
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.errors import ConflictError, NotFoundError
@@ -39,13 +40,18 @@ from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.auto_fix.policy import override_reason
 
 log = get_logger(__name__)
 
 ISSUE_SOURCES: Final = frozenset(
     {"schema", "rules_engine", "vision_model", "amazon_adapter", "flipkart_adapter"}
 )
-RESOLUTIONS: Final = {"edit": "human_edit", "regenerate": "regenerated"}
+RESOLUTIONS: Final = {
+    "edit": "human_edit",
+    "regenerate": "regenerated",
+    "status_sync": "marketplace_cleared",
+}
 VALUE_MAX: Final = 600
 TEMPLATE_PREFIX: Final = "attributes."
 Keyset = tuple[datetime, uuid.UUID]
@@ -75,12 +81,23 @@ def dedupe_key(source: str, item: ErrorItem, listing_item_id: uuid.UUID | None =
     return key if listing_item_id is None else f"{key}|item:{listing_item_id}"
 
 
-def classify(item: ErrorItem) -> tuple[str, str, str | None]:
-    """`(error_class, retry_class, fix_action)`: the item's, else the code's metadata."""
+def classify(
+    item: ErrorItem, *, critical_keys: frozenset[str], source: str | None = None
+) -> tuple[str, str, str | None]:
+    """`(error_class, retry_class, fix_action)`: the item's, else the code's metadata. A row hit
+    by a safety override (SI4 A6, CP-D4: a critical key, a compliance or commercial gate, an
+    unknown class, an image, a variation rebuild) is never auto-fixable. `critical_keys` has no
+    default, so no caller can drop the override by omission (CP-D9)."""
     meta = ERROR_CODE_META.get(item.error_code)
     error_class = item.error_class or (meta.error_class if meta else None)
     retry_class = item.retry_class or (meta.retry_class if meta else None)
     fix_action = item.fix_action or (meta.fix_action if meta else None)
+    origin = item.source.value if source is None else source
+    if (
+        fix_action is FixAction.REBUILD_VARIATION
+        or override_reason(item, source=origin, critical_keys=critical_keys) is not None
+    ):
+        fix_action = None
     return (
         "unknown" if error_class is None else error_class.value,
         "user_action" if retry_class is None else retry_class.value,
@@ -97,8 +114,11 @@ def _issue(
     run_id: uuid.UUID | None,
     version_id: uuid.UUID | None,
     job_id: uuid.UUID | None,
+    critical_keys: frozenset[str],
 ) -> NewIssue:
-    error_class, retry_class, fix_action = classify(item)
+    error_class, retry_class, fix_action = classify(
+        item, critical_keys=critical_keys, source=source
+    )
     value = item.value_submitted
     return NewIssue(
         listing_id=listing.id,
@@ -132,6 +152,7 @@ async def sync_issues(
     run_id: uuid.UUID | None,
     cause: str,
     scope_fields: Sequence[str] | None = None,
+    critical_keys: frozenset[str],
     version_id: uuid.UUID | None = None,
     job_id: uuid.UUID | None = None,
 ) -> SyncResult:
@@ -145,7 +166,14 @@ async def sync_issues(
     opened = repeated = 0
     for key, item in items.items():
         new = _issue(
-            listing, source, item, key, run_id=run_id, version_id=version_id, job_id=job_id
+            listing,
+            source,
+            item,
+            key,
+            run_id=run_id,
+            version_id=version_id,
+            job_id=job_id,
+            critical_keys=critical_keys,
         )
         _row, created = await uow.listing_issues.upsert_open(new)
         if created:
