@@ -115,7 +115,7 @@ async def test_style_with_two_colourways_order_cap_and_colour_refs(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """AC11: 24 images (style 6, navy blue 15, maroon 3) → 20 in decision 19 order, so the
-    later colourway's main survives the cut; `colour_image_refs` maps each colour to its own
+    later colourway's main survives the cut; `colour_image_ids` maps each colour to its own
     images in the saved version."""
     from app.repositories.uow import tenant_uow
     from app.services.adapter_input import build_adapter_listing
@@ -151,7 +151,7 @@ async def test_style_with_two_colourways_order_cap_and_colour_refs(
     assert facts is not None
     refs = {i: f"image:{i}" for i in expected}
     built = build_adapter_listing(source, facts=facts, image_refs=refs, idempotency_key="k")
-    assert dict(built.colour_image_refs) == {
-        "navy blue": tuple(f"image:{i}" for i in (navy_main, *navy_secs[:12])),
-        "maroon": (f"image:{maroon_main}",),
+    assert dict(built.colour_image_ids) == {
+        "navy blue": (navy_main, *navy_secs[:12]),
+        "maroon": (maroon_main,),
     }

@@ -5,6 +5,7 @@ T45): the children only, each with its style code, its colour group and its colo
 from __future__ import annotations
 
 import dataclasses
+import uuid
 from typing import Any
 
 import pytest
@@ -53,31 +54,49 @@ def test_flipkart_family_colour_key_fallback() -> None:
     assert groups == {"navy blue": ["KF01-NVY"], "maroon": ["maroon"]}
 
 
-def test_flipkart_colour_images_fanned_out() -> None:
-    refs = {
-        "navy blue": (
-            "https://images.example.test/navy-1.jpg",
-            "https://images.example.test/navy-2.jpg",
-        ),
-        "maroon": ("https://images.example.test/maroon-1.jpg",),
-    }
-    sent = fk_family(colour_image_refs=refs)
+def _colour_body() -> Any:
+    """Style S (main) and Z (size chart); navy N1 (main), N2; maroon M1 (main)."""
+    from mkos_schemas.enums import ImageSlot
+    from mkos_schemas.listing import ImageRef
+
+    slots = ["main", "size_chart", "main", "secondary", "main"]
+    images = [
+        ImageRef(image_id=uuid.uuid4(), slot=ImageSlot(slot), position=n)
+        for n, slot in enumerate(slots)
+    ]
+    return listing().model_copy(update={"images": images})
+
+
+def _urls(sent: Any, *indexes: int) -> list[str]:
+    return [sent.image_refs[sent.listing.images[i].image_id] for i in indexes]
+
+
+def test_flipkart_colour_images_then_style_images() -> None:
+    """SI8 T1 (AC5): a colour child sends its colourway's images, then the shared style
+    images without the style main; never another colour's. Paths are version indexes."""
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    colours = {"navy blue": (ids[2], ids[3]), "maroon": (ids[4],)}
+    sent = fk_family(body, colour_image_ids=colours)
+    want = {"navy blue": (2, 3, 1), "maroon": (4, 1)}
     for one in _payloads(sent):
-        expected = list(refs[one.unit.colour_key])
-        assert _value(one, "images") == expected
-        assert [p for p in one.submitted if p.startswith("images[")] == [
-            f"images[{i}]" for i in range(len(expected))
-        ]
+        order = want[one.unit.colour_key]
+        assert _value(one, "images") == _urls(sent, *order)
+        assert [p for p in one.submitted if p.startswith("images[")] == sorted(
+            f"images[{i}]" for i in order
+        )
+        assert {f"images[{i}]" for i in range(len(ids))} <= set(one.paths)
 
 
-def test_flipkart_colourway_without_images_uses_listing_images() -> None:
-    sent = fk_family(colour_image_refs={"navy blue": ("https://images.example.test/navy-1.jpg",)})
-    listing_refs = [sent.image_refs[i.image_id] for i in sent.listing.images]
+def test_flipkart_colourway_without_images_uses_style_images() -> None:
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    sent = fk_family(body, colour_image_ids={"navy blue": (ids[2], ids[3], ids[4])})
     for one in _payloads(sent):
         if one.unit.colour_key == "maroon":
-            assert _value(one, "images") == listing_refs
+            assert _value(one, "images") == _urls(sent, 0, 1)
         else:
-            assert _value(one, "images") == ["https://images.example.test/navy-1.jpg"]
+            assert _value(one, "images") == _urls(sent, 2, 4, 3, 1)  # mains first
 
 
 @pytest.mark.parametrize("axis", ["size", "color"])

@@ -15,8 +15,9 @@ Flipkart vertical), each spec's `marketplace_field` and `value_map` (DATABASE.md
     value and reports both (C7, as S20 C6).
 - A family has **no parent row** (DATABASE.md:471, :754-755; T45): `family_payloads` sends the
   children only, each carrying `style_code` (the style's seller SKU) and `colour_group` (its
-  `colour_sku`, else its `colour_key`), its variation values, and its colourway's images
-  (`colour_image_refs`), else the listing's images (DATABASE.md:438).
+  `colour_sku`, else its `colour_key`), its variation values, and the images the shared
+  `base.unit_images` gives it (SI8: its colourway's images, then the style-level images;
+  never another colourway's; DATABASE.md:438), at `images[<version index>]` (SI8 CP-D7).
 - `check(listing)`: every error that blocks a create, so nothing is sent:
   - no mapped template -> CATEGORY_NOT_MAPPED (`listing`);
   - a required attribute missing or blank -> MISSING_ATTRIBUTE;
@@ -48,7 +49,7 @@ from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass, Severity
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import AttributeSpec, CategoryTemplate
-from mkos_schemas.listing import AttributeValue
+from mkos_schemas.listing import MAX_LISTING_IMAGES, AttributeValue
 from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.base import (
@@ -64,6 +65,7 @@ from app.adapters.base import (
     fact_paths,
     locator_ok,
     nearest_values,
+    unit_images,
 )
 from app.adapters.flipkart import constants as c
 from app.services.rules_engine.text import submitted_keywords
@@ -392,16 +394,6 @@ def colour_group(unit: AdapterItem) -> str | None:
     return normalize(colour) if colour and colour.strip() else None
 
 
-def unit_images(listing: AdapterListing, unit: AdapterItem) -> list[str | None]:
-    """The image locators one item sends, in order: a child's colourway images when its
-    colourway has any, else the listing's (None where an image has no locator)."""
-    if unit.item_role == "child" and unit.colour_key is not None:
-        refs = listing.colour_image_refs.get(unit.colour_key) or ()
-        if refs:
-            return list(refs)
-    return [listing.image_refs.get(image.image_id) for image in listing.listing.images]
-
-
 def item_payload(
     listing: AdapterListing,
     unit: AdapterItem,
@@ -466,9 +458,10 @@ def item_payload(
     skipped += list(fact_paths(unit))
 
     images: list[dict[str, Any]] = []
-    for index, locator in enumerate(unit_images(listing, unit)):
-        path = f"images[{index}]"
-        if index >= c.MAX_IMAGES or not locator:
+    skipped += [f"images[{i}]" for i in range(len(body.images))]  # the ones it does not send
+    for position, one in enumerate(unit_images(listing, unit)):
+        path, locator = f"images[{one.index}]", one.locator
+        if position >= c.MAX_IMAGES or not locator:
             skipped.append(path)
             continue
         if not locator_ok(locator, preview=preview, allow_http=listing.allow_http_images):
@@ -510,7 +503,8 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     for path, name in c.CONTENT_FIELDS.items():
         index.setdefault(name, set()).add(path)
     index[c.KEYWORD_ATTRIBUTE] = set(c.KEYWORD_PATHS)
-    index[c.IMAGE_ATTRIBUTE] = {f"images[{i}]" for i in range(c.MAX_IMAGES)}
+    # SI8 CP-D7: a child's image paths are version indexes, so any version image may feed it
+    index[c.IMAGE_ATTRIBUTE] = {f"images[{i}]" for i in range(MAX_LISTING_IMAGES)}
     for name in c.GROUP_ATTRIBUTES:
         index[name] = {"variants"}
     index[c.PRICE_ATTRIBUTE] = set(PRICE_PATHS)  # SI2: the one price block
