@@ -3,7 +3,7 @@
 `precheck(uow, now)` refuses a fresh generate or regenerate when the tenant's spend plus its live
 reservations for the UTC day of `now` has reached its cap: `BudgetExceededError`, which the route
 renders as 429 `BUDGET_EXCEEDED` with `Retry-After` = whole seconds to the next UTC midnight
-(at least 1). Nothing is written and nothing is enqueued. The body states no amount. The global
+(05:30 IST; at least 1). Nothing is written and nothing is enqueued. The body states no amount. The global
 platform cap is checked at claim only (`app/workers/budget.py`, the D10 departure).
 """
 
@@ -23,7 +23,7 @@ from app.repositories.budget import BudgetState
 from app.repositories.uow import TenantUnitOfWork
 
 BUDGET_MESSAGE: Final = (
-    "The daily AI budget for this brand is used up; try again after midnight UTC."
+    "The daily AI budget for this brand is used up. It resets at 5:30 am IST; try again then."
 )
 
 
