@@ -15,7 +15,9 @@ sent):
    else → `revalidated_clean`. An adapter result closes only rows on the fields it sent.
 
 The per-attempt rows the generation graph writes (no version) never reach the inbox.
-Step 4 (linking `user_action` items to human tasks) is C2, after v1.
+Step 4 (one Inbox question behind a seller-fixable error row) is `services/issue_questions.py`
+(SI4 A13, rules and vision sources; adapter sources in phase B). SI4 A6: a row hit by a safety
+override is never auto-fixable; A10: `record_auto_fixes` writes the fix pass's trail.
 
 `list_issues` and `dismiss` serve the two routes. A dismissal accepts an open **warning**; an
 error is never dismissed (the Rules Engine stays the arbiter, invariant 2): 409 before any SQL,
