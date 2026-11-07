@@ -149,3 +149,106 @@ async def test_listing_detail_all_roles_200(
 ) -> None:
     made = await generated(gen_world)
     assert (await _get(api, gen_world, made.listing_id, f"{role}@acme.test")).status_code == 200
+
+
+# ---- SI10 T16 (AC14): can_approve and approve_hint ----
+
+OWNER_EMAIL = "owner@acme.test"
+
+
+def _hint(response: httpx.Response) -> tuple[object, object]:
+    assert response.status_code == 200, response.text
+    body = response.json()
+    return body["can_approve"], body["approve_hint"]
+
+
+def _deactivate(world: GenWorld, email: str) -> None:
+    world.conn.execute(
+        "UPDATE tenant_memberships SET is_active = false, deactivated_at = now() "
+        "WHERE user_id = %s",
+        [world.user(email)],
+    )
+
+
+async def test_hint_per_caller_on_an_operator_listing(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    made = await generated(gen_world)  # the operator generated it
+    assert _hint(await _get(api, gen_world, made.listing_id, OPERATOR)) == (False, "not_approver")
+    assert _hint(await _get(api, gen_world, made.listing_id, REVIEWER)) == (True, None)
+    assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (True, None)
+
+
+async def test_hint_own_work_then_no_other_approver(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    made = await generated(gen_world, OWNER_EMAIL)
+    assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (False, "own_work")
+    _deactivate(gen_world, REVIEWER)  # the brand's one other approver leaves
+    assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (
+        False,
+        "no_other_approver",
+    )
+
+
+async def test_other_tenant_reviewer_never_counts(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    made = await generated(gen_world, OWNER_EMAIL)
+    _deactivate(gen_world, REVIEWER)
+    # bharat has an active reviewer and owner of its own: still nobody in acme
+    assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (
+        False,
+        "no_other_approver",
+    )
+
+
+async def test_hint_null_without_a_version(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    from .generation_support import make_generating
+    from .review_support import new_product
+
+    accepted = await make_generating(gen_world, sku=await new_product(gen_world))
+    assert _hint(await _get(api, gen_world, accepted.listing_id)) == (None, None)
+
+
+@pytest.mark.parametrize("status", ["approved", "failed"])
+async def test_hint_null_outside_review(
+    api: httpx.AsyncClient, gen_world: GenWorld, status: str
+) -> None:
+    from .generation_support import set_status
+
+    made = await generated(gen_world)
+    set_status(gen_world, made.listing_id, status)
+    assert _hint(await _get(api, gen_world, made.listing_id)) == (None, None)
+
+
+@pytest.mark.parametrize("approver", [OWNER_EMAIL, REVIEWER])
+@pytest.mark.parametrize("maker", [OPERATOR, OWNER_EMAIL])
+async def test_can_approve_matches_the_approve_route(
+    api: httpx.AsyncClient, gen_world: GenWorld, maker: str, approver: str
+) -> None:
+    """Parity on reviewable listings for reviewer or owner callers (CP-D16)."""
+    from .review_support import item, only_item, post_approve
+
+    made = await generated(gen_world, maker)
+    can, _hint_value = _hint(await _get(api, gen_world, made.listing_id, approver))
+    result = only_item(await post_approve(api, gen_world, approver, [item(made)]))
+    if can:
+        assert result["http_status"] == 200, result
+    else:
+        assert (result["http_status"], result["error"]["error_code"]) == (
+            403,
+            "MAKER_CHECKER_VIOLATION",
+        )
+
+
+async def test_not_approver_route_answers_permission_denied(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    from .review_support import item, post_approve
+
+    made = await generated(gen_world, OWNER_EMAIL)
+    assert _hint(await _get(api, gen_world, made.listing_id, OPERATOR)) == (False, "not_approver")
+    response = await post_approve(api, gen_world, OPERATOR, [item(made)])
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["type"] == "PERMISSION_DENIED"

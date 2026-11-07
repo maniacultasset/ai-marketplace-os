@@ -88,6 +88,15 @@ class MembersRepository(TenantScopedRepository[TenantMembership]):
         found = (await self.db.execute(stmt)).one_or_none()
         return None if found is None else (found.role, found.is_active)
 
+    async def approver_ids(self, roles: frozenset[str]) -> frozenset[uuid.UUID]:
+        """SI10 T16: the tenant's active members holding one of `roles` (the approver roles)."""
+        stmt = (
+            self._select()
+            .where(TenantMembership.is_active.is_(True), TenantMembership.role.in_(sorted(roles)))
+            .with_only_columns(TenantMembership.user_id)
+        )
+        return frozenset((await self.db.execute(stmt)).scalars().all())
+
     async def check_owners_at_each_statement(self) -> None:
         """Run the deferred last-owner trigger at the statement (OWN01 there, not at COMMIT)."""
         await self.db.execute(_OWNER_GUARD_NOW)

@@ -36,6 +36,22 @@ class ListingOut(WireModel):
 class ListingDetail(ListingOut):
     content: CanonicalListing | None = None
     validation: ValidationSummary | None = None
+    can_approve: bool | None = Field(
+        default=None,
+        description=(
+            "Whether your role and maker-checker let you approve the current version (SI10). "
+            "Null unless the listing is reviewable with a current version. The approve call "
+            "still checks the rest (permission, stale checks, images)."
+        ),
+    )
+    approve_hint: Literal["own_work", "no_other_approver", "not_approver"] | None = Field(
+        default=None,
+        description=(
+            "Why `can_approve` is false: `own_work` (you made or edited this version), "
+            "`no_other_approver` (and nobody else in the brand can approve it yet) or "
+            "`not_approver` (your role does not approve)."
+        ),
+    )
 
 
 class ListingPage(Page[ListingOut]):

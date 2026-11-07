@@ -57,13 +57,16 @@ from app.services.generation import enqueue_generate
 from app.services.generation_context import previous_listing
 from app.services.image_gate import evaluate_image_gate
 from app.services.listings import current_pins
-from app.services.maker_checker import VersionLink, approver_refusal, contributor_chain
+from app.services.maker_checker import (
+    VersionLink,
+    approve_block,
+    contributor_chain,
+)
 
 log = get_logger(__name__)
 
 REVIEWABLE: Final = frozenset({"validated", "needs_review"})
 BUSY: Final = frozenset({"generating", "publishing"})
-APPROVER_ROLES: Final = frozenset({"reviewer", "owner"})
 REJECTED: Final = "rejected"
 # (from, event, to, reason): the transitions S19 makes, each a `listing_status_transitions` row
 REVIEW_EDGES: Final = (
@@ -236,7 +239,10 @@ async def _pins_digest(ctx: _Ctx, listing: Any, version: Any) -> bytes:
     return digest
 
 
-async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> frozenset[uuid.UUID]:
+async def version_chain(
+    uow: TenantUnitOfWork, listing_id: uuid.UUID, version_id: uuid.UUID
+) -> frozenset[uuid.UUID]:
+    """Every contributor of `version_id` since the last generation (maker_checker module)."""
     links = {
         row.id: VersionLink(
             id=row.id,
@@ -246,7 +252,7 @@ async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> fro
             generated_by_user_id=row.generated_by_user_id,
             edited_by_user_id=row.edited_by_user_id,
         )
-        for row in await ctx.uow.listing_versions.chain_links(listing_id)
+        for row in await uow.listing_versions.chain_links(listing_id)
     }
     return contributor_chain(version_id, links)
 
@@ -254,10 +260,15 @@ async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> fro
 async def _maker_checker(ctx: _Ctx, listing: Any, version: Any) -> bool:
     """True when the approver may approve: outside the chain, an active reviewer or owner."""
     approver = ctx.principal.user_id
-    if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:
-        return False
+    chain = await version_chain(ctx.uow, listing.id, version.id)
     member = await ctx.uow.members.role_for_share(approver)
-    return member is not None and member[1] and member[0] in APPROVER_ROLES
+    block = approve_block(
+        approver,
+        role=None if member is None else member[0],
+        active=member is not None and member[1],
+        chain=chain,
+    )
+    return block is None
 
 
 async def _audit(ctx: _Ctx, listing: Any, action: str, **kw: Any) -> None:
