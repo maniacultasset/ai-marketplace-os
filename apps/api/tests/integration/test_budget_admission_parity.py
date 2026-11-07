@@ -22,11 +22,10 @@ SPEND_AT = "2026-10-05T01:00:00Z"
 
 
 def _credit(conn: Any, **values: Any) -> None:
-    for name, value in values.items():
-        conn.execute(
-            sql.SQL("UPDATE ai_credit_state SET {} = %s WHERE id = 1").format(sql.Identifier(name)),
-            [value],
-        )
+    sets = sql.SQL(", ").join(sql.SQL("{} = %s").format(sql.Identifier(name)) for name in values)
+    conn.execute(
+        sql.SQL("UPDATE ai_credit_state SET {} WHERE id = 1").format(sets), list(values.values())
+    )
 
 
 def _spend(conn: Any, tenant: uuid.UUID, usd: str) -> None:
