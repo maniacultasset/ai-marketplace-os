@@ -89,6 +89,17 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         items[:] = keep
 
 
+def pytest_terminal_summary(terminalreporter: Any, exitstatus: int, config: pytest.Config) -> None:
+    """On GitHub Actions, name each failed test as an annotation (tests/support/gh_annotations.py)."""
+    if not os.environ.get("GITHUB_ACTIONS") or not _xdist_controller(config):
+        return
+    from tests.support.gh_annotations import annotation_lines
+
+    stats = terminalreporter.stats
+    for line in annotation_lines(stats.get("failed", []), stats.get("error", [])):
+        terminalreporter.write_line(line)
+
+
 def pytest_unconfigure(config: pytest.Config) -> None:
     import os
 
