@@ -1,7 +1,8 @@
 """SI5 tester attacks (round 1) through the real app as app_rw: concurrent redeems, joins,
 a factor removed after a reset link is issued, refusals that must stay the generic 404, and
-barcode inputs that must be a 422, never a 500. The failing races and the dead-invite password
-oracle are in docs/plans/si5-brand-ready/repro/test_r1_si5_repro.py."""
+barcode inputs that must be a 422, never a 500. The two creation races it found are regression
+tests beside their features: `test_invites.py` (concurrent invites for one email) and
+`test_password_reset_links.py` (concurrent reset links for one member)."""
 
 from __future__ import annotations
 
