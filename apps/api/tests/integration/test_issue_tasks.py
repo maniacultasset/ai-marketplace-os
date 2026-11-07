@@ -333,3 +333,106 @@ async def test_a_replayed_persist_writes_one_task(
     async with tenant_uow(gen_world.tenant("acme")) as uow:
         await real(plans[-1])(uow)
     assert len(tasks(gen_world, product_of(gen_world, made))) == 1
+
+
+# ---- A14 (AC11; CP-D1, CP-D14): stored image findings reach the Inbox ----
+
+
+def stored_image(world: GenWorld, sku: str, *, passed: bool, codes: tuple[str, ...]) -> uuid.UUID:
+    """A main image of the product with a stored Amazon report (the Pillow checks' verdict)."""
+    import json
+    from datetime import UTC, datetime
+
+    from mkos_schemas.codes import ImageIssueCode
+    from mkos_schemas.enums import ImageSlot, Marketplace
+    from mkos_schemas.images import ImageCheck, ImageIssue, ImageReport
+
+    product = world.product("acme", sku)
+    image = f.image(world.conn, world.tenant("acme"), product, slot="main")
+    checks = {"BACKGROUND_OFF": "background", "RESOLUTION_LOW": "resolution"}
+    report = ImageReport(
+        image_id=image,
+        marketplace=Marketplace.AMAZON,
+        slot=ImageSlot.MAIN,
+        pass_=passed,
+        checks=[ImageCheck(check=checks[c], method="deterministic", passed=False) for c in codes],
+        issues=[
+            ImageIssue(
+                code=ImageIssueCode(c), check=checks[c], suggestion="Use a white background."
+            )
+            for c in codes
+        ],
+        processed_at=datetime(2026, 11, 7, tzinfo=UTC),
+    )
+    body = json.dumps({"amazon": report.model_dump(mode="json", by_alias=True)})
+    world.conn.execute(
+        "UPDATE images SET image_report_json = %s::jsonb WHERE id = %s", [body, image]
+    )
+    return image
+
+
+async def test_a_failed_stored_image_is_one_image_question(gen_world: GenWorld) -> None:
+    """AC11 and CP-D14: the rules re-check is clean (`stub:ok`), the stored check failed."""
+    sku = "KURTA-002"
+    image = stored_image(gen_world, sku, passed=False, codes=("BACKGROUND_OFF",))
+    made = await generated(gen_world, sku=sku)
+    assert state(gen_world, made) == ("blocked", "human_task_open")
+    [issue] = [i for i in issues(gen_world, made.listing_id) if i["source"] == "vision_model"]
+    assert (issue["field_path"], issue["marketplace_code"], issue["severity"]) == (
+        "images[0]",
+        "BACKGROUND_OFF",
+        "error",
+    )
+    [task] = tasks(gen_world, gen_world.product("acme", sku))
+    assert (task["kind"], task["image_id"], issue["human_task_id"]) == (
+        "image_replacement",
+        image,
+        task["id"],
+    )
+
+
+async def test_a_passing_image_with_an_issue_is_a_warning_and_no_question(
+    gen_world: GenWorld,
+) -> None:
+    sku = "KURTA-002"
+    stored_image(gen_world, sku, passed=True, codes=("RESOLUTION_LOW",))
+    made = await generated(gen_world, sku=sku)
+    [issue] = [i for i in issues(gen_world, made.listing_id) if i["source"] == "vision_model"]
+    assert (issue["severity"], issue["status"], issue["human_task_id"]) == ("warning", "open", None)
+    assert tasks(gen_world, gen_world.product("acme", sku)) == []
+    assert (
+        state(gen_world, made) == ("needs_review", None) or state(gen_world, made)[0] == "validated"
+    )
+
+
+async def test_an_unchecked_image_is_no_issue(gen_world: GenWorld) -> None:
+    sku = "KURTA-002"
+    f.image(gen_world.conn, gen_world.tenant("acme"), gen_world.product("acme", sku), slot="main")
+    made = await generated(gen_world, sku=sku)
+    assert [i for i in issues(gen_world, made.listing_id) if i["source"] == "vision_model"] == []
+    assert state(gen_world, made) == ("validated", None)
+
+
+async def test_one_image_question_for_both_marketplaces(gen_world: GenWorld) -> None:
+    sku = "KURTA-002"
+    image = stored_image(gen_world, sku, passed=False, codes=("BACKGROUND_OFF",))
+    body = gen_world.scalar("SELECT image_report_json->'amazon' FROM images WHERE id = %s", [image])
+    import json
+
+    body["marketplace"] = "flipkart"
+    gen_world.conn.execute(
+        "UPDATE images SET image_report_json = image_report_json || jsonb_build_object("
+        "'flipkart', %s::jsonb) WHERE id = %s",
+        [json.dumps(body), image],
+    )
+    amazon = await generated(gen_world, sku=sku)
+    flipkart = await generated(gen_world, sku=sku, marketplace="flipkart")
+    [task] = tasks(gen_world, gen_world.product("acme", sku))
+    for made in (amazon, flipkart):
+        assert state(gen_world, made) == ("blocked", "human_task_open")
+        linked = {
+            i["human_task_id"]
+            for i in issues(gen_world, made.listing_id)
+            if i["source"] == "vision_model"
+        }
+        assert linked == {task["id"]}

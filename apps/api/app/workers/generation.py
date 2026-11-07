@@ -344,6 +344,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         records=trusted.records,
         listing=trusted.listing,
         image_reports=trusted.result.image_reports,
+        image_reports_stored=deps.stored_image_reports,
         recheck=report,
         fixes=fixes,
         attempts_used=attempts_used,

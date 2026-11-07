@@ -47,6 +47,7 @@ from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
 from app.services.auto_fix.fixers import FixRecord
 from app.services.generation_result import Move
+from app.services.image_gate import image_issue_report
 from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcile_tasks
 from app.services.issues import record_auto_fixes, sync_issues
 from app.services.pipeline_deps import RulesCall
@@ -78,6 +79,7 @@ class PersistPlan:
     listing: CanonicalListing | None = None
     image_reports: Sequence[ImageReport] = ()
     recheck: ErrorReport | None = None
+    image_reports_stored: Sequence[ImageReport] = ()  # SI4 A14: the deps' preloaded reports
     fixes: tuple[FixRecord, ...] = ()  # SI4 A9/A10: the fix pass's records, for the trail
     attempts_used: int = 0
     version_id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -245,6 +247,20 @@ def make_persist(plan: PersistPlan) -> Any:
                 "rules_engine",
                 plan.recheck,
                 run_id=recheck.id,
+                cause="regenerate" if regeneration else "generate",
+                version_id=version.id,
+                job_id=plan.job_id,
+                critical_keys=critical,
+            )
+        if recheck is not None:
+            # SI4 A14 (CP-D1): the stored image findings, full scope on `vision_model`
+            stored = {r.image_id: r for r in plan.image_reports_stored}
+            await sync_issues(
+                uow,
+                listing,
+                "vision_model",
+                image_issue_report(content, stored, plan.image_reports),
+                run_id=None,
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,
                 job_id=plan.job_id,
