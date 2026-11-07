@@ -19,6 +19,7 @@ from .products_support import (
     bearer_for,
     site_body,
     soft_delete,
+    wire_chart,
     without_correlation,
 )
 
@@ -214,11 +215,9 @@ async def test_products_get_reads_intake_fields_and_etag(
         {"fibre": "cotton", "percent": 60},
         {"fibre": "polyester", "percent": 40},
     ]
-    assert body["size_chart"] == {
-        "unit": "cm",
-        "basis": "garment",
-        "rows": [{"size": "M", "chest": 101}],
-    }
+    assert body["size_chart"] == wire_chart(
+        {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 101}]}
+    )
     assert body["size_chart_url"] == "https://cdn.example.com/chart.png"
     assert body["manufacturer"]["city"] == "Bengaluru"
     assert body["manufacturer"]["inherited"] is False

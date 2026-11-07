@@ -116,7 +116,10 @@ async def test_clear_manufacturer(product: tuple[uuid.UUID, uuid.UUID], auth_db:
     assert party is not None
     async with unit_of_work(tenant) as session:
         await FactWriter(session, tenant).set_typed(
-            product_id, "manufacturer_party_id", party[0], {"source": "seller", "updated_at": STAMP}
+            product_id,
+            "manufacturer_party_id",
+            party[0],
+            {"source": "seller", "captured_via": "api", "updated_at": STAMP},
         )
     async with unit_of_work(tenant) as session:
         assert await FactWriter(session, tenant).clear_typed(product_id, "manufacturer")

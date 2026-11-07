@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import re
 import uuid
 from typing import Any
 
@@ -15,10 +14,17 @@ import pytest
 from . import factories as f
 from .auth_support import World, audit_rows
 from .conftest import LOCAL_HOSTS
-from .products_support import PRODUCTS, Conn, bad_bearer, bearer_for, site_body
+from .products_support import (
+    PRODUCTS,
+    Conn,
+    bad_bearer,
+    bearer_for,
+    has_phone,
+    site_body,
+    wire_chart,
+)
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
-PHONE = re.compile(r"\+?[0-9][0-9 -]{7,}")
 PARTY: dict[str, Any] = {
     "legal_name": "Acme Garments Pvt Ltd",
     "address_line1": "12 MG Road",
@@ -101,7 +107,7 @@ async def test_products_update_success(api: httpx.AsyncClient, products_world: W
         "1299.50",
     )
     assert out["manufacturer"]["legal_name"] == PARTY["legal_name"]
-    assert out["size_chart"] == CHART
+    assert out["size_chart"] == wire_chart(CHART)
     assert out["fiber_composition"] == [{"fibre": "cotton", "percent": 100}]
     assert response.headers["ETag"] != created["_etag"]
 
@@ -424,7 +430,7 @@ async def test_audit_changed_keys_only(
     assert set(after) <= {"attributes", "provenance"}
     assert set(after["provenance"]) == {"mrp", "manufacturer"}
     text = json.dumps(after)
-    assert "@" not in text and not PHONE.search(text)
+    assert "@" not in text and not has_phone(text) and "phone" not in text
     assert "postal_code" not in text and PARTY["legal_name"] not in text
 
 

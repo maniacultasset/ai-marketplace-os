@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 import httpx
@@ -12,7 +11,7 @@ import pytest
 
 from .auth_support import World, audit_rows
 from .conftest import LOCAL_HOSTS
-from .products_support import PRODUCTS, Conn, bearer_for, site_body
+from .products_support import PRODUCTS, Conn, bearer_for, has_phone, site_body, wire_chart
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
@@ -32,7 +31,6 @@ CHART: dict[str, Any] = {
     "basis": "garment",
     "rows": [{"size": "S", "chest": 96}, {"size": "M", "chest": 101.5, "length": 72}],
 }
-PHONE = re.compile(r"\+?[0-9][0-9 -]{7,}")
 
 
 def _op(world: World) -> dict[str, str]:
@@ -67,7 +65,7 @@ async def test_create_every_field_reads_back(api: httpx.AsyncClient, products_wo
         {"fibre": "cotton", "percent": 60},
         {"fibre": "polyester", "percent": 40},
     ]
-    assert out["size_chart"] == CHART
+    assert out["size_chart"] == wire_chart(CHART)
     assert out["size_chart_url"] == "https://cdn.example.com/chart.png"
     assert out["manufacturer"]["legal_name"] == "Acme Garments Pvt Ltd"
     assert out["manufacturer"]["inherited"] is False
@@ -153,7 +151,7 @@ async def test_audit_row_has_no_personal_data(
     assert len(rows) == 1
     after = json.dumps(rows[0][7])
     assert "@" not in after
-    assert not PHONE.search(after)
+    assert not has_phone(after) and "phone" not in after
     assert "postal_code" not in after and "560001" not in after
     assert "Acme Garments" not in after
 
