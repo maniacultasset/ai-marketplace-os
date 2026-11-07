@@ -98,6 +98,14 @@ class PhotoWorld:
             [key, Jsonb(fact), self.product_id],
         )
 
+    def drop_seller_colour(self) -> None:
+        """SI2 seeds the seller's colour on the demo kurtas, so colour is no photo target; a test
+        that reads colour from the photos drops it first (a test arrangement)."""
+        self.conn.execute(
+            "UPDATE products SET attributes = attributes - 'color' WHERE id = %s",
+            [self.product_id],
+        )
+
     def job(self, job_id: uuid.UUID) -> dict[str, Any]:
         cur = self.conn.execute("SELECT * FROM job_runs WHERE id = %s", [job_id])
         names = [d.name for d in cur.description or ()]

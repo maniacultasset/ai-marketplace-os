@@ -54,6 +54,7 @@ async def test_photo_ok_writes_the_fill_keys(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
+    pw.drop_seller_colour()
     spy_pipeline(pw, monkeypatch)
     accepted = await generate(pw, "photo_ok")
     targets = _targets(pw)
@@ -181,6 +182,7 @@ async def test_photo_low_asks_one_colour_question(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
+    pw.drop_seller_colour()
     plain = await generate(pw, None)  # no photo record: the targets stay for the next run
     status = pw.world.listing(plain.listing_id)["status"]
     regenerable(pw, plain.listing_id)
@@ -212,6 +214,7 @@ async def test_photo_conflict_keeps_the_seller_value(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
+    pw.drop_seller_colour()
     pw.put_fact("neckline", seller_fact("V-Neck"))
     await generate(pw, "photo_conflict")
     (task,) = pw.tasks()
@@ -358,6 +361,7 @@ async def test_one_refused_write_keeps_the_others_and_the_version(
     from app.repositories.facts import FactWriter
 
     pw = photo_world
+    pw.drop_seller_colour()
     real = FactWriter.set_photo_attribute
 
     async def refuse_neckline(self: Any, product_id: Any, key: str, fact: Any, **kw: Any) -> bool:
@@ -386,6 +390,7 @@ async def test_no_version_result_with_a_photo_record_still_writes(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
+    pw.drop_seller_colour()
 
     async def around(gctx: Any, deps: Any, real: Any) -> Any:
         ok = await real(gctx.model_copy(update={"user_instructions": "stub:photo_ok"}), deps)
