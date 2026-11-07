@@ -605,13 +605,13 @@ async def seed_demo_listing(
     )
 
 
-# ---- S20 T21 (C12): the demo kurta family, pinned to the Amazon kurta mapping (version 2) ----
+# ---- S20 T21 (C12): the demo kurta family, pinned to the Amazon kurta mapping (version 3, SI2) ----
 
 DEMO_FAMILY_SKU: Final = "KURTA-FAM-01"
 DEMO_FAMILY_THEME: Final = "size_color"
 DEMO_FAMILY_SIZES: Final = ("s", "m")
 DEMO_FAMILY_COLOURS: Final = ("navy blue", "maroon")
-DEMO_FAMILY_TEMPLATE_VERSION: Final = 2
+DEMO_FAMILY_TEMPLATE_VERSION: Final = 3  # SI2: the Amazon kurta v3
 
 
 def demo_family_child_sku(size: str, colour: str) -> str:
@@ -650,7 +650,7 @@ def _family_fact(value: object, **extra: object) -> dict[str, object]:
 
 async def seed_demo_family(session: AsyncSession) -> None:
     """acme's kurta family (style + 4 children, a complete matrix) and its Amazon listing with
-    version 1 pinned to the current Amazon kurta template (version 2, promoted by
+    version 1 pinned to the current Amazon kurta template (version 3, promoted by
     `platform_load` before this runs). One unit of work, so the deferred matrix check sees the
     whole family; every row has a fixed id and is inserted `ON CONFLICT DO NOTHING`."""
     tenant_id = seed_tenant_id("acme")
@@ -772,7 +772,7 @@ async def seed_demo_family(session: AsyncSession) -> None:
 # ---- S22 T15 (D7; R3): acme's Flipkart demo listings, pinned to the Flipkart kurta mapping ----
 
 DEMO_FLIPKART_MARKETPLACE: Final = "flipkart"
-DEMO_FLIPKART_TEMPLATE_VERSION: Final = 2
+DEMO_FLIPKART_TEMPLATE_VERSION: Final = 3  # SI2: the Flipkart kurta v3
 
 
 def demo_flipkart_ids() -> dict[str, tuple[uuid.UUID, uuid.UUID]]:
@@ -803,7 +803,7 @@ def demo_flipkart_standalone_content() -> dict[str, Any]:
 async def seed_demo_flipkart(session: AsyncSession) -> None:
     """acme's Flipkart listings for KURTA-001 (standalone) and KURTA-FAM-01 (the 2 x 2 family,
     children only on Flipkart), each with version 1 pinned to the Flipkart kurta mapping
-    (version 2, promoted by `platform_load`). Runs after `seed_demo_family` in acme's unit of
+    (version 3, promoted by `platform_load`). Runs after `seed_demo_family` in acme's unit of
     work; every row has a fixed id and is inserted `ON CONFLICT DO NOTHING`."""
     tenant_id = seed_tenant_id("acme")
     operator = await _user_id(session, seed_user_email("operator", "acme"))
