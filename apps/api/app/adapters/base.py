@@ -24,7 +24,8 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
   country, manufacturer, composition), keyed by product id in `AdapterListing.unit_facts`; they
   are reported at `facts.<key>` (`fact_paths`). `composition_text`, `money`, `locator_ok` and
   `nearest_values` are the pure helpers both adapters share. `party_secrets(listing)` lists the
-  manufacturer strings an issue text must never carry (DPDP, `db/models/facts.py:88`).
+  manufacturer strings an issue text must never carry, and `issue_text` replaces any issue on a
+  manufacturer attribute with a fixed text (DPDP, `db/models/facts.py:88`).
 """
 
 from __future__ import annotations
@@ -474,20 +475,44 @@ def fact_paths(unit: AdapterItem) -> tuple[str, ...]:
     return tuple(sorted(paths))
 
 
+PARTY_PATH: Final = "facts.manufacturer"
+PARTY_REJECTED_MESSAGE: Final = "The manufacturer contact was rejected"
+"""The fixed issue text for any marketplace issue on an attribute that carries the manufacturer
+contact: a reformatted echo (other separators or case) beats substring scrubbing, so the raw text
+stays only in the private raw response log (DPDP, `db/models/facts.py:88`)."""
+_PART_MIN: Final = 4  # shorter address parts ("IN", "GJ") would redact unrelated text
+_ADDRESS_SPLIT: Final = re.compile(r"\s*[,\n]\s*")
+
+
 def party_secrets(listing: AdapterListing) -> tuple[str, ...]:
-    """Every manufacturer string an issue text must never carry: each unit's address, name and
-    the combined `"<name>, <address>"`, longest first."""
+    """Every manufacturer string an issue text must never carry, longest first: each unit's
+    name, address and combined `"<name>, <address>"`, plus every run of consecutive address
+    parts (split on commas) of at least 4 characters, so a truncated echo is scrubbed too."""
     found: set[str] = set()
     for facts in listing.unit_facts.values():
         name = (facts.manufacturer_name or "").strip()
         address = (facts.manufacturer_address or "").strip()
         if address:
             found.add(address)
+            parts = [p for p in _ADDRESS_SPLIT.split(address) if p]
+            for i in range(len(parts)):
+                for j in range(i + 1, len(parts) + 1):
+                    run = ", ".join(parts[i:j])
+                    if len(run) >= _PART_MIN:
+                        found.add(run)
         if name:
             found.add(name)
         if name and address:
             found.add(f"{name}, {address}")
     return tuple(sorted(found, key=lambda s: (-len(s), s)))
+
+
+def issue_text(raw: str, names: Sequence[str], index: Mapping[str, Sequence[str]]) -> str:
+    """The marketplace text to keep for one issue: `PARTY_REJECTED_MESSAGE` when any attribute
+    it names feeds `facts.manufacturer` (in scope or not), else `raw`."""
+    if any(PARTY_PATH in index.get(n, ()) for n in names):
+        return PARTY_REJECTED_MESSAGE
+    return raw
 
 
 UpdateFields = Sequence[str] | Mapping[str, Sequence[str]]

@@ -69,6 +69,7 @@ from app.adapters.base import (
     RawResponseSink,
     UpdateFields,
     fields_by_sku,
+    issue_text,
     party_secrets,
 )
 from app.adapters.error_map import ErrorMapper
@@ -182,7 +183,7 @@ class AmazonAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=str(issue.get("message", "")),
+                    raw_message=issue_text(str(issue.get("message", "")), names, index),
                     field=path,
                     value=values.get(path) if path else None,
                     categories=categories,

@@ -68,6 +68,7 @@ from app.adapters.base import (
     RawResponseSink,
     UpdateFields,
     fields_by_sku,
+    issue_text,
     party_secrets,
 )
 from app.adapters.error_map import ErrorMapper
@@ -200,7 +201,7 @@ class FlipkartAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=str(issue.get("description", "")),
+                    raw_message=issue_text(str(issue.get("description", "")), names, index),
                     field=path,
                     marketplace=Marketplace.FLIPKART,
                     categories=[str(category)] if category else [],
