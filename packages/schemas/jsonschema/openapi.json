@@ -8104,7 +8104,7 @@
     },
     "/api/v1/admin/signup-requests/{request_id}/approve": {
       "post": {
-        "description": "Create the brand's tenant (status `trial`, `trial_days` default 14, a unique slug from\nthe brand name) and its owner membership, exactly as the staff `tenant create` does. The\nowner then logs in normally. Approving an approved request answers it again; a rejected\none is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404.",
+        "description": "Create the brand's tenant (status `trial`, `trial_days` default 30, a unique slug from\nthe brand name) and its owner membership, exactly as the staff `tenant create` does. The\nowner then logs in normally. Approving an approved request answers it again; a rejected\none is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404.",
         "operationId": "admin_signup_requests_approve",
         "parameters": [
           {
@@ -8959,7 +8959,7 @@
     },
     "/api/v1/admin/tenants": {
       "get": {
-        "description": "Every tenant, newest first (SI5 T9).",
+        "description": "Every tenant, newest first, with its status and trial end (platform admins).",
         "operationId": "admin_tenants_list",
         "parameters": [
           {
@@ -9348,7 +9348,7 @@
     },
     "/api/v1/admin/tenants/{target_tenant_id}/activate": {
       "post": {
-        "description": "Activate a trial or suspended tenant (SI5 T9).",
+        "description": "A trial or suspended tenant becomes active (its members sign in again; no session is\nrestored). Active already: the same row. Offboarded: 409. Unknown: 404. Audited with the\nreason as staff, with your email.",
         "operationId": "admin_tenants_activate",
         "parameters": [
           {
@@ -9767,7 +9767,7 @@
     },
     "/api/v1/admin/tenants/{target_tenant_id}/extend-trial": {
       "post": {
-        "description": "Extend or reopen a trial (SI5 T9).",
+        "description": "A trial ends `days` later (from its end, or from now when that has passed); a tenant\nsuspended because its trial ran out returns to `trial`, ending in `days`. Any other state,\na tenant suspended by staff included, is 409. Audited with the reason.",
         "operationId": "admin_tenants_extend_trial",
         "parameters": [
           {
@@ -17106,7 +17106,7 @@
     },
     "/api/v1/auth/password/reset": {
       "post": {
-        "description": "Set a new password with a copied reset link (SI5 T8).",
+        "description": "Set a new password with a copied reset link: the password rules (422 names each broken\nrule) and none of the last 10; the link then stops working, and every session and trusted\nbrowser of the account ends. The authenticator stays. Any refusal of the link (unknown,\nused, replaced, expired, or the account or its issuer no longer eligible) is the same 404.",
         "operationId": "auth_password_reset",
         "requestBody": {
           "content": {
@@ -22599,7 +22599,7 @@
     },
     "/api/v1/invites": {
       "get": {
-        "description": "The tenant's invites (SI5 T5).",
+        "description": "The tenant's invites, newest first; never a token or its hash.",
         "operationId": "invites_list",
         "parameters": [
           {
@@ -22987,7 +22987,7 @@
         "x-mkos-action": "team:manage"
       },
       "post": {
-        "description": "Invite a teammate (SI5 T5).",
+        "description": "Invite a teammate by email and role. The answer holds `invite_url` once: copy it to the\nperson (it works once, for 7 days). Only an owner invites an owner (403). The email of a\nmember here, active or not, is 422 at `email`, and so is a 51st pending invite. A new invite\nfor an email with an open one revokes the old link. Needs a recent step-up under\n`MFA_ENFORCEMENT=all`.",
         "operationId": "invites_create",
         "requestBody": {
           "content": {
@@ -23322,7 +23322,7 @@
     },
     "/api/v1/invites/accept": {
       "post": {
-        "description": "Accept an invite with a new account (SI5 T6, T7).",
+        "description": "Create the invited account and join the brand: a password (12+ characters, an upper-case\nand a lower-case letter, a digit and a symbol, not the name or the email's first part: 422\nwith each broken rule) or the matching Google identity. An email that already has an account\nis 409: sign in, then open the link. The person then signs in as usual.",
         "operationId": "invites_accept",
         "requestBody": {
           "content": {
@@ -23720,7 +23720,7 @@
     },
     "/api/v1/invites/join": {
       "post": {
-        "description": "Join with the signed-in account (SI5 T6).",
+        "description": "Join the inviting brand with the signed-in account, when the invite names its email\n(anything else is the generic 404). Already a member there, active or not: 409. Then call\n`auth_switch_tenant` with the answered `tenant_id`.",
         "operationId": "invites_join",
         "requestBody": {
           "content": {
@@ -24085,7 +24085,7 @@
     },
     "/api/v1/invites/lookup": {
       "post": {
-        "description": "What an invite link is for (SI5 T6).",
+        "description": "What an invite link is for: the brand, the role, the invited email and whether it already\nhas an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every\nrefusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who\nlost the role) is the same 404.",
         "operationId": "invites_lookup",
         "requestBody": {
           "content": {
@@ -24372,7 +24372,7 @@
     },
     "/api/v1/invites/{invite_id}/revoke": {
       "post": {
-        "description": "Revoke an invite (SI5 T5).",
+        "description": "Revoke a pending or expired invite; revoking it again answers the same row. An accepted\ninvite is 409; an owner invite is revoked only by an owner (403); another tenant's is 404.",
         "operationId": "invites_revoke",
         "parameters": [
           {
@@ -34967,7 +34967,7 @@
     },
     "/api/v1/members/{user_id}/password-reset": {
       "post": {
-        "description": "A copied password reset link for a member (SI5 T8).",
+        "description": "A password reset link for a member, shown once: copy it to them (24 hours, once; a new\nlink replaces the old one). Only for a member of this brand alone, with an authenticator,\nwhile sign-in codes are required (`MFA_ENFORCEMENT=all`); anyone else, a platform admin\nincluded, is 403 \"Kuinn support resets this account\". Only an owner resets an owner (403);\nyourself is 422 (change your own password in Security). Needs a TOTP step-up.",
         "operationId": "members_password_reset",
         "parameters": [
           {

@@ -35,7 +35,7 @@ export interface paths {
         put?: never;
         /**
          * Approve a sign-up: create the trial tenant and its owner (idempotent)
-         * @description Create the brand's tenant (status `trial`, `trial_days` default 14, a unique slug from
+         * @description Create the brand's tenant (status `trial`, `trial_days` default 30, a unique slug from
          *     the brand name) and its owner membership, exactly as the staff `tenant create` does. The
          *     owner then logs in normally. Approving an approved request answers it again; a rejected
          *     one is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404.
@@ -78,7 +78,7 @@ export interface paths {
         };
         /**
          * List every tenant with its status and trial end, newest first (platform admins)
-         * @description Every tenant, newest first (SI5 T9).
+         * @description Every tenant, newest first, with its status and trial end (platform admins).
          */
         get: operations["admin_tenants_list"];
         put?: never;
@@ -100,7 +100,9 @@ export interface paths {
         put?: never;
         /**
          * Activate a trial or suspended tenant, with a reason (idempotent)
-         * @description Activate a trial or suspended tenant (SI5 T9).
+         * @description A trial or suspended tenant becomes active (its members sign in again; no session is
+         *     restored). Active already: the same row. Offboarded: 409. Unknown: 404. Audited with the
+         *     reason as staff, with your email.
          */
         post: operations["admin_tenants_activate"];
         delete?: never;
@@ -120,7 +122,9 @@ export interface paths {
         put?: never;
         /**
          * Extend a trial by 1-90 days, or reopen a trial that expired, with a reason
-         * @description Extend or reopen a trial (SI5 T9).
+         * @description A trial ends `days` later (from its end, or from now when that has passed); a tenant
+         *     suspended because its trial ran out returns to `trial`, ending in `days`. Any other state,
+         *     a tenant suspended by staff included, is 409. Audited with the reason.
          */
         post: operations["admin_tenants_extend_trial"];
         delete?: never;
@@ -651,7 +655,10 @@ export interface paths {
         put?: never;
         /**
          * Set a new password with a copied reset link (DPP rules, not one of the last 10)
-         * @description Set a new password with a copied reset link (SI5 T8).
+         * @description Set a new password with a copied reset link: the password rules (422 names each broken
+         *     rule) and none of the last 10; the link then stops working, and every session and trusted
+         *     browser of the account ends. The authenticator stays. Any refusal of the link (unknown,
+         *     used, replaced, expired, or the account or its issuer no longer eligible) is the same 404.
          */
         post: operations["auth_password_reset"];
         delete?: never;
@@ -952,13 +959,17 @@ export interface paths {
         };
         /**
          * List the tenant's invites, newest first
-         * @description The tenant's invites (SI5 T5).
+         * @description The tenant's invites, newest first; never a token or its hash.
          */
         get: operations["invites_list"];
         put?: never;
         /**
          * Invite a teammate: a copied link for 7 days (a new invite for the email replaces the old one)
-         * @description Invite a teammate (SI5 T5).
+         * @description Invite a teammate by email and role. The answer holds `invite_url` once: copy it to the
+         *     person (it works once, for 7 days). Only an owner invites an owner (403). The email of a
+         *     member here, active or not, is 422 at `email`, and so is a 51st pending invite. A new invite
+         *     for an email with an open one revokes the old link. Needs a recent step-up under
+         *     `MFA_ENFORCEMENT=all`.
          */
         post: operations["invites_create"];
         delete?: never;
@@ -978,7 +989,10 @@ export interface paths {
         put?: never;
         /**
          * Accept an invite with a new account (a password, or the matching Google identity)
-         * @description Accept an invite with a new account (SI5 T6, T7).
+         * @description Create the invited account and join the brand: a password (12+ characters, an upper-case
+         *     and a lower-case letter, a digit and a symbol, not the name or the email's first part: 422
+         *     with each broken rule) or the matching Google identity. An email that already has an account
+         *     is 409: sign in, then open the link. The person then signs in as usual.
          */
         post: operations["invites_accept"];
         delete?: never;
@@ -998,7 +1012,9 @@ export interface paths {
         put?: never;
         /**
          * Join the inviting brand with the signed-in account whose email matches
-         * @description Join with the signed-in account (SI5 T6).
+         * @description Join the inviting brand with the signed-in account, when the invite names its email
+         *     (anything else is the generic 404). Already a member there, active or not: 409. Then call
+         *     `auth_switch_tenant` with the answered `tenant_id`.
          */
         post: operations["invites_join"];
         delete?: never;
@@ -1018,7 +1034,10 @@ export interface paths {
         put?: never;
         /**
          * What an invite link is for: the brand, the role and whether the email has an account
-         * @description What an invite link is for (SI5 T6).
+         * @description What an invite link is for: the brand, the role, the invited email and whether it already
+         *     has an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every
+         *     refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
+         *     lost the role) is the same 404.
          */
         post: operations["invites_lookup"];
         delete?: never;
@@ -1038,7 +1057,8 @@ export interface paths {
         put?: never;
         /**
          * Revoke an invite (idempotent; an accepted invite is 409)
-         * @description Revoke an invite (SI5 T5).
+         * @description Revoke a pending or expired invite; revoking it again answers the same row. An accepted
+         *     invite is 409; an owner invite is revoked only by an owner (403); another tenant's is 404.
          */
         post: operations["invites_revoke"];
         delete?: never;
@@ -1589,7 +1609,11 @@ export interface paths {
         put?: never;
         /**
          * A copied password reset link for a member (24 hours, once; sole-tenant members with an authenticator under MFA_ENFORCEMENT=all)
-         * @description A copied password reset link for a member (SI5 T8).
+         * @description A password reset link for a member, shown once: copy it to them (24 hours, once; a new
+         *     link replaces the old one). Only for a member of this brand alone, with an authenticator,
+         *     while sign-in codes are required (`MFA_ENFORCEMENT=all`); anyone else, a platform admin
+         *     included, is 403 "Kuinn support resets this account". Only an owner resets an owner (403);
+         *     yourself is 422 (change your own password in Security). Needs a TOTP step-up.
          */
         post: operations["members_password_reset"];
         delete?: never;
