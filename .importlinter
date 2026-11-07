@@ -101,6 +101,7 @@ source_modules =
     app.services.image_fix
     app.services.image_fidelity
     app.services.image_fixes
+    app.services.size_chart_image
 forbidden_modules =
     app.api
     app.db

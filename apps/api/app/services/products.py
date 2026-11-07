@@ -55,9 +55,11 @@ __all__ = [
     "PartyView",
     "ProductView",
     "create_product",
+    "fibres_view",
     "get_product",
     "list_products",
     "product_etag",
+    "size_chart_view",
 ]
 
 PRODUCT_PK: Final = "pk_products"
@@ -192,7 +194,7 @@ def _normalized(facts: Mapping[str, Any], key: str) -> Any:
     return fact.get("normalized") if isinstance(fact, Mapping) else None
 
 
-def _fibres(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+def fibres_view(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
     stored = _normalized(facts, "fiber_composition")
     if not isinstance(stored, list) or not stored:
         return None
@@ -209,7 +211,7 @@ def _fibres(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
     return out
 
 
-def _size_chart(facts: Mapping[str, Any]) -> dict[str, Any] | None:
+def size_chart_view(facts: Mapping[str, Any]) -> dict[str, Any] | None:
     stored = _normalized(facts, "size_measurements")
     if not isinstance(stored, Mapping):
         return None
@@ -297,8 +299,8 @@ def _view(
         mrp=_money(row.mrp),
         selling_price=_money(row.selling_price),
         currency=row.currency,
-        fiber_composition=_fibres(facts),
-        size_chart=_size_chart(facts),
+        fiber_composition=fibres_view(facts),
+        size_chart=size_chart_view(facts),
         size_chart_url=_text_value(facts, "size_chart_url"),
         manufacturer=party,
         image_details=details,
