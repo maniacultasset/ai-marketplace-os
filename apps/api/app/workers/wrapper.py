@@ -303,7 +303,8 @@ async def _finish(
     result: dict[str, Any] | None = None,
 ) -> None:
     """The one terminal transaction (module docstring, steps 5-6). `result` is the failure
-    path's `result_json` (SI3); an `Outcome` carries its own."""
+    path's `result_json` (SI3; read after `persist` ran, so it may add keys; an empty dict is
+    stored as NULL); an `Outcome` carries its own."""
     report_json: dict[str, Any] | None = None if report is None else report.model_dump(mode="json")
     tenant = head.tenant_id
 
@@ -319,7 +320,7 @@ async def _finish(
                 job_id,
                 attempt,
                 status=status,
-                result_json=result if outcome is None else outcome.result,
+                result_json=(result or None) if outcome is None else outcome.result,
                 error_report_json=report_json,
                 error_code=(
                     None if report is None or report.error_code is None else report.error_code.value
