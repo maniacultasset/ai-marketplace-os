@@ -10,6 +10,8 @@
   fields it sent); an empty list closes nothing.
 - `page(filters, after=, limit=)`: the inbox, newest first by `(created_at, id)` (the open-inbox
   and all-status indexes).
+- `open_row(listing_id, key)` and `close_open(issue_id, resolution)` (SI4): the open row of a key,
+  and a system compare-and-set close in the status `closed_status(resolution)` names.
 - `lock(issue_id)` and `dismiss(issue_id, user_id)`: the dismissal is a compare-and-set that only
   matches an open warning; `listing_issues_guard` (GRD01) is the backstop.
 
@@ -69,6 +71,12 @@ class IssueFilter:
     source: str | None = None
     error_code: str | None = None
     marketplace: str | None = None
+
+
+def closed_status(resolution: str) -> str:
+    """The closed status a resolution takes: `auto_fixed` only for `deterministic_fix`
+    (ck_listing_issues_auto_fixed); every other one, `ai_correction` included, is `resolved`."""
+    return "auto_fixed" if resolution == "deterministic_fix" else "resolved"
 
 
 class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
@@ -278,7 +286,7 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         if field_paths is not None and not field_paths:
             return 0
         criterion = self._tenant_criterion(include_platform=False)
-        status = "auto_fixed" if resolution == "deterministic_fix" else "resolved"
+        status = closed_status(resolution)
         stmt = update(ListingIssue).where(
             criterion,
             ListingIssue.listing_id == listing_id,
@@ -298,6 +306,32 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             )
         ).returning(ListingIssue.id)
         return len((await self._run(stmt)).all())
+
+    async def open_row(self, listing_id: uuid.UUID, key: str) -> ListingIssue | None:
+        """The listing's open row with this key (`li_one_open`: at most one)."""
+        stmt = self._select().where(
+            ListingIssue.listing_id == listing_id,
+            ListingIssue.dedupe_key == key,
+            ListingIssue.status == OPEN,
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def close_open(self, issue_id: uuid.UUID, resolution: str) -> bool:
+        """The compare-and-set that closes one open row with a system resolution (no user), in
+        the status `closed_status` names. False for a closed row or another tenant's id."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(ListingIssue)
+            .where(criterion, ListingIssue.id == issue_id, ListingIssue.status == OPEN)
+            .values(
+                status=closed_status(resolution),
+                resolution=resolution,
+                resolved_at=func.now(),
+                resolved_by_user_id=None,
+            )
+        ).returning(ListingIssue.id)
+        return len((await self._run(stmt)).all()) == 1
 
     async def close_auto_fixed(self, issue_id: uuid.UUID, action_taken: str) -> bool:
         """SI4 A10 (CP-D2): the compare-and-set that closes one open row the fix pass fixed,

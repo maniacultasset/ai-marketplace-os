@@ -241,9 +241,11 @@ async def test_a_replayed_persist_writes_no_second_trail(
     assert before == after == (1, 1)
 
 
-async def test_an_older_open_row_is_the_one_closed(gen_world: GenWorld) -> None:
-    """CP-D2: the trail runs before the sync, so the row an older version left open is reused
-    (occurrences 2) and closed `auto_fixed`, never closed by the sync and then reopened."""
+async def test_a_fix_of_an_older_open_row_shows_in_the_fixing_version(gen_world: GenWorld) -> None:
+    """CP-D2 and the version review: the row an older version left open closes the way the
+    sync closes it for the cause (`resolved`/`regenerated`, on its own version), and the fix is
+    a fresh `auto_fixed` row on the version the fix pass wrote, linked back by
+    `recurrence_of_id` (the guard keeps `listing_version_id` immutable). No row reopens."""
     from app.repositories.uow import tenant_uow
     from app.services.generation import request_regeneration
 
@@ -258,9 +260,18 @@ async def test_an_older_open_row_is_the_one_closed(gen_world: GenWorld) -> None:
             uow, principal, str(uuid.uuid4()), first.listing_id, "stub:long_title"
         )
     await run_job(accepted.job_id)
-    assert gen_world.listing(first.listing_id)["status"] == "validated"
+    listing = gen_world.listing(first.listing_id)
+    assert listing["status"] == "validated"
+    fixing_version = listing["current_version_id"]
+    assert fixing_version != first.version_id
     rows = issues(gen_world, first.listing_id)
-    assert [(r["id"], r["status"], r["occurrences"]) for r in rows] == [
-        (open_row["id"], "auto_fixed", 2)
+    assert [
+        (r["id"], r["status"], r["resolution"], r["listing_version_id"], r["occurrences"])
+        for r in rows
+    ] == [
+        (open_row["id"], "resolved", "regenerated", first.version_id, 1),
+        (rows[1]["id"], "auto_fixed", "deterministic_fix", fixing_version, 1),
     ]
-    assert [r for r in rows if r["resolution"] in ("regenerated", "revalidated_clean")] == []
+    assert rows[1]["recurrence_of_id"] == open_row["id"]
+    assert rows[1]["action_taken"] and rows[1]["dedupe_key"] == open_row["dedupe_key"]
+    assert [r for r in rows if r["status"] == "open"] == []

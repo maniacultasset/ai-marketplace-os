@@ -286,6 +286,7 @@ def make_persist(plan: PersistPlan) -> Any:
                 status=plan.move.to,
                 job_id=plan.job_id,
                 critical_keys=critical,
+                cause="regenerate" if regeneration else "generate",
             )
         if recheck is not None and plan.recheck is not None:
             # S19 T18 (CP-D2): only the version-linked re-check feeds the issue inbox

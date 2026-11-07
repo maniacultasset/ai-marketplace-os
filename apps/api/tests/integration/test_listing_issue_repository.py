@@ -259,3 +259,37 @@ async def test_close_auto_fixed_other_tenant_zero_rows(gen_world: GenWorld) -> N
     (issue_id, _, _), _ = await _upsert(gen_world, new_issue(made, severity="error"))
     assert await _close_fixed(gen_world, issue_id, "reviewer@bharat.test") is False
     assert gen_world.scalar("SELECT status FROM listing_issues WHERE id = %s", [issue_id]) == "open"
+
+
+# ---- SI4: an AI rewrite closes `resolved`/`ai_correction`, never `auto_fixed` ----
+
+
+async def test_an_ai_correction_closes_resolved(gen_world: GenWorld) -> None:
+    """A row the AI rewrite of its field cleared closes `resolved`/`ai_correction`: the
+    repository keeps `auto_fixed` for `deterministic_fix` alone (ck_listing_issues_auto_fixed)."""
+    made = await generated(gen_world)
+    (issue_id, _, _), _ = await _upsert(gen_world, new_issue(made, severity="error"))
+
+    async def go(repo: Any) -> int:
+        return await repo.close_missing(  # type: ignore[no-any-return]
+            made.listing_id, "rules_engine", [], "ai_correction"
+        )
+
+    assert await _uow(gen_world, go) == 1
+    row = gen_world.conn.execute(
+        "SELECT status, resolution, action_taken FROM listing_issues WHERE id = %s", [issue_id]
+    ).fetchone()
+    assert row == ("resolved", "ai_correction", None)
+
+
+async def test_auto_fixed_with_an_ai_correction_is_refused(gen_world: GenWorld) -> None:
+    made = await generated(gen_world)
+    (issue_id, _, _), _ = await _upsert(gen_world, new_issue(made, severity="error"))
+    refused = pytest.raises(psycopg.errors.CheckViolation, match="ck_listing_issues_auto_fixed")
+    with refused, gen_world.conn.transaction():
+        gen_world.conn.execute(
+            "UPDATE listing_issues SET status = 'auto_fixed', resolution = 'ai_correction', "
+            "resolved_at = now() WHERE id = %s",
+            [issue_id],
+        )
+    assert gen_world.scalar("SELECT status FROM listing_issues WHERE id = %s", [issue_id]) == "open"

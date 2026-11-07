@@ -266,14 +266,22 @@ async def record_auto_fixes(
     status: str,
     job_id: uuid.UUID | None,
     critical_keys: frozenset[str],
+    cause: str = "generate",
 ) -> int:
-    """Per record: upsert the pre-fix item's open row (a same-key row an older version left open
-    is reused), close it `auto_fixed` with the trail text, and write one `system` audit row.
-    Runs before the re-check's `sync_issues` (CP-D2). Returns the rows closed."""
+    """Per record: open this version's row for the pre-fix item, close it `auto_fixed` with the
+    trail text, and write one `system` audit row. Runs before the re-check's `sync_issues`
+    (CP-D2), so no row is closed by the sync and then reopened. A same-key row an older version
+    left open is closed first the way the sync closes it for `cause` (`resolution_for`), since
+    the guard keeps a row's `listing_version_id` immutable: the fresh row then carries the
+    fixing version (the fix shows in that version's review) and `recurrence_of_id` links it to
+    the older row. Returns the rows closed `auto_fixed`."""
     closed = 0
     for record in records:
         item = _fixed_item(record)
         key = dedupe_key(RULES_SOURCE, item)
+        older = await uow.listing_issues.open_row(listing.id, key)
+        if older is not None and older.listing_version_id != version_id:
+            await uow.listing_issues.close_open(older.id, resolution_for(cause))
         new = _issue(
             listing,
             RULES_SOURCE,
