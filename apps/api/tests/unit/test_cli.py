@@ -210,6 +210,7 @@ def test_main_block_logs_to_stdout() -> None:
     [
         ("rules", "run_rules_load", "RULES_SEED_PATH"),
         ("templates", "run_templates_load", "PLATFORM_TEMPLATES_PATH"),
+        ("errors", "run_errors_load", "ERROR_MAP_AMAZON_PATH"),
     ],
 )
 def test_loader_file_defaults(
@@ -225,6 +226,28 @@ def test_loader_file_defaults(
     assert cli.main([group, "load"]) == 0
     assert seen == [getattr(cli, default)]
     assert getattr(cli, default).is_file()
+
+
+def test_errors_load_file_wins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    seen: list[Path] = []
+
+    async def fake(path: Path) -> int:
+        seen.append(path)
+        return 0
+
+    other = tmp_path / "x.json"
+    other.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(cli, "run_errors_load", fake)
+    assert cli.main(["errors", "load", "--file", str(other)]) == 0
+    assert seen == [other]
+
+
+def test_errors_load_missing_default_exit_2(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(cli, "ERROR_MAP_AMAZON_PATH", tmp_path / "absent.json")
+    assert cli.main(["errors", "load"]) == 2
+    assert capsys.readouterr().err == "errors load: no such file\n"
 
 
 def test_rules_load_missing_file_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
