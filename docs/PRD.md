@@ -103,7 +103,8 @@ the Day-14, Day-28 and Day-42 windows (ADR-0012, Decision 5).
 - **Spec non-goals (L4807–4813):** no model training or fine-tuning, no Kubernetes, no dedicated
   vector database, no auto-publishing and no scraping.
 - **Deferred column of the scope lock (L4745–4799):** ERP and PIM catalogue sync, Myntra, Ajio, Meesho
-  and Nykaa, generative image editing, confidence-based auto-publish, sales attribution and margin
+  and Nykaa, generative image editing beyond the seller-approved white-background main (SI7, T134),
+  confidence-based auto-publish, sales attribution and margin
   modelling, Kafka, SAML/SSO, SOC2/ISO certification, and a self-hosted metrics stack.
 - **Not a v1 objective in the BRD (L187–217):** order management, inventory and warehouse
   management, advertising, standalone pricing, returns and reconciliation, customer-service

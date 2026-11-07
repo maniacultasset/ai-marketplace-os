@@ -162,8 +162,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - **Tenant purge and image objects (SI1, CP9).** The tenant purge deletes every public image copy first
   (`purge_public_images`: `seed --reset` runs it, and a by-hand `purge_tenant` needs `app.cli images unpublish
   --tenant <id>` before it; the 0015 delete guard refuses the purge otherwise). It does not delete the private
-  originals or the derived objects (`<tenant_id>/<product_id>/images/...` and `.../derived/...`): they keep their
-  tenant prefix and can be removed later by prefix. A crash between a public PUT and its `public_written_at` mark
+  originals, the derived objects or (SI7) the image candidate objects (`<tenant_id>/<product_id>/images/...`,
+  `.../derived/...` and `.../candidates/...`): they keep their tenant prefix and can be removed later by prefix. A crash between a public PUT and its `public_written_at` mark
   leaves an object only the purge step finds (the name stays as a tombstone). Copies a marketplace or a CDN edge
   already fetched stay there (edge cache one day, ADR-0026).
 
