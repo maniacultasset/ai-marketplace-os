@@ -438,6 +438,10 @@ def route(
 
 A = Action
 _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
+# SI10: a daily cap (429) or the platform AI pause (503) refuses a generate or regenerate.
+_AI_ADMISSION: Final = MappingProxyType(
+    {429: (E.BUDGET_EXCEEDED,), 503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)}
+)
 # S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
 _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 # DPP-1: the public challenge routes (a wrong code or burned challenge is 401; 501 under `off`)
@@ -591,7 +595,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- listings (S18, S19, S21) ----
     Operation("listings_generate", "POST", "/listings/generate", 202, JobAccepted, "listings",
               "Start AI generation", "S18", has_body=True, body_ids=("product_id",),
-              idempotency=True, action=A.LISTING_GENERATE),
+              idempotency=True, action=A.LISTING_GENERATE, extra_codes=_AI_ADMISSION),
     Operation("listings_validate", "POST", "/listings/validate", 200, ValidationSummary,
               "listings", "Run schema, rules and vision checks (200 with passed=false on a rules "
               "failure)", "S18", has_body=True, body_ids=("listing_id",), action=A.LISTING_EDIT),
@@ -623,7 +627,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.STALE_VERSION, etag=True, action=A.LISTING_EDIT),
     Operation("listings_regenerate", "POST", "/listings/{listing_id}/regenerate", 202,
               JobAccepted, "listings", "Regenerate an existing listing", "S18",
-              path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE),
+              path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE,
+              extra_codes=_AI_ADMISSION),
     Operation("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields",
               202, JobAccepted, "listings", "Retry only the fields that failed to publish",
               "S21", path_id="listing_id", idempotency=True,

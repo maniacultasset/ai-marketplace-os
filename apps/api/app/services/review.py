@@ -52,7 +52,7 @@ from app.core.rbac import Principal
 from app.core.request_context import current_request_id
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
-from app.services.budget import BudgetExceededError, precheck
+from app.services.budget import CREDIT_MESSAGES, BudgetExceededError, CreditPausedError, precheck
 from app.services.generation import enqueue_generate
 from app.services.generation_context import previous_listing
 from app.services.image_gate import evaluate_image_gate
@@ -88,6 +88,8 @@ _MESSAGES: Final[Mapping[ErrorCode, str]] = {
         "Whoever generated or edited this version cannot approve it."
     ),
     ErrorCode.BUDGET_EXCEEDED: "The daily generation budget is spent.",
+    ErrorCode.AI_CREDIT_EXHAUSTED: CREDIT_MESSAGES["credit_exhausted"],
+    ErrorCode.AI_PROVIDER_KEY_INVALID: CREDIT_MESSAGES["key_invalid"],
     ErrorCode.IMAGE_NON_COMPLIANT: "An image blocks the approval.",
     ErrorCode.INTERNAL_ERROR: "Internal error.",
 }
@@ -96,6 +98,8 @@ _STATUS: Final[Mapping[ErrorCode, int]] = {
     ErrorCode.MAKER_CHECKER_VIOLATION: 403,
     ErrorCode.IMAGE_NON_COMPLIANT: 422,
     ErrorCode.BUDGET_EXCEEDED: 429,
+    ErrorCode.AI_CREDIT_EXHAUSTED: 503,
+    ErrorCode.AI_PROVIDER_KEY_INVALID: 503,
     ErrorCode.INTERNAL_ERROR: 500,
 }
 ALREADY_APPROVED: Final = "edit or regenerate to approve again"
@@ -337,6 +341,8 @@ async def _reject_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome:
             await precheck(uow, datetime.now(UTC))
         except BudgetExceededError:
             raise Refused(ErrorCode.BUDGET_EXCEEDED) from None
+        except CreditPausedError as exc:
+            raise Refused(exc.code) from None
         job_id = await enqueue_generate(uow, ctx.principal, ctx.http_key, listing.id, None)
     await uow.review_decisions.insert_reject(
         listing.id,

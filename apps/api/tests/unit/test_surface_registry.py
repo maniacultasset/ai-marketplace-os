@@ -439,10 +439,16 @@ def test_error_codes_per_d2() -> None:
         "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
         "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),
     }
+    # SI10: generate and regenerate also answer a daily cap (429) and the platform AI pause (503)
+    ai_admission = {"listings_generate", "listings_regenerate"}
     for op in OPS.values():
         codes = op.error_codes
         c = cases(op)
-        assert codes[429] == (E.RATE_LIMITED,)
+        if op.op_id in ai_admission:
+            assert codes[429] == (E.RATE_LIMITED, E.BUDGET_EXCEEDED), op.op_id
+            assert codes[503] == (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID), op.op_id
+        else:
+            assert codes[429] == (E.RATE_LIMITED,)
         public_401 = {"auth_login", "auth_refresh", "signup_status"} | MFA_PUBLIC_401
         if op.op_id in GOOGLE_JSON:
             assert codes[401] == (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), op.op_id
