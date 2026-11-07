@@ -284,8 +284,13 @@ async def test_amazon_get_states() -> None:
     sent = _five()
     await adapter.create_listing(sent)
     got = await adapter.get_listing(sent.seller_sku, listing_id=sent.listing_id)
-    assert (got.status, got.marketplace_state, got.listing_id) == ("published", "processing", sent.listing_id)  # fmt: skip
+    # SI9: the fake's default GET (DISCOVERABLE + ASIN) is on Amazon but not buyable
+    assert (got.status, got.marketplace_state, got.listing_id, got.not_buyable) == ("published", "inactive", sent.listing_id, True)  # fmt: skip
     assert got.external_id and got.external_id.startswith("B0")
+    app.state.fake.spapi_get[sent.seller_sku] = "no_summary"
+    got = await adapter.get_listing(sent.seller_sku)
+    assert (got.marketplace_state, got.not_buyable) == ("processing", False)
+    del app.state.fake.spapi_get[sent.seller_sku]
     app.state.fake.spapi_summary[sent.seller_sku] = "BUYABLE"
     got = await adapter.get_listing(sent.seller_sku)
     assert got.marketplace_state == "live"

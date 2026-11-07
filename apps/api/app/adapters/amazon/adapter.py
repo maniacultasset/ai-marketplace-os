@@ -20,8 +20,10 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
   to every path feeding it, so the full value is sent and each path is reported (C6).
 - `publish_listing` is `create_listing`: Listings Items PUT is create-or-replace (C11, DW1).
 - `get_listing` (S21 CP6): BUYABLE -> live; an item-level ERROR issue and no BUYABLE -> rejected;
-  attribute ERROR issues -> partially live (S20); neither BUYABLE nor DISCOVERABLE -> inactive; else
-  processing; 404 -> `ListingNotFound`.
+  attribute ERROR issues -> partially live (S20); a summary with an ASIN and none of those ->
+  inactive with `not_buyable` (SI9 B3: Amazon has the product page, the offer or stock is missing;
+  DISCOVERABLE-only and an empty status alike); a summary without an ASIN and no DISCOVERABLE ->
+  inactive; else (no summary yet) processing; 404 -> `ListingNotFound`.
 - Reply shape (audit JOBS-3): a 200 reply whose structure cannot be read (not an object, `status`
   not a string, `issues`/`summaries`/`summaries[].status` not lists, a summary not an object,
   `attributes` not an object) is `MarketplaceAmbiguous` after a write (read before any resend)
@@ -499,18 +501,22 @@ class AmazonAdapter(MarketplaceAdapter):
         # an ERROR issue naming attributes is a partial item (S20 contract: a partial create reads
         # back partially live); one naming none refuses the item as a whole
         item_errors = [i for i in open_errors if not _names(i.get("attributeNames"))]
+        asin = summary.get("asin")
         status = "published"
+        not_buyable = False
         if c.BUYABLE in states:
             state = MarketplaceState.LIVE
         elif item_errors:
             status, state = "failed", MarketplaceState.REJECTED
         elif open_errors:
             status, state = "partially_published", MarketplaceState.PARTIALLY_LIVE
+        elif asin:
+            # SI9 B3: the product page exists, the offer or stock does not
+            state, not_buyable = MarketplaceState.INACTIVE, True
         elif summaries and c.DISCOVERABLE not in states:
             state = MarketplaceState.INACTIVE
         else:
             state = MarketplaceState.PROCESSING
-        asin = summary.get("asin")
         read_fields, read_errors = self._read_fields(paths, issues, index)
         return ListingRead(
             listing_id=listing_id or NO_LISTING_ID,
@@ -522,6 +528,7 @@ class AmazonAdapter(MarketplaceAdapter):
             errors=read_errors,
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
+            not_buyable=not_buyable,
         )
 
     def _read_fields(
