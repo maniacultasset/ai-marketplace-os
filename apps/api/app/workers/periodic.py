@@ -510,6 +510,45 @@ async def sweep_deleted_image_objects() -> dict[str, int]:
     return {"cleared": cleared, "failed": failed}
 
 
+CANDIDATE_DAYS: Final = 30
+CANDIDATE_BATCH: Final = 500
+
+
+async def sweep_image_candidates(*, now: datetime | None = None) -> dict[str, int]:
+    """SI7 (AC16): per tenant, at most `CANDIDATE_BATCH` candidates older than `CANDIDATE_DAYS`
+    that were never accepted (an accepted one stays as provenance): delete the object at its
+    candidate key (whether or not the row names it, CODE-PLAN §12 LOW 8), then the row. A store
+    failure leaves the row for the next run. Logs carry counts only."""
+    from app.adapters.storage import StorageUnavailable
+    from app.repositories.uow import tenant_uow
+    from app.services.image_keys import candidate_key
+
+    cut = (now or datetime.now(UTC)) - timedelta(days=CANDIDATE_DAYS)
+    async with platform_scope() as session:
+        tenants = await retention.tenant_ids(session)
+    deleted = failed = 0
+    storage = None
+    for tenant_id in tenants:
+        async with tenant_uow(tenant_id) as uow:
+            rows = await uow.image_candidates.expired(cut, CANDIDATE_BATCH)
+        for row in rows:
+            storage = storage or get_storage()
+            keys = {candidate_key(tenant_id, row.product_id, row.id)}
+            if row.storage_key:
+                keys.add(row.storage_key)
+            try:
+                for key in sorted(keys):
+                    await storage.delete(images_bucket(), key)
+            except StorageUnavailable:
+                failed += 1
+                continue
+            async with tenant_uow(tenant_id) as uow:
+                if await uow.image_candidates.delete(row.id):
+                    deleted += 1
+    log.info("periodic.image_candidates", deleted=deleted, failed=failed)
+    return {"deleted": deleted, "failed": failed}
+
+
 async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     """The daily retention pass; returns the rows deleted per table across tenants (and the
     image orphans deleted)."""
@@ -545,6 +584,11 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     except Exception as exc:  # the store is down: the rows keep their markers for tomorrow
         log.exception("periodic.deleted_image_objects_failed", error_class=type(exc).__name__)
         totals["deleted_image_objects"] = 0
+    try:  # SI7: candidates past 30 days that were never accepted
+        totals["image_candidates"] = (await sweep_image_candidates())["deleted"]
+    except Exception as exc:
+        log.exception("periodic.image_candidates_failed", error_class=type(exc).__name__)
+        totals["image_candidates"] = 0
     log.info("periodic.retention", **totals)
     return totals
 
