@@ -987,6 +987,64 @@
         },
         "additionalProperties": false
       }
+    },
+    "externally_assigned_product_identifier": {
+      "title": "External Product ID",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "value"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "ean",
+              "gtin",
+              "upc"
+            ]
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^[0-9]{8,14}$"
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
+    "supplier_declared_has_product_identifier_exemption": {
+      "title": "Product ID Exemption",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "boolean"
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
     }
   },
   "required": [

@@ -32,6 +32,13 @@ MAX_MONEY: Final = Decimal("9999999999.99")
 REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin")
 # SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
 MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
+# SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,
+# never on a parent). Our identifier type -> Amazon's `type` spelling.
+EXTERNAL_ID_ATTRIBUTE: Final = "externally_assigned_product_identifier"
+EXEMPTION_ATTRIBUTE: Final = "supplier_declared_has_product_identifier_exemption"
+IDENTIFIER_TYPES: Final[Mapping[str, str]] = MappingProxyType(
+    {"ean": "ean", "upc": "upc", "gtin": "gtin"}
+)
 
 # C6: canonical content and keyword paths -> Amazon attributes
 CONTENT_FIELDS: Final[Mapping[str, str]] = MappingProxyType(
