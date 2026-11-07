@@ -158,3 +158,30 @@ async def test_api1_no_side_effect_on_foreign(api: httpx.AsyncClient, world2: Wo
         reset_rate_limits(conn)
         await send(api, call_for(op, world2, "acme"), world2.headers(OWNER))
     assert tenant_fingerprint(conn, acme) == before
+
+
+async def test_api1_create_with_a_foreign_upload_404(
+    api: httpx.AsyncClient, world2: World2
+) -> None:
+    """SI1 CP8: bharat creates a product naming acme's image key in `image_uploads` (under the
+    key's own product id): 404 before any row is written, and no acme value is echoed."""
+    from app.services.image_keys import parse_image_key
+
+    conn = world2.base.conn
+    acme = world2.side("acme").tenant_id
+    before = tenant_fingerprint(conn, acme)
+    key = _acme_key(world2)
+    parsed = parse_image_key(key)
+    product_id = parsed.product_id if parsed is not None else world2.side("acme").ids["product_id"]
+    body = {
+        "sku": "S26-FOREIGN-UPLOAD",
+        "title": "Foreign upload",
+        "category": "kurtas",
+        "id": str(product_id),
+        "image_uploads": [{"storage_key": key, "slot": "main"}],
+    }
+    response = await api.post("/api/v1/products", json=body, headers=world2.headers(OWNER))
+    assert response.status_code in (404, 422), response.text
+    for value in world2.foreign_values("acme"):
+        assert value not in response.text or value in repr(body)
+    assert tenant_fingerprint(conn, acme) == before

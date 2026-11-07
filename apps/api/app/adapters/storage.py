@@ -128,13 +128,25 @@ class ObjectStorage:
     def __repr__(self) -> str:
         return "ObjectStorage(<s3 client>)"
 
-    async def put(self, bucket: str, key: str, data: bytes, content_type: str) -> None:
+    async def put(
+        self,
+        bucket: str,
+        key: str,
+        data: bytes,
+        content_type: str,
+        *,
+        cache_control: str | None = None,
+    ) -> None:
         """Write the object. A 5xx or an unreachable store is `StorageUnavailable` (retryable),
-        as on `get` (KNOWN-ISSUES §E, S13b: `put` used to map nothing)."""
+        as on `get` (KNOWN-ISSUES §E, S13b: `put` used to map nothing). `cache_control` sets the
+        object's `Cache-Control` (SI1: the public copies)."""
+        extra = {} if cache_control is None else {"CacheControl": cache_control}
 
         def write() -> None:
             try:
-                self._client.put_object(Bucket=bucket, Key=key, Body=data, ContentType=content_type)
+                self._client.put_object(
+                    Bucket=bucket, Key=key, Body=data, ContentType=content_type, **extra
+                )
             except ClientError as exc:
                 code, status = _client_error(exc)
                 if _unavailable(code, status):
@@ -368,6 +380,11 @@ def csv_bucket() -> str:
 
 def images_bucket() -> str:
     return get_settings().gcs_bucket_images
+
+
+def images_public_bucket() -> str | None:
+    """The public bucket of clean copies (SI1, ADR-0026), or None when not configured."""
+    return get_settings().gcs_bucket_images_public
 
 
 def submissions_bucket() -> str:

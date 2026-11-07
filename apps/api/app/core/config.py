@@ -176,6 +176,10 @@ class Settings(BaseSettings):
     gcs_bucket_images: str = "marketplace-images"
     gcs_bucket_csv: str = "marketplace-csv"
     gcs_bucket_submissions: str = "marketplace-submissions"  # S21 D5: snapshots, raw bodies
+    # SI1 (ADR-0026, CP1): the public bucket of clean copies and the URL prefix marketplaces
+    # fetch from. Both or neither; unset, a publish that would send images fails closed.
+    gcs_bucket_images_public: str | None = None
+    image_public_base_url: str | None = None
     s3_endpoint_url: str = "http://localhost:9000"
     s3_access_key: str = "local_only_minio_root_user"
     s3_secret_key: str = Field(default="local_only_minio_root_password_32_chars", repr=False)
@@ -278,6 +282,8 @@ class Settings(BaseSettings):
         "google_oauth_client_id",
         "google_oauth_client_secret",
         "edge_origin_secret",
+        "gcs_bucket_images_public",
+        "image_public_base_url",
         mode="before",
     )
     @classmethod
@@ -469,6 +475,31 @@ def _storage_errors(s: Settings) -> list[str]:
     return errors
 
 
+def _image_public_errors(s: Settings) -> list[str]:
+    """CP1 (ADR-0026): `GCS_BUCKET_IMAGES_PUBLIC` and `IMAGE_PUBLIC_BASE_URL` are set together.
+    Outside local the base URL is `https://`, has no query, fragment or trailing `/`, and its
+    host is not the object-store endpoint's (the public copies have their own domain)."""
+    bucket, base = s.gcs_bucket_images_public, s.image_public_base_url
+    if (bucket is None) != (base is None):
+        return ["GCS_BUCKET_IMAGES_PUBLIC and IMAGE_PUBLIC_BASE_URL are set together or not at all"]
+    if base is None or s.app_env == "local":
+        return []
+    errors: list[str] = []
+    parts = urlsplit(base)
+    if parts.scheme != "https" or not parts.hostname:
+        errors.append(f"APP_ENV={s.app_env} requires an https IMAGE_PUBLIC_BASE_URL")
+    if parts.query or parts.fragment or "?" in base or "#" in base:
+        errors.append("IMAGE_PUBLIC_BASE_URL must not carry a query or fragment")
+    if base.endswith("/"):
+        errors.append("IMAGE_PUBLIC_BASE_URL must not end with '/'")
+    if parts.username is not None or parts.password is not None or "@" in parts.netloc:
+        errors.append("IMAGE_PUBLIC_BASE_URL must not carry userinfo")
+    endpoint = urlsplit(s.s3_endpoint_url).hostname
+    if parts.hostname and endpoint and parts.hostname.lower() == endpoint.lower():
+        errors.append("IMAGE_PUBLIC_BASE_URL must be on another host than S3_ENDPOINT_URL")
+    return errors
+
+
 def _url_errors(s: Settings) -> list[str]:
     if s.app_env == "local" or s.app_role not in ("api", "worker"):
         return []
@@ -560,6 +591,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _mfa_errors(s)
     errors += _url_errors(s)
     errors += _storage_errors(s)
+    errors += _image_public_errors(s)
     errors += _embedding_errors(s)
     errors += _vision_errors(s)
     errors += _generation_errors(s)

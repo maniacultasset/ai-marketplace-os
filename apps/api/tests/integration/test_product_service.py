@@ -183,7 +183,7 @@ async def test_create_writes_one_audit_row(world: World, auth_db: Conn) -> None:
         world.user("operator@acme.test"),
     )
     assert (entity_type, entity_id, before) == ("product", view.id, None)
-    assert set(after) == {"attributes"}
+    assert set(after) == {"attributes", "provenance"}  # SI1 T11: the typed facts too
     assert set(after["attributes"]) == {"color", "fabric_type"}
 
 

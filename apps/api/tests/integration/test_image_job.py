@@ -298,3 +298,51 @@ async def test_image_job_content_hash_matches_object(
         image_db_row(images_db.conn, image_id)["content_hash"]
         == hashlib.sha256(store.objects[key][0]).hexdigest()
     )
+
+
+# ---- SI1 T16 (AC9; CP17): the derivatives ----
+
+
+async def test_image_job_writes_derivatives(images_db: JobWorld, store: FakeStorage) -> None:
+    from tests.image_fixtures import jpeg_with_gps_orientation6
+
+    image_id, _ = await checked(images_db, store, jpeg_with_gps_orientation6(400, 200))
+    row = image_db_row(images_db.conn, image_id)
+    tenant, product_id = images_db.tenant("acme"), row["product_id"]
+    clean_key = f"{tenant}/{product_id}/derived/{image_id}/clean.jpg"
+    vision_key = f"{tenant}/{product_id}/derived/{image_id}/vision.jpg"
+    assert clean_key in store.objects and vision_key in store.objects
+    assert hashlib.sha256(store.objects[clean_key][0]).hexdigest() == row["clean_content_hash"]
+    assert row["clean_mime_type"] == "image/jpeg"
+    assert row["metadata"]["vision"] == {"w": 200, "h": 400}
+    # a re-run overwrites the same keys
+    again = await enqueue_image_job(tenant, image_id)
+    await run_image_job(again)
+    assert sorted(k for k in store.objects if "/derived/" in k) == sorted([clean_key, vision_key])
+
+
+async def test_derive_failure_keeps_passing_report(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(image_runner, "DERIVE_MODULE", "tests.support.image_derive_fakes")
+    # the fake answers `null` for a JPEG (its first byte picks the mode): derive found nothing
+    image_id, _ = await checked(images_db, store, picture(1000, 1000))
+    row = image_db_row(images_db.conn, image_id)
+    assert row["compliance_status"] == "passed"
+    assert row["clean_content_hash"] is None
+    assert not [k for k in store.objects if "/derived/" in k]
+
+
+async def test_derived_put_failure_retries_and_row_stays_pending(
+    images_db: JobWorld, store: FakeStorage
+) -> None:
+    store.fail = {"put": StorageUnavailable("down")}
+    image_id, job_id = await checked(images_db, store, picture(500, 500), max_runs=5)
+    assert job_row(images_db.conn, job_id)["status"] == "dead_letter"
+    assert image_db_row(images_db.conn, image_id)["compliance_status"] == "pending"
+
+
+async def test_corrupt_image_writes_no_derivative(images_db: JobWorld, store: FakeStorage) -> None:
+    image_id, _ = await checked(images_db, store, b"\xff\xd8\xff not really a jpeg")
+    assert image_db_row(images_db.conn, image_id)["clean_content_hash"] is None
+    assert not [k for k in store.objects if "/derived/" in k]

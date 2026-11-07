@@ -166,8 +166,8 @@ def test_make_dev_uvicorn_keeps_loopback_default(repo_root: Path) -> None:
     assert "--host" not in body
 
 
-def test_services_exactly_three(compose: dict[str, Any]) -> None:
-    assert set(compose["services"]) == {"postgres", "minio", "minio-init"}
+def test_services_exactly_four(compose: dict[str, Any]) -> None:
+    assert set(compose["services"]) == {"postgres", "minio", "minio-init", "minio-init-public"}
 
 
 def test_minio_pinned_by_digest_with_site_command_ports_volume(
@@ -254,12 +254,14 @@ def test_init_creates_both_buckets_idempotently(compose: dict[str, Any], repo_ro
     images = re.search(r"^GCS_BUCKET_IMAGES=(.+)$", example, re.MULTILINE)
     csv = re.search(r"^GCS_BUCKET_CSV=(.+)$", example, re.MULTILINE)
     submissions = re.search(r"^GCS_BUCKET_SUBMISSIONS=(.+)$", example, re.MULTILINE)  # S21
+    public = re.search(r"^GCS_BUCKET_IMAGES_PUBLIC=(.+)$", example, re.MULTILINE)  # SI1
     assert images is not None and csv is not None and submissions is not None
+    assert public is not None
     assert names == [images.group(1), csv.group(1), submissions.group(1)]
     assert _as_command(service["command"]) == [
         "mb",
         "--ignore-existing",
-        *[f"local/{name}" for name in names],
+        *[f"local/{name}" for name in (*names, public.group(1))],
     ]
     raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
     assert raw.count("local/marketplace-csv") == 1
@@ -271,3 +273,32 @@ def test_postgres_mounts_only_bootstrap_sql(compose: dict[str, Any]) -> None:
         "pgdata:/var/lib/postgresql/data",
         "./scripts/db/0000_bootstrap.sql:/docker-entrypoint-initdb.d/0000_bootstrap.sql:ro",
     ]
+
+
+# ---- SI1 T17 (CP7, ADR-0026): the public bucket's anonymous GetObject policy ----
+
+
+def test_init_public_sets_a_get_only_policy(compose: dict[str, Any], repo_root: Path) -> None:
+    service = compose["services"]["minio-init-public"]
+    assert MINIO_CLIENT_IMAGE.fullmatch(service["image"])
+    assert service["image"] == compose["services"]["minio-init"]["image"]
+    assert service["depends_on"] == {"minio-init": {"condition": "service_completed_successfully"}}
+    assert service["restart"] == "on-failure:10"
+    assert "ports" not in service
+    command = _as_command(service["command"])
+    assert command[:2] == ["anonymous", "set-json"]
+    assert command[-1] == "local/marketplace-images-public"
+    assert service["volumes"] == ["./infra/minio/public-read.json:/policy/public-read.json:ro"]
+    raw = (repo_root / "docker-compose.yml").read_text(encoding="utf-8")
+    assert "set download" not in raw and '"download"' not in raw
+
+
+def test_public_policy_has_no_list(repo_root: Path) -> None:
+    import json
+
+    policy = json.loads((repo_root / "infra/minio/public-read.json").read_text(encoding="utf-8"))
+    actions = [a for st in policy["Statement"] for a in st["Action"]]
+    resources = [r for st in policy["Statement"] for r in st["Resource"]]
+    assert actions == ["s3:GetObject"]
+    assert resources == ["arn:aws:s3:::marketplace-images-public/*"]
+    assert all(st["Effect"] == "Allow" for st in policy["Statement"])

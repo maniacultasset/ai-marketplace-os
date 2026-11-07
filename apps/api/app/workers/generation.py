@@ -34,6 +34,7 @@ Log lines carry ids and codes only: no instruction, product or model text.
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
@@ -46,11 +47,13 @@ from mkos_schemas.enums import ErrorSource, JobKind, Marketplace, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import AgentBlockStatus
 
+from app.adapters.storage import get_storage
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.resolved_facts import facts_digest, for_rules
 from app.repositories.uow import tenant_uow
 from app.services.generation_context import GenerationContextError, build_context
+from app.services.generation_images import load_context_images, order_for_listing, pick_context
 from app.services.generation_persist import PersistPlan, Pins, make_persist
 from app.services.generation_result import (
     Untrusted,
@@ -195,6 +198,13 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             ) from None
         claim_started_at = job.started_at or datetime.now(UTC)
         created_by = job.created_by
+        image_rows = await uow.images.listing_set(listing.product_id)
+
+    # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
+    # transaction open; a missing one is skipped and logged by id
+    context_images = await load_context_images(get_storage(), tenant, pick_context(image_rows))
+    if context_images:
+        gctx = gctx.model_copy(update={"images": context_images})
 
     product = for_rules(facts)
     pins = Pins(
@@ -276,6 +286,11 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             zero_reservation=salvaged is not None,
         )
     trusted = checked
+    if trusted.listing is not None:
+        # CP15: the backend pins the version's images before the re-check, so the stored
+        # re-check judged the images the version holds (a pipeline value is replaced)
+        pinned = trusted.listing.model_copy(update={"images": order_for_listing(image_rows)})
+        trusted = dataclasses.replace(trusted, listing=pinned)
     attempts_used = len(deps.rules_calls)
     if attempts_used != trusted.result.attempts_used:
         log.info(

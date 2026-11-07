@@ -480,6 +480,36 @@ async def sweep_image_orphans(now: datetime | None = None) -> int:
     return sweep.deleted
 
 
+DELETED_IMAGE_BATCH: Final = 500
+
+
+async def sweep_deleted_image_objects() -> dict[str, int]:
+    """SI1 decision 21: per tenant, at most `DELETED_IMAGE_BATCH` soft-deleted images that still
+    have a public copy or derivatives: delete the objects, then clear the markers (the public
+    name stays as a tombstone, CP16). A store failure leaves the row for the next run."""
+    from app.adapters.storage import get_storage
+    from app.repositories.uow import tenant_uow
+    from app.services.image_objects import delete_image_objects
+
+    async with platform_scope() as session:
+        tenants = await retention.tenant_ids(session)
+    cleared = failed = 0
+    storage = None
+    for tenant_id in tenants:
+        async with tenant_uow(tenant_id) as uow:
+            rows = await uow.images.deleted_with_objects(DELETED_IMAGE_BATCH)
+        for row in rows:
+            storage = storage or get_storage()
+            if not await delete_image_objects(storage, tenant_id, row):
+                failed += 1
+                continue
+            async with tenant_uow(tenant_id) as uow:
+                await uow.images.clear_objects(row.id)
+            cleared += 1
+    log.info("periodic.deleted_image_objects", cleared=cleared, failed=failed)
+    return {"cleared": cleared, "failed": failed}
+
+
 async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     """The daily retention pass; returns the rows deleted per table across tenants (and the
     image orphans deleted)."""
@@ -509,6 +539,12 @@ async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
         # stays; the sweep runs again tomorrow from another start key
         log.exception("periodic.image_orphans_failed", error_class=type(exc).__name__)
         totals["image_orphans"] = 0
+    try:
+        swept = await sweep_deleted_image_objects()
+        totals["deleted_image_objects"] = swept["cleared"]
+    except Exception as exc:  # the store is down: the rows keep their markers for tomorrow
+        log.exception("periodic.deleted_image_objects_failed", error_class=type(exc).__name__)
+        totals["deleted_image_objects"] = 0
     log.info("periodic.retention", **totals)
     return totals
 

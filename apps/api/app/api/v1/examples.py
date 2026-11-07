@@ -86,6 +86,23 @@ def _product(pid: str, sku: str, title: str) -> dict[str, Any]:
     }
 
 
+_BRAND_PROFILE: Final = {
+    "default_manufacturer": {
+        "id": PRODUCT_1,
+        "legal_name": "Fabindia Apparel Pvt Ltd",
+        "address_line1": "12 MG Road",
+        "address_line2": None,
+        "city": "Bengaluru",
+        "state_code": "KA",
+        "postal_code": "560001",
+        "country_code": "IN",
+        "gstin": "29ABCDE1234F1Z5",
+        "inherited": False,
+    },
+    "updated_at": T0,
+}
+
+
 def _page(data: list[Any], limit: int = 50) -> dict[str, Any]:
     return {"data": data, "page": {"next_cursor": None, "has_more": False, "limit": limit}}
 
@@ -547,6 +564,15 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ]
         ),
         "products_get": _product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+        "brand_profile_get": _BRAND_PROFILE,
+        "brand_profile_update": _BRAND_PROFILE,
+        "products_update": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "style_number": "KS-24",
+            "mrp": "1499.00",
+            "selling_price": "1299.00",
+            "currency": "INR",
+        },
         "products_bulk": {
             "import_id": IMPORT,
             "job_id": JOB,
@@ -663,7 +689,9 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "storage_key": f"t/{TENANT}/img/{PRODUCT_1}/main.jpg",
             "expires_at": T1,
             "headers": {"Content-Type": "image/jpeg"},
+            "product_id": PRODUCT_1,
         },
+        "images_delete": None,
         "images_upload": {
             "image_id": IMAGE,
             "job_id": JOB,

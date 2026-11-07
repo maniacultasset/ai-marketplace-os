@@ -93,7 +93,10 @@ class CanonicalListing(WireModel):
     content: ListingContent
     keywords: ListingKeywords = Field(default_factory=ListingKeywords)
     attributes: dict[AttrKey, AttributeValue] = Field(default_factory=dict)
-    images: list[ImageRef] = Field(default_factory=list)
+    images: list[ImageRef] = Field(
+        default_factory=list,
+        description="Set by the backend from the product's images; a pipeline value is replaced.",
+    )
     confidence_score: Annotated[float | None, Field(default=None, ge=0.0, le=1.0)] = None
     generated_by_agent_run_id: UUID | None = None
     created_at: AwareDatetime | None = None

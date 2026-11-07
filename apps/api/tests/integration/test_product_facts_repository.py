@@ -188,3 +188,95 @@ async def test_brand_profile_for_prompt_other_tenant_absent(world: Any) -> None:
     f.brand_profile(world.conn, world.tenant("bharat"), brand_description="Bharat only.")
     shown = await _brand(world.tenant("acme"))
     assert shown["brand_description"] is None
+
+
+# ---- SI1 T9 (AC7, seam S-b): structured party fields and the override order ----
+
+
+async def test_resolve_structured_party_fields(world: Any) -> None:
+    acme = world.tenant("acme")
+    maker = f.party(
+        world.conn,
+        acme,
+        address_line1="12 MG Road",
+        address_line2="Floor 2",
+        city="Bengaluru",
+        state_code="KA",
+        postal_code="560001",
+    )
+    p = f.product(world.conn, acme, manufacturer_party_id=maker)
+    facts = await _resolve(acme, p)
+    assert facts is not None
+    m = facts.compliance.manufacturer
+    assert (m.address_line1, m.address_line2, m.city, m.state_code, m.postal_code) == (
+        "12 MG Road",
+        "Floor 2",
+        "Bengaluru",
+        "KA",
+        "560001",
+    )
+    assert m.country_code == "IN"
+    assert m.address == "12 MG Road, Floor 2, Bengaluru, KA, 560001, IN"
+
+
+async def test_product_override_beats_brand_default(world: Any) -> None:
+    from app.repositories.product_facts import manufacturer_inherited
+
+    acme = world.tenant("acme")
+    default = f.party(world.conn, acme, legal_name="Brand Default Pvt Ltd")
+    own = f.party(world.conn, acme, legal_name="Own Maker Pvt Ltd")
+    f.brand_profile(
+        world.conn,
+        acme,
+        default_manufacturer_party_id=default,
+        provenance={"manufacturer": f.fact(value=None)},
+    )
+    overridden = f.product(world.conn, acme, manufacturer_party_id=own)
+    plain = f.product(world.conn, acme)
+    facts = await _resolve(acme, overridden)
+    assert facts is not None and facts.compliance.manufacturer.legal_name == "Own Maker Pvt Ltd"
+    inherited = await _resolve(acme, plain)
+    assert inherited is not None
+    assert inherited.compliance.manufacturer.legal_name == "Brand Default Pvt Ltd"
+
+    class _Row:
+        def __init__(self, party: uuid.UUID | None) -> None:
+            self.manufacturer_party_id = party
+
+    assert manufacturer_inherited(_Row(None), None)  # type: ignore[arg-type]
+    assert not manufacturer_inherited(_Row(own), None)  # type: ignore[arg-type]
+    assert not manufacturer_inherited(_Row(None), _Row(own))  # type: ignore[arg-type]
+
+
+async def test_style_override_reaches_its_variant(world: Any) -> None:
+    acme = world.tenant("acme")
+    style_maker = f.party(world.conn, acme, legal_name="Style Maker Pvt Ltd")
+    style = f.product(
+        world.conn,
+        acme,
+        "style",
+        variation_theme="size",
+        size_run=["m"],
+        manufacturer_party_id=style_maker,
+    )
+    with world.conn.transaction():
+        child = f.product(
+            world.conn,
+            acme,
+            "child",
+            parent=style,
+            variant_attributes={"size": "m"},
+            attributes={"size": f.fact(value="M", normalized="m")},
+        )
+        f.cell(
+            world.conn,
+            acme,
+            style,
+            size_key="m",
+            availability="available",
+            unavailable_reason=None,
+            variant_product_id=child,
+        )
+    facts = await _resolve(acme, child)
+    assert facts is not None
+    assert facts.compliance.manufacturer.legal_name == "Style Maker Pvt Ltd"

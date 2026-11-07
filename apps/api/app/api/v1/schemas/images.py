@@ -17,7 +17,13 @@ ImageContentType = Literal["image/jpeg", "image/png", "image/webp"]
 
 
 class UploadUrlRequest(StrictModel):
-    product_id: UUID
+    product_id: UUID | None = Field(
+        default=None,
+        description=(
+            "Omit to mint a product id for a product not created yet (SI1): send it back as "
+            "`id` with `image_uploads` on `POST /products`."
+        ),
+    )
     slot: ImageSlot
     content_type: ImageContentType
     bytes: Annotated[int, Field(ge=1, le=MAX_IMAGE_BYTES)]
@@ -28,6 +34,7 @@ class UploadUrlOut(WireModel):
     storage_key: StorageKey
     expires_at: AwareDatetime
     headers: dict[str, str] = Field(default_factory=dict)
+    product_id: UUID = Field(description="The product the key belongs to (minted when omitted).")
 
 
 class ImageAccepted(WireModel):

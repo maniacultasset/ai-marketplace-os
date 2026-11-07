@@ -362,6 +362,8 @@ name = the image check child imports no app layer, DB, storage or HTTP client
 type = forbidden
 source_modules =
     app.services.image_check_child
+    app.services.image_derive_child
+    app.services.image_derive
 forbidden_modules =
     app.core
     app.db

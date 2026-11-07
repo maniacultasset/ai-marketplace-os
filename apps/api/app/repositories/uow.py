@@ -26,6 +26,7 @@ from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.budget import BudgetRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.error_map import ErrorMapRepository
+from app.repositories.facts import FactWriter
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
 from app.repositories.images import ImageRepository
@@ -35,6 +36,7 @@ from app.repositories.listings import ListingRepository, ListingVersionRepositor
 from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.members import MembersRepository
 from app.repositories.oauth_states import OAuthStateRepository
+from app.repositories.parties import BrandProfileRepository, BusinessPartyRepository
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.product_type_definitions import ProductTypeDefinitionRepository
 from app.repositories.products import ProductRepository
@@ -49,6 +51,7 @@ from app.repositories.templates import CategoryTemplateRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import unit_of_work
 from app.repositories.validation_runs import ValidationRunRepository
+from app.repositories.variants import ColourwayRepository
 
 __all__ = ["TenantUnitOfWork", "repositories_on", "tenant_uow"]
 
@@ -94,6 +97,11 @@ class TenantUnitOfWork:
     listing_items: ListingItemRepository
     # DW2: the stored Amazon Product Type Definitions (platform-global, SELECT only).
     ptd: ProductTypeDefinitionRepository
+    # SI1: the fact writer, the address book, the brand profile row and the colourways.
+    facts: FactWriter
+    parties: BusinessPartyRepository
+    brand_profiles: BrandProfileRepository
+    colourways: ColourwayRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -132,6 +140,10 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         field_results=PublishFieldResultRepository(session, tenant_id),
         listing_items=ListingItemRepository(session, tenant_id),
         ptd=ProductTypeDefinitionRepository(session),
+        facts=FactWriter(session, tenant_id),
+        parties=BusinessPartyRepository(session, tenant_id),
+        brand_profiles=BrandProfileRepository(session, tenant_id),
+        colourways=ColourwayRepository(session, tenant_id),
     )
 
 

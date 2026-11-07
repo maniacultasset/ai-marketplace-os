@@ -25,6 +25,7 @@ class AttributeDef:
     storage: str
     owner_levels: tuple[str, ...]
     input_aliases: tuple[str, ...]
+    value_type: str = "text"
 
 
 class AttributeDefinitionRepository:
@@ -44,6 +45,7 @@ class AttributeDefinitionRepository:
                 AttributeDefinition.storage,
                 AttributeDefinition.owner_levels,
                 AttributeDefinition.input_aliases,
+                AttributeDefinition.value_type,
             )
             .where(
                 AttributeDefinition.enabled.is_(True),
@@ -61,6 +63,7 @@ class AttributeDefinitionRepository:
                 storage=row.storage,
                 owner_levels=tuple(row.owner_levels),
                 input_aliases=tuple(row.input_aliases),
+                value_type=row.value_type,
             )
             for row in rows
         ]

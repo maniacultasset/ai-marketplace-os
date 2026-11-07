@@ -48,7 +48,8 @@ async def test_upload_url_success(images_db: JobWorld, api: httpx.AsyncClient, r
     response = await mint(images_db, api, f"{role}@acme.test")
     assert response.status_code == 200, response.text
     out = response.json()
-    assert set(out) == {"upload_url", "storage_key", "expires_at", "headers"}
+    # SI1 D3: UploadUrlOut carries product_id (echoed here, minted when the request omits it)
+    assert set(out) == {"upload_url", "storage_key", "expires_at", "headers", "product_id"}
     assert out["headers"] == {"Content-Type": "image/jpeg", "If-None-Match": "*"}
 
 

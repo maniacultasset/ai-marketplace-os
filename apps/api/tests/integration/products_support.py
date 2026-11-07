@@ -3,13 +3,31 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator
+import re
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
 
 import psycopg
 
 Conn = psycopg.Connection[tuple[Any, ...]]
+
+SIZE_MEASURES = ("chest", "waist", "hip", "length", "shoulder", "sleeve", "inseam")
+_PHONE = re.compile(r"\+?[0-9][0-9 -]{7,}")
+# Fact envelopes carry ISO `updated_at` stamps, whose digits and dashes look like a phone number.
+_ISO_STAMP = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?")
+
+
+def wire_chart(chart: Mapping[str, Any]) -> dict[str, Any]:
+    """`chart` as `ProductOut.size_chart` returns it: every `SizeChartRow` measure is present,
+    `null` when not given (the typed wire model, CODE-PLAN SI1 T5)."""
+    rows = [{"size": r["size"], **{m: r.get(m) for m in SIZE_MEASURES}} for r in chart["rows"]]
+    return {**chart, "rows": rows}
+
+
+def has_phone(text: str) -> bool:
+    """A phone-like digit run in `text`, ignoring ISO timestamps."""
+    return _PHONE.search(_ISO_STAMP.sub("", text)) is not None
 
 
 def seed_dictionary(conn: Conn) -> None:
@@ -97,6 +115,17 @@ PRODUCT_FIELDS = frozenset(
         "parent_product_id",
         "created_at",
         "updated_at",
+        # SI1 D1c
+        "style_number",
+        "mrp",
+        "selling_price",
+        "currency",
+        "fiber_composition",
+        "size_chart",
+        "size_chart_url",
+        "manufacturer",
+        "image_details",
+        "colourways",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

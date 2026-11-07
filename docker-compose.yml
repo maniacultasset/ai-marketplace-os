@@ -50,7 +50,20 @@ services:
     environment:
       MC_HOST_local: 'http://${S3_ACCESS_KEY:?run cp .env.example .env}:${S3_SECRET_KEY:?run cp .env.example .env}@minio:9000'
     command: ["mb", "--ignore-existing", "local/marketplace-images", "local/marketplace-csv",
-      "local/marketplace-submissions"]
+      "local/marketplace-submissions", "local/marketplace-images-public"]
+    restart: on-failure:10
+  # SI1 (ADR-0026): anonymous GetObject only on the public bucket; never `anonymous set
+  # download`, whose canned policy also grants s3:ListBucket.
+  minio-init-public:
+    image: cgr.dev/chainguard/minio-client:latest@sha256:b20bdc339b3f2596c8f731793f861d2445fd13a9a3cfb517ff020969f4e4bf71
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      MC_HOST_local: 'http://${S3_ACCESS_KEY:?run cp .env.example .env}:${S3_SECRET_KEY:?run cp .env.example .env}@minio:9000'
+    volumes:
+      - ./infra/minio/public-read.json:/policy/public-read.json:ro
+    command: ["anonymous", "set-json", "/policy/public-read.json", "local/marketplace-images-public"]
     restart: on-failure:10
 volumes:
   pgdata:

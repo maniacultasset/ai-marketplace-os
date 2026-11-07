@@ -212,8 +212,9 @@ def ids_of(items: Iterable[Operation]) -> list[str]:
 
 
 def resolve_id(world: World2, slug: str, name: str) -> Any:
-    """The id `name` (a path id or body id, `items[].x` included) names in `slug`'s side."""
-    key = name.removeprefix("items[].")
+    """The id `name` (a path id or body id, a list item's `items[].x` or
+    `image_uploads[].storage_key` included) names in `slug`'s side."""
+    key = name.rsplit("[].", 1)[-1]
     if key in {"images", "storage_key"}:
         return world.side(slug).ids["image_id"]
     return world.side(slug).ids[key]

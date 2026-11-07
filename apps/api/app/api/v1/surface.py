@@ -68,6 +68,7 @@ from app.api.v1.schemas.auth import (
 )
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
+from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
@@ -551,15 +552,30 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("brand_documents_delete", "DELETE", "/brand/documents/{document_id}", 204, None,
               "brand", "Delete a brand document and deactivate its chunks", "S16",
               path_id="document_id", action=A.SETTINGS_MANAGE),
+    # ---- brand (SI1) ----
+    Operation("brand_profile_get", "GET", "/brand-profile", 200, BrandProfileOut, "brand",
+              "The brand profile: the default manufacturer every product inherits", "SI1",
+              etag=True, action=A.TENANT_READ),
+    Operation("brand_profile_update", "PATCH", "/brand-profile", 200, BrandProfileOut, "brand",
+              "Update the brand profile (If-Match: the ETag from GET)", "SI1", has_body=True,
+              if_match=True, conflict_code=E.STALE_VERSION, etag=True,
+              action=A.SETTINGS_MANAGE),
     # ---- products (S12, S13) ----
     Operation("products_create", "POST", "/products", 201, ProductOut, "products",
-              "Create one product", "S12", has_body=True, body_ids=("images",),
-              conflict_code=E.SKU_CONFLICT,
+              "Create one product", "S12", has_body=True,
+              body_ids=("images", "image_uploads[].storage_key"),
+              conflict_code=E.SKU_CONFLICT, etag=True,
               extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_list", "GET", "/products", 200, ProductPage, "products",
               "List products", "S12", query=("limit", "cursor"), action=A.TENANT_READ),
     Operation("products_get", "GET", "/products/{product_id}", 200, ProductOut, "products",
-              "Read one product", "S12", path_id="product_id", action=A.TENANT_READ),
+              "Read one product", "S12", path_id="product_id", etag=True,
+              action=A.TENANT_READ),
+    Operation("products_update", "PATCH", "/products/{product_id}", 200, ProductOut, "products",
+              "Edit a product (If-Match: the ETag from GET)", "SI1", path_id="product_id",
+              has_body=True, if_match=True, conflict_code=E.STALE_VERSION, etag=True,
+              extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
+              action=A.PRODUCT_IMPORT),
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
               "Import products from a CSV file", "S13", has_body=True, idempotency=True,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)}), action=A.PRODUCT_IMPORT),
@@ -660,6 +676,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
               has_body=True, body_ids=("product_id", "storage_key"), idempotency=True, action=A.PRODUCT_IMPORT),
     Operation("images_report", "GET", "/images/{image_id}/report", 200, ImageReportOut, "images",
               "The image compliance reports", "S17b", path_id="image_id", action=A.TENANT_READ),
+    Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
+              "Delete an image (and its prepared and public copies)", "SI1",
+              path_id="image_id", action=A.PRODUCT_IMPORT),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),

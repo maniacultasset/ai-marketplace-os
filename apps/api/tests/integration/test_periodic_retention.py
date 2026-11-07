@@ -82,6 +82,7 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
         "brand_chunks": 0,
         "trusted_devices": 0,
         "image_orphans": 0,
+        "deleted_image_objects": 0,  # SI1 T22: runs at the end of retention
     }
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)
 

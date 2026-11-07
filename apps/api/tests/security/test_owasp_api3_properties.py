@@ -45,6 +45,22 @@ PERSONAL_OPS = frozenset(
         "auth_google_complete",
     }
 )
+# SI1 D2 and T5 (`PartyOut`): a manufacturer's GSTIN is the business's public tax
+# registration (searchable on the GST portal, printed on every invoice), not personal data. The
+# tenant's own users read it back on the brand profile and the product's `manufacturer`
+# (`PartyOut`); the party's email and phone are never answered. `redaction.DENY_KEYS` keeps it
+# out of logs and audit payloads all the same.
+BUSINESS_KEYS = frozenset({"gstin"})
+BUSINESS_OPS = frozenset(
+    {
+        "brand_profile_get",
+        "brand_profile_update",
+        "products_create",
+        "products_get",
+        "products_list",
+        "products_update",
+    }
+)
 TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
 # The rules dry-run body carries the seam's CanonicalListing (CANON.md:122: every seam model is a
 # WireModel, `extra="ignore"`, so a newer peer's keys are dropped, never stored). The dry-run
@@ -117,6 +133,8 @@ def allowed_in(op_id: str, key: str, *, top_level: bool) -> bool:
     secret = SECRET_KEYS_BY_OP.get(op_id, {})
     if key in secret:
         return secret[key] is top_level
+    if key in BUSINESS_KEYS and op_id in BUSINESS_OPS:
+        return True
     return key in PERSONAL_KEYS and op_id in PERSONAL_OPS
 
 
@@ -312,6 +330,21 @@ def test_api3_secret_key_allow_list_matches_the_surface(auth_db: Any) -> None:
             if denied(k) and not (k in PERSONAL_KEYS and op_id in PERSONAL_OPS)
         }
         assert found == set(allowed.items()), op_id
+
+
+def test_api3_business_key_allow_list_matches_the_surface(auth_db: Any) -> None:
+    """Exactly the ops in `BUSINESS_OPS` answer a GSTIN, nested in a `PartyOut` and never at the
+    top level, and `PartyOut` holds no email or phone: a stale entry cannot widen the exemption."""
+    spec = openapi_spec()
+    assert set(OPS) >= BUSINESS_OPS
+    answering = {
+        op_id for op_id in OPS if any(k in BUSINESS_KEYS for k, _ in _response_keys(spec, op_id))
+    }
+    assert answering == BUSINESS_OPS
+    for op_id in BUSINESS_OPS:
+        assert not any(k in BUSINESS_KEYS and top for k, top in _response_keys(spec, op_id)), op_id
+    party = set(_schemas(spec)["PartyOut"]["properties"])
+    assert "gstin" in party and not party & PERSONAL_KEYS, party
 
 
 def test_api3_login_confirm_nests_only_login_result(auth_db: Any) -> None:

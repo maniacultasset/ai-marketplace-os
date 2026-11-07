@@ -12,6 +12,11 @@ critical or carries `critical_override` for the product's category → 422
 `FACT_SOURCE_FORBIDDEN`. The 0006 `facts_guard` is the backstop: a PRV SQLSTATE that still
 reaches the writer maps to the same 422 (PRV01 `FACT_SOURCE_FORBIDDEN`, PRV02 `UNKNOWN_FACT_KEY`,
 PRV03 `FACT_LEVEL_INVALID`). Another tenant's (or a missing) product is a `RowCountError`.
+
+SI1 T6 adds the two clears a PATCH `null` needs: `clear_attribute` removes a seller-written
+`attributes.<key>` (a Fact from a document, the PIM or a marketplace is 422: the seller never
+erases evidence they did not give), and `clear_typed` NULLs every column of one dictionary key and
+drops `provenance.<key>` in one statement. A repeat writes nothing.
 """
 
 from __future__ import annotations
@@ -23,7 +28,7 @@ from dataclasses import dataclass
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
-from sqlalchemy import cast, func, literal, select, tuple_, update
+from sqlalchemy import cast, func, literal, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.exc import DBAPIError
 
@@ -34,6 +39,8 @@ from app.db.models.platform import AttributeColumn, AttributeDefinition, Categor
 from app.repositories.base import TenantScopedRepository
 
 PRV_CODES: Final[Mapping[str, ErrorCode]] = FACT_SQLSTATES
+# the source a clear is checked as: only a seller clears, and only what the seller wrote
+_SELLER: Final[Mapping[str, Any]] = {"source": "seller"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +165,66 @@ class FactWriter(TenantScopedRepository[Product]):
                 update(Product)
                 .where(*self._where(product_id), changed)
                 .values(attributes=Product.attributes.op("||")(func.jsonb_build_object(key, new)))
+            )
+        ).returning(Product.id)
+        return await self._run(product_id, stmt, field)
+
+    async def clear_attribute(self, product_id: uuid.UUID, key: str) -> bool:
+        """Remove a seller-written `attributes.<key>`; True when a row was written. A Fact with
+        another source is 422 `VALIDATION_FAILED` at `attributes.<key>`."""
+        field = f"attributes.{key}"
+        await self._check(product_id, key, _SELLER, "attributes", field)
+        stmt = (
+            self._scoped_write(
+                update(Product)
+                .where(
+                    *self._where(product_id),
+                    Product.attributes[key]["source"].astext == "seller",
+                )
+                .values(attributes=Product.attributes.op("-")(key))
+            )
+        ).returning(Product.id)
+        if await self._run(product_id, stmt, field):
+            return True
+        stored = (
+            await self.db.execute(
+                self._select()
+                .where(Product.id == product_id)
+                .with_only_columns(Product.attributes.has_key(key))
+            )
+        ).scalar_one()
+        if stored:
+            raise InputError(ErrorCode.VALIDATION_FAILED, field)
+        return False
+
+    async def columns_of(self, key: str) -> tuple[str, ...]:
+        """The typed `products` columns of dictionary key `key`, in name order."""
+        if self._column_keys is None:
+            await self.column_key("")
+        assert self._column_keys is not None  # noqa: S101 - filled above
+        return tuple(sorted(c for c, k in self._column_keys.items() if k == key))
+
+    async def clear_typed(self, product_id: uuid.UUID, key: str) -> bool:
+        """NULL every `products` column of dictionary key `key` and drop `provenance.<key>`, in
+        one statement; True when a row was written (False: nothing was set)."""
+        field = f"provenance.{key}"
+        await self._check(product_id, key, _SELLER, "column", field)
+        names = await self.columns_of(key)
+        if not names:
+            raise InputError(ErrorCode.UNKNOWN_FACT_KEY, field)
+        table = Product.__table__
+        columns = [table.c[name] for name in names]
+        anything = or_(*(c.is_not(None) for c in columns), Product.provenance.has_key(key))
+        stmt = (
+            self._scoped_write(
+                update(Product)
+                .where(*self._where(product_id), anything)
+                .values(
+                    {
+                        **dict.fromkeys(columns),
+                        Product.provenance: Product.provenance.op("-")(key),
+                    }
+                )
             )
         ).returning(Product.id)
         return await self._run(product_id, stmt, field)

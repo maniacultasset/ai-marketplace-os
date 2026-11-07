@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, Marketplace
@@ -49,6 +49,7 @@ async def images_upload_url(body: UploadUrlRequest, principal: CurrentPrincipal)
         storage_key=minted.storage_key,
         expires_at=minted.expires_at,
         headers=minted.headers,
+        product_id=minted.product_id,
     )
 
 
@@ -100,3 +101,14 @@ async def images_report(
             flipkart=view.reports.get(Marketplace.FLIPKART),
         ),
     )
+
+
+@route(router, OPS["images_delete"])
+async def images_delete(
+    image_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> Response:
+    """Delete an image and its prepared and public copies (a copy a marketplace already fetched
+    stays with the marketplace). Another tenant's image, an unknown id and a deleted one are the
+    same 404."""
+    await images.delete_image(principal, image_id)
+    return Response(status_code=204)

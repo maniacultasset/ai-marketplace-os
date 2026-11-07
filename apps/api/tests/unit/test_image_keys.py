@@ -60,3 +60,46 @@ def test_parse_never_accepts_dotdot_or_slash_runs(text: str) -> None:
     if parsed is not None:
         assert ".." not in text and "//" not in text and "\n" not in text
         assert text == image_object_key(parsed.tenant_id, parsed.product_id, parsed.image_id)
+
+
+# ---- SI1 T16: derived keys ----
+
+from app.services.image_keys import derived_key, parse_derived_key  # noqa: E402
+
+
+def test_derived_round_trip() -> None:
+    t, p, i = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    for name in ("clean.jpg", "clean.png", "vision.jpg"):
+        key = derived_key(t, p, i, name)
+        assert key == f"{t}/{p}/derived/{i}/{name}"
+        parsed = parse_derived_key(key)
+        assert parsed is not None
+        assert (parsed.tenant_id, parsed.product_id, parsed.image_id, parsed.name) == (
+            t,
+            p,
+            i,
+            name,
+        )
+
+
+def test_derived_is_not_an_image_key_and_back() -> None:
+    t, p, i = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    assert parse_image_key(derived_key(t, p, i, "vision.jpg")) is None
+    assert parse_derived_key(image_object_key(t, p, i)) is None
+
+
+@pytest.mark.parametrize(
+    "tail",
+    ["../vision.jpg", "vision.jpeg", "vision.jpg/x", "Vision.jpg", "", "clean.webp"],
+)
+def test_derived_rejects(tail: str) -> None:
+    t, p, i = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    assert parse_derived_key(f"{t}/{p}/derived/{i}/{tail}") is None
+
+
+def test_derived_rejects_uppercase_uuid_and_extra_segment() -> None:
+    t, p, i = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    assert parse_derived_key(f"{str(t).upper()}/{p}/derived/{i}/clean.jpg") is None
+    assert parse_derived_key(f"x/{t}/{p}/derived/{i}/clean.jpg") is None
+    with pytest.raises(ValueError):
+        derived_key(t, p, i, "other.jpg")  # type: ignore[arg-type]

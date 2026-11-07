@@ -1,0 +1,8 @@
+seller_sku,parent_style_id,product_name,category,color_name,size_name,size_system,mrp,selling_price,product_identifier_type,product_identifier
+FE-FAM-1,,FE Family Kurta,ethnic_wear_kurta_sets,,,IN,,,,
+FE-FAM-1-BLUE-S,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Blue,S,,1499,1299,,
+FE-FAM-1-BLUE-M,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Blue,M,,1499,1299,,
+FE-FAM-1-BLUE-L,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Blue,L,,1499,1299,,
+FE-FAM-1-RED-S,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Red,S,,1499,1299,,
+FE-FAM-1-RED-M,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Red,M,,1499,1299,,
+FE-FAM-1-RED-L,FE-FAM-1,FE Family Kurta,ethnic_wear_kurta_sets,Red,L,,1499,1299,,

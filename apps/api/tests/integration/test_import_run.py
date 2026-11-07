@@ -65,7 +65,7 @@ async def test_import_50_rows_5_bad(imports_db: JobWorld, api: httpx.AsyncClient
     assert sources == ["rules_engine", "schema", "schema", "schema", "schema"]
     assert failed_codes(imports_db.conn, import_id) == {
         8: ["PATTERN_MISMATCH"],
-        15: ["REQUIRED_FIELD_MISSING"],
+        15: ["PATTERN_MISMATCH"],  # http image URL (a row with no image now imports, SI1 D9d)
         22: ["PRICE_ABOVE_MRP"],
         35: ["PATTERN_MISMATCH"],
         43: ["CATEGORY_NOT_MAPPED"],

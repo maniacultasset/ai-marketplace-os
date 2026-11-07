@@ -98,6 +98,24 @@ class PartyFacts(_Model):
     email: str | None = None
     phone: str | None = None
     gstin: str | None = None
+    # SI1 (seam S-b): the structured address beside the joined `address`. Left out of the
+    # digest (CP2): `address` is built from the same columns, so a change still moves it.
+    address_line1: str | None = None
+    address_line2: str | None = None
+    city: str | None = None
+    state_code: str | None = None
+    postal_code: str | None = None
+    country_code: str | None = None
+
+
+_PARTY_PARTS: Final = (
+    "address_line1",
+    "address_line2",
+    "city",
+    "state_code",
+    "postal_code",
+    "country_code",
+)
 
 
 class CellFacts(_Model):
@@ -267,8 +285,20 @@ def _drop_updated_at(value: Any) -> Any:
     return value
 
 
+def _drop_party_parts(body: dict[str, Any]) -> dict[str, Any]:
+    """CP2: the structured party fields never enter the digest, so every approval made before
+    SI1 keeps its `facts_digest`."""
+    compliance = body.get("compliance")
+    if isinstance(compliance, dict):
+        for role in PARTY_ROLES:
+            party = compliance.get(role)
+            if isinstance(party, dict):
+                compliance[role] = {k: v for k, v in party.items() if k not in _PARTY_PARTS}
+    return body
+
+
 def canonical_facts_json(facts: ProductFacts) -> bytes:
-    body = _drop_updated_at(facts.model_dump(mode="json"))
+    body = _drop_party_parts(_drop_updated_at(facts.model_dump(mode="json")))
     return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 

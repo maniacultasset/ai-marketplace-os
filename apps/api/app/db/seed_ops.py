@@ -87,6 +87,7 @@ TEMPLATE_CATEGORIES: Final = {
     "home_decor_lamps": "LAMP",
 }
 MARKETPLACES: Final = ("amazon", "flipkart")
+SEED_MRP: Final = Decimal("1499.00")
 GUIDELINES: Final[Mapping[str, list[str]]] = {
     "acme": ["Lead with fabric and fit.", "Never claim 'best' or 'guaranteed'."],
     "bharat": ["Name the material first.", "Keep titles under 150 characters."],
@@ -308,6 +309,9 @@ async def reset_seed_tenants(connection: AsyncConnection) -> None:
         found = await connection.execute(select(tenants.c.id).where(tenants.c.id == tenant_id))
         if found.first() is None:
             continue
+        # SI1 CP9: public copies carry no tenant prefix, so they go before the rows do (the
+        # 0015 delete guard refuses the purge while a public name is left)
+        await _purge_public_copies(connection, tenant_id)
         for mode in ("data", "final"):
             await connection.execute(
                 # force: the seed tenants are live, and --reset runs only under APP_ENV=local
@@ -317,6 +321,19 @@ async def reset_seed_tenants(connection: AsyncConnection) -> None:
     await connection.execute(delete(tenants).where(tenants.c.id.in_(ids)))
     domains = [f"%@{t.slug}.test" for t in TENANTS]
     await connection.execute(delete(users).where(or_(*(users.c.email.ilike(d) for d in domains))))
+
+
+async def _purge_public_copies(connection: AsyncConnection, tenant_id: uuid.UUID) -> None:
+    from app.adapters.storage import get_storage
+    from app.db.image_purge import purge_public_images
+
+    class _LazyStorage:
+        """Builds the store client only when a public copy exists."""
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(get_storage(), name)
+
+    await purge_public_images(connection, _LazyStorage(), tenant_id)
 
 
 # ---- tenant rows (one unit_of_work per tenant) ----
@@ -384,7 +401,13 @@ async def seed_products(session: AsyncSession, tenant: SeedTenant, profile: str)
                 sku=sku,
                 title=title,
                 category=category,
-                provenance={"title": _seller_fact(title), "category": _seller_fact(category)},
+                # SI1 D8: a unit without MRP is refused at publish, so the demo carries one
+                mrp=SEED_MRP,
+                provenance={
+                    "title": _seller_fact(title),
+                    "category": _seller_fact(category),
+                    "mrp": _seller_fact(str(SEED_MRP)),
+                },
             )
             .on_conflict_do_nothing(constraint="products_tenant_sku_idx")
         )
@@ -659,7 +682,9 @@ async def seed_demo_family(session: AsyncSession) -> None:
             category=DEMO_LISTING_CATEGORY,
             variation_theme=DEMO_FAMILY_THEME,
             size_run=list(DEMO_FAMILY_SIZES),
-            provenance=provenance,
+            # SI1 D8: the children inherit the style's MRP
+            mrp=SEED_MRP,
+            provenance={**provenance, "mrp": _seller_fact(str(SEED_MRP))},
         )
         .on_conflict_do_nothing()
     )

@@ -224,6 +224,52 @@ def jpeg_with_exif_thumbnail() -> bytes:
     return encode(canvas(64, 64), "JPEG", quality=90, exif=exif.tobytes() + thumb)
 
 
+# --- SI1 T15: metadata-laden and hostile-size fixtures for the derivatives ---
+
+XMP_PACKET = (
+    b'<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>'
+    b'<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf='
+    b'"http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta><?xpacket end="w"?>'
+)
+
+
+def jpeg_with_gps_orientation6(w: int = 40, h: int = 20) -> bytes:
+    """A JPEG with EXIF (Make, orientation 6, a GPS block), an XMP APP1 packet and a COM marker.
+    Orientation 6 means the stored w x h shows rotated to h x w."""
+    exif = Image.Exif()
+    exif[0x010F] = "AcmeCam"  # Make
+    exif[0x0112] = 6  # Orientation: rotate 90 CW to view
+    gps = exif.get_ifd(0x8825)
+    gps[1] = "N"
+    gps[2] = (12.0, 58.0, 0.0)
+    gps[3] = "E"
+    gps[4] = (77.0, 35.0, 0.0)
+    data = encode(canvas(w, h), "JPEG", quality=90, exif=exif.tobytes(), comment=b"shot by acme")
+    xmp = _segment(0xE1, b"http://ns.adobe.com/xap/1.0/\x00" + XMP_PACKET)
+    return data[:2] + xmp + data[2:]
+
+
+def png_with_text_chunk() -> bytes:
+    info = PngImagePlugin.PngInfo()
+    info.add_text("Comment", "secret location 12.97N 77.59E")
+    return encode(canvas(32, 32), "PNG", pnginfo=info)
+
+
+def webp_rgba(w: int = 32, h: int = 32) -> bytes:
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    img.paste((200, 20, 20, 255), (8, 8, w - 8, h - 8))
+    return encode(img, "WEBP", lossless=True)
+
+
+def noisy_png_rgba(w: int = 6000, h: int = 6000, seed: int = 7) -> bytes:
+    """Random RGBA pixels: a PNG far over 10 MiB once re-encoded (built in memory, not committed)."""
+    import random
+
+    rng = random.Random(seed)  # noqa: S311 - test pixels, not secrets
+    img = Image.frombytes("RGBA", (w, h), rng.randbytes(w * h * 4))
+    return encode(img, "PNG", compress_level=1)
+
+
 # --- rule and call helpers (the module under test is imported lazily) ---
 
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)

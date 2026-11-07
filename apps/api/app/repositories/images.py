@@ -15,17 +15,22 @@ runs a check or touches the object store.
 from __future__ import annotations
 
 import builtins
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.images import ImageReport
-from sqlalchemy import case, func, select, text, update
+from sqlalchemy import case, cast, func, literal, select, text, update
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import IntegrityError
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
+from app.db.integrity import to_conflict
 from app.db.models.catalog import ProductColourway
 from app.db.models.catalog_assets import Image
 from app.db.models.ops import JobRun
@@ -52,6 +57,41 @@ class NewImage:
     slot: ImageSlot
     bytes: int
     position: int
+
+
+@dataclass(frozen=True, slots=True)
+class ImageDetail:
+    image_id: UUID
+    slot: str
+    colourway_id: UUID | None
+    position: int
+    status: str
+    compliance_status: str
+
+
+@dataclass(frozen=True, slots=True)
+class ListingImageRow:
+    """A live image of a product as generation orders it (SI1 T18)."""
+
+    image_id: UUID
+    product_id: UUID
+    slot: str
+    colourway_id: UUID | None
+    position: int
+    clean_content_hash: str | None
+    vision: Mapping[str, Any] | None
+    colourway_position: int | None
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class CleanMeta:
+    """The stored clean derivative (SI1 T16): its sha256, its type and the vision size."""
+
+    content_hash: str
+    mime_type: str
+    vision_w: int
+    vision_h: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,17 +238,22 @@ class ImageRepository(TenantScopedRepository[Image]):
         reports: Mapping[Marketplace, ImageReport],
         meta: ImageMeta | None,
         content_hash: str,
+        clean: CleanMeta | None = None,
     ) -> ComplianceStatus | None:
         """One UPDATE of a live row: the report object keyed by marketplace (wire aliases, so
         `pass`), the worst-of `compliance_status`, the meta columns and `content_hash`. Returns
-        the status written, or None when the row is not live any more."""
+        the status written, or None when the row is not live any more.
+
+        SI1 T16: `clean` sets `clean_content_hash`, `clean_mime_type` and `metadata.vision`
+        `{w, h}`; None clears them, except on a row that already has a `public_id` (its public
+        copy was made from the stored clean copy, and `ck_images_public_needs_clean` keeps it)."""
         self._own_session()
         status = rollup(reports)
         dumped = {
             Marketplace(m).value: r.model_dump(mode="json", by_alias=True)
             for m, r in reports.items()
         }
-        values: dict[str, Any] = {
+        values: dict[Any, Any] = {
             "image_report_json": dumped,
             "compliance_status": status,
             "content_hash": content_hash,
@@ -216,6 +261,20 @@ class ImageRepository(TenantScopedRepository[Image]):
             "width_px": None if meta is None else meta.width_px,
             "height_px": None if meta is None else meta.height_px,
         }
+        if clean is not None:
+            vision = cast(literal(json.dumps({"w": clean.vision_w, "h": clean.vision_h})), JSONB)
+            values["clean_content_hash"] = clean.content_hash
+            values["clean_mime_type"] = clean.mime_type
+            values[Image.metadata_] = Image.metadata_.op("||")(
+                func.jsonb_build_object("vision", vision)
+            )
+        else:
+            published = Image.public_id.is_not(None)
+            values["clean_content_hash"] = case((published, Image.clean_content_hash), else_=None)
+            values["clean_mime_type"] = case((published, Image.clean_mime_type), else_=None)
+            values[Image.metadata_] = case(
+                (published, Image.metadata_), else_=Image.metadata_.op("-")("vision")
+            )
         stmt = self._scoped_write(
             update(Image)
             .where(
@@ -223,11 +282,135 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.deleted_at.is_(None),
                 self._tenant_criterion(include_platform=False),
             )
-            .values(**values)
+            .values(values)
             .returning(Image.id)
         )
         written = (await self.db.execute(stmt)).scalar_one_or_none()
         return None if written is None else status
+
+    # ---- SI1 T19/T21: the public copy (CP16) ----
+
+    async def set_public_id(self, image_id: UUID, public_id: str) -> str | None:
+        """Name a live row's public copy once: the stored name (this one, or the one a racing
+        publish wrote), or None when the row is deleted. A name taken by another row raises
+        the unique violation (`images_public_id_uq`) for the caller's retry."""
+        self._own_session()
+        iid = _uuid("image_id", image_id)
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == iid,
+                Image.public_id.is_(None),
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(public_id=public_id)
+            .returning(Image.public_id)
+        )
+        try:
+            written: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        except IntegrityError as exc:
+            raise to_conflict(exc) from exc
+        if written is not None:
+            return written
+        found = (
+            await self.db.execute(
+                self._select()
+                .where(Image.id == iid)
+                .with_only_columns(Image.public_id, Image.deleted_at)
+            )
+        ).one_or_none()
+        if found is None or found[1] is not None:
+            return None
+        stored: str | None = found[0]
+        return stored
+
+    async def mark_public_written(self, image_id: UUID, public_id: str) -> bool | None:
+        """Record that the public object exists (whatever `deleted_at` is, CP16): True when the
+        row turned out deleted, False when live, None when the name does not match."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.public_id == public_id,
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(public_written_at=func.now())
+            .returning(Image.deleted_at.is_not(None))
+        )
+        deleted: bool | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return deleted
+
+    async def clear_objects(self, image_id: UUID) -> bool:
+        """The cleanup marker of a soft-deleted row whose objects are gone (decision 21): NULL
+        `public_written_at`, the clean pair and `metadata.vision`. `public_id` stays as a
+        tombstone (CP16), so the tenant purge step can still find the name (CP9)."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.deleted_at.is_not(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(
+                {
+                    Image.public_written_at: None,
+                    Image.clean_content_hash: None,
+                    Image.clean_mime_type: None,
+                    Image.metadata_: Image.metadata_.op("-")("vision"),
+                }
+            )
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def deleted_with_objects(self, limit: int) -> builtins.list[Image]:
+        """Soft-deleted rows whose derived or public objects may still exist (the daily step)."""
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_not(None),
+                (Image.public_written_at.is_not(None)) | (Image.clean_content_hash.is_not(None)),
+            )
+            .order_by(Image.deleted_at, Image.id)
+            .limit(limit)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def live_without_derivatives(self) -> builtins.list[UUID]:
+        """Live images checked (passed or failed) but with no clean copy (`images derive`)."""
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_(None),
+                Image.clean_content_hash.is_(None),
+                Image.compliance_status.in_(("passed", "failed")),
+            )
+            .with_only_columns(Image.id)
+            .order_by(Image.created_at, Image.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def get_any(self, image_id: UUID) -> Image | None:
+        """The row, deleted or not (the after-commit object removal reads it)."""
+        stmt = self._select().where(Image.id == _uuid("image_id", image_id))
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def clear_public_written(self, image_id: UUID) -> None:
+        """The public object is gone again (the post-PUT delete of a deleted row, CP16)."""
+        self._own_session()
+        await self.db.execute(
+            self._scoped_write(
+                update(Image)
+                .where(
+                    Image.id == _uuid("image_id", image_id),
+                    self._tenant_criterion(include_platform=False),
+                )
+                .values(public_written_at=None)
+            )
+        )
 
     # ---- reads ----
 
@@ -303,6 +486,82 @@ class ImageRepository(TenantScopedRepository[Image]):
         for product_id, key in (await self.db.execute(stmt)).all():
             found[product_id].append(key)
         return found
+
+    async def details_for_product(self, product_id: UUID) -> builtins.list[ImageDetail]:
+        """The product's live images (a style's own and its colourways'), in CP7 order."""
+        pid = _uuid("product_id", product_id)
+        slot_rank = case(SLOT_ORDER, value=Image.slot, else_=len(SLOT_ORDER))
+        stmt = (
+            self._select()
+            .where(Image.product_id == pid, Image.deleted_at.is_(None))
+            .with_only_columns(
+                Image.id,
+                Image.slot,
+                Image.colourway_id,
+                Image.position,
+                Image.status,
+                Image.compliance_status,
+            )
+            .order_by(slot_rank, Image.position, Image.created_at, Image.id)
+        )
+        return [
+            ImageDetail(
+                image_id=row.id,
+                slot=row.slot,
+                colourway_id=row.colourway_id,
+                position=row.position,
+                status=row.status,
+                compliance_status=row.compliance_status,
+            )
+            for row in (await self.db.execute(stmt)).all()
+        ]
+
+    async def listing_set(self, product_id: UUID) -> builtins.list[ListingImageRow]:
+        """The live images of a product (a style's own and its colourways' share `product_id`),
+        with each colourway's position for the listing order (SI1 T18). Two scoped reads."""
+        pid = _uuid("product_id", product_id)
+        stmt = (
+            self._select()
+            .where(Image.product_id == pid, Image.deleted_at.is_(None))
+            .with_only_columns(
+                Image.id,
+                Image.product_id,
+                Image.slot,
+                Image.colourway_id,
+                Image.position,
+                Image.clean_content_hash,
+                Image.metadata_,
+                Image.created_at,
+            )
+        )
+        rows = (await self.db.execute(stmt)).all()
+        colourway_ids = sorted({r[3] for r in rows if r[3] is not None})
+        positions: dict[UUID, int] = {}
+        if colourway_ids:
+            found = await self.db.execute(
+                _Colourways(self.db, self.tenant_id)
+                ._select()
+                .where(ProductColourway.id.in_(colourway_ids))
+                .with_only_columns(ProductColourway.id, ProductColourway.position)
+            )
+            positions = {cid: int(pos) for cid, pos in found.all()}
+        out: builtins.list[ListingImageRow] = []
+        for image_id, owner, slot, colourway, position, clean, metadata, created in rows:
+            vision = metadata.get("vision") if isinstance(metadata, dict) else None
+            out.append(
+                ListingImageRow(
+                    image_id=image_id,
+                    product_id=owner,
+                    slot=slot,
+                    colourway_id=colourway,
+                    position=position,
+                    clean_content_hash=clean,
+                    vision=vision if isinstance(vision, dict) else None,
+                    colourway_position=None if colourway is None else positions.get(colourway),
+                    created_at=created,
+                )
+            )
+        return out
 
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""

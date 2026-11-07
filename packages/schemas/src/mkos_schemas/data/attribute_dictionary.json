@@ -1045,6 +1045,30 @@
       "columns": []
     },
     {
+      "key": "size_chart_url",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "document",
+        "pim"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": "A.6 size_chart",
+      "enabled": true,
+      "columns": []
+    },
+    {
       "key": "fabric_type",
       "section": "attributes",
       "storage": "attributes",
@@ -1085,7 +1109,9 @@
       "value_type": "composition",
       "unit": null,
       "vocabulary": null,
-      "input_aliases": [],
+      "input_aliases": [
+        "fabric_composition"
+      ],
       "is_critical": true,
       "allowed_sources": [
         "seller",

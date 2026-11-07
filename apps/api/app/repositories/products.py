@@ -13,9 +13,11 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, literal, literal_column, tuple_
+from sqlalchemy import case, cast, func, literal, literal_column, tuple_
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
@@ -38,6 +40,8 @@ UPSERT_COLUMNS = (
     "source_image_urls",
 )
 KEEP_WHEN_BLANK = frozenset({"brand_name", "sub_category", "product_type", "gender"})
+# SI1 D9(e): an import row with no media cell keeps the stored URLs (an empty list is "absent")
+KEEP_WHEN_EMPTY = frozenset({"source_image_urls"})
 # column → its provenance key (the same pairs `attribute_columns` holds)
 UPSERT_FACT_KEYS = {
     "title": "title",
@@ -82,6 +86,63 @@ class ProductRepository(TenantScopedRepository[Product]):
             raise ValueError(f"id must be a UUID, got {type(id).__name__}")
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def get_for_update(self, id: uuid.UUID) -> Product | None:
+        """The live row, locked for the rest of the transaction (SI1 PATCH)."""
+        if not isinstance(id, uuid.UUID):
+            raise ValueError(f"id must be a UUID, got {type(id).__name__}")
+        stmt = (
+            self._select()
+            .where(Product.id == id, Product.deleted_at.is_(None))
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def live_child_ids(self, style_id: uuid.UUID) -> builtins.list[uuid.UUID]:
+        """The live children of `style_id`, in id order (SI1 T20: each is a sellable unit)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.id)
+            .order_by(Product.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def child_prices(
+        self, style_id: uuid.UUID
+    ) -> builtins.list[tuple[Decimal | None, Decimal | None]]:
+        """`(selling_price, mrp)` of each live child of `style_id` (CP14)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.selling_price, Product.mrp)
+        )
+        return [(row[0], row[1]) for row in (await self.db.execute(stmt)).all()]
+
+    async def money_of(self, product_id: uuid.UUID) -> tuple[Decimal | None, Decimal | None]:
+        """The stored `(selling_price, mrp)` of a live product (a fresh read, never the session's
+        cached row: FactWriter writes these columns with Core statements)."""
+        stmt = (
+            self._select()
+            .where(Product.id == product_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.selling_price, Product.mrp)
+        )
+        found = (await self.db.execute(stmt)).one()
+        return (found[0], found[1])
+
+    async def child_money(
+        self, style_id: uuid.UUID
+    ) -> builtins.list[tuple[str, Decimal | None, Decimal | None]]:
+        """`(sku, selling_price, mrp)` of each live child of `style_id`, in SKU order (CP14 for
+        a CSV style row)."""
+        stmt = (
+            self._select()
+            .where(Product.parent_product_id == style_id, Product.deleted_at.is_(None))
+            .with_only_columns(Product.sku, Product.selling_price, Product.mrp)
+            .order_by(Product.sku)
+        )
+        return [(row[0], row[1], row[2]) for row in (await self.db.execute(stmt)).all()]
 
     async def family_of_sku(self, sku: str) -> uuid.UUID | None:
         """The stored `parent_product_id` of `sku` (soft-deleted rows included: an upsert
@@ -147,6 +208,7 @@ class ProductRepository(TenantScopedRepository[Product]):
         attributes: Mapping[str, Any],
         provenance: Mapping[str, Any],
         created_by: uuid.UUID | None,
+        id: uuid.UUID | None = None,
     ) -> Product:
         product = Product(
             sku=sku,
@@ -156,6 +218,8 @@ class ProductRepository(TenantScopedRepository[Product]):
             provenance=dict(provenance),
             created_by=created_by,
         )
+        if id is not None:  # SI1 D3: the id minted by the upload URL
+            product.id = id
         added = await self.add(product)
         # server defaults (`status`, `created_at`, `updated_at`) are read back with the row
         await self.db.refresh(added)
@@ -203,11 +267,16 @@ class ProductRepository(TenantScopedRepository[Product]):
         table = Product.__table__
         columns = (*UPSERT_COLUMNS, "size_run")
         # a blank optional cell keeps the stored value (blank means absent, not "clear it")
+        empty = cast(literal("[]"), JSONB)
         new_values = {
             name: (
                 func.coalesce(stmt.excluded[name], table.c[name])
                 if name in KEEP_WHEN_BLANK
-                else stmt.excluded[name]
+                else (
+                    case((stmt.excluded[name] == empty, table.c[name]), else_=stmt.excluded[name])
+                    if name in KEEP_WHEN_EMPTY
+                    else stmt.excluded[name]
+                )
             )
             for name in columns
         }

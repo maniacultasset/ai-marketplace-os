@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Any
 
 from .generation_support import GenWorld, make_generating
@@ -41,6 +42,7 @@ async def new_product(world: GenWorld, email: str = OPERATOR, sku: str | None = 
             category=CATEGORY,
             images=(),
             attributes={"color": "blue", "fabric_type": "cotton"},
+            mrp=Decimal("1499.00"),  # SI1 D8: a unit without MRP is refused at publish
         ),
     )
     return sku

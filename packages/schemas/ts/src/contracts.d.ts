@@ -459,6 +459,9 @@ export interface CanonicalListing {
   content: ListingContent;
   created_at?: string | null;
   generated_by_agent_run_id?: string | null;
+  /**
+   * Set by the backend from the product's images; a pipeline value is replaced.
+   */
   images?: ImageRef[];
   keywords?: ListingKeywords;
   listing_id?: string | null;

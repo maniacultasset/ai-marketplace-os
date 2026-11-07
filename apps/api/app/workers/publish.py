@@ -26,8 +26,10 @@ listing is locked only in the short write-ahead transaction.
    COMMIT before any marketplace call.
 5. **Send**: stamp `sent_at`, use the adapter (opened before step 4, so a switched-off
    marketplace, S22 T21, fails the job with its 501 report before any row is written), hand it
-   24-hour signed image URLs held in memory only, `create`/`update`/`patch` with the submission key
-   and attempt, buffer the raw bodies, store them once.
+   the images' stable public URLs (SI1, ADR-0026: made after the pins and before the write-ahead
+   by `ensure_public`; with images and no public hosting configured the job fails closed with
+   `INTERNAL_ERROR`, never a signed URL), `create`/`update`/`patch` with the submission key and
+   attempt, buffer the raw bodies, store them once.
 6. **Route** (`publish_ledger`): every ledger write happens in the wrapper's terminal transaction
    (`persist`), fenced on this job's `pending` row; a definitive RATE_LIMITED first writes the
    `error` row in its own transaction and raises `RetryableJobError`; an ambiguous or connect
@@ -76,8 +78,10 @@ from app.core.resolved_facts import facts_digest
 from app.repositories.listings import PreviewSource
 from app.repositories.submissions import NewItem, NewSubmission
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.services import public_images
 from app.services.adapter_input import build_adapter_listing, canonical_listing
 from app.services.product_type_schema import current_schema
+from app.services.publish import missing_mrp
 from app.services.publish_ledger import Decision, ErrorKind, route_error, route_result
 from app.services.publish_outcome import AttemptCtx, apply_decision, refusal_report, revalidate
 from app.services.publish_rules import (
@@ -99,7 +103,6 @@ from app.workers.registry import JobContext, Outcome
 log = get_logger(__name__)
 
 IMAGE_MAX_BYTES: Final = 10 * 1024 * 1024
-IMAGE_URL_TTL_S: Final = 24 * 3600
 MAX_SUBMISSIONS: Final = 3
 # outcomes after which (part of) the listing is on the marketplace
 APPLIED_OUTCOMES: Final = ("partially_accepted", "accepted", "live", "superseded")
@@ -133,6 +136,11 @@ class ImageCheck:
     storage_key: str | None
     content_hash: str | None
     compliance_status: str | None
+    # SI1 T19: the clean copy and the public copy (ADR-0026)
+    clean_content_hash: str | None = None
+    clean_mime_type: str | None = None
+    public_id: str | None = None
+    public_written_at: Any | None = None
 
 
 @dataclass
@@ -190,6 +198,10 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
         if source is None or source.version is None:
             raise _fail(ErrorCode.INVALID_STATUS_TRANSITION, "the listing has no version")
         resolved = await uow.product_facts.resolve(listing.product_id)
+        # SI1 D8: a unit without MRP is never sent (the request checked it; facts can change)
+        missing = await missing_mrp(uow, listing.product_id)
+        if missing is not None:
+            raise _fail(ErrorCode.CRITICAL_FACT_MISSING, missing.message, field_path=missing.field)
         prep = Prepared(
             listing=listing,
             version_id=version,
@@ -215,6 +227,10 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
                     None if row is None else row.storage_key,
                     None if row is None else row.content_hash,
                     None if row is None else row.compliance_status,
+                    None if row is None else row.clean_content_hash,
+                    None if row is None else row.clean_mime_type,
+                    None if row is None else row.public_id,
+                    None if row is None else row.public_written_at,
                 )
             )
         open_row = await uow.submissions.open_for_listing(listing.id)
@@ -425,16 +441,31 @@ def _fields_for(item: AdapterListing) -> dict[str, list[str]]:
     return {u.seller_sku: list(paths) for u in item.units()}
 
 
-async def _image_urls(prep: Prepared) -> dict[uuid.UUID, str]:
+async def _image_urls(ctx: JobContext, prep: Prepared) -> dict[uuid.UUID, str]:
+    """The stable public URL of every image the adapter will send (`prep.images`: the version's
+    images, which hold every approved colour image too). Runs after the pins and before the
+    write-ahead, so a storage failure leaves no `pending` row (SI1 T19, CP1)."""
     if not prep.images:
         return {}
-    storage = get_storage()
-    return {
-        image.id: await storage.presign_get(
-            images_bucket(), image.storage_key or "", expires_s=IMAGE_URL_TTL_S
+    if not public_images.hosting_configured():
+        raise _fail(ErrorCode.INTERNAL_ERROR, "image hosting is not configured")
+    persist = _revalidate_persist(ctx, prep.listing.id)
+    urls: dict[uuid.UUID, str] = {}
+    for image in prep.images:
+        urls[image.id] = await public_images.ensure_public(
+            ctx.tenant_id,
+            public_images.PublicImage(
+                id=image.id,
+                index=image.index,
+                storage_key=image.storage_key,
+                clean_content_hash=image.clean_content_hash,
+                clean_mime_type=image.clean_mime_type,
+                public_id=image.public_id,
+                public_written_at=image.public_written_at,
+            ),
+            persist=persist,
         )
-        for image in prep.images
-    }
+    return urls
 
 
 async def _mark_sent(ctx: JobContext, prep: Prepared, submission_id: uuid.UUID) -> None:
@@ -601,7 +632,7 @@ async def _publish(
     adapter: MarketplaceAdapter,
     sink: BufferedSink,
 ) -> Outcome:
-    urls = await _image_urls(prep)
+    urls = await _image_urls(ctx, prep)
     open_row = prep.open_row
     if open_row is not None:
         resent = await _resolve_open(ctx, prep, adapter, sink, urls)

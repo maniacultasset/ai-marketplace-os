@@ -30,6 +30,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, Severity
 from mkos_schemas.errors import ErrorItem
 
+from app.services.composition import CompositionError, normalized, parse_composition
 from app.services.imports.headers import (
     GRAMS_COLUMN,
     IGNORED_WITH_WARNING,
@@ -79,6 +80,7 @@ MAX_MEDIA_URLS: Final = 9
 MAX_URL: Final = 2_048
 MAX_GRAMS: Final = 2_000_000
 MAX_TAX: Final = Decimal(100)
+MAX_STYLE_NUMBER: Final = 64
 
 ATTRIBUTE_COLUMNS: Final[tuple[str, ...]] = (
     "fit",
@@ -137,6 +139,10 @@ class ProductImportRow:
     package_height_cm: Decimal | None = None
     image_urls: tuple[str, ...] = ()
     attributes: Mapping[str, str] = field(default_factory=dict)
+    # SI1 D9
+    style_number: str | None = None
+    size_chart_url: str | None = None
+    fiber_fibres: tuple[dict[str, object], ...] = ()
 
     @property
     def colour_key(self) -> str | None:
@@ -276,7 +282,9 @@ class _Checker:
             return None
         return grams
 
-    def media(self) -> tuple[str, ...]:
+    def media(self, *, warn_without: bool) -> tuple[tuple[str, ...], str | None]:
+        """The image URLs and the size chart URL. SI1 D9(d): a row without an image URL imports;
+        a standalone or style row gets a warning (images come through the product form)."""
         urls: list[str] = []
         for key in ("main_image", "additional_images"):
             cell = self.get(key)
@@ -286,17 +294,27 @@ class _Checker:
                 if self._url_ok(key, candidate):
                     urls.append(candidate)
         size_chart = self.get("size_chart")
-        if size_chart is not None:
-            self._url_ok("size_chart", size_chart)
+        chart_url = (
+            size_chart
+            if size_chart is not None and self._url_ok("size_chart", size_chart)
+            else None
+        )
         if len(urls) > MAX_MEDIA_URLS:
             self.fail(ErrorCode.VALUE_NOT_ALLOWED, f"at most {MAX_MEDIA_URLS} media URLs per row")
-            return ()
-        if not urls:
-            self.fail(
-                ErrorCode.REQUIRED_FIELD_MISSING,
-                "main_image (or additional_images) needs at least one https URL",
+            return (), chart_url
+        if (
+            not urls
+            and warn_without
+            and not any(self.get(key) is not None for key in ("main_image", "additional_images"))
+        ):
+            self.warnings.append(
+                row_error(
+                    ErrorCode.REQUIRED_FIELD_MISSING,
+                    "no image URL; upload images in the product form",
+                    severity=Severity.WARNING,
+                )
             )
-        return tuple(urls)
+        return tuple(urls), chart_url
 
     def _url_ok(self, key: str, url: str) -> bool:
         if len(url) > MAX_URL:
@@ -402,8 +420,23 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
 
     grams = c.grams()
     dims = _dimensions(c)
-    urls = c.media()
+    # a child row's images come from its style (S22): no warning on a row with a parent
+    urls, chart_url = c.media(warn_without=parent is None)
     attributes = {key: value for key in ATTRIBUTE_COLUMNS if (value := c.get(key)) is not None}
+    fibres: tuple[dict[str, object], ...] = ()
+    composition = attributes.get("fiber_composition")
+    if composition is not None:
+        try:
+            fibres = tuple(normalized(parse_composition(composition)))
+        except CompositionError:
+            c.fail(
+                ErrorCode.VALUE_NOT_ALLOWED,
+                "fiber_composition must list fibres whose percents add up to 100",
+            )
+    style_number = c.text("style_number", MAX_STYLE_NUMBER)
+    if style_number is not None and "\x00" in style_number:
+        c.fail(ErrorCode.VALUE_NOT_ALLOWED, "style_number must not contain NUL")
+        style_number = None
     for key in sorted(IGNORED_WITH_WARNING):
         if c.get(key) is not None:
             c.warnings.append(
@@ -447,6 +480,9 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
         package_height_cm=dims[2],
         image_urls=urls,
         attributes=attributes,
+        style_number=style_number,
+        size_chart_url=chart_url,
+        fiber_fibres=fibres,
     )
     return RowResult(row, [], c.warnings)
 

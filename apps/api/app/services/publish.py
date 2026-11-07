@@ -95,10 +95,15 @@ _MESSAGES: Final[Mapping[ErrorCode, str]] = {
 
 
 class Refused(Exception):  # noqa: N818 - a per-item answer, not a fault
-    def __init__(self, code: ErrorCode) -> None:
+    def __init__(
+        self, code: ErrorCode, *, field: str = "listing", message: str | None = None
+    ) -> None:
         super().__init__(code.value)
         self.code = code
         self.status = _STATUS.get(code, 409)
+        # SI1 CP10: a refusal may name the field and say what is missing (the MRP check)
+        self.field = field
+        self.message = message
 
 
 class Disabled(Refused):
@@ -114,7 +119,13 @@ class Disabled(Refused):
         )
 
 
-def item_report(code: ErrorCode, listing_id: uuid.UUID | None = None) -> ErrorReport:
+def item_report(
+    code: ErrorCode,
+    listing_id: uuid.UUID | None = None,
+    *,
+    field: str = "listing",
+    message: str | None = None,
+) -> ErrorReport:
     retryable = ERROR_CODE_META[code].retry_class is RetryClass.AUTO_RETRY
     return ErrorReport(
         status="failed",
@@ -122,9 +133,9 @@ def item_report(code: ErrorCode, listing_id: uuid.UUID | None = None) -> ErrorRe
         retryable=retryable,
         errors=[
             ErrorItem(
-                field="listing",
+                field=field,
                 error_code=code,
-                message=_MESSAGES.get(code, "The item was refused."),
+                message=message or _MESSAGES.get(code, "The item was refused."),
                 source=ErrorSource.SYSTEM,
                 retryable=retryable,
             )
@@ -216,6 +227,51 @@ async def justification_for(uow: TenantUnitOfWork, listing: Any, prev: Any) -> s
     )
 
 
+MRP_FIELD: Final = "facts.mrp"
+
+
+@dataclass(frozen=True, slots=True)
+class MissingMrp:
+    sku: str
+    child: bool
+
+    @property
+    def field(self) -> str:
+        """A legal error field path (`mkos_schemas.paths`): `facts.mrp` for a standalone
+        product, `variants[<sku>].facts.mrp` for a family's child (a SKU has no whitespace or
+        `]`, T72)."""
+        return f"variants[{self.sku}].facts.mrp" if self.child else MRP_FIELD
+
+    @property
+    def message(self) -> str:
+        """A SKU is the seller's identifier, not personal data (T72)."""
+        return f"MRP is missing for SKU {self.sku}."
+
+
+async def missing_mrp(uow: TenantUnitOfWork, product_id: uuid.UUID) -> MissingMrp | None:
+    """The first sellable unit with no resolved MRP (own or the style's), or None (SI1 D8,
+    decision 17): a standalone product, or each live child of a style. A product that is gone
+    answers None; the other checks refuse it."""
+    facts = await uow.product_facts.resolve(product_id)
+    if facts is None:
+        return None
+    if facts.level != "style":
+        if facts.commercial.mrp is not None:
+            return None
+        return MissingMrp(facts.sku, child=facts.level == "variant")
+    for child in await uow.products.live_child_ids(product_id):
+        unit = await uow.product_facts.resolve(child)
+        if unit is not None and unit.commercial.mrp is None:
+            return MissingMrp(unit.sku, child=True)
+    return None
+
+
+async def _require_mrp(uow: TenantUnitOfWork, listing: Any) -> None:
+    missing = await missing_mrp(uow, listing.product_id)
+    if missing is not None:
+        raise Refused(ErrorCode.CRITICAL_FACT_MISSING, field=missing.field, message=missing.message)
+
+
 async def plan_publish(
     uow: TenantUnitOfWork, listing: Any, *, retry_fields_only: bool = False
 ) -> Plan:
@@ -229,6 +285,7 @@ async def plan_publish(
     ):
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)
     await _account(uow, listing)
+    await _require_mrp(uow, listing)
     parent = (
         await uow.listings.latest_job_id(listing.id, JobKind.LISTING_PUBLISH)
         if event != "publish"
@@ -350,15 +407,16 @@ async def _one(
             item.listing_id, disabled.status, status, error=disabled.report(item.listing_id)
         )
     except Refused as refused:
-        code = refused.code
+        refusal = refused  # CP10: keep its field and message
     except DomainError as exc:
         code = _gate_refusal(exc)
         if code is ErrorCode.INTERNAL_ERROR:
             raise
-    refusal = Refused(code)
-    return ItemOutcome(
-        item.listing_id, refusal.status, status, error=item_report(code, item.listing_id)
+        refusal = Refused(code)
+    report = item_report(
+        refusal.code, item.listing_id, field=refusal.field, message=refusal.message
     )
+    return ItemOutcome(item.listing_id, refusal.status, status, error=report)
 
 
 async def publish_batch(

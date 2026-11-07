@@ -572,6 +572,80 @@ async def run_dictionary_sync(path: Path | None) -> int:
 EXIT_NO_FILE: Final = 2
 
 
+# ---- SI1 T22: `images unpublish --tenant` (CP9) and `images derive --tenant` (CP6) ----
+
+
+def _tenant_uuid(value: str) -> uuid.UUID:
+    try:
+        return uuid.UUID(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--tenant must be a tenant UUID") from None
+
+
+async def run_images_unpublish(tenant_id: uuid.UUID) -> int:
+    """Delete every public copy of one tenant and NULL the names, as the migrator: the step
+    before a by-hand `purge_tenant`, which the 0015 delete guard otherwise refuses."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.adapters.storage import get_storage
+    from app.core.config import get_settings
+    from app.db.image_purge import public_names_left, purge_public_images
+
+    settings = get_settings()
+    if settings.alembic_database_url is None:
+        sys.stderr.write("images unpublish: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    engine = create_async_engine(settings.alembic_database_url)
+    try:
+        async with engine.begin() as connection:
+            done = await purge_public_images(connection, get_storage(), tenant_id)
+            left = await public_names_left(connection, tenant_id)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"images unpublish: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await engine.dispose()
+    sys.stdout.write(f"images unpublish: ok (unpublished={done} remaining={left})\n")
+    return EXIT_OK if left == 0 else EXIT_FAILED
+
+
+async def run_images_derive(tenant_id: uuid.UUID) -> int:
+    """Queue `image_compliance` for the tenant's live images that have no clean copy, at most
+    the free live-job cap per run (CP6); prints how many are queued and left."""
+    from mkos_schemas.enums import JobKind
+
+    from app.db.session import dispose_engine
+    from app.repositories.jobs import EnqueueSpec
+    from app.repositories.uow import tenant_uow
+    from app.services.images import LIVE_IMAGE_JOB_CAP
+    from app.workers.policy import IMAGE_JOB_LOCK
+
+    try:
+        async with tenant_uow(tenant_id) as uow:
+            await uow.images.lock_tenant_image_jobs()
+            ids = await uow.images.live_without_derivatives()
+            free = max(0, LIVE_IMAGE_JOB_CAP - await uow.images.count_live_image_jobs())
+            for image_id in ids[:free]:
+                await uow.job_runs.enqueue(
+                    EnqueueSpec(
+                        kind=JobKind.IMAGE_COMPLIANCE,
+                        entity_type="image",
+                        entity_id=image_id,
+                        created_by=None,
+                        payload={"image_id": str(image_id)},
+                        lock=IMAGE_JOB_LOCK,
+                    )
+                )
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"images derive: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    queued = min(free, len(ids))
+    sys.stdout.write(f"images derive: ok (queued={queued} remaining={len(ids) - queued})\n")
+    return EXIT_OK
+
+
 async def _templates_load(admin_url: str, path: Path) -> tuple[int, int, int]:
     from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -1277,6 +1351,16 @@ def build_parser() -> argparse.ArgumentParser:
     errors_commands = errors.add_subparsers(dest="command", required=True)
     errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
     errors_load.add_argument("--file", type=Path, required=True)
+    images = groups.add_parser("images", help="image copies (SI1, staff)")
+    images_commands = images.add_subparsers(dest="command", required=True)
+    unpublish = images_commands.add_parser(
+        "unpublish", help="delete a tenant's public image copies (before a by-hand purge)"
+    )
+    unpublish.add_argument("--tenant", type=_tenant_uuid, required=True)
+    derive_cmd = images_commands.add_parser(
+        "derive", help="queue the checks again for images with no clean copy"
+    )
+    derive_cmd.add_argument("--tenant", type=_tenant_uuid, required=True)
     platform = groups.add_parser("platform", help="every platform row, no tenant (local only)")
     platform_commands = platform.add_subparsers(dest="command", required=True)
     platform_load = platform_commands.add_parser("load", help="templates, rules, error map")
@@ -1327,6 +1411,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_templates_load(args.file))
     if args.group == "dictionary":
         return asyncio.run(run_dictionary_sync(args.file))
+    if args.group == "images":
+        if args.command == "unpublish":
+            return asyncio.run(run_images_unpublish(args.tenant))
+        return asyncio.run(run_images_derive(args.tenant))
     if args.group == "jobs":
         if args.command == "requeue":
             return asyncio.run(run_requeue(args.job_id, args.staff_email, args.reason))
