@@ -321,7 +321,7 @@ def _fits_db(row: ProductImportRow) -> bool:
             v is None or (v > 0 and _numeric_fits(v, 7, 2))
             for v in (row.package_length_cm, row.package_breadth_cm, row.package_height_cm)
         ),
-        row.gender is None or row.gender in {"men", "women", "unisex", "boys", "girls"},
+        row.gender is None or row.gender in {"men", "women", "unisex", "boys", "girls", "baby"},
         (row.identifier_type is None) == (row.identifier_value is None),
         row.identifier_value is None or gtin_valid(row.identifier_value),
     ]
@@ -391,3 +391,18 @@ def test_row_model_style_number_and_size_chart_url() -> None:
 def test_row_model_fabric_composition_header() -> None:
     result = validate_row(normalize_row({**GOOD, "fabric_composition": "100% linen"}))
     assert result.row is not None and result.row.attributes["fiber_composition"] == "100% linen"
+
+
+# ---- SI8 T8 (AC10): the `baby` audience ----
+
+
+def test_row_model_gender_baby_accepted() -> None:
+    assert ok(gender="Baby").gender == "baby"
+
+
+def test_row_model_gender_kids_refused_with_the_six_values() -> None:
+    result = run(gender="kids")
+    assert ErrorCode.VALUE_NOT_ALLOWED in codes(result)
+    assert any(
+        e.message == "gender must be men, women, unisex, boys, girls or baby" for e in result.errors
+    )

@@ -69,7 +69,7 @@ PHONE_PATTERN: Final = re.compile(r"[+]?[0-9][0-9 -]{5,19}")
 _WHITESPACE: Final = re.compile(r"\s+")
 _URL_SPLIT: Final = re.compile(r"[|,;\s]+")
 
-GENDERS: Final = frozenset({"men", "women", "unisex", "boys", "girls"})
+GENDERS: Final = frozenset({"men", "women", "unisex", "boys", "girls", "baby"})
 IDENTIFIER_TYPES: Final = frozenset({"gtin", "ean", "upc"})
 MAX_TITLE: Final = 500
 MAX_BRAND: Final = 100
@@ -361,7 +361,10 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
     if gender is not None:
         gender = gender.lower()
         if gender not in GENDERS:
-            c.fail(ErrorCode.VALUE_NOT_ALLOWED, "gender must be men, women, unisex, boys or girls")
+            c.fail(
+                ErrorCode.VALUE_NOT_ALLOWED,
+                "gender must be men, women, unisex, boys, girls or baby",
+            )
             gender = None
 
     manufacturer = c.text("manufacturer_name", MAX_PARTY_TEXT)
