@@ -22,14 +22,16 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
-from sqlalchemy import exists, func, null, select, text, update
+from sqlalchemy import and_, exists, func, null, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.core.logging import get_logger
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
+from app.db.models.listings import Listing
 from app.db.models.ops import JobRun
 from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
@@ -38,6 +40,7 @@ from app.repositories.base import TenantScopedRepository
 from app.workers.policy import POLICIES, lock_for
 from app.workers.policy import lease_s as kind_lease_s
 
+log = get_logger(__name__)
 MAX_PAYLOAD_BYTES: Final = 64 * 1024  # DATABASE.md:941
 _KEY_BEGAN: Final = text(
     "SELECT created_at FROM idempotency_keys WHERE tenant_id = :t AND key = :k"
@@ -265,6 +268,19 @@ async def tenants_with_queued(session: Any, *, limit: int = 500) -> list[uuid.UU
     return [row.tenant_id for row in (await session.execute(stmt)).all()]
 
 
+def _photo_pairs(raw: object) -> tuple[tuple[str, str], ...] | None:
+    if not isinstance(raw, list):
+        return None
+    pairs: list[tuple[str, str]] = []
+    for item in raw:
+        if not (
+            isinstance(item, list) and len(item) == 2 and all(isinstance(v, str) for v in item)
+        ):
+            return None
+        pairs.append((item[0], item[1]))
+    return tuple(pairs)
+
+
 def _tenant_running() -> ColumnElement[bool]:
     """The job's tenant is `trial` or `active` (PLAN D14), correlated on `job_runs.tenant_id`."""
     return exists(
@@ -311,6 +327,39 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             .limit(1)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def latest_photo_set(self, product_id: uuid.UUID) -> tuple[tuple[str, str], ...] | None:
+        """SI3 skip rule (CP-D2): the `photo_set` of the product's newest finished
+        `listing_generate` job that recorded one, across its listings; None when there is none.
+        A malformed record reads as None (logged by job id), so the next run calls vision again."""
+        if not isinstance(product_id, uuid.UUID):
+            raise ValueError("product_id must be a UUID")
+        stmt = (
+            select(JobRun.id, JobRun.result_json["photo_set"])
+            .select_from(JobRun)
+            .join(
+                Listing,
+                and_(Listing.tenant_id == JobRun.tenant_id, Listing.id == JobRun.listing_id),
+            )
+            .where(
+                self._criterion_for(JobRun),
+                self._criterion_for(Listing),
+                Listing.product_id == product_id,
+                JobRun.kind == JobKind.LISTING_GENERATE.value,
+                JobRun.finished_at.is_not(None),
+                JobRun.result_json.has_key("photo_set"),
+            )
+            .order_by(JobRun.finished_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        row = (await self.db.execute(self._scoped_read(stmt))).first()
+        if row is None:
+            return None
+        job_id, raw = row
+        parsed = _photo_pairs(raw)
+        if parsed is None:
+            log.warning("jobs.photo_set_malformed", job_run_id=str(job_id))
+        return parsed
 
     # ---- enqueue (DW1, AC1-2) ----
 
