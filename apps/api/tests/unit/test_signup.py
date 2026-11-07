@@ -788,7 +788,7 @@ def test_0010_chain_and_shape() -> None:
     assert "phone" not in readable and "owner_name" not in readable
 
 
-def test_0015_is_the_single_head() -> None:
+def test_0021_is_the_single_head() -> None:
     parents = set()
     revisions = set()
     for path in VERSIONS.glob("0*.py"):
@@ -799,8 +799,9 @@ def test_0015_is_the_single_head() -> None:
             parents.add(down.group(1))
     # DPP-1 sits on top of 0010, the account purge on top of DPP-1, Google sign-in on top of it,
     # the trusted browsers (ADR-0023) on top of Google sign-in, the PTD table (DW2) on top of them,
-    # the image public copies (SI1) on top of the PTD table
-    assert revisions - parents == {"0015_image_public_copies"}
+    # the image public copies (SI1) on top of the PTD table, the AI credit state (SI10) on top of
+    # them (re-chained at merge once 0016-0020 land)
+    assert revisions - parents == {"0021_ai_credit_state"}
 
 
 @pytest.mark.parametrize(

@@ -46,6 +46,8 @@ POLICIES: dict[str, frozenset[str]] = {
     ),
     # 0013 (ADR-0023): trusted browsers have no tenant_id; own rows through app.user_id
     "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
+    # 0021 (SI10): one platform row with no tenant data; the guard trigger owns the clear
+    "ai_credit_state": frozenset({"acs_read", "acs_write", "t_platform", "t_migrator"}),
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}
@@ -99,7 +101,9 @@ def _policies(conn: Conn) -> dict[str, dict[str, tuple[str, frozenset[str]]]]:
 def test_rls_forced_everywhere(db: Conn) -> None:
     tables = _tables(db)
     expected = (
-        _tenant_tables(db) | {"users", "tenants", "login_flows", "trusted_devices"} | MFA_TABLES
+        _tenant_tables(db)
+        | {"users", "tenants", "login_flows", "trusted_devices", "ai_credit_state"}
+        | MFA_TABLES
     )
     assert len(expected) > 30, "is the database at head?"
     policies = _policies(db)
