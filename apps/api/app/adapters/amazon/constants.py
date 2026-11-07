@@ -82,7 +82,11 @@ DISCOVERABLE: Final = "DISCOVERABLE"
 PTD_API_VERSION: Final = "2020-09-01"
 PTD_PATH: Final = f"/definitions/{PTD_API_VERSION}/productTypes"
 PTD_LOCALE: Final = "en_IN"
-PTD_REQUIREMENTS: Final = REQUIREMENTS_PARENT  # decision 2: store and validate what is sent
+# decision 2: store and validate what is sent. SI2 D3: two definitions per product type, the
+# `LISTING` one for sellable items (the `templates refresh|diff` default) and the PRODUCT_ONLY
+# one for a family's parent.
+PTD_REQUIREMENTS: Final = REQUIREMENTS_SELLABLE
+PTD_PARENT_REQUIREMENTS: Final = REQUIREMENTS_PARENT
 PTD_REQUIREMENTS_VALUES: Final = ("LISTING", "LISTING_PRODUCT_ONLY", "LISTING_OFFER_ONLY")
 PTD_OPERATIONS: Final = ("ptd_get",)
 # Believed: Amazon publishes 5 req/s; 1/s is the safe start for a one-shot staff command.

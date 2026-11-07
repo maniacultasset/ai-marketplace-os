@@ -59,10 +59,24 @@ async def test_missing_definition_is_none_and_logged(log_lines: Any) -> None:
     assert key == {
         "marketplace_id": "A21TJRUUN4KGV",
         "product_type": "KURTA",
-        "requirements": "LISTING_PRODUCT_ONLY",
+        "requirements": "LISTING",  # SI2: the sellable definition by default
         "locale": "en_IN",
     }
     assert [line for line in capture.lines() if line.get("message") == "ptd.missing"]
+
+
+async def test_si2_current_schemas_asks_for_both() -> None:
+    from app.services.product_type_schema import current_schemas
+
+    uow = Uow(None)
+    assert await current_schemas(uow, marketplace="amazon", product_type="KURTA") == (None, None)
+    assert [k["requirements"] for k in uow.ptd.current_calls] == ["LISTING", "LISTING_PRODUCT_ONLY"]
+    other = Uow(None)
+    assert await current_schemas(other, marketplace="flipkart", product_type="kurta") == (
+        None,
+        None,
+    )
+    assert other.ptd.current_calls == []
 
 
 async def test_found_definition_is_prepared_once() -> None:

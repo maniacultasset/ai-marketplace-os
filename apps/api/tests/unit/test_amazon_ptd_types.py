@@ -73,7 +73,8 @@ def test_adapter_listing_default_has_no_schema() -> None:
 
 def test_ptd_constants() -> None:
     assert c.PTD_PATH == "/definitions/2020-09-01/productTypes"
-    assert c.PTD_REQUIREMENTS == c.REQUIREMENTS_PARENT == "LISTING_PRODUCT_ONLY"
+    assert c.PTD_REQUIREMENTS == c.REQUIREMENTS_SELLABLE == "LISTING"  # SI2 D3
+    assert c.PTD_PARENT_REQUIREMENTS == c.REQUIREMENTS_PARENT == "LISTING_PRODUCT_ONLY"
     assert c.PTD_LOCALE == "en_IN"
     assert set(c.PTD_RATES) == set(c.PTD_OPERATIONS) == {"ptd_get"}
     # item-call operations and rates are untouched
