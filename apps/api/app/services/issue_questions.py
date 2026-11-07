@@ -138,7 +138,13 @@ async def reconcile_tasks(uow: TenantUnitOfWork, listing: Any) -> int:
     it locks until commit, and `open_image_task` takes this lock before its row, so every task
     row lock of a product's step 4 is taken under the one lock. Two listings of one product
     (or crossed fact questions) then queue instead of deadlocking. The lock is per transaction
-    and re-entrant, so the later take inside `open_image_task` is a no-op."""
+    and re-entrant, so the later take inside `open_image_task` is a no-op.
+
+    The product row lock comes before it: SI3's photo step (`apply_photo_decision`) holds that
+    row while it inserts photo questions on the same `ht_one_live_fact` keys, so a step 4 that
+    took the image lock first could wait on such an uncommitted question while the photo
+    persist waits on the image lock. Every path then takes product row, image lock, task rows."""
+    await uow.products.get_for_update(listing.product_id)
     await uow.images.lock_product_images(listing.product_id)
     cancelled = 0
     for task_id in await uow.listing_issues.live_task_ids(listing.id):

@@ -465,6 +465,59 @@ async def test_crossed_fact_questions_of_one_product_without_a_deadlock(
     assert _live_tasks(gen_world, product) == 2
 
 
+async def test_a_photo_question_and_an_issue_question_on_one_fact_without_a_deadlock(
+    gen_world: GenWorld,
+) -> None:
+    """SI3 and SI4 together: A's persist holds the product row (the photo step) and has an
+    uncommitted photo question on the fact, while B's step 4 asks the same fact. B queues on
+    the product row before any step-4 lock, so A's own step 4 still runs, and B then reuses
+    A's question instead of a 40P01."""
+    from app.repositories.uow import tenant_uow
+    from app.services.issue_questions import reconcile_tasks
+
+    made = await generated(gen_world)
+    product = _product(gen_world, made)
+    amazon = SimpleNamespace(id=made.listing_id, product_id=product)
+    flipkart = _sibling(gen_world, product)
+    a_asked, b_waiting = asyncio.Event(), asyncio.Event()
+
+    async def run_a() -> uuid.UUID:
+        async with tenant_uow(gen_world.tenant("acme")) as uow:
+            await uow.products.get_for_update(product)  # SI3 apply_photo_decision
+            assert await uow.human_tasks.open_photo_fact_task(
+                product_id=product,
+                kind="missing_fact",
+                target_path=TARGET,
+                question=QUESTION,
+                reason=REASON,
+                expected_answer=dict(ANSWER),
+                suggestions=[],
+                evidence=[],
+            )
+            a_asked.set()
+            await b_waiting.wait()
+            await reconcile_tasks(uow, amazon)
+            return await uow.human_tasks.open_fact_task(
+                product, TARGET, QUESTION, REASON, dict(ANSWER)
+            )
+
+    async def run_b() -> uuid.UUID:
+        await a_asked.wait()
+        async with tenant_uow(gen_world.tenant("acme")) as uow:
+            await reconcile_tasks(uow, flipkart)
+            return await uow.human_tasks.open_fact_task(
+                product, TARGET, QUESTION, REASON, dict(ANSWER)
+            )
+
+    first, second = asyncio.create_task(run_a()), asyncio.create_task(run_b())
+    await a_asked.wait()
+    await _wait_for_lock_wait(gen_world)
+    b_waiting.set()
+    a_task, b_task = await asyncio.gather(first, second)
+    assert a_task == b_task
+    assert _live_tasks(gen_world, product) == 1
+
+
 # ---- tenants ----
 
 
