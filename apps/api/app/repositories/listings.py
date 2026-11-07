@@ -489,7 +489,12 @@ class ListingRepository(TenantScopedRepository[Listing]):
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return found
 
-    async def preview_source(self, listing_id: uuid.UUID) -> PreviewSource | None:
+    async def preview_source(
+        self, listing_id: uuid.UUID, *, version: SourceVersion | None = None
+    ) -> PreviewSource | None:
+        """The listing's adapter input. SI9 B4: with `version` (content not stored yet: the
+        generation persist and the edit check it before the insert), that version replaces the
+        current one, and the template is the one it pins."""
         lst = Listing
         row = (
             await self.db.execute(
@@ -511,7 +516,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
         product = await _product(products, row.product_id)
         if product is None:
             return None
-        version = await self._version(row.id, row.current_version_id)
+        if version is None:
+            version = await self._version(row.id, row.current_version_id)
         template = None
         if version is not None and version.category_template_id is not None:
             pinned = await CategoryTemplateRepository(self.db).pinned(version.category_template_id)
