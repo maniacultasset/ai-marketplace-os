@@ -49,6 +49,9 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   style-owned, so a problem is reported once per family at `facts.brand_name` / `facts.gender`
   for every role (CP-D2): no brand, or no gender on apparel, is MISSING_ATTRIBUTE; a gender
   outside the map is VALUE_NOT_ALLOWED (CP-D15). Every name and value is believed (DL-A).
+- SI8 T5: a child's `item_name` is the family title plus ` - <Colour>, <Size>` (the template's
+  mapped values for the family's axes only; `child_title`), cut to the stored definition's
+  `item_name.maxLength` (else 200) by shortening the title at a word boundary, never the suffix.
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -458,6 +461,65 @@ def _identity_attributes(
     return out, sent, errors
 
 
+_TITLE_TRAIL: Final = ",-\u2013|/"  # comma, hyphen, en dash, bar, slash
+
+
+def child_title(title: str, colour: str | None, size: str | None, limit: int) -> str:
+    """SI8 T5: `title` + ` - <colour>, <size>` (the parts present, in that order), at most
+    `limit` code points. The title is cut (at the last whitespace when the cut lands inside a
+    word; trailing whitespace, `,-|/`, the en dash and combining marks stripped), never the suffix. No part
+    -> the title unchanged; no room for any title -> the title unchanged (the PTD check reports
+    it)."""
+    parts = [p for p in (colour, size) if p]
+    if not parts:
+        return title
+    suffix = " - " + ", ".join(parts)
+    if len(title) + len(suffix) <= limit:
+        return title + suffix
+    room = limit - len(suffix)
+    if room < 1:
+        return title
+    cut = title[:room]  # len(title) > room here
+    if not title[room].isspace() and not cut[-1].isspace():  # the cut lands inside a word
+        space = max((i for i, ch in enumerate(cut) if ch.isspace()), default=-1)
+        if space > 0:
+            cut = cut[:space]
+    cut = _trim(cut)
+    if not cut:
+        cut = _trim(title[:room]) or title[:room]
+    return cut + suffix
+
+
+def _trim(text: str) -> str:
+    while True:
+        before = text
+        text = text.rstrip().rstrip(_TITLE_TRAIL)
+        while text and unicodedata.combining(text[-1]):
+            text = text[:-1]
+        if text == before:
+            return text
+
+
+def _child_title(listing: AdapterListing, unit: AdapterItem, mapped: CategoryTemplate) -> str:
+    title = listing.listing.content.title
+    axes = _axes(listing) or frozenset()
+    shown: dict[str, str | None] = {}
+    for axis in ("color", "size"):
+        value = unit.variant_attributes.get(axis)
+        spec = mapped.specs.get(axis)
+        if axis not in axes or value is None or spec is None or spec.value_type != "enum":
+            shown[axis] = None
+            continue
+        shown[axis] = map_enum(spec, value)  # unmappable -> no part (already VALUE_NOT_ALLOWED)
+    limit = (
+        schema_check.value_max_length(
+            listing.product_type_schema, c.CONTENT_FIELDS["content.title"]
+        )
+        or c.ITEM_NAME_MAX
+    )
+    return child_title(title, shown["color"], shown["size"], limit)
+
+
 def _keywords(listing: CanonicalListing) -> str:
     """The Rules Engine's own joined keyword value, so what is sent is what was checked."""
     return submitted_keywords(listing.keywords)
@@ -565,6 +627,10 @@ def item_payload(
         attributes.update(ident)
         sent += ident_sent
         errors += ident_errors
+    if unit.item_role == "child" and mapped is not None:
+        attributes[c.CONTENT_FIELDS["content.title"]] = [
+            _entry(_child_title(listing, unit, mapped), marketplace_id)
+        ]
     if unit.item_role != "parent":
         offer, offer_errors = _offer(unit, facts, marketplace_id)
         errors += offer_errors
