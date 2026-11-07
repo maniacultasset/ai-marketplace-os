@@ -148,6 +148,17 @@ Tear the second stack down with `docker compose down -v`, then `cd -` and
 `git worktree remove ../ai-marketplace-os-trackb`. Remove old `mkos-api:ci*` images with
 `docker image rm`.
 
+### Parallel lanes on one Postgres server
+
+Worktrees that share one Postgres server cannot all own `mos_test`. Each lane gives itself a
+template `mos_test_l<tag>` (tag `[a-z0-9]{1,16}`, e.g. `mos_test_lsi4`): create it, run
+`scripts/db/0000_bootstrap.sql` in it, migrate it and sync the dictionary with the
+`MIGRATE_ENV` of the Makefile pointed at it, then run pytest under xdist with `DATABASE_URL` on
+it. Each worker copies it to `mos_test_l<tag>_gwN`, and the run drops only those copies
+(`apps/api/tests/support/xdist_db.py`); `mos_test`, its copies and other lanes' databases are
+never touched. Drop the template when the lane is done. The mutation slot copies
+(`mos_test_mut<n>`) stay `mos_test` only.
+
 ## Environments
 
 | Environment | Runs on | Database | Deployed by (planned) | Today |

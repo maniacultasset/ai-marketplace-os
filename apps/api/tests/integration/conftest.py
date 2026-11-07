@@ -15,8 +15,9 @@ import psycopg
 import pytest
 from psycopg import sql
 
-# The allowed databases: mos_test, mos_iso, or an xdist worker's copy of mos_test
-# (`mos_test_gw<digits>`), exact names only (tests/support/xdist_db.py).
+# The allowed databases: mos_test, mos_iso, a lane template `mos_test_l<tag>`, or an xdist
+# worker's copy of a template (`mos_test_gw<digits>`, `mos_test_l<tag>_gw<digits>`), exact names
+# only (tests/support/xdist_db.py).
 from tests.support.paths import repo_root as find_repo_root
 from tests.support.xdist_db import is_test_database, role_catalog_lock
 
@@ -40,7 +41,8 @@ def libpq_url(url: str) -> str:
 @pytest.fixture
 async def db_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Settings]:
     """Settings for the test database. Fails (never skips) unless DATABASE_URL points at
-    mos_test or mos_iso (or an xdist worker's mos_test_gwN); disposes the engine after each test
+    a test database (`is_test_database`: mos_test, mos_iso, a lane template or a worker copy);
+    disposes the engine after each test
     (one event loop per test)."""
     from app.core.config import get_settings
     from app.db.session import dispose_engine
@@ -63,7 +65,7 @@ async def db_settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> AsyncI
 
 @pytest.fixture
 def superuser_conn() -> Iterator[psycopg.Connection[tuple[object, ...]]]:
-    """An autocommit connection to the test database (mos_test, mos_iso or a mos_test_gwN only)."""
+    """An autocommit connection to the test database (`is_test_database` names only)."""
     url = os.environ.get("DATABASE_URL")
     if not url:
         pytest.fail("DATABASE_URL is unset: run the integration tests through `make api-tests`")

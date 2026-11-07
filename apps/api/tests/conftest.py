@@ -44,7 +44,8 @@ def _xdist_controller(config: pytest.Config) -> bool:
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Under pytest-xdist each worker runs on its own copy of mos_test (tests/support/xdist_db.py),
+    """Under pytest-xdist each worker runs on its own copy of the template DATABASE_URL names
+    (mos_test or a lane's mos_test_l<tag>; tests/support/xdist_db.py),
     set up here, before any test, settings object or engine exists; so does each mutmut child."""
     import os
 

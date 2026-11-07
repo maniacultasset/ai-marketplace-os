@@ -154,6 +154,8 @@ MIGRATOR_SCRAM_CMD = printf '%s' '$(CI_MIGRATOR_PASSWORD)' | uv run --frozen pyt
 COV_FAIL_UNDER ?= 70
 # api-tests runs pytest under pytest-xdist: `auto` workers, never more than 4 (--maxprocesses).
 # Each worker gwN copies the migrated, synced mos_test to mos_test_gwN (tests/support/xdist_db.py).
+# A lane sharing one Postgres server with other checkouts points TEST_DATABASE_URL at its own
+# template mos_test_l<tag> (tag [a-z0-9]{1,16}); its workers copy that to mos_test_l<tag>_gwN.
 API_TEST_WORKERS ?= auto
 
 # Alembic on mos_test before pytest (CANON.md:136): upgrade, check, downgrade, upgrade, then squawk
