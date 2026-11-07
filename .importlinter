@@ -131,6 +131,26 @@ forbidden_modules =
     app.core
     app.cli
 
+# The SI4 fix pass is pure too (A5): it proposes fixes and the Rules Engine decides, with no DB,
+# web, clock or app layer, directly or indirectly. The callers do the loading and the writes.
+[importlinter:contract:auto-fix-pure]
+name = app.services.auto_fix is pure
+type = forbidden
+source_modules =
+    app.services.auto_fix
+forbidden_modules =
+    sqlalchemy
+    psycopg
+    fastapi
+    starlette
+    app.db
+    app.repositories
+    app.api
+    app.workers
+    app.adapters
+    app.core
+    app.cli
+
 # The token decrypt path (invariant 6; EXECUTION-PLAN decision 15): the API encrypts only, and
 # anything needing plaintext runs in an adapter or a worker job. Indirect imports count too, so
 # no service or router can reach the unseal through a helper.
