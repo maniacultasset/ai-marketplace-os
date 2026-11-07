@@ -126,6 +126,8 @@ PRODUCT_FIELDS = frozenset(
         "manufacturer",
         "image_details",
         "colourways",
+        # SI3: photo-sourced facts the seller can confirm
+        "photo_facts",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
