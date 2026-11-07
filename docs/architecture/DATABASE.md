@@ -290,12 +290,35 @@ The only way a membership is created in v1. Std tenant + `updated_at`. Reliable 
 | Column | Type | Tag | Notes |
 |---|---|---|---|
 | email / role | text | Proposed / ADR-0006 | email lowercased and trimmed; one of the 4 roles |
-| token_hash | bytea | ADR-0006 | sha256 of 32 random bytes; UNIQUE; the raw token exists only in the email |
-| invited_by_user_id / expires_at | uuid? / timestamptz | Proposed / ADR-0006 | → m (NULL = staff); TTL is open decision 6 |
+| token_hash | bytea | ADR-0006 | sha256 of 32 random bytes; UNIQUE; the raw token exists only in the copied link (v1, ADR-0029) or the email (later) |
+| invited_by_user_id / expires_at | uuid? / timestamptz | Proposed / ADR-0006 | → m (NULL = staff); 7 days (ADR-0029, open decision 6 for v1) |
 | accepted_at, accepted_user_id, revoked_at | timestamptz?, uuid? | Proposed | `accepted_user_id` → `users(id)`; accepted and revoked are exclusive |
 
 - **Status is derived,** not stored. **One pending invite per email:** partial `UNIQUE (tenant_id, email)` while pending; re-inviting revokes the old row.
 - **RLS:** standard, plus a SELECT on `token_hash = app_token_hash()` for the pre-login accept step.
+- **SI5 (ADR-0029):** an owner or admin creates one (only an owner invites an owner) and copies the link
+  `<dashboard>/invite#token=<token>`; accept creates the account (a password, or Google when the verified email matches)
+  and the membership in one transaction with the row locked; a signed-in person with the email joins. Every refusal is
+  one generic 404. Audit `invitation.created|revoked|accepted` keeps `role` only.
+
+#### `password_reset_links` — [Decided, ADR-0029 proposed] new; placed in 0017
+A copied, single-use password reset link for a member (SI5). Std tenant table, no `updated_at`.
+
+| Column | Type | Tag | Notes |
+|---|---|---|---|
+| user_id / issued_by_user_id | uuid / uuid | ADR-0029 | each → m (`(tenant_id, user_id)` → `tenant_memberships`) |
+| token_hash | bytea | ADR-0029 | sha256 of 32 random bytes; UNIQUE, 32 bytes; the raw token exists only in the copied link |
+| expires_at | timestamptz | ADR-0029 | at most `created_at + 24 hours` (CHECK) |
+| used_at, revoked_at | timestamptz? | ADR-0029 | exclusive (CHECK); a new link revokes the open one |
+
+- **One live link per member:** partial `UNIQUE (tenant_id, user_id) WHERE used_at IS NULL AND revoked_at IS NULL`.
+- **RLS:** standard, plus `password_reset_links_hash` (SELECT on `token_hash = app_token_hash()`) for the public redeem.
+- **Privileges:** app_rw has no TRUNCATE, UPDATE only `used_at, revoked_at`, and DELETE for the retention prune; the
+  read-only roles never read `token_hash`.
+- **Eligibility (enforced in the service):** a member of this tenant only, active, with a password and a confirmed TOTP,
+  not a platform admin, not the issuer, an owner only by an owner, and only under `MFA_ENFORCEMENT=all`; redemption
+  re-checks it and that the issuer still holds the role. Retention: 30 days after it closed. `redact_user` deletes the
+  user's links; `purge_tenant` covers the table.
 
 #### `refresh_tokens` — [Canon 0003] + [Proposed, follows ADR-0006] membership FK + [Proposed] family
 Std tenant.
@@ -1030,7 +1053,7 @@ Both std tenant. `imports` backs `ImportReport` (rename `ImportReport.batch_id` 
 | import_rows.raw_row / status | jsonb / text | Proposed | cells as uploaded (untrusted; unmapped columns stay here with a warning; holds party contact cells, so no SELECT for `app_ro`/`app_platform_ro`, §8.1); `pending\|imported\|failed` |
 | import_rows.product_id / error_report_json / job_id | uuid? / jsonb? / uuid? | Proposed | product → SET NULL (product_id) (exception); source `schema` or `rules_engine` |
 
-- **Headers** are the BRD master names verbatim (Appendix A.6); ADR-0007's `parent_sku` and the scaffold's `mrp_inr`, `price_inr`, `weight_grams` are aliases (`attribute_definitions.input_aliases`).
+- **Headers** are the BRD master names verbatim (Appendix A.6); ADR-0007's `parent_sku` and the scaffold's `mrp_inr`, `price_inr`, `weight_grams` are aliases (`attribute_definitions.input_aliases`). SI5 (ADR-0029 context, PLAN D15) adds one barcode column instead of the `product_identifier_type` / `product_identifier` pair: `ean`, `upc` or `gtin` (the header names the type) or `barcode` (the type from the length: 12 upc, 8 or 13 ean, 14 gtin), and `identifier_exemption` (`yes`/`no`, `true`/`false`, `y`/`n`, `1`/`0`); a style row's exemption reaches its children that give neither. Two barcode columns, a pair plus an alias, or a barcode plus `yes` is `CROSS_FIELD_MISMATCH`; the type's length applies to every barcode column (`IDENTIFIER_INVALID`).
 - **Pass 1** upserts style rows (their title, brand and classification must agree across child rows), matches or creates `business_parties` on `dedupe_key`, creates colourways; **pass 2** writes children, facts through the FactWriter (§5.6) and matrix cells (T17). "Failed rows re-runnable" (L5036).
 - **Cells that don't map 1:1 [Proposed; nothing is invented, L765, L941]:**
   - `manufacturer_name` + `manufacturer_address` (one free-text cell, L1614): the raw address goes into `address_line1` unchanged and into `provenance.manufacturer.value`; `postal_code`, `state_code` and `city` are filled only when parsing is unambiguous (e.g. exactly one trailing 6-digit PIN). The party is matched on `dedupe_key`.
@@ -1980,9 +2003,9 @@ Rows marked **→ Tn** moved to TEAM-QUESTIONS and are built on its Default.
 | 3 | Hosting leftovers: `GRANT … WITH INHERIT FALSE, SET TRUE` and the non-superuser bootstrap on Cloud SQL (local half answered by the S5 mimic (`make bootstrap`); staging confirms); HA; backup-export location; staging `max_connections` | user |
 | 4 | Audit retention (24 mo?), offboarding grace (30 d?), DPDP log minimum, erasure of a sole proprietor's party data (incl. its copies in `import_rows` and `human_tasks`, §9) | user + counsel |
 | 5 | `tenants.plan` vocabulary; what happens at `trial_ends_at` | client |
-| 6 | Invitation TTL; transactional email provider | user |
+| 6 | Invitation TTL; transactional email provider (**v1 answered by ADR-0029:** 7-day invites, 24-hour reset links, copied links until a provider exists) | user |
 | 7 | `reject` semantics → **T40**; statuses → **T12** | client |
-| 8 | Who can invite or promote an owner; ownership transfer; password reset in v1 | user |
+| 8 | Who can invite or promote an owner; ownership transfer; password reset in v1 (**v1 answered by ADR-0029:** owner and admin invite, only an owner invites or resets an owner; reset links for sole-tenant members with a confirmed TOTP; ownership transfer stays open) | user |
 | 9 | Run the local app as `app_rw` (new env names) | Tech Lead |
 | 10 | Per-request membership check; regenerating makes you the maker; contributor chain; the answerer is the maker (**T51**) | user |
 | 11 | Does "max 3" count corrections (attempt 1..4) or all attempts (1..3)? (S18 default, D8: at most 3 `validate_rules` port calls; a 4th gets `INTERNAL_ERROR`; the backend re-check is attempt n+1 ≤ 4) | AI team |

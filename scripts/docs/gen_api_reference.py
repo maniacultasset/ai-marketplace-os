@@ -1367,11 +1367,13 @@ A request body over 10 MiB (`REQUEST_MAX_BODY_BYTES`, default 10,485,760 bytes) 
 
 | Limit | Applies to | Default |
 |---|---|---|
-| Per tenant | every authenticated request, counted after the token and membership check pass | 120 per minute (`RATE_LIMIT_PER_TENANT_PER_MIN`) |
+| Per tenant | every authenticated request, counted after the token and membership check pass | 120 per minute by default; production 600 (`RATE_LIMIT_PER_TENANT_PER_MIN`) |
 | Per IP | every public route (login, refresh, logout, OAuth callback) | 60 per minute (`RATE_LIMIT_PER_IP_PER_MIN`) |
 | Login | `POST /auth/login` and `POST /signup/status`, per IP and email | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
 | Login | `POST /auth/login` and `POST /signup/status`, per email from any address | 10 per minute (`AUTH_LOGIN_EMAIL_RATE_LIMIT_PER_MIN`) |
 | Sign-up | `POST /signup`, per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Invite links | `POST /invites/lookup`, `/invites/accept` and `/invites/join`, one bucket per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
+| Reset links | `POST /auth/password/reset`, per IP | 5 per minute (`AUTH_LOGIN_RATE_LIMIT_PER_MIN`) |
 | Status refresh | `POST /listings/{listing_id}/refresh-status`, per listing | once per 5 minutes |
 | Per-tenant caps | live imports, live image jobs, live brand document jobs, documents and chunks per tenant | fixed caps |
 | Daily AI budget | `listings/generate`, `listings/{listing_id}/regenerate`, and (per item) a reject with `regenerate` in `listings/approve` | a daily spend cap per tenant (`LLM_TENANT_DAILY_BUDGET_USD`); answers `429 BUDGET_EXCEEDED` |

@@ -47,6 +47,7 @@ TENANT_COLUMN: dict[str, str] = {
     "listings": "tenant_id",
     "marketplace_accounts": "tenant_id",
     "oauth_states": "tenant_id",
+    "password_reset_links": "tenant_id",  # 0017 (ADR-0029)
     "performance": "tenant_id",
     "product_colourways": "tenant_id",
     "products": "tenant_id",

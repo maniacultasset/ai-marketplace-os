@@ -31,6 +31,7 @@ from decimal import Decimal
 from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
+from sqlalchemy.exc import DBAPIError
 
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
@@ -39,10 +40,12 @@ from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
+from app.services import product_identifier
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.product_facts import (
     SIZE_CHART_KEY,
+    STANDALONE,
     AttributeValue,
     build_attributes,
     seller_column_fact,
@@ -90,6 +93,9 @@ class NewProduct:
     size_chart: Mapping[str, Any] | None = None
     id: uuid.UUID | None = None
     image_uploads: tuple[CreateUpload, ...] = ()
+    # SI5: the barcode `(type, value)` and the GTIN exemption
+    product_identifier: tuple[str, str] | None = None
+    identifier_exemption: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +187,8 @@ class ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     etag: str = ""
     photo_facts: tuple[PhotoFactView, ...] = ()
+    product_identifier: tuple[str, str] | None = None
+    identifier_exemption: bool = False
 
 
 def _money(value: Any) -> str | None:
@@ -274,9 +282,12 @@ def _view(
     details: tuple[ImageDetail, ...] = (),
     party: PartyView | None = None,
     colourways: tuple[ColourwayRow, ...] = (),
+    style_exempt: bool = False,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
-    are the product's live image keys in slot order (S17b CP7)."""
+    are the product's live image keys in slot order (S17b CP7). SI5: a variant or standalone
+    reads its own barcode columns; a style holds none and takes `style_exempt` (every live
+    variant exempt, `style_exemptions`)."""
     facts: Mapping[str, Any] = row.attributes or {}
     if not isinstance(facts, Mapping):
         facts = {}
@@ -305,7 +316,21 @@ def _view(
         colourways=colourways,
         etag=product_etag(row.id, row.updated_at),
         photo_facts=photo_facts_of(facts),
+        **_identifier_view(row, style_exempt),
     )
+
+
+def _is_style(row: Any) -> bool:
+    return row.parent_product_id is None and row.variation_theme is not None
+
+
+def _identifier_view(row: Any, style_exempt: bool) -> dict[str, Any]:
+    if _is_style(row):
+        return {"product_identifier": None, "identifier_exemption": style_exempt}
+    id_type, value = getattr(row, "identifier_type", None), getattr(row, "identifier_value", None)
+    status = getattr(row, "identifier_status", None)
+    pair = (id_type, value) if status == "provided" and id_type and value else None
+    return {"product_identifier": pair, "identifier_exemption": status == "exempt"}
 
 
 async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
@@ -327,7 +352,17 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
-    return _view(row, keys[row.id], details=details, party=party, colourways=colourways)
+    exempt = False
+    if _is_style(row):
+        exempt = (await uow.products.style_exemptions([row.id]))[row.id]
+    return _view(
+        row,
+        keys[row.id],
+        details=details,
+        party=party,
+        colourways=colourways,
+        style_exempt=exempt,
+    )
 
 
 def _refuse_nul(cmd: NewProduct) -> None:
@@ -361,6 +396,18 @@ def party_fields(party: PartyInput, role: str = "manufacturer") -> PartyFields:
 
 
 async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
+    """SI5: a barcode already used in the tenant (the pre-check, or a concurrent create caught
+    on `products_identifier_uq` after the transaction rolled back) is 422 at
+    `product_identifier.value`."""
+    try:
+        return await _create_product(principal, cmd)
+    except (DBAPIError, ConflictError) as exc:
+        if product_identifier.is_duplicate(exc):
+            raise product_identifier.duplicate() from None
+        raise
+
+
+async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     _refuse_nul(cmd)
     if cmd.category is None:
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")
@@ -372,9 +419,30 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     checked = []
     if cmd.id is not None:  # CP8: every key is checked before the transaction
         checked = await check_create_uploads(principal, cmd.id, cmd.image_uploads)
+    sent = {
+        name
+        for name, value in (
+            ("product_identifier", cmd.product_identifier),
+            ("identifier_exemption", cmd.identifier_exemption),
+        )
+        if value is not None
+    }
+    id_change = product_identifier.plan(
+        STANDALONE,
+        None,
+        identifier=cmd.product_identifier,
+        exemption=cmd.identifier_exemption,
+        sent=sent,
+    )
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        if (
+            id_change is not None
+            and id_change.value is not None
+            and await uow.products.identifier_taken(id_change.value, None)
+        ):
+            raise product_identifier.duplicate()
         defs = await uow.attribute_definitions.resolve(cmd.attributes.keys())
         facts = build_attributes(cmd.attributes, defs, now=now)
         if cmd.size_chart is not None:
@@ -416,6 +484,9 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             key = await uow.facts.column_key(column)
             assert key is not None  # noqa: S101 - set_typed refused an unknown column
             provenance[key] = column_fact
+        if id_change is not None:
+            await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
+            provenance[product_identifier.IDENTIFIER_KEY] = column_fact
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",
@@ -443,4 +514,6 @@ async def list_products(
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, has_more = await uow.products.list_page(limit=limit, after=after)
         keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
-        return [_view(r, keys[r.id]) for r in rows], has_more
+        exempt = await uow.products.style_exemptions([r.id for r in rows if _is_style(r)])
+        views = [_view(r, keys[r.id], style_exempt=exempt.get(r.id, False)) for r in rows]
+        return views, has_more

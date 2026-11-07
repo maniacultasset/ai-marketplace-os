@@ -257,6 +257,9 @@ def test_list_ops_are_the_page_models() -> None:
         "listings_submissions",
         # ADR-0019: the platform admin's sign-up queue
         "admin_signup_requests_list",
+        # SI5: the tenant's invites and the platform admin's tenant list
+        "invites_list",
+        "admin_tenants_list",
     }
 
 

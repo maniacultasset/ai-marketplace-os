@@ -515,13 +515,25 @@ class _Writer:
             **family,
         )
 
-    async def _row_facts(self, product_id: uuid.UUID, row: ProductImportRow, *, level: str) -> None:
+    async def _row_facts(
+        self,
+        product_id: uuid.UUID,
+        row: ProductImportRow,
+        *,
+        level: str,
+        inherited_exemption: bool | None = None,
+    ) -> None:
+        """`inherited_exemption`: a variant's style row said `identifier_exemption` (SI5 D15);
+        it applies when the variant gives neither a barcode nor its own exemption."""
         f = self.run.facts
         w = self.facts
         for column in ("mrp", "selling_price", "tax_rate", "hsn_code", "country_of_origin"):
             value = getattr(row, column)
             if value is not None:
                 await w.set_typed(product_id, column, value, f.provenance())
+        exempt = row.identifier_exemption
+        if exempt is None and row.identifier_value is None:
+            exempt = inherited_exemption
         if row.identifier_value is not None and level != "style":
             await w.set_typed_group(
                 product_id,
@@ -530,6 +542,12 @@ class _Writer:
                     "identifier_value": row.identifier_value,
                     "identifier_status": "provided",
                 },
+                f.provenance(),
+            )
+        elif exempt is True and level != "style":
+            await w.set_typed_group(
+                product_id,
+                {"identifier_type": None, "identifier_value": None, "identifier_status": "exempt"},
                 f.provenance(),
             )
         if row.package_length_cm is not None:
@@ -891,7 +909,15 @@ class _Writer:
                 await self.facts.set_attribute(
                     done.id, "size", self.run.facts.fact(row.size_name, row.size_key)
                 )
-            await self._row_facts(done.id, row, level="variant")
+            await self._row_facts(
+                done.id,
+                row,
+                level="variant",
+                # the family's style row (a child lead names its own parent)
+                inherited_exemption=(
+                    style.identifier_exemption if style.parent_sku is None else None
+                ),
+            )
             await self._child_money(done.id, style_id)
             await self.cells.upsert(
                 style_id,

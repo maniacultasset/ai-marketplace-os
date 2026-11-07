@@ -556,3 +556,52 @@ def _json(value: dict[str, Any]) -> str:
     import json
 
     return json.dumps(value, sort_keys=True)
+
+
+# ---- trial recovery (SI5, ADR-0029 §5): the 0017 definers, as migrator ----
+
+
+async def _recover(
+    engine: AsyncEngine, *, slug: str, sql: str, params: dict[str, Any]
+) -> tuple[uuid.UUID, str]:
+    async with engine.begin() as conn:
+        current = (await conn.execute(text("SELECT current_user"))).scalar_one()
+        if current != "migrator":
+            await conn.execute(text("SET LOCAL ROLE migrator"))
+        tenant_id = (
+            await conn.execute(text("SELECT id FROM tenants WHERE slug = :s"), {"s": slug})
+        ).scalar_one_or_none()
+        if tenant_id is None:
+            raise NotEligibleError("no tenant")
+        outcome = str((await conn.execute(text(sql), {"t": tenant_id, **params})).scalar_one())
+    if outcome == "not_found":
+        raise NotEligibleError("no tenant")
+    if outcome == "refused":
+        raise NotEligibleError("the tenant is not in a state this move allows")
+    return tenant_id, outcome
+
+
+async def activate_tenant(
+    engine: AsyncEngine, *, slug: str, reason: str, staff_email: str
+) -> tuple[uuid.UUID, str]:
+    """`activate_tenant` (0017): a trial or suspended tenant becomes active, audited as staff;
+    an active one is `unchanged`. `NotEligibleError` for an unknown or offboarded tenant."""
+    return await _recover(
+        engine,
+        slug=slug,
+        sql="SELECT public.activate_tenant(:t, :r, :e)",
+        params={"r": reason, "e": staff_email},
+    )
+
+
+async def extend_trial(
+    engine: AsyncEngine, *, slug: str, days: int, reason: str, staff_email: str
+) -> tuple[uuid.UUID, str]:
+    """`extend_tenant_trial` (0017): a trial ends `days` later; a tenant suspended by trial
+    expiry returns to trial. `NotEligibleError` for an unknown tenant or any other state."""
+    return await _recover(
+        engine,
+        slug=slug,
+        sql="SELECT public.extend_tenant_trial(:t, :d, :r, :e)",
+        params={"d": days, "r": reason, "e": staff_email},
+    )

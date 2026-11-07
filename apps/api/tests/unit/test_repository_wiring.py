@@ -58,6 +58,8 @@ def test_every_repository_subclasses_tenant_base() -> None:
             "MembershipRepository",
             "RefreshTokenRepository",
             "SignupRepository",  # ADR-0019: the platform sign-up queue, under its own RLS
+            # SI5 (ADR-0029): the platform admin's tenant list, under tenants_platform_admin
+            "TenantAdminRepository",
             "UserRepository",
         },
         # DPP-1 (0011): per-user platform tables with no tenant_id, narrowed by their own RLS
