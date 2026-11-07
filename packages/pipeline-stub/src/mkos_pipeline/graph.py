@@ -7,7 +7,12 @@ implementation of each port is exercised end to end. Port exceptions propagate u
 Scenarios, chosen by a `user_instructions` prefix `stub:<name>` (anything else is `ok`):
 
 - `ok`: a compliant listing. A rules pass → `generated`; still failing at the cap → `blocked`.
-- `blocked`: a 221-character title on every attempt → `blocked` after `ctx.max_attempts`.
+- `blocked`: a 260-character title on every attempt → `blocked` after `ctx.max_attempts`. A
+  word-boundary trim to the 200-character limit would remove more than 15%, so the backend's
+  deterministic fix pass declines it and the title stays an AI correction (SI4 A7).
+- `long_title`: a 212-character title of whole fixture words on every attempt. A trim at the last
+  word boundary within 200 characters removes under 15%, so the backend's fix pass fixes it on the
+  first `validate_rules` call (SI4 A7, AC5).
 - `failed`: no listing, `GENERATION_FAILED`, every agent block `failed`.
 - `vision_warn`: the `ok` listing carrying `ctx.previous_version.images`, with one vision warning
   report per image (`pass=true`, one failed `text_overlay` vision check). It never changes the
@@ -54,15 +59,18 @@ from mkos_schemas.pipeline import PipelineDeps
 from mkos_schemas.rules import RequiredAttribute
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
-Scenario = Literal["ok", "blocked", "failed", "vision_warn", "warnings", "timeout", "malformed"]
+Scenario = Literal[
+    "ok", "blocked", "long_title", "failed", "vision_warn", "warnings", "timeout", "malformed"
+]
 SCENARIOS: Final[frozenset[str]] = frozenset(
-    {"ok", "blocked", "failed", "vision_warn", "warnings", "timeout", "malformed"}
+    {"ok", "blocked", "long_title", "failed", "vision_warn", "warnings", "timeout", "malformed"}
 )
 MALFORMED_ATTEMPTS: Final = 7
 WARN_WORD: Final = "stubwarn"
 STUB_EPOCH: Final = datetime(2026, 1, 1, tzinfo=UTC)
 STUB_MODEL: Final = "stub"
-LONG_TITLE_LENGTH: Final = 221
+LONG_TITLE_LENGTH: Final = 260
+FIXABLE_TITLE_LENGTH: Final = 212
 BRAND_K: Final = 8
 AGENTS: Final[tuple[Literal["content", "keyword", "attribute", "image"], ...]] = (
     "content",
@@ -149,14 +157,16 @@ def build_listing(
     ctx: GenerationContext,
     *,
     long_title: bool,
+    fixable_title: bool = False,
     images: list[ImageRef] | None = None,
     warn: bool = False,
 ) -> CanonicalListing:
     fixture = _fixture()
     title = f"{fixture.title} {WARN_WORD}" if warn else fixture.title
-    if long_title:
-        repeated = fixture.long_title_unit * (LONG_TITLE_LENGTH // len(fixture.long_title_unit) + 1)
-        title = repeated[: LONG_TITLE_LENGTH - 1] + "."
+    length = LONG_TITLE_LENGTH if long_title else FIXABLE_TITLE_LENGTH if fixable_title else 0
+    if length:
+        repeated = fixture.long_title_unit * (length // len(fixture.long_title_unit) + 1)
+        title = repeated[: length - 1] + "."
     return CanonicalListing.model_validate(
         {
             "listing_id": ctx.listing_id,
@@ -349,7 +359,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
             records.append(_record(ctx, "correction", "correct", attempt))
         await deps.emit_node_event(S.VALIDATE_SCHEMA, "started")
         built = build_listing(
-            ctx, long_title=chosen == "blocked", images=images, warn=chosen == "warnings"
+            ctx,
+            long_title=chosen == "blocked",
+            fixable_title=chosen == "long_title",
+            images=images,
+            warn=chosen == "warnings",
         )
         listing = CanonicalListing.model_validate(built.model_dump(mode="json"))
         await deps.emit_node_event(S.VALIDATE_SCHEMA, "ok")

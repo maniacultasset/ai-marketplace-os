@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 from uuid import UUID
 
 import pytest
 from mkos_pipeline import run_listing_pipeline
-from mkos_pipeline.graph import LONG_TITLE_LENGTH, STUB_EPOCH, scenario
+from mkos_pipeline.graph import (
+    FIXABLE_TITLE_LENGTH,
+    LONG_TITLE_LENGTH,
+    SCENARIOS,
+    STUB_EPOCH,
+    scenario,
+)
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, PipelineStage, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
@@ -385,3 +392,55 @@ async def test_stub_unknown_scenario_still_ok(text: str) -> None:
     result = await run_listing_pipeline(_ctx(user_instructions=text), FakeDeps())
     assert result.terminal_state == "generated"
     GenerationResult.model_validate_json(result.model_dump_json())
+
+
+# ---- SI4 A7 (AC5; CP-D7): `long_title` is auto-fixable, `blocked` stays blocked ----
+
+TRIM_MAX_SHARE = Decimal("0.15")  # a copy of app.services.auto_fix.policy (no `app` import here)
+
+
+def _trim_share(title: str, limit: int) -> Decimal | None:
+    """The share a word-boundary trim to ``limit`` chars removes (A2's rule), else None."""
+    cut = title.rfind(" ", 0, limit + 1)
+    if cut <= 0:
+        return None
+    kept = title[:cut].rstrip(" ,;:-/&")
+    return Decimal(len(title) - len(kept)) / Decimal(len(title))
+
+
+def test_stub_lengths() -> None:
+    assert (LONG_TITLE_LENGTH, FIXABLE_TITLE_LENGTH) == (260, 212)
+    assert "long_title" in SCENARIOS
+
+
+async def test_stub_scenario_long_title_stays_long_without_a_fix() -> None:
+    deps = FakeDeps()
+    result = await _run(_ctx(user_instructions="stub:long_title"), deps)
+    assert result.listing is not None
+    title = result.listing.content.title
+    assert len(title) == FIXABLE_TITLE_LENGTH
+    assert [n for n, _ in deps.calls].count("validate_rules") == 3  # FakeDeps never fixes it
+
+
+async def test_stub_scenario_long_title_passes_when_the_deps_fix_it() -> None:
+    class FixingDeps(FakeDeps):
+        async def validate_rules(self, listing: CanonicalListing) -> ErrorReport:
+            self._hit("validate_rules", listing)
+            return ErrorReport(status="passed", listing_id=listing.listing_id)
+
+    deps = FixingDeps()
+    result = await _run(_ctx(user_instructions="stub:long_title"), deps)
+    assert result.terminal_state == "generated"
+    assert result.attempts_used == 1
+    assert [n for n, _ in deps.calls].count("validate_rules") == 1
+    assert result.listing is not None and len(result.listing.content.title) == FIXABLE_TITLE_LENGTH
+
+
+async def test_stub_blocked_title_is_declined_by_a_trim_and_long_title_accepted() -> None:
+    blocked = await _run(_ctx(user_instructions="stub:blocked"))
+    fixable = await _run(_ctx(user_instructions="stub:long_title"))
+    assert blocked.listing is not None and fixable.listing is not None
+    declined = _trim_share(blocked.listing.content.title, TITLE_LIMIT)
+    accepted = _trim_share(fixable.listing.content.title, TITLE_LIMIT)
+    assert declined is not None and declined > TRIM_MAX_SHARE
+    assert accepted is not None and accepted <= TRIM_MAX_SHARE
