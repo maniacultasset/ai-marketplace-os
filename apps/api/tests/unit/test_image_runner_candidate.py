@@ -244,3 +244,14 @@ async def test_finish_white_grey_echo_is_not_white() -> None:
         _params(),
     )
     assert not reply.ok and reply.reason == "not_white"
+
+
+async def test_finish_white_whitens_a_240_echo_before_judging() -> None:
+    clean_img = _scene((240, 240, 240), (2000, 2000))
+    echo = _scene((240, 240, 240), (1024, 1024))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean_img, "PNG"), "output": fx.encode(echo, "JPEG", quality=90)},
+        _params(),
+    )
+    assert reply.ok, (reply.reason, reply.fidelity)

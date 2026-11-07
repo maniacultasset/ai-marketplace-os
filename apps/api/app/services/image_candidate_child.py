@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import contextlib
 import io
 import json
 import sys
@@ -176,8 +177,14 @@ def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[
     clean = _decode(_input(inputs, "clean"), CLEAN_FORMATS)
     if clean is None:
         return _refused("source_unusable")
-    if not border_profile(output).near_white:  # the edit left a coloured background
+    output_border = border_profile(output)
+    if not output_border.near_white:  # the edit left a coloured background
         return _refused("not_white")
+    if output_border.uniform:  # a near-white grey the model left becomes white, as `fix` does
+        # a product that is itself near-white leaks: judge the output as it came
+        with contextlib.suppress(FixRefused):
+            output = whiten_border(output, output_border)
+
     prof = border_profile(clean)
     original = pad_square(clean, prof.colour)
     score = judge(original, output, prof)
