@@ -2645,10 +2645,11 @@
       "InvitePreview": {
         "properties": {
           "account": {
-            "description": "`existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign in yet, such as a pending sign-up, gives its own password).",
+            "description": "`existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`. `own_password`: the email has an account that cannot sign in yet (a pending or rejected sign-up, or removed from every brand), so accept with `invites_accept` and that account's current password (no confirm or name fields; a wrong one is 401 and counts toward the lockout). `new`: no account for the email, so accept with `invites_accept` and a new password or Google.",
             "enum": [
               "new",
-              "existing"
+              "existing",
+              "own_password"
             ],
             "title": "Account",
             "type": "string"
@@ -24085,7 +24086,7 @@
     },
     "/api/v1/invites/lookup": {
       "post": {
-        "description": "What an invite link is for: the brand, the role, the invited email and whether it has an\naccount that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,\nwhich for an account that cannot sign in yet, such as a pending sign-up, takes that\naccount's own password). Every\nrefusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who\nlost the role) is the same 404.",
+        "description": "What an invite link is for: the brand, the role, the invited email and its account\n(`existing`: it can sign in, so sign in, then `invites_join`; `own_password`: it cannot sign\nin yet, such as a pending sign-up, so `invites_accept` with that account's current password;\n`new`: `invites_accept` with a new password or Google). Every refusal (unknown, used,\nrevoked or expired link, a brand that is not active, an inviter who lost the role) is the\nsame 404.",
         "operationId": "invites_lookup",
         "requestBody": {
           "content": {

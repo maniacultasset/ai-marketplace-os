@@ -10,9 +10,10 @@
 - `lookup`, `accept_password`, `accept_google`, `join`: the public steps and the signed-in join.
   Every refusal of a well-formed token is one `NotFoundError("token")` (`_live`). An email whose
   account can sign in (active, with a live membership) is `existing` and joins signed in; any
-  other email is `new` and accepts. An account that cannot sign in yet (a pending or rejected
-  applicant, deactivated from every brand, or its only brands suspended or offboarded) accepts
-  with its own password under the lockout gate (`signup.verify_existing_user`), never a new one.
+  other email accepts. An account that cannot sign in yet (a pending or rejected applicant,
+  deactivated from every brand, or its only brands suspended or offboarded) is `own_password`
+  when it has a password and accepts with it under the lockout gate
+  (`signup.verify_existing_user`), never a new one; with no account, or a Google-only one, `new`.
 
 Audit rows carry the role only (`audit_allowlist('invitation')`), never the email or the token.
 """
@@ -25,7 +26,7 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
@@ -69,6 +70,7 @@ __all__ = [
 INVITE_TTL: Final = timedelta(days=7)
 MAX_PENDING_INVITES: Final = 50
 TOKEN_BYTES: Final = 32
+Account = Literal["new", "existing", "own_password"]
 LIVE_TENANT: Final = ("trial", "active")
 INVITERS: Final = ("owner", "admin")
 
@@ -175,7 +177,7 @@ class Preview:
     role: str
     email: str
     expires_at: datetime
-    account: str
+    account: Account
 
 
 @dataclass(frozen=True, slots=True)
@@ -249,20 +251,30 @@ async def _can_sign_in(session: Any, user: UserRow) -> bool:
     return bool(await MembershipRepository(session).list_active_for_user(user.id))
 
 
+async def _account(session: Any, user: UserRow | None) -> Account:
+    """`existing`: the account can sign in (sign in, then join). `own_password`: it cannot sign
+    in yet and has a password, which accept verifies. `new`: no account, or a Google-only one
+    that cannot sign in (KNOWN-ISSUES: no way in yet)."""
+    if user is None:
+        return "new"
+    if await _can_sign_in(session, user):
+        return "existing"
+    return "new" if user.hashed_password is None else "own_password"
+
+
 async def lookup(raw: str) -> Preview:
-    """What the link is for, and whether its email has an account that can sign in (`existing`:
-    sign in, then join) or not (`new`: accept, with the account's own password if it has one)."""
+    """What the link is for, and what its email's account means for the next step
+    (`_account`: `existing`, `own_password` or `new`)."""
     async with identity_session() as session:
         live = await _live(session, await _find(session, raw))
         await set_gucs(session, login_email=live.row.email)
-        user = await UserRepository(session).by_email(live.row.email)
-        existing = user is not None and await _can_sign_in(session, user)
+        account = await _account(session, await UserRepository(session).by_email(live.row.email))
     return Preview(
         tenant_name=live.tenant_name,
         role=live.row.role,
         email=live.row.email,
         expires_at=live.row.expires_at,
-        account="existing" if existing else "new",
+        account=account,
     )
 
 

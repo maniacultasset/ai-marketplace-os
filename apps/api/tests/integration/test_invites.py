@@ -510,8 +510,8 @@ async def test_a_pending_applicant_joins_with_its_own_password(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
     """CR1: a self-serve applicant has a users row and no membership, so the login is 401 and
-    `invites_join` is out of reach. Lookup says `new`, and accept takes the account's own
-    password under the lockout gate: a wrong one is 401 and counted, the right one joins."""
+    `invites_join` is out of reach. Lookup says `own_password`, and accept takes the account's
+    own password under the lockout gate: a wrong one is 401 and counted, the right one joins."""
     from .mfa_support import login
 
     signed_up = await api.post(
@@ -527,7 +527,7 @@ async def test_a_pending_applicant_joins_with_its_own_password(
     assert (await login(api, APPLICANT, APPLICANT_PASSWORD)).status_code == 401
     token = await _token_for(api, world, APPLICANT)
     preview = await api.post(f"{INVITES}/lookup", json={"token": token})
-    assert preview.status_code == 200 and preview.json()["account"] == "new"
+    assert preview.status_code == 200 and preview.json()["account"] == "own_password"
     wrong = await _accept(api, token, password=NEW_PASSWORD)
     assert wrong.status_code == 401, wrong.text
     assert wrong.json()["error"]["type"] == "UNAUTHENTICATED"
@@ -551,7 +551,7 @@ async def test_an_account_with_no_live_brand_joins_with_its_password(
     api: httpx.AsyncClient, world: World, auth_db: Conn, lost: str
 ) -> None:
     """CR1: deactivated from every brand, or the only brand suspended or offboarded: the login
-    is 401, so lookup says `new` and accept with the account's own password joins."""
+    is 401, so lookup says `own_password` and accept with the account's own password joins."""
     from .auth_support import PASSWORD, add_member, add_user
     from .mfa_support import login
 
@@ -567,11 +567,31 @@ async def test_an_account_with_no_live_brand_joins_with_its_password(
     assert (await login(api, email, PASSWORD)).status_code == 401
     token = await _token_for(api, world, email)
     preview = await api.post(f"{INVITES}/lookup", json={"token": token})
-    assert preview.json()["account"] == "new", preview.text
+    assert preview.json()["account"] == "own_password", preview.text
     done = await _accept(api, token, password=PASSWORD)
     assert done.status_code == 200, done.text
     assert (world.tenant("acme"), "reviewer", True) in _members(auth_db, email)
     assert (await login(api, email, PASSWORD)).status_code == 200
+
+
+async def test_a_google_only_account_that_cannot_sign_in_stays_new(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """CR2: `own_password` needs a password to verify. A Google-only account deactivated from
+    every brand has none, so lookup stays `new` (KNOWN-ISSUES: no way in yet)."""
+    from .auth_support import add_member, add_user
+
+    email = "google-only@elsewhere.test"
+    user_id = add_user(auth_db, email)
+    auth_db.execute(
+        "UPDATE users SET hashed_password = NULL, auth_provider = 'google', "
+        "google_sub = 'g-sub-stranded', email_verified_at = now() WHERE id = %s",
+        [user_id],
+    )
+    add_member(auth_db, world.tenant("bharat"), user_id, "reviewer", active=False)
+    token = await _token_for(api, world, email)
+    preview = await api.post(f"{INVITES}/lookup", json={"token": token})
+    assert preview.status_code == 200 and preview.json()["account"] == "new", preview.text
 
 
 async def test_accept_into_a_brand_it_already_belongs_to_is_409(

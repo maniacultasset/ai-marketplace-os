@@ -1036,12 +1036,12 @@ export interface paths {
         put?: never;
         /**
          * What an invite link is for: the brand, the role and whether the email has an account
-         * @description What an invite link is for: the brand, the role, the invited email and whether it has an
-         *     account that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,
-         *     which for an account that cannot sign in yet, such as a pending sign-up, takes that
-         *     account's own password). Every
-         *     refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
-         *     lost the role) is the same 404.
+         * @description What an invite link is for: the brand, the role, the invited email and its account
+         *     (`existing`: it can sign in, so sign in, then `invites_join`; `own_password`: it cannot sign
+         *     in yet, such as a pending sign-up, so `invites_accept` with that account's current password;
+         *     `new`: `invites_accept` with a new password or Google). Every refusal (unknown, used,
+         *     revoked or expired link, a brand that is not active, an inviter who lost the role) is the
+         *     same 404.
          */
         post: operations["invites_lookup"];
         delete?: never;
@@ -2907,10 +2907,10 @@ export interface components {
         InvitePreview: {
             /**
              * Account
-             * @description `existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign in yet, such as a pending sign-up, gives its own password).
+             * @description `existing`: the email has a Kuinn account that can sign in, so sign in and call `invites_join`. `own_password`: the email has an account that cannot sign in yet (a pending or rejected sign-up, or removed from every brand), so accept with `invites_accept` and that account's current password (no confirm or name fields; a wrong one is 401 and counts toward the lockout). `new`: no account for the email, so accept with `invites_accept` and a new password or Google.
              * @enum {string}
              */
-            account: "new" | "existing";
+            account: "new" | "existing" | "own_password";
             /** Email */
             email: string;
             /**

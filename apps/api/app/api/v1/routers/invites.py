@@ -99,12 +99,12 @@ async def invites_revoke(invite_id: UUID, principal: CurrentPrincipal) -> Invite
 
 @route(router, OPS["invites_lookup"])
 async def invites_lookup(body: InviteTokenIn, request: Request) -> InvitePreview:
-    """What an invite link is for: the brand, the role, the invited email and whether it has an
-    account that can sign in (`existing`: sign in, then `invites_join`; `new`: `invites_accept`,
-    which for an account that cannot sign in yet, such as a pending sign-up, takes that
-    account's own password). Every
-    refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
-    lost the role) is the same 404."""
+    """What an invite link is for: the brand, the role, the invited email and its account
+    (`existing`: it can sign in, so sign in, then `invites_join`; `own_password`: it cannot sign
+    in yet, such as a pending sign-up, so `invites_accept` with that account's current password;
+    `new`: `invites_accept` with a new password or Google). Every refusal (unknown, used,
+    revoked or expired link, a brand that is not active, an inviter who lost the role) is the
+    same 404."""
     await enforce_invite_limit(request)
     found = await invites.lookup(body.token)
     return InvitePreview(

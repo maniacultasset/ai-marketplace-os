@@ -90,10 +90,13 @@ class InvitePreview(WireModel):
     role: InviteRole
     email: Email
     expires_at: datetime
-    account: Literal["new", "existing"] = Field(
+    account: Literal["new", "existing", "own_password"] = Field(
         description="`existing`: the email has a Kuinn account that can sign in, so sign in and "
-        "call `invites_join`; `new`: accept with `invites_accept` (an account that cannot sign "
-        "in yet, such as a pending sign-up, gives its own password)."
+        "call `invites_join`. `own_password`: the email has an account that cannot sign in yet "
+        "(a pending or rejected sign-up, or removed from every brand), so accept with "
+        "`invites_accept` and that account's current password (no confirm or name fields; a "
+        "wrong one is 401 and counts toward the lockout). `new`: no account for the email, so "
+        "accept with `invites_accept` and a new password or Google."
     )
 
 
