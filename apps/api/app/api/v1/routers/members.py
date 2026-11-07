@@ -3,17 +3,17 @@ active flag. Both need `team:manage` (owner, admin); only an owner grants or rem
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError
+from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.auth import MemberOut, MemberPage, MemberPatch
-from app.api.v1.surface import OPS, route
+from app.api.v1.surface import OPS, route, stub
 from app.core.errors import ConflictError, ForbiddenError, NotFoundError
 from app.core.rbac import Principal
 from app.services import members
@@ -68,3 +68,10 @@ async def members_patch(user_id: UUID, body: MemberPatch, principal: CurrentPrin
             raise
         raise ApiError(409, ErrorCode.LAST_OWNER_REQUIRED) from None
     return _out(row)
+
+
+@route(router, OPS["members_password_reset"])
+@stub
+async def members_password_reset(user_id: UUID, principal: CurrentPrincipal) -> NoReturn:
+    """A copied password reset link for a member (SI5 T8)."""
+    raise NotImplementedYet("members_password_reset")

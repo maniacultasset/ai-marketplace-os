@@ -9,14 +9,14 @@ both modes (the set-time password rules are live either way).
 
 from __future__ import annotations
 
-from typing import Annotated, Final
+from typing import Annotated, Final, NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request, Response
 from mkos_schemas.auth import JWTClaims
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError, password_rules_error
+from app.api.errors import ApiError, NotImplementedYet, password_rules_error
 from app.api.rate_limit import enforce_login_limit, request_ip
 from app.api.v1.deps import access_claims, get_current_principal
 from app.api.v1.schemas.auth import (
@@ -45,7 +45,8 @@ from app.api.v1.schemas.auth import (
     TrustedDeviceOut,
     TrustedDevicesOut,
 )
-from app.api.v1.surface import OPS, route
+from app.api.v1.schemas.invites import PasswordResetIn
+from app.api.v1.surface import OPS, route, stub
 from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.services import auth, mfa
@@ -455,3 +456,10 @@ async def auth_switch_tenant(
     if isinstance(pair, auth.Refusal):
         raise _refused(pair)
     return _tokens(pair)
+
+
+@route(router, OPS["auth_password_reset"])
+@stub
+async def auth_password_reset(body: PasswordResetIn, request: Request) -> NoReturn:
+    """Set a new password with a copied reset link (SI5 T8)."""
+    raise NotImplementedYet("auth_password_reset")

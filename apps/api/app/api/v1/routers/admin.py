@@ -3,13 +3,13 @@ only (`users.is_platform_admin`, checked on every request); everyone else is 403
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NoReturn
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, Query
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError
+from app.api.errors import ApiError, NotImplementedYet
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.signup import (
@@ -18,7 +18,8 @@ from app.api.v1.schemas.signup import (
     SignupRequestOut,
     SignupRequestPage,
 )
-from app.api.v1.surface import OPS, route
+from app.api.v1.schemas.tenants import TenantActivate, TenantExtendTrial
+from app.api.v1.surface import OPS, route, stub
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
 from app.services import signup
@@ -107,3 +108,35 @@ async def admin_signup_requests_reject(
             raise
         raise _decision_error(exc) from None
     return _out(row)
+
+
+TenantStatusFilter = Literal["trial", "active", "suspended", "offboarded"]
+
+
+@route(router, OPS["admin_tenants_list"])
+@stub
+async def admin_tenants_list(
+    principal: CurrentPrincipal,
+    page: Annotated[PageParams, Depends()],
+    status: Annotated[TenantStatusFilter | None, Query(description="Only this status.")] = None,
+) -> NoReturn:
+    """Every tenant, newest first (SI5 T9)."""
+    raise NotImplementedYet("admin_tenants_list")
+
+
+@route(router, OPS["admin_tenants_activate"])
+@stub
+async def admin_tenants_activate(
+    target_tenant_id: UUID, body: TenantActivate, principal: CurrentPrincipal
+) -> NoReturn:
+    """Activate a trial or suspended tenant (SI5 T9)."""
+    raise NotImplementedYet("admin_tenants_activate")
+
+
+@route(router, OPS["admin_tenants_extend_trial"])
+@stub
+async def admin_tenants_extend_trial(
+    target_tenant_id: UUID, body: TenantExtendTrial, principal: CurrentPrincipal
+) -> NoReturn:
+    """Extend or reopen a trial (SI5 T9)."""
+    raise NotImplementedYet("admin_tenants_extend_trial")
