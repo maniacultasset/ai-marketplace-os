@@ -40,6 +40,7 @@ from mkos_schemas.validation import ValidationResult
 from app.core.logging import get_logger
 from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
+from app.services.auto_fix.fixers import FixRecord
 from app.services.generation_result import Move
 from app.services.issues import sync_issues
 from app.services.pipeline_deps import RulesCall
@@ -71,6 +72,7 @@ class PersistPlan:
     listing: CanonicalListing | None = None
     image_reports: Sequence[ImageReport] = ()
     recheck: ErrorReport | None = None
+    fixes: tuple[FixRecord, ...] = ()  # SI4 A9/A10: the fix pass's records, for the trail
     attempts_used: int = 0
     version_id: uuid.UUID = field(default_factory=uuid.uuid4)
     # the Outcome's result dict: a persist that finds the listing taken empties its version id
