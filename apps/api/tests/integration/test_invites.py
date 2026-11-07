@@ -352,3 +352,277 @@ async def test_revoke_unknown_404(api: httpx.AsyncClient, world: World) -> None:
 async def test_revoke_bad_id_422(api: httpx.AsyncClient, world: World) -> None:
     response = await api.post(f"{INVITES}/not-a-uuid/revoke", headers=_as(world, "owner@acme.test"))
     assert response.status_code == 422
+
+
+# ---- part 2: lookup, accept with a password, join (AC3, AC5, AC6) ----
+
+NEW_PASSWORD = "Brass-Lantern-Path-0123"
+OTHER_PASSWORD = NEW_PASSWORD.replace("Brass", "Other")
+# DPP rules: a password holding the email's local part (`weak`) is refused
+PERSONAL_PASSWORD = NEW_PASSWORD.replace("Brass", "Weak")
+
+
+async def _token_for(api: httpx.AsyncClient, world: World, email: str, **kwargs: Any) -> str:
+    response = await _invite(api, world, email, **kwargs)
+    assert response.status_code == 201, response.text
+    return _fragment(response.json()["invite_url"])
+
+
+async def _accept(
+    api: httpx.AsyncClient, token: str, password: str = NEW_PASSWORD, **extra: Any
+) -> httpx.Response:
+    return await api.post(f"{INVITES}/accept", json={"token": token, "password": password, **extra})
+
+
+def _body_without_correlation(response: httpx.Response) -> dict[str, Any]:
+    body = response.json()
+    body["error"].pop("correlation_id", None)
+    report = body["error"].get("error_report")
+    if report:
+        report.pop("request_id", None)
+    return body  # type: ignore[no-any-return]
+
+
+@pytest.mark.endpoint("invites_lookup", case="success")
+async def test_lookup_previews_the_invite(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    token = await _token_for(api, world, "new@acme.test", role="operator")
+    response = await api.post(f"{INVITES}/lookup", json={"token": token})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["tenant_name"] == "Acme" and body["role"] == "operator"
+    assert body["email"] == "new@acme.test" and body["account"] == "new"
+    existing = await _token_for(api, world, "owner@bharat.test")
+    preview = await api.post(f"{INVITES}/lookup", json={"token": existing})
+    assert preview.json()["account"] == "existing"
+
+
+@pytest.mark.endpoint("invites_lookup", case="validation")
+@pytest.mark.endpoint("invites_accept", case="validation")
+@pytest.mark.endpoint("invites_join", case="validation")
+@pytest.mark.parametrize("token", ["T" * 42, "T" * 42 + "="])
+async def test_malformed_token_is_422(api: httpx.AsyncClient, world: World, token: str) -> None:
+    assert (await api.post(f"{INVITES}/lookup", json={"token": token})).status_code == 422
+    assert (await _accept(api, token)).status_code == 422
+    joined = await api.post(
+        f"{INVITES}/join", json={"token": token}, headers=_as(world, "owner@bharat.test")
+    )
+    assert joined.status_code == 422
+
+
+@pytest.mark.endpoint("invites_accept", case="success")
+async def test_accept_creates_the_account_and_membership(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    from .mfa_support import login
+
+    token = await _token_for(api, world, "meera@acme.test")
+    response = await _accept(api, token, display_name="Meera Iyer")
+    assert response.status_code == 200, response.text
+    assert response.json() == {"email": "meera@acme.test", "tenant_name": "Acme"}
+    row = auth_db.execute(
+        "SELECT m.tenant_id, m.role, m.invited_by_user_id, u.display_name, i.accepted_user_id "
+        "FROM users u JOIN tenant_memberships m ON m.user_id = u.id "
+        "JOIN invitations i ON i.accepted_user_id = u.id WHERE u.email = 'meera@acme.test'"
+    ).fetchall()
+    assert len(row) == 1
+    tenant, role, inviter, name, accepted = row[0]
+    assert (tenant, role, inviter, name) == (
+        world.tenant("acme"),
+        "reviewer",
+        world.user("owner@acme.test"),
+        "Meera Iyer",
+    )
+    (audit,) = audit_rows(auth_db, "invitation.accepted")
+    assert audit[1:3] == ("user", accepted) and audit[7] == {"role": "reviewer"}
+    signed = await login(api, "meera@acme.test", NEW_PASSWORD)
+    assert signed.status_code == 200 and signed.json()["status"] == "signed_in"
+
+
+async def test_accepted_member_enrols_under_mfa_all(
+    api: httpx.AsyncClient, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from .mfa_support import login, mfa_on
+
+    token = await _token_for(api, world, "mfa@acme.test")
+    assert (await _accept(api, token)).status_code == 200
+    mfa_on(monkeypatch)
+    signed = await login(api, "mfa@acme.test", NEW_PASSWORD)
+    assert signed.json()["status"] == "mfa_enrollment_required"
+
+
+async def test_accept_weak_password_writes_nothing(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    token = await _token_for(api, world, "weak@acme.test")
+    short = await _accept(api, token, password="short")
+    assert short.status_code == 422
+    assert short.json()["error"]["details"][0]["loc"] == ["body", "password"]
+    personal = await _accept(api, token, password=PERSONAL_PASSWORD)
+    assert personal.status_code == 422  # holds the email's local part
+    assert auth_db.execute("SELECT 1 FROM users WHERE email = 'weak@acme.test'").fetchone() is None
+    assert (await _accept(api, token)).status_code == 200
+
+
+@pytest.mark.endpoint("invites_accept", case="conflict")
+async def test_accept_for_an_existing_account_is_409(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    token = await _token_for(api, world, "owner@bharat.test")
+    response = await _accept(api, token)
+    assert response.status_code == 409
+    assert response.json()["error"]["type"] == "INVALID_STATUS_TRANSITION"
+    assert auth_db.execute(
+        "SELECT count(*) FROM tenant_memberships WHERE user_id = %s",
+        [world.user("owner@bharat.test")],
+    ).fetchone() == (1,)
+
+
+def _second_owner(conn: Conn, world: World) -> None:
+    """Another active owner, so the last-owner guard lets the inviter go."""
+    from .auth_support import add_member, add_user
+
+    add_member(conn, world.tenant("acme"), add_user(conn, "owner2@acme.test"), "owner")
+
+
+def _demote_inviter(conn: Conn, world: World) -> None:
+    _second_owner(conn, world)
+    conn.execute(
+        "UPDATE tenant_memberships SET role = 'admin' WHERE user_id = %s",
+        [world.user("owner@acme.test")],
+    )
+
+
+@pytest.mark.parametrize(
+    "spoil",
+    [
+        "unknown",
+        "replayed",
+        "revoked",
+        "expired",
+        "suspended",
+        "inviter_deactivated",
+        "owner_invite_inviter_demoted",
+    ],
+)
+async def test_every_refusal_is_one_404(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, spoil: str
+) -> None:
+    role = "owner" if spoil == "owner_invite_inviter_demoted" else "reviewer"
+    token = await _token_for(api, world, f"{spoil}@acme.test", role=role)
+    invite = auth_db.execute(
+        "SELECT id FROM invitations WHERE email = %s", [f"{spoil}@acme.test"]
+    ).fetchone()
+    assert invite is not None
+    if spoil == "unknown":
+        token = "U" * 43
+    elif spoil == "replayed":
+        assert (await _accept(api, token)).status_code == 200
+    elif spoil == "revoked":
+        await api.post(f"{INVITES}/{invite[0]}/revoke", headers=_as(world, "owner@acme.test"))
+    elif spoil == "expired":
+        auth_db.execute("UPDATE invitations SET expires_at = now() WHERE id = %s", [invite[0]])
+    elif spoil == "suspended":
+        auth_db.execute(
+            "UPDATE tenants SET status = 'suspended' WHERE id = %s", [world.tenant("acme")]
+        )
+    elif spoil == "inviter_deactivated":
+        _second_owner(auth_db, world)
+        auth_db.execute(
+            "UPDATE tenant_memberships SET is_active = false, deactivated_at = now() "
+            "WHERE user_id = %s",
+            [world.user("owner@acme.test")],
+        )
+    else:
+        _demote_inviter(auth_db, world)
+    looked = await api.post(f"{INVITES}/lookup", json={"token": token})
+    accepted = await _accept(api, token, password=OTHER_PASSWORD)
+    reference = await api.post(f"{INVITES}/lookup", json={"token": "Z" * 43})
+    for response in (looked, accepted, reference):
+        assert response.status_code == 404, (spoil, response.text)
+    assert _body_without_correlation(looked) == _body_without_correlation(reference)
+    assert _body_without_correlation(accepted) == _body_without_correlation(reference)
+    assert reference.json()["error"]["type"] == "NOT_FOUND"
+
+
+async def test_two_concurrent_accepts_make_one_member(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    import asyncio
+
+    token = await _token_for(api, world, "race@acme.test")
+    first, second = await asyncio.gather(
+        _accept(api, token), _accept(api, token, password=OTHER_PASSWORD)
+    )
+    assert sorted([first.status_code, second.status_code]) == [200, 404]
+    assert auth_db.execute(
+        "SELECT count(*) FROM users WHERE email = 'race@acme.test'"
+    ).fetchone() == (1,)
+    assert auth_db.execute(
+        "SELECT count(*) FROM tenant_memberships m JOIN users u ON u.id = m.user_id "
+        "WHERE u.email = 'race@acme.test'"
+    ).fetchone() == (1,)
+
+
+@pytest.mark.endpoint("invites_join", case="success")
+@pytest.mark.endpoint("invites_join", case="wrong_tenant")
+async def test_join_with_the_matching_account(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    token = await _token_for(api, world, "owner@bharat.test", role="admin")
+    caller = _as(world, "owner@bharat.test")
+    joined = await api.post(f"{INVITES}/join", json={"token": token}, headers=caller)
+    assert joined.status_code == 200, joined.text
+    assert joined.json() == {"tenant_id": str(world.tenant("acme")), "role": "admin"}
+    rows = auth_db.execute(
+        "SELECT tenant_id, role FROM tenant_memberships WHERE user_id = %s ORDER BY role",
+        [world.user("owner@bharat.test")],
+    ).fetchall()
+    assert set(rows) == {(world.tenant("acme"), "admin"), (world.tenant("bharat"), "owner")}
+    switched = await api.post(
+        f"{PREFIX}/auth/switch-tenant",
+        json={"target_tenant_id": str(world.tenant("acme"))},
+        headers=caller,
+    )
+    assert switched.status_code == 200, switched.text
+    again = await api.post(f"{INVITES}/join", json={"token": token}, headers=caller)
+    assert again.status_code == 404  # used
+
+
+async def test_join_with_another_email_is_404(api: httpx.AsyncClient, world: World) -> None:
+    token = await _token_for(api, world, "owner@bharat.test")
+    other = await api.post(
+        f"{INVITES}/join", json={"token": token}, headers=_as(world, "admin@bharat.test")
+    )
+    assert other.status_code == 404
+    unknown = await api.post(
+        f"{INVITES}/join", json={"token": "Z" * 43}, headers=_as(world, "admin@bharat.test")
+    )
+    assert _body_without_correlation(other) == _body_without_correlation(unknown)
+
+
+@pytest.mark.endpoint("invites_join", case="conflict")
+async def test_join_when_already_a_member_is_409(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    token = await _token_for(api, world, "owner@bharat.test")
+    from .auth_support import add_member
+
+    add_member(
+        auth_db, world.tenant("acme"), world.user("owner@bharat.test"), "operator", active=False
+    )
+    response = await api.post(
+        f"{INVITES}/join", json={"token": token}, headers=_as(world, "owner@bharat.test")
+    )
+    assert response.status_code == 409
+
+
+@pytest.mark.endpoint("invites_join", case="missing_auth")
+async def test_join_missing_auth_401(api: httpx.AsyncClient) -> None:
+    assert (await api.post(f"{INVITES}/join", json={"token": "T" * 43})).status_code == 401
+
+
+async def test_accept_long_display_name_is_422(api: httpx.AsyncClient, world: World) -> None:
+    token = await _token_for(api, world, "long@acme.test")
+    assert (await _accept(api, token, display_name="x" * 200)).status_code == 422

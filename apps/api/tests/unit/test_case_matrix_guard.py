@@ -126,6 +126,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "invites_create",
         "invites_list",
         "invites_revoke",
+        "invites_lookup",
+        "invites_accept",
+        "invites_join",
     }
 )
 

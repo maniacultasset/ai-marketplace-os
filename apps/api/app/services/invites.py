@@ -21,30 +21,42 @@ import secrets
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Final
+from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 
+from app.core import password_policy
 from app.core.config import get_settings
 from app.core.errors import ConflictError, ForbiddenError, InputError, NotFoundError
+from app.core.passwords import hash_password, off_loop
 from app.core.rbac import Principal
-from app.repositories.identity import AuditRepository
+from app.repositories.identity import AuditRepository, InvitationLookup, UserRepository
 from app.repositories.invitations import InvitationRepository, InviteRow
-from app.repositories.transactions import unit_of_work
+from app.repositories.members import MembersRepository
+from app.repositories.tenants import TenantProfileRepository
+from app.repositories.transactions import identity_session, set_gucs, unit_of_work
 
 __all__ = [
     "INVITE_TTL",
     "MAX_PENDING_INVITES",
+    "Accepted",
     "InvitePage",
     "InviteRow",
+    "Joined",
+    "Preview",
+    "accept_password",
     "create_invite",
+    "join",
     "list_invites",
+    "lookup",
     "revoke_invite",
 ]
 
 INVITE_TTL: Final = timedelta(days=7)
 MAX_PENDING_INVITES: Final = 50
 TOKEN_BYTES: Final = 32
+LIVE_TENANT: Final = ("trial", "active")
+INVITERS: Final = ("owner", "admin")
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,3 +149,151 @@ async def revoke_invite(principal: Principal, invite_id: uuid.UUID) -> InviteRow
     if revoked is None:
         raise RuntimeError("a revoked invite is not readable")
     return revoked
+
+
+# ---- the public steps and the signed-in join (T6) ----
+
+
+@dataclass(frozen=True, slots=True)
+class Preview:
+    tenant_name: str
+    role: str
+    email: str
+    expires_at: datetime
+    account: str
+
+
+@dataclass(frozen=True, slots=True)
+class Accepted:
+    email: str
+    tenant_name: str
+
+
+@dataclass(frozen=True, slots=True)
+class Joined:
+    tenant_id: uuid.UUID
+    role: str
+
+
+@dataclass(frozen=True, slots=True)
+class LiveInvite:
+    """A pending invite, locked `FOR UPDATE` under its tenant, and its tenant's name."""
+
+    row: InviteRow
+    tenant_name: str
+
+
+def _gone() -> NotFoundError:
+    """The one refusal of a well-formed token: every body is the same (no oracle)."""
+    return NotFoundError("token")
+
+
+async def _find(session: Any, raw: str) -> InvitationLookup:
+    found = await UserRepository(session).invitation_by_hash(token_hash(raw))
+    if found is None:
+        raise _gone()
+    return found
+
+
+async def _live(session: Any, found: InvitationLookup) -> LiveInvite:
+    """The second read (CODE-PLAN §2.2): under the invite's tenant, the row `FOR UPDATE`, then
+    the tenant and the inviter. Anything but a live invite is the generic refusal:
+    - accepted, revoked or expired (`expires_at <= now()`);
+    - the tenant not `trial` or `active`;
+    - the inviter no longer an active owner or admin here, or not an owner for an owner invite."""
+    tenant = found.tenant_id
+    await set_gucs(session, tenant_id=tenant)
+    row = await InvitationRepository(session, tenant).lock(found.id)
+    if row is None or row.status != "pending" or row.invited_by_user_id is None:
+        raise _gone()
+    profile = await TenantProfileRepository(session, tenant).get_profile()
+    if profile is None or profile.status not in LIVE_TENANT:
+        raise _gone()
+    inviter = await MembersRepository(session, tenant).role_for_share(row.invited_by_user_id)
+    if inviter is None:
+        raise _gone()
+    inviter_role, inviter_active = inviter
+    if not inviter_active or inviter_role not in INVITERS:
+        raise _gone()
+    if row.role == "owner" and inviter_role != "owner":
+        raise _gone()
+    return LiveInvite(row=row, tenant_name=profile.name)
+
+
+async def lookup(raw: str) -> Preview:
+    """What the link is for, and whether its email already has an account."""
+    async with identity_session() as session:
+        live = await _live(session, await _find(session, raw))
+        await set_gucs(session, login_email=live.row.email)
+        existing = await UserRepository(session).by_email(live.row.email)
+    return Preview(
+        tenant_name=live.tenant_name,
+        role=live.row.role,
+        email=live.row.email,
+        expires_at=live.row.expires_at,
+        account="new" if existing is None else "existing",
+    )
+
+
+async def _accept(session: Any, live: LiveInvite, user_id: uuid.UUID) -> None:
+    """The membership in the invite's tenant, the invite accepted, and the audit row."""
+    row = live.row
+    await set_gucs(session, user_id=user_id)
+    await MembersRepository(session, row.tenant_id).insert(
+        user_id=user_id, role=row.role, invited_by=row.invited_by_user_id
+    )
+    await InvitationRepository(session, row.tenant_id).mark_accepted(row.id, user_id)
+    await AuditRepository(session).write(
+        tenant_id=row.tenant_id,
+        actor_type="user",
+        actor_user_id=user_id,
+        action="invitation.accepted",
+        entity_type="invitation",
+        entity_id=row.id,
+        after=_role(row.role),
+    )
+
+
+async def accept_password(raw: str, *, password: str, display_name: str | None) -> Accepted:
+    """A new account with a password for the invite's email, its membership, and the invite
+    accepted, in one transaction. The DPP rules use the invite's email (`PolicyError`). An email
+    that already has an account is 409: sign in, then join."""
+    async with identity_session() as session:
+        found = await _find(session, raw)
+        breaches = password_policy.check(password, email=found.email, display_name=display_name)
+        if breaches:
+            raise password_policy.PolicyError(breaches)
+        live = await _live(session, found)
+        email = live.row.email
+        await set_gucs(session, login_email=email)
+        users = UserRepository(session)
+        if not await users.lock_login_email(email):
+            raise _gone()
+        if await users.by_email(email) is not None:
+            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_account")
+        user_id = uuid.uuid4()
+        created = await users.insert_signup_user(
+            user_id=user_id,
+            email=email,
+            password_hash=await off_loop(hash_password, password),
+            display_name=display_name,
+        )
+        if not created:  # a concurrent account for the email won `uq_users_email_lower`
+            raise _gone()
+        await _accept(session, live, user_id)
+    return Accepted(email=email, tenant_name=live.tenant_name)
+
+
+async def join(principal: Principal, raw: str) -> Joined:
+    """The signed-in caller joins the inviting tenant when the invite names its own email
+    (another email is the generic 404). A membership there already, active or not, is 409."""
+    async with identity_session() as session:
+        live = await _live(session, await _find(session, raw))
+        row = live.row
+        if row.email != principal.email.strip().lower():
+            raise _gone()
+        members = MembersRepository(session, row.tenant_id)
+        if await members.role_for_share(principal.user_id) is not None:
+            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "invitations_member")
+        await _accept(session, live, principal.user_id)
+    return Joined(tenant_id=row.tenant_id, role=row.role)

@@ -3,25 +3,30 @@ public lookup and accept steps, and `join` for a signed-in person whose email ma
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, NoReturn
+from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
 from mkos_schemas.codes import ErrorCode
 
-from app.api.errors import ApiError, NotImplementedYet
+from app.api.errors import ApiError, password_rules_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
+from app.api.rate_limit import enforce_invite_limit
 from app.api.v1.deps import get_current_principal
 from app.api.v1.schemas.invites import (
     InviteAccept,
+    InviteAccepted,
     InviteCreate,
     InviteCreated,
+    InviteJoined,
     InviteOut,
     InvitePage,
+    InvitePreview,
     InviteTokenIn,
 )
-from app.api.v1.surface import OPS, route, stub
+from app.api.v1.surface import OPS, route
 from app.core.errors import ForbiddenError
+from app.core.password_policy import PolicyError
 from app.core.rbac import Principal
 from app.services import invites
 
@@ -92,23 +97,49 @@ async def invites_revoke(invite_id: UUID, principal: CurrentPrincipal) -> Invite
 
 
 @route(router, OPS["invites_lookup"])
-@stub
-async def invites_lookup(body: InviteTokenIn, request: Request) -> NoReturn:
-    """What an invite link is for (SI5 T6)."""
-    raise NotImplementedYet("invites_lookup")
+async def invites_lookup(body: InviteTokenIn, request: Request) -> InvitePreview:
+    """What an invite link is for: the brand, the role, the invited email and whether it already
+    has an account (`existing`: sign in, then `invites_join`; `new`: `invites_accept`). Every
+    refusal (unknown, used, revoked or expired link, a brand that is not active, an inviter who
+    lost the role) is the same 404."""
+    await enforce_invite_limit(request)
+    found = await invites.lookup(body.token)
+    return InvitePreview(
+        tenant_name=found.tenant_name,
+        role=found.role,
+        email=found.email,
+        expires_at=found.expires_at,
+        account=found.account,
+    )
 
 
 @route(router, OPS["invites_accept"])
-@stub
-async def invites_accept(body: InviteAccept, request: Request) -> NoReturn:
-    """Accept an invite with a new account (SI5 T6, T7)."""
-    raise NotImplementedYet("invites_accept")
+async def invites_accept(body: InviteAccept, request: Request) -> InviteAccepted:
+    """Create the invited account and join the brand: a password (12+ characters, an upper-case
+    and a lower-case letter, a digit and a symbol, not the name or the email's first part: 422
+    with each broken rule) or the matching Google identity. An email that already has an account
+    is 409: sign in, then open the link. The person then signs in as usual."""
+    await enforce_invite_limit(request)
+    if body.password is None:
+        raise ApiError(501, ErrorCode.NOT_IMPLEMENTED)
+    try:
+        done = await invites.accept_password(
+            body.token,
+            password=body.password.get_secret_value(),
+            display_name=body.display_name,
+        )
+    except PolicyError as exc:
+        raise password_rules_error([b.message for b in exc.breaches]) from None
+    return InviteAccepted(email=done.email, tenant_name=done.tenant_name)
 
 
 @route(router, OPS["invites_join"])
-@stub
 async def invites_join(
     body: InviteTokenIn, request: Request, principal: CurrentPrincipal
-) -> NoReturn:
-    """Join with the signed-in account (SI5 T6)."""
-    raise NotImplementedYet("invites_join")
+) -> InviteJoined:
+    """Join the inviting brand with the signed-in account, when the invite names its email
+    (anything else is the generic 404). Already a member there, active or not: 409. Then call
+    `auth_switch_tenant` with the answered `tenant_id`."""
+    await enforce_invite_limit(request)
+    done = await invites.join(principal, body.token)
+    return InviteJoined(tenant_id=done.tenant_id, role=done.role)

@@ -389,7 +389,7 @@ class UserRepository:
         return bool((await self.db.execute(stmt)).scalar_one_or_none())
 
     async def insert_signup_user(
-        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str
+        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str | None
     ) -> bool:
         """A new user from the public sign-up (users_signup needs `app.login_email` = the
         lower-cased email); False when a concurrent sign-up of the same email took
