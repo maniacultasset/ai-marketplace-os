@@ -5,8 +5,9 @@ integration suite's fixtures (`auth_db`, `api`, `superuser_conn`), re-exported b
 
 `world2` is the two-tenant world: acme and bharat, one user per role each (S10 `build_world`),
 and in each tenant one product, import, listing (with a version), image, job, marketplace
-account, brand document and issue, built on the admin connection. Every text field carries the
-tenant's canary (`ACMEzq9-<hex>`, `BHARATzq9-<hex>`), so a cross-tenant leak is a substring check.
+account, brand document, issue and open fact question (SI3), built on the admin connection.
+Every text field carries the tenant's canary (`ACMEzq9-<hex>`, `BHARATzq9-<hex>`), so a
+cross-tenant leak is a substring check.
 
 Helpers:
 - `ops(*, public=None, path_id=None)`: the registry ops, filtered;
@@ -157,6 +158,17 @@ def _side(conn: Any, world: World, slug: str) -> Side:
     image_id = f.image(conn, t, product_id)
     document_id = f.brand_document(conn, t, created_by=owner, filename=f"{canary}.pdf")
     issue_id = f.listing_issue(conn, t, listing_id, message=f"{canary} issue")
+    # SI3: an open photo colour question on the product, answerable by the registry's valid
+    # `tasks_answer` body ({"value": "maroon"}, tests/api_requests.py)
+    task_id = f.human_task(
+        conn,
+        t,
+        product_id=product_id,
+        target_path="facts.attributes.color",
+        question=f"{canary} What is the colour of this product?",
+        reason=f"{canary} The photos suggest maroon, but not clearly enough to use it.",
+        expected_answer={"kind": "enum", "allowed_values": ["black", "maroon", "navy blue"]},
+    )
     ids: dict[str, Any] = {
         "product_id": product_id,
         "account_id": account_id,
@@ -167,6 +179,7 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         "image_id": image_id,
         "document_id": document_id,
         "issue_id": issue_id,
+        "task_id": task_id,
         "user_id": operator,
         "target_tenant_id": t,
         "storage_prefix": f"{t}/images/",
