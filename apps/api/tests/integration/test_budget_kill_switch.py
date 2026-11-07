@@ -63,7 +63,7 @@ async def test_budget_regenerate_429(api: httpx.AsyncClient, gen_world: GenWorld
 
 async def test_budget_reservation_claim_over_cap_fails_job(gen_world: GenWorld) -> None:
     accepted = await make_generating(gen_world)  # accepted under the cap
-    _spend(gen_world, "acme", "2.450000")  # the cap is reached before the claim
+    _spend(gen_world, "acme", "2.490000")  # the cap is reached before the claim (+ 0.02 > 2.50)
     await _run(accepted.job_id)
     job = job_row(gen_world.conn, accepted.job_id)
     assert (job["status"], job["error_code"]) == ("failed", "BUDGET_EXCEEDED")
@@ -118,13 +118,15 @@ async def test_budget_global_cap_fails_at_claim(
 async def test_budget_actual_cost_above_reservation_blocks_next_claim(
     gen_world: GenWorld,
 ) -> None:
-    """One run may spend past its 0.10 reservation (D10 residual risk); the next claim sees it."""
+    """One run may spend past its 0.02 reservation (D10 residual risk); the next claim sees it.
+    SI10: the API and the claim share one rule, so the late spend lands between the second
+    request's acceptance and its claim."""
     _spend(gen_world, "acme", "2.350000")
     first = await make_generating(gen_world)
     await _run(first.job_id)
     assert job_row(gen_world.conn, first.job_id)["status"] == "succeeded"
-    _spend(gen_world, "acme", "0.100000")  # the first run's spend landed above its reservation
     second = await make_generating(gen_world, sku="KURTA-001")
+    _spend(gen_world, "acme", "0.150000")  # the first run's spend landed above its reservation
     await _run(second.job_id)
     job = job_row(gen_world.conn, second.job_id)
     assert (job["status"], job["error_code"]) == ("failed", "BUDGET_EXCEEDED")
