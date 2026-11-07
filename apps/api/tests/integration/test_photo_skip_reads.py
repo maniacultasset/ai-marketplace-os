@@ -153,6 +153,18 @@ async def test_tenant_isolation(gen_world: GenWorld) -> None:
     assert await _read(acme, bharat_product) is None
 
 
+# copies one finished job 3000 times onto new entities (fixed SQL, no interpolation)
+_FILL = (
+    "INSERT INTO job_runs (tenant_id, kind, queue, status, attempt, max_attempts, entity_type, "
+    "listing_id, payload_json, result_json, cost_reserved_usd, queued_at, started_at, "
+    "finished_at, id, entity_id, correlation_id) "
+    "SELECT tenant_id, kind, queue, status, attempt, max_attempts, entity_type, listing_id, "
+    "payload_json, result_json, cost_reserved_usd, queued_at, started_at, finished_at, "
+    "gen_random_uuid(), gen_random_uuid(), gen_random_uuid() "
+    "FROM job_runs, generate_series(1, 3000) WHERE id = %s"
+)
+
+
 def _index_probes(plan: Any) -> list[tuple[str, str]]:
     """(index name, index condition) of every index probe in an EXPLAIN (FORMAT JSON) plan."""
     found: list[tuple[str, str]] = []
@@ -177,7 +189,12 @@ async def test_the_read_probes_job_runs_by_entity(gen_world: GenWorld) -> None:
     acme = gen_world.tenant("acme")
     product = gen_world.product("acme", "KURTA-002")
     amazon = await _listing(gen_world, "KURTA-002", "amazon")
-    _job(gen_world, acme, amazon, {"photo_set": SET_A})
+    seed = _job(gen_world, acme, amazon, {"photo_set": SET_A})
+    # a busy tenant's job history (3000 finished jobs on other entities), so the planner sees
+    # realistic statistics: a near-empty table plans as a scan whatever the query says
+    gen_world.conn.execute(_FILL, [seed])
+    gen_world.conn.execute("ANALYZE job_runs")
+    gen_world.conn.execute("ANALYZE listings")
     sent: list[tuple[str, Any]] = []
 
     def record(_c: Any, _cur: Any, statement: str, params: Any, *_rest: Any) -> None:
@@ -191,10 +208,8 @@ async def test_the_read_probes_job_runs_by_entity(gen_world: GenWorld) -> None:
     finally:
         event.remove(engine, "before_cursor_execute", record)
     ((sql, params),) = sent
-    with gen_world.conn.transaction():
-        gen_world.conn.execute("SET LOCAL enable_seqscan = off")
-        cursor = psycopg.ClientCursor(gen_world.conn)
-        row = cursor.execute("EXPLAIN (FORMAT JSON) " + sql, params).fetchone()
+    cursor = psycopg.ClientCursor(gen_world.conn)
+    row = cursor.execute("EXPLAIN (FORMAT JSON) " + sql, params).fetchone()
     assert row is not None
     probes = _index_probes(row[0])
     assert any(
