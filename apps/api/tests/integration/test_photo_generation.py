@@ -413,3 +413,41 @@ async def test_photo_slots_are_the_only_ones_sent_in_the_set(
     accepted = await generate(pw, "photo_ok")
     recorded = {pair[0] for pair in pw.job(accepted.job_id)["result_json"]["photo_set"]}
     assert recorded == {str(pw.images[s]) for s in PHOTO_SLOTS}
+
+
+# ---- T13 (AC8): an unconfirmed photo value never backs a claim; a confirmed one does ----
+
+
+async def test_photo_inject_needs_a_confirmed_construction(
+    photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.core.resolved_facts import for_rules
+    from app.repositories.uow import tenant_uow
+    from app.services.generation_result import recheck
+    from app.services.rules_loader import load_rules
+    from mkos_schemas.listing import CanonicalListing
+
+    pw = photo_world
+    pw.put_fact("construction", photo_fact("handmade", pw.images["main"]))
+    accepted = await generate(pw, "photo_inject")
+    runs = pw.conn.execute(
+        "SELECT error_report_json FROM validation_runs WHERE listing_id = %s "
+        "AND listing_version_id IS NOT NULL",
+        [accepted.listing_id],
+    ).fetchall()
+    codes = {e["error_code"] for (report,) in runs for e in report["errors"]}
+    assert "UNSUPPORTED_CLAIM" in codes
+    assert pw.attributes()["construction"]["source"] == "ai"  # the observation was no target
+    await seller_patch(pw, {"confirm_attributes": ("construction",)})
+    row = pw.world.listing(accepted.listing_id)
+    content = pw.world.scalar(
+        "SELECT content_json FROM listing_versions WHERE id = %s", [row["current_version_id"]]
+    )
+    async with tenant_uow(pw.tenant) as uow:
+        rules = await load_rules(
+            uow, tenant_id=pw.tenant, marketplace="amazon", category=row["category"]
+        )
+        facts = await uow.product_facts.resolve(pw.product_id)
+    assert facts is not None
+    report = recheck(CanonicalListing.model_validate(content), rules, for_rules(facts))
+    assert "UNSUPPORTED_CLAIM" not in {e.error_code.value for e in report.errors}

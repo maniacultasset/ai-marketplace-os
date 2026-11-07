@@ -213,3 +213,70 @@ def test_size_chart_same_table_is_empty() -> None:
     assert _plan({"size_chart": chart}, row=row).empty
     changed = {**chart, "basis": "garment"}
     assert set(_plan({"size_chart": changed}, row=row).attrs_set) == {"size_measurements"}
+
+
+# ---- SI3 T15: confirm a photo value ----
+
+NECK = AttributeDef("neckline", "attributes", ("style", "variant", "standalone"), ())
+PHOTO = {
+    "value": "v-neck",
+    "source": "ai",
+    "captured_via": "agent",
+    "agent_run_id": "r",
+    "confidence": 0.95,
+    "evidence_ref": "image:6f1d2c3b-8a9e-4b70-9c55-2e4f6a8b0d11",
+    "updated_at": "2026-11-07T00:00:00Z",
+}
+
+
+def _photo_row(**fact: Any) -> SimpleNamespace:
+    return _row(attributes={"color": {"value": "red", **SELLER}, "neckline": {**PHOTO, **fact}})
+
+
+def _confirm(patch: dict[str, Any], row: Any) -> Any:
+    return plan_patch(
+        row, None, patch, (*DEFS, NECK), now=NOW, level="standalone", has_listing=False
+    )
+
+
+def test_confirm_a_photo_value() -> None:
+    change = _confirm({"confirm_attributes": ("neckline",)}, _photo_row())
+    assert change.confirm == ((0, "neckline"),) and not change.empty
+
+
+def test_confirm_an_already_confirmed_value_is_no_change() -> None:
+    row = _photo_row(confirmed_by="u", confirmed_at="2026-11-07T00:00:00Z")
+    assert _confirm({"confirm_attributes": ("neckline",)}, row).empty
+
+
+@pytest.mark.parametrize(
+    ("patch", "code"),
+    [
+        ({"confirm_attributes": ("color",)}, ErrorCode.VALIDATION_FAILED),  # a seller fact
+        ({"confirm_attributes": ("fit",)}, ErrorCode.VALIDATION_FAILED),  # no value at all
+        ({"confirm_attributes": ("sparkle",)}, ErrorCode.UNKNOWN_FACT_KEY),
+        (
+            {"confirm_attributes": ("neckline",), "attributes": {"neckline": "Round"}},
+            ErrorCode.VALIDATION_FAILED,
+        ),
+        (
+            {"confirm_attributes": ("neckline",), "attributes": {"neckline": None}},
+            ErrorCode.VALIDATION_FAILED,
+        ),
+    ],
+)
+def test_confirm_refusals(patch: dict[str, Any], code: ErrorCode) -> None:
+    with pytest.raises(InputError) as caught:
+        _confirm(patch, _photo_row())
+    assert caught.value.code is code and caught.value.field == "confirm_attributes[0]"
+
+
+def test_confirm_refuses_other_evidence() -> None:
+    row = _photo_row(evidence_ref="import_row:1", evidence_snapshot={"row": 1})
+    with pytest.raises(InputError):
+        _confirm({"confirm_attributes": ("neckline",)}, row)
+
+
+def test_reject_is_a_clear_of_the_photo_value() -> None:
+    change = _confirm({"attributes": {"neckline": None}}, _photo_row())
+    assert change.attrs_clear == ("neckline",)
