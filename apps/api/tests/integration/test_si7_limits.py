@@ -131,3 +131,69 @@ async def test_fix_and_yesterdays_edits_are_not_counted(images_db: JobWorld) -> 
         await lock_budget(session, tenant)
         day = datetime.now(UTC).date()
         assert await image_edit_refusal(session, tenant, day, limits, Decimal("0.05")) is None
+
+
+# ---- create side (T13): a refused create is a `failed/budget` row with no job ----
+
+import httpx  # noqa: E402
+
+from .images_support import headers  # noqa: E402
+from .jobs_support import count  # noqa: E402
+
+
+async def test_the_eleventh_ai_create_of_the_day_is_budget(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    tenant = images_db.tenant("acme")
+    _queued_ai(images_db, tenant, 10)
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    response = await api.post(
+        f"/api/v1/products/{p}/image-candidates",
+        json={"kind": "white_background", "source_image_id": str(src)},
+        headers=headers(images_db),
+    )
+    assert response.status_code == 202, response.text
+    body = response.json()
+    assert body["status"] == "failed" and body["job_id"] is None
+    row = candidate_row(images_db.conn, uuid.UUID(body["candidate_id"]))
+    assert row["failure_reason"] == "budget"
+    assert (
+        count(images_db.conn, "SELECT count(*) FROM job_runs WHERE entity_id = %s", [row["id"]])
+        == 0
+    )
+    assert count(images_db.conn, "SELECT count(*) FROM agent_runs") == 0
+    # the fix of the same photo is never limited
+    fix = await api.post(
+        f"/api/v1/products/{p}/image-candidates",
+        json={"kind": "fix", "source_image_id": str(src)},
+        headers=headers(images_db),
+    )
+    assert fix.json()["status"] == "queued"
+
+
+async def test_the_platform_share_refuses_a_create(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import get_settings
+
+    edit_on.setenv("LLM_DAILY_BUDGET_USD", "1")
+    get_settings.cache_clear()
+    f.agent_run(
+        images_db.conn,
+        images_db.tenant("bharat"),
+        agent_name="image",
+        trigger="vision",
+        prompt_version="image_edit/white_bg/v1",
+        cost_usd="0.48",
+        started_at=datetime.now(UTC),
+    )
+    p, src, _ = source_main(images_db.conn, store, images_db.tenant("acme"))
+    response = await api.post(
+        f"/api/v1/products/{p}/image-candidates",
+        json={"kind": "white_background", "source_image_id": str(src)},
+        headers=headers(images_db),
+    )
+    assert response.json()["status"] == "failed" and response.json()["job_id"] is None

@@ -12,20 +12,52 @@ share.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
+import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import JobKind
+
+from app.adapters.storage import get_storage, images_bucket
+from app.core.config import get_settings
+from app.core.errors import ConflictError, InputError, NotFoundError
+from app.core.logging import get_logger
+from app.core.rbac import Principal
+from app.db.models.catalog_assets import Image, ImageCandidate
+from app.repositories.image_candidates import NewCandidate
+from app.repositories.jobs import EnqueueSpec
+from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.idempotency import idempotent
+from app.services.image_keys import CLEAN_NAMES, derived_key
+from app.services.images import enforce_live_image_cap
 from app.services.products import fibres_view, size_chart_view
+from app.services.size_chart_image import ChartRefused, layout_size_chart
+from app.workers.budget import (
+    IMAGE_EDIT_RESERVATION_USD,
+    ImageEditLimits,
+    image_edit_refusal,
+    lock_budget,
+)
+from app.workers.policy import CANDIDATE_ENTITY, lock_for
+
+log = get_logger(__name__)
 
 __all__ = [
     "FIX_GENERATOR",
     "IMAGE_EDIT_PROMPT_VERSION",
     "SIZE_CHART_GENERATOR",
+    "CandidateRequest",
     "SizeChartSource",
+    "candidate_view",
+    "create_candidate",
     "edit_generator_key",
+    "list_candidates",
     "size_chart_source",
 ]
 
@@ -59,3 +91,273 @@ def size_chart_source(facts: Mapping[str, Any] | None) -> SizeChartSource | None
     return SizeChartSource(
         chart=chart, fibres=fibres, source_hash=hashlib.sha256(body.encode()).hexdigest()
     )
+
+
+# ---- T13: create and list ----
+
+API_V1: Final = "/api/v1"
+PREVIEW_TTL_S: Final = 600
+# the failures a create answers as they are (a verdict, cached)
+CACHED_FAILURES: Final = frozenset(
+    {"fidelity", "not_white", "too_small", "source_unusable", "no_size_chart"}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateRequest:
+    kind: str
+    source_image_id: uuid.UUID | None
+
+
+def _accepted(row: ImageCandidate, *, with_job: bool) -> dict[str, Any]:
+    job = row.job_id if with_job else None
+    return {
+        "candidate_id": str(row.id),
+        "status": row.status,
+        "job_id": None if job is None else str(job),
+        "poll_url": None if job is None else f"{API_V1}/jobs/{job}",
+    }
+
+
+async def _cache_answer(uow: TenantUnitOfWork, row: ImageCandidate) -> dict[str, Any] | None:
+    """A row the cache index holds answers the create (CP-D17): a `queued` one with its own
+    job, a `rejected` one reopened, any other covered row as it is. None: not a cache answer."""
+    if row.status == "queued":
+        return _accepted(row, with_job=row.job_id is not None)
+    if row.status == "rejected":
+        await uow.image_candidates.reopen(row.id)
+        fresh = await uow.image_candidates.get(row.id)
+        assert fresh is not None  # noqa: S101 - locked under the product lock
+        return _accepted(fresh, with_job=False)
+    if row.status in ("ready", "accepted") or row.failure_reason in CACHED_FAILURES:
+        return _accepted(row, with_job=False)
+    return None
+
+
+async def _audit_candidate(
+    uow: TenantUnitOfWork, principal: Principal, action: str, row_id: uuid.UUID, **after: Any
+) -> None:
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action=action,
+        entity_type="image_candidate",
+        entity_id=row_id,
+        before=None,
+        after=json.dumps(after, sort_keys=True),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _Key:
+    colourway_id: uuid.UUID | None
+    source_hash: str
+    generator_key: str
+
+
+async def _resolve_key(
+    uow: TenantUnitOfWork, product_id: uuid.UUID, body: CandidateRequest
+) -> _Key:
+    """The product (404), the source or the chart (404/422), and the cache key."""
+    settings = get_settings()
+    product = await uow.products.get_by_id(product_id)
+    if product is None:
+        raise NotFoundError("product_id")
+    if body.kind == "size_chart":
+        if product.parent_product_id is not None:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "product_id")
+        source = size_chart_source(product.attributes)
+        if source is None:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "kind")
+        try:
+            layout_size_chart(source.chart, source.fibres)
+        except ChartRefused:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "kind") from None
+        return _Key(None, source.source_hash, SIZE_CHART_GENERATOR)
+    assert body.source_image_id is not None  # noqa: S101 - ImageCandidateIn
+    image = await uow.images.get_live(body.source_image_id)
+    if image is None or image.product_id != product_id or image.slot != "main":
+        raise NotFoundError("source_image_id")
+    if image.clean_content_hash is None:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "source_image_id")
+    generator = (
+        edit_generator_key(settings.llm_model_image_edit)
+        if body.kind == "white_background"
+        else FIX_GENERATOR
+    )
+    return _Key(image.colourway_id, image.clean_content_hash, generator)
+
+
+async def create_candidate(
+    principal: Principal,
+    product_id: uuid.UUID,
+    body: CandidateRequest,
+    idem_key: str,
+    path: str,
+) -> dict[str, Any]:
+    """`POST /products/{product_id}/image-candidates` under the Idempotency-Key: one candidate
+    per cache key, a job only for this call's own new row (CP-D17), the D21 limits before an AI
+    job (a refusal is a `failed/budget` row and no job)."""
+    settings = get_settings()
+    if body.kind == "white_background" and not settings.image_edit_enabled:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "kind")
+    tenant = principal.tenant_id
+    payload = json.dumps(
+        {"kind": body.kind, "source_image_id": str(body.source_image_id or "")}, sort_keys=True
+    ).encode()
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, tenant)
+        await uow.images.lock_tenant_image_jobs()
+        await uow.images.lock_product_images(product_id)
+        key = await _resolve_key(uow, product_id, body)
+        cached = await uow.image_candidates.find_cached(
+            product_id, body.kind, key.source_hash, key.generator_key
+        )
+        if cached is not None:
+            answer = await _cache_answer(uow, cached)
+            if answer is not None:
+                return 202, answer
+        new = NewCandidate(
+            id=uuid.uuid4(),
+            product_id=product_id,
+            colourway_id=key.colourway_id,
+            source_image_id=body.source_image_id,
+            kind=body.kind,
+            source_hash=key.source_hash,
+            generator_key=key.generator_key,
+            created_by=principal.user_id,
+        )
+        if body.kind == "white_background":
+            await lock_budget(session, tenant)
+            refused = await image_edit_refusal(
+                session,
+                tenant,
+                datetime.now(UTC).date(),
+                ImageEditLimits.from_settings(settings),
+                IMAGE_EDIT_RESERVATION_USD,
+            )
+            if refused is not None:
+                failed = dataclasses.replace(new, status="failed", failure_reason="budget")
+                row, _ = await uow.image_candidates.create_or_get(failed)
+                await _audit_candidate(
+                    uow,
+                    principal,
+                    "image_candidate.created",
+                    row.id,
+                    kind=row.kind,
+                    status=row.status,
+                )
+                return 202, _accepted(row, with_job=False)
+        await enforce_live_image_cap(uow.images)
+        row, created = await uow.image_candidates.create_or_get(new)
+        if not created:  # a concurrent create won: its row answers, with no enqueue
+            answer = await _cache_answer(uow, row)
+            return 202, answer if answer is not None else _accepted(row, with_job=False)
+        enqueued = await uow.job_runs.enqueue(
+            EnqueueSpec(
+                kind=JobKind.IMAGE_COMPLIANCE,
+                entity_type=CANDIDATE_ENTITY,
+                entity_id=row.id,
+                created_by=principal.user_id,
+                payload={"candidate_id": str(row.id)},
+                max_attempts=1 if body.kind == "white_background" else None,
+                lock=lock_for(JobKind.IMAGE_COMPLIANCE, CANDIDATE_ENTITY, tenant),
+            )
+        )
+        if not await uow.image_candidates.set_job(row.id, enqueued.job.id):
+            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "image_candidates")
+        await _audit_candidate(
+            uow, principal, "image_candidate.created", row.id, kind=row.kind, status="queued"
+        )
+        return 202, {
+            "candidate_id": str(row.id),
+            "status": "queued",
+            "job_id": str(enqueued.job.id),
+            "poll_url": f"{API_V1}/jobs/{enqueued.job.id}",
+        }
+
+    _status, answer = await idempotent(principal, idem_key, "POST", path, payload, handler)
+    log.info(
+        "image_candidate.create",
+        tenant_id=str(tenant),
+        candidate_id=answer.get("candidate_id"),
+        job_id=answer.get("job_id"),
+        status=answer.get("status"),
+    )
+    return answer
+
+
+def _fidelity(row: ImageCandidate) -> dict[str, Any] | None:
+    value = row.fidelity_json
+    if not isinstance(value, Mapping) or "agreement" not in value:
+        return None
+    return dict(value)
+
+
+def _model_and_prompt(row: ImageCandidate) -> tuple[str | None, str | None]:
+    parts = row.generator_key.split("|")
+    if row.kind == "white_background" and len(parts) == 3:
+        return parts[1], parts[2]
+    return None, row.generator_key
+
+
+def candidate_view(
+    row: ImageCandidate, *, preview_url: str | None, source_preview_url: str | None
+) -> dict[str, Any]:
+    model, prompt = _model_and_prompt(row)
+    return {
+        "id": row.id,
+        "kind": row.kind,
+        "source_image_id": row.source_image_id,
+        "colourway_id": row.colourway_id,
+        "status": row.status,
+        "failure_reason": row.failure_reason,
+        "width": row.width_px,
+        "height": row.height_px,
+        "fidelity": _fidelity(row),
+        "model": model,
+        "prompt_version": prompt,
+        "cost_usd": row.cost_usd,
+        "preview_url": preview_url,
+        "source_preview_url": source_preview_url,
+        "accepted_image_id": row.accepted_image_id,
+        "created_at": row.created_at,
+    }
+
+
+SIGNED_STATUSES: Final = frozenset({"ready", "accepted", "rejected"})
+
+
+async def list_candidates(principal: Principal, product_id: uuid.UUID) -> list[dict[str, Any]]:
+    """The product's candidates, newest first (at most 50), with 10-minute signed previews of
+    the stored candidate and of its source's clean copy. A signed URL is never logged or
+    stored (`adapters/storage.py`)."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        if await uow.products.get_by_id(product_id) is None:
+            raise NotFoundError("product_id")
+        rows = await uow.image_candidates.list_for_product(product_id)
+        sources: dict[uuid.UUID, Image | None] = {}
+        for row in rows:
+            if row.source_image_id is not None and row.source_image_id not in sources:
+                sources[row.source_image_id] = await uow.images.get_any(row.source_image_id)
+    storage = get_storage()
+    bucket = images_bucket()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        preview = None
+        if row.status in SIGNED_STATUSES and row.storage_key:
+            preview = await storage.presign_get(bucket, row.storage_key, expires_s=PREVIEW_TTL_S)
+        source_preview = None
+        source = None if row.source_image_id is None else sources.get(row.source_image_id)
+        if source is not None and source.clean_mime_type in CLEAN_NAMES:
+            clean_key = derived_key(
+                principal.tenant_id,
+                source.product_id,
+                source.id,
+                CLEAN_NAMES[source.clean_mime_type],
+            )
+            source_preview = await storage.presign_get(bucket, clean_key, expires_s=PREVIEW_TTL_S)
+        out.append(candidate_view(row, preview_url=preview, source_preview_url=source_preview))
+    return out

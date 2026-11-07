@@ -18,7 +18,7 @@ from .images_support import FakeStorage, image_row, product, use_storage
 from .jobs_support import Conn
 
 PRODUCT_RGB = (40, 70, 160)
-CANDIDATE_MODULES = ("app.workers.image_candidate",)
+CANDIDATE_MODULES = ("app.workers.image_candidate", "app.services.image_candidates")
 CHART = {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 101, "length": 72}]}
 
 

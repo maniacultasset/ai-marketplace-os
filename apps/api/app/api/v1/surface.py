@@ -70,6 +70,7 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
+from app.api.v1.schemas.image_candidates import ImageCandidateAccepted, ImageCandidatePage
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.issues import IssueOut, IssuePage
@@ -679,6 +680,16 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
               "Delete an image (and its prepared and public copies)", "SI1",
               path_id="image_id", action=A.PRODUCT_IMPORT),
+    # ---- image candidates (SI7) ----
+    Operation("image_candidates_create", "POST", "/products/{product_id}/image-candidates", 202,
+              ImageCandidateAccepted, "images",
+              "Make an image candidate from a photo or the size chart", "SI7",
+              path_id="product_id", has_body=True, body_ids=("source_image_id",),
+              idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
+              ImageCandidatePage, "images", "The product's image candidates", "SI7",
+              path_id="product_id", action=A.TENANT_READ),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),

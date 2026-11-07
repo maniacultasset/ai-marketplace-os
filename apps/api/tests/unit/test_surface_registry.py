@@ -95,6 +95,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_report", "GET", "/images/{image_id}/report"),
     # SI1: the image delete (78 + 1)
     ("images_delete", "DELETE", "/images/{image_id}"),
+    ("image_candidates_create", "POST", "/products/{product_id}/image-candidates"),
+    ("image_candidates_list", "GET", "/products/{product_id}/image-candidates"),
     ("rules_list", "GET", "/rules"),
     ("rules_dry_run", "POST", "/rules/dry-run"),
     ("jobs_get", "GET", "/jobs/{job_id}"),
@@ -120,7 +122,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 80
+    assert len(FROZEN) == 82
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -248,6 +250,7 @@ D9_IDEMPOTENT = {
     "issues_dismiss",  # S19
     "listings_refresh_status",  # S21
     "tasks_answer",  # SI3
+    "image_candidates_create",  # SI7
 }
 
 
@@ -402,8 +405,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_80_operations() -> None:
-    assert len(OPS) == 80
+def test_82_operations() -> None:
+    assert len(OPS) == 82
 
 
 def test_error_codes_per_d2() -> None:
@@ -421,6 +424,8 @@ def test_error_codes_per_d2() -> None:
         "listings_preview": (E.LISTING_BUSY,),
         "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        # SI7: a candidate taken over by another job, or decided already
+        "image_candidates_create": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -499,7 +504,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI7",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id
