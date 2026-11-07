@@ -782,6 +782,135 @@ export interface GenerationContext {
   marketplace: Marketplace;
   marketplace_rules: RuleSet;
   max_attempts?: number;
+  /**
+   * @maxItems 16
+   */
+  photo_targets?:
+    | []
+    | [PhotoTarget]
+    | [PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ];
   previous_version?: CanonicalListing | null;
   product: {
     [k: string]: unknown;
@@ -1023,6 +1152,26 @@ export interface Pattern {
   [k: string]: unknown;
 }
 /**
+ * One product key the backend asks the vision step about (SI3).
+ *
+ * `fill`: no trusted value is stored, so a confident photo value may become an unconfirmed fact.
+ * `check`: a value is stored; a photo value can only raise a question.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoTarget".
+ */
+export interface PhotoTarget {
+  /**
+   * @minItems 1
+   * @maxItems 40
+   */
+  allowed_values: [string, ...string[]];
+  key: string;
+  min_confidence: number;
+  mode: "fill" | "check";
+  [k: string]: unknown;
+}
+/**
  * Where one product value came from (1.2.0). Absent: treat the value as seller-confirmed.
  *
  * This interface was referenced by `MkosContracts`'s JSON-Schema
@@ -1052,6 +1201,152 @@ export interface GenerationResult {
   image_reports?: ImageReport[];
   job_id: string;
   listing?: CanonicalListing | null;
+  /**
+   * @maxItems 16
+   */
+  photo_observations?:
+    | []
+    | [PhotoObservation]
+    | [PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ];
   /**
    * @maxItems 20
    */
@@ -1296,6 +1591,32 @@ export interface ImageIssue {
     | "product_visibility";
   code: ImageIssueCode;
   suggestion: string;
+  [k: string]: unknown;
+}
+/**
+ * What the vision step saw for one target key, and on which context image (SI3).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoObservation".
+ */
+export interface PhotoObservation {
+  /**
+   * @maxItems 2
+   */
+  alternatives?: [] | [PhotoAlternative] | [PhotoAlternative, PhotoAlternative];
+  confidence: number;
+  image_id: string;
+  key: string;
+  value: string;
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoAlternative".
+ */
+export interface PhotoAlternative {
+  confidence: number;
+  value: string;
   [k: string]: unknown;
 }
 /**
