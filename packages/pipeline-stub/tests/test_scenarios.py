@@ -501,6 +501,7 @@ async def test_photo_timeout_has_a_failed_record_and_no_observations() -> None:
 async def test_photo_inject() -> None:
     result = await _run(_photo_ctx("photo_inject"))
     assert result.listing is not None and "handmade" in result.listing.content.description.lower()
+    assert result.listing.attributes["construction"] == "handmade"
     assert _seen(result) == {"construction": ("handmade", 0.95)}
 
 

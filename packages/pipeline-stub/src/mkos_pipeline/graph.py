@@ -31,7 +31,7 @@ Scenarios, chosen by a `user_instructions` prefix `stub:<name>` (anything else i
   product value (pieces aside) at the first allowed value that differs from it, 0.95;
   `photo_pieces` `number_of_pieces` "3" at 0.95; `photo_hostile` 16 observations the backend must
   drop; `photo_timeout` a failed (`TIMEOUT`) record and none; `photo_inject` a `handmade`
-  description and a `construction` observation (never a target).
+  description and `construction` attribute, and a `construction` observation (never a target).
 
 Ids are `uuid5(ctx.job_id, "<agent>:<attempt>")` and every timestamp is `STUB_EPOCH`, so two runs
 over the same context return byte-identical results.
@@ -215,7 +215,10 @@ def build_listing(
                 "bullets": list(fixture.bullets),
                 "description": description,
             },
-            "attributes": _required_attributes(ctx),
+            "attributes": {
+                **_required_attributes(ctx),
+                **({"construction": "handmade"} if inject else {}),
+            },
             "images": [i.model_dump(mode="json") for i in images or []],
             "generated_by_agent_run_id": stub_id(ctx, "content", 1),
         }
