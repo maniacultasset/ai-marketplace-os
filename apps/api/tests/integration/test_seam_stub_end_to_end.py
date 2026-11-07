@@ -166,6 +166,7 @@ async def _run(seam: Seam, instructions: str | None = None) -> tuple[Any, Spy]:
         product_id=seam.product,
         marketplace=ctx.marketplace,
         rules=loaded,
+        critical_keys=frozenset(),
     )
     spy = Spy(deps)
     return await run_listing_pipeline(ctx, spy), spy

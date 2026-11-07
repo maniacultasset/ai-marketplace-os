@@ -92,6 +92,7 @@ async def _deps(world: World, conn: Conn, slug: str, **over: Any) -> Any:
         "product_id": seam.add_product(conn, tenant),
         "marketplace": "amazon",
         "rules": LoadedRules(ruleset=ruleset, template=None),
+        "critical_keys": frozenset(),
         **over,
     }
     return await build_pipeline_deps(**values)

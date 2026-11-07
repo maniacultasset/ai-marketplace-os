@@ -61,6 +61,8 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.core.resolved_facts import facts_digest, for_rules
 from app.repositories.uow import tenant_uow
+from app.services.auto_fix.apply import auto_fix
+from app.services.auto_fix.fixers import FixContext, FixRecord
 from app.services.generation_context import GenerationContextError, build_context
 from app.services.generation_images import load_context_images, order_for_listing, pick_context
 from app.services.generation_persist import PersistPlan, Pins, make_persist
@@ -211,6 +213,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         claim_started_at = job.started_at or datetime.now(UTC)
         created_by = job.created_by
         image_rows = await uow.images.listing_set(listing.product_id)
+        critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
@@ -257,6 +260,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         product_id=listing.product_id,
         marketplace=Marketplace(listing.marketplace),
         rules=rules,
+        critical_keys=critical,
         product=product,
     )
     try:
@@ -324,7 +328,18 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             seen=attempts_used,
             reported=trusted.result.attempts_used,
         )
-    report = None if trusted.listing is None else recheck(trusted.listing, rules, product)
+    report: ErrorReport | None = None
+    fixes: tuple[FixRecord, ...] = ()
+    if trusted.listing is not None:
+        # SI4 A9 (§2 fact 1, AC7): the same pure fix pass the correction loop ran, on the final
+        # listing; the fixed listing is what the version stores. A human edit never gets here (D6)
+        fixed = auto_fix(
+            trusted.listing,
+            lambda candidate: recheck(candidate, rules, product),
+            FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical),
+        )
+        trusted = dataclasses.replace(trusted, listing=fixed.listing)
+        report, fixes = fixed.report, fixed.records
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
@@ -379,7 +394,9 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         records=trusted.records,
         listing=trusted.listing,
         image_reports=trusted.result.image_reports,
+        image_reports_stored=deps.stored_image_reports,
         recheck=report,
+        fixes=fixes,
         attempts_used=attempts_used,
         version_id=version_id,
         result=outcome_result,

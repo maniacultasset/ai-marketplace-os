@@ -164,7 +164,7 @@ async def test_validate_images_returns_stored_report(
 
     deps = await build_pipeline_deps(
         settings=settings(), tenant_id=acme, job_id=uuid.uuid4(), user_id=None, product_id=p,
-        marketplace=Marketplace.AMAZON, rules=rules,
+        marketplace=Marketplace.AMAZON, rules=rules, critical_keys=frozenset(),
     )  # fmt: skip
     found = await deps.validate_images(listing("amazon"))
     stored = image_db_row(images_db.conn, image_id)["image_report_json"]["amazon"]

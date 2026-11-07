@@ -203,6 +203,12 @@ class ProductFactsRepository(TenantScopedRepository[Product]):
         version = int(rows[0][2]) if rows else 0
         return {row.key: bool(row.is_critical) for row in rows}, version
 
+    async def critical_keys(self) -> frozenset[str]:
+        """The `is_critical` dictionary keys (DATABASE.md:1229; T34): never fixed by code or the
+        AI on their own (SI4 A6, CP-D9)."""
+        flags, _version = await self._dictionary()
+        return frozenset(key for key, critical in flags.items() if critical)
+
     async def resolve(self, product_id: uuid.UUID) -> ProductFacts | None:
         product = await self._live(product_id)
         if product is None:

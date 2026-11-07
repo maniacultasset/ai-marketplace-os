@@ -209,7 +209,14 @@ async def _adapter_sync(world: GenWorld, made: Made, report: ErrorReport, **kw: 
     async with tenant_uow(world.tenant("acme")) as uow:
         listing = await uow.listings.get(made.listing_id)
         return await sync_issues(
-            uow, listing, "amazon_adapter", report, run_id=None, cause="publish", **kw
+            uow,
+            listing,
+            "amazon_adapter",
+            report,
+            run_id=None,
+            cause="publish",
+            critical_keys=frozenset(),
+            **kw,
         )
 
 

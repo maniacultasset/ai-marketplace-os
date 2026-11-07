@@ -26,6 +26,8 @@ class AttributeDef:
     owner_levels: tuple[str, ...]
     input_aliases: tuple[str, ...]
     value_type: str = "text"
+    unit: str | None = None  # SI4 A13: the AnswerSpec of a question
+    vocabulary: tuple[str, ...] | None = None
 
 
 class AttributeDefinitionRepository:
@@ -46,6 +48,8 @@ class AttributeDefinitionRepository:
                 AttributeDefinition.owner_levels,
                 AttributeDefinition.input_aliases,
                 AttributeDefinition.value_type,
+                AttributeDefinition.unit,
+                AttributeDefinition.vocabulary,
             )
             .where(
                 AttributeDefinition.enabled.is_(True),
@@ -64,6 +68,8 @@ class AttributeDefinitionRepository:
                 owner_levels=tuple(row.owner_levels),
                 input_aliases=tuple(row.input_aliases),
                 value_type=row.value_type,
+                unit=row.unit,
+                vocabulary=None if row.vocabulary is None else tuple(row.vocabulary),
             )
             for row in rows
         ]

@@ -205,3 +205,31 @@ def test_gate_merged_report_blocking_equals_gate_blocking(inputs: Any) -> None:
     result = evaluate_image_gate(*inputs)
     merged = ErrorReport(status="failed", errors=[*result.blocking, *result.warnings])
     assert merged.blocking == list(result.blocking)
+
+
+# ---- SI4 A14 (CP-D1): the image findings the Inbox syncs ----
+
+
+def test_image_issue_report_drops_the_not_checked_item() -> None:
+    from app.services.image_gate import image_issue_report
+
+    checked, pending = uuid.uuid4(), uuid.uuid4()
+    stored = {checked: report(checked, passed=False, issues=("BACKGROUND_OFF",))}
+    out = image_issue_report(listing(checked, pending), stored, [])
+    assert [(e.field, e.raw_code, e.severity.value) for e in out.errors] == [
+        ("images[0]", "BACKGROUND_OFF", "error")
+    ]
+    assert out.status == "failed"
+    assert all(e.message != NOT_CHECKED for e in out.errors)
+
+
+def test_image_issue_report_passing_issue_is_a_warning_and_empty_is_passed() -> None:
+    from app.services.image_gate import image_issue_report
+
+    image = uuid.uuid4()
+    warn = image_issue_report(
+        listing(image), {image: report(image, issues=("RESOLUTION_LOW",))}, []
+    )
+    assert [e.severity.value for e in warn.errors] == ["warning"]
+    assert warn.status == "passed"
+    assert image_issue_report(listing(image), {}, []).errors == []

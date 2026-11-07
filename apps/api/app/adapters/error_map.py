@@ -20,7 +20,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Annotated, Final, Literal
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import (
@@ -31,7 +31,9 @@ from mkos_schemas.enums import (
     RetryClass,
     Severity,
 )
-from mkos_schemas.errors import ErrorItem
+from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem
+from mkos_schemas.publish import FieldResult, ListingResult
+from pydantic import Field
 
 from app.core.redaction import redact_text
 
@@ -164,3 +166,35 @@ class ErrorMapper:
             auto_fixable=row.auto_fixable,
             fix_action=row.fix_action,
         )
+
+
+class ListingRead(ListingResult):
+    """A marketplace read (SI4 A16, AC13): the `ListingResult` plus every mapped ERROR and
+    WARNING issue of the read, in read order. `fields` folds the issues to one result per path
+    for the per-path status (`fold_read_issue`); `errors` keeps each issue, so a second ERROR on
+    one path, or a second item-level ERROR, is still its own item. App-internal, never a wire
+    payload (the contract's `ListingResult` is unchanged)."""
+
+    errors: Annotated[list[ErrorItem], Field(max_length=MAX_ERROR_ITEMS)] = Field(
+        default_factory=list
+    )
+
+
+def read_issue(item: ErrorItem, *, warning: bool) -> ErrorItem:
+    """A read issue carries the marketplace's own severity (ERROR or WARNING), not the map
+    row's."""
+    severity = Severity.WARNING if warning else Severity.ERROR
+    return item.model_copy(update={"severity": severity})
+
+
+def fold_read_issue(
+    fields: dict[str, FieldResult], item: ErrorItem, *, warning: bool
+) -> dict[str, FieldResult]:
+    """One read issue folded into the field results: the first error on a path wins, and a
+    warning never replaces an error (SI4 A16)."""
+    item = read_issue(item, warning=warning)
+    held = fields.get(item.field)
+    if held is not None and held.error is not None and (warning or held.status == "failed"):
+        return fields
+    status: Literal["succeeded", "failed"] = "succeeded" if warning else "failed"
+    return {**fields, item.field: FieldResult(field=item.field, status=status, error=item)}
