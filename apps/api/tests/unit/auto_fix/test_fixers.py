@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import unicodedata
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -17,6 +18,7 @@ from app.services.auto_fix.fixers import (
     fix_remap_value,
     fold_spelling,
 )
+from app.services.auto_fix.policy import TRIM_MAX_SHARE
 from app.services.rules_engine.template import template_allowed
 from app.services.rules_engine.text import measure
 from hypothesis import given, settings
@@ -150,6 +152,40 @@ def test_hidden_terms_repeats_go_first() -> None:
     assert got is not None
     assert got[0].keywords.hidden_terms == [*terms[:12], "x" * 10]
     assert "repeated term" in got[1].action_taken
+
+
+def _dedupe_cleaned(terms: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for term in (clean_text(t) for t in terms):
+        if term and term.strip().casefold() not in seen:
+            seen.add(term.strip().casefold())
+            out.append(term)
+    return out
+
+
+def test_repeats_do_not_widen_the_trim_share() -> None:
+    """Round 3 F1: the D5 share is measured on the de-duplicated list, so 45 repeats of one
+    term cannot hide the loss of most of the unique terms."""
+    unique = [f"uniq{i:02d}word" for i in range(5)]  # 5 terms of 10 chars
+    terms = ["filler term"] * 45 + unique
+    ctx = _ctx(_max(HIDDEN_RULE, "keywords.hidden_terms", 40))
+    got = fix_reformat(
+        listing(keywords={"hidden_terms": terms}), _item("keywords.hidden_terms", HIDDEN_RULE), ctx
+    )
+    assert got is None  # dropping 3 of 6 unique terms is far over the 15% share
+
+
+def test_dedupe_alone_fitting_is_still_fixed() -> None:
+    terms = ["filler term"] * 45 + ["uniq00word"]
+    ctx = _ctx(_max(HIDDEN_RULE, "keywords.hidden_terms", 40))
+    got = fix_reformat(
+        listing(keywords={"hidden_terms": terms}), _item("keywords.hidden_terms", HIDDEN_RULE), ctx
+    )
+    assert got is not None
+    fixed, record = got
+    assert fixed.keywords.hidden_terms == ["filler term", "uniq00word"]
+    assert record.before_size == measure(terms, "chars")  # the raw size stays in the record
 
 
 # ---- reformat: boundaries ----
@@ -326,6 +362,29 @@ def test_keyword_properties(terms: list[str], limit: int) -> None:
             base, ("keywords", "hidden_terms")
         )
         assert fixer(fixed, item, ctx) is None  # idempotent
+
+
+@settings(max_examples=150, deadline=None)
+@given(
+    head=st.lists(_TERM, min_size=1, max_size=4),
+    repeats=st.integers(0, 34),  # the slot holds at most 50 terms
+    tail=st.lists(_TERM, max_size=12),
+    limit=st.integers(5, 80),
+)
+def test_keyword_trim_share_ignores_repeats(
+    head: list[str], repeats: int, tail: list[str], limit: int
+) -> None:
+    """Round 3 F1: whatever the repeats, a trim drops at most the D5 share of the
+    de-duplicated content."""
+    terms = [*head, *(head[:1] * repeats), *tail]
+    ctx = _ctx(_max(HIDDEN_RULE, "keywords.hidden_terms", limit, "bytes"))
+    item = _item("keywords.hidden_terms", HIDDEN_RULE, ErrorCode.BYTE_BUDGET_EXCEEDED)
+    got = fix_reformat(listing(keywords={"hidden_terms": terms}), item, ctx)
+    if got is None:
+        return
+    kept = got[0].keywords.hidden_terms
+    deduped = measure(_dedupe_cleaned(terms), "bytes")
+    assert Decimal(deduped - measure(kept, "bytes")) <= TRIM_MAX_SHARE * deduped
 
 
 # ---- remap_value (A3) ----

@@ -280,8 +280,9 @@ def _reformat_terms(
     if not terms or terms == value:
         return None
     after = measure(terms, unit)
-    # The share counts only the terms dropped from the end: repeats and spacing lose nothing.
-    if not within_share(before, before - (deduped - after)):
+    # The share is measured on the de-duplicated list: repeats and spacing lose nothing, and
+    # they never widen the share of unique terms the trim may drop.
+    if not within_share(deduped, after):
         return None
     text = action_taken(
         FixAction.REFORMAT,
