@@ -70,7 +70,11 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
-from app.api.v1.schemas.image_candidates import ImageCandidateAccepted, ImageCandidatePage
+from app.api.v1.schemas.image_candidates import (
+    ImageCandidateAccepted,
+    ImageCandidateOut,
+    ImageCandidatePage,
+)
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.issues import IssueOut, IssuePage
@@ -690,6 +694,14 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
               ImageCandidatePage, "images", "The product's image candidates", "SI7",
               path_id="product_id", action=A.TENANT_READ),
+    Operation("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept", 202,
+              ImageAccepted, "images", "Use a candidate as a product image", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_reject", "POST", "/image-candidates/{candidate_id}/reject", 200,
+              ImageCandidateOut, "images", "Discard a candidate", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),

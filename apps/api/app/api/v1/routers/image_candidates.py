@@ -18,6 +18,7 @@ from app.api.v1.schemas.image_candidates import (
     ImageCandidateOut,
     ImageCandidatePage,
 )
+from app.api.v1.schemas.images import ImageAccepted
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import image_candidates
@@ -57,3 +58,35 @@ async def image_candidates_list(
     `source_preview_url` are signed for 10 minutes: list again for fresh ones."""
     rows = await image_candidates.list_candidates(principal, product_id)
     return ImageCandidatePage(items=[ImageCandidateOut.model_validate(r) for r in rows])
+
+
+@route(router, OPS["image_candidates_accept"])
+async def image_candidates_accept(
+    candidate_id: Annotated[UUID, PathParam()],
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> ImageAccepted:
+    """Use a `ready` candidate as a product image. A white-background or fix candidate becomes
+    the main image and the old main stays as an additional image; a size-chart candidate
+    replaces the size-chart image. The new image gets its own checks (poll `poll_url`). A
+    candidate whose photo or size chart changed since it was made is 409."""
+    body = await image_candidates.accept_candidate(
+        principal, candidate_id, idempotency_key, request.url.path
+    )
+    return ImageAccepted.model_validate(body)
+
+
+@route(router, OPS["image_candidates_reject"])
+async def image_candidates_reject(
+    candidate_id: Annotated[UUID, PathParam()],
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> ImageCandidateOut:
+    """Discard a `ready` candidate (asking for the same one again brings it back, at no cost).
+    The answer carries no preview URLs: list the candidates again for fresh ones."""
+    body = await image_candidates.reject_candidate(
+        principal, candidate_id, idempotency_key, request.url.path
+    )
+    return ImageCandidateOut.model_validate(body)

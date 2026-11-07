@@ -97,6 +97,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_delete", "DELETE", "/images/{image_id}"),
     ("image_candidates_create", "POST", "/products/{product_id}/image-candidates"),
     ("image_candidates_list", "GET", "/products/{product_id}/image-candidates"),
+    ("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept"),
+    ("image_candidates_reject", "POST", "/image-candidates/{candidate_id}/reject"),
     ("rules_list", "GET", "/rules"),
     ("rules_dry_run", "POST", "/rules/dry-run"),
     ("jobs_get", "GET", "/jobs/{job_id}"),
@@ -122,7 +124,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 82
+    assert len(FROZEN) == 84
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -251,6 +253,8 @@ D9_IDEMPOTENT = {
     "listings_refresh_status",  # S21
     "tasks_answer",  # SI3
     "image_candidates_create",  # SI7
+    "image_candidates_accept",  # SI7
+    "image_candidates_reject",  # SI7
 }
 
 
@@ -405,8 +409,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_82_operations() -> None:
-    assert len(OPS) == 82
+def test_84_operations() -> None:
+    assert len(OPS) == 84
 
 
 def test_error_codes_per_d2() -> None:
@@ -426,6 +430,8 @@ def test_error_codes_per_d2() -> None:
         "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # SI7: a candidate taken over by another job, or decided already
         "image_candidates_create": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,

@@ -424,3 +424,351 @@ async def test_list_invalid_token(
 ) -> None:
     response = await api.get(_url(uuid.uuid4()), headers=bad_token(images_db, variant))
     assert response.status_code == 401
+
+
+# ---- Part 2 (T14): accept and reject ----
+
+CANDIDATES = "/api/v1/image-candidates"
+
+
+async def _ready(
+    api: httpx.AsyncClient,
+    jw: JobWorld,
+    store: FakeStorage,
+    *,
+    kind: str = "fix",
+    slug: str = "acme",
+) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """A ready candidate made through the API and the real job: (candidate, product, source)."""
+    tenant = jw.tenant(slug)
+    if kind == "size_chart":
+        p, src = chart_product(jw.conn, tenant), None
+        body: dict[str, Any] = {"kind": "size_chart"}
+    else:
+        p, src, _ = source_main(jw.conn, store, tenant)
+        body = {"kind": kind, "source_image_id": str(src)}
+    made = await _create(api, jw, p, body, email=f"operator@{slug}.test")
+    assert made.status_code == 202, made.text
+    await run_image_job(uuid.UUID(made.json()["job_id"]))
+    candidate = uuid.UUID(made.json()["candidate_id"])
+    assert candidate_row(jw.conn, candidate)["status"] == "ready"
+    return candidate, p, src  # type: ignore[return-value]
+
+
+async def _decide(
+    api: httpx.AsyncClient,
+    jw: JobWorld,
+    candidate: Any,
+    action: str,
+    *,
+    email: str = "operator@acme.test",
+    key: str | None = None,
+) -> httpx.Response:
+    return await api.post(f"{CANDIDATES}/{candidate}/{action}", headers=headers(jw, email, key))
+
+
+def _images(jw: JobWorld, product_id: uuid.UUID) -> list[dict[str, Any]]:
+    cur = jw.conn.execute(
+        "SELECT id, slot, position, origin, parent_image_id, candidate_id, deleted_at "
+        "FROM images WHERE product_id = %s ORDER BY created_at",
+        [product_id],
+    )
+    names = [d.name for d in cur.description or ()]
+    return [dict(zip(names, r, strict=True)) for r in cur.fetchall()]
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="success")
+async def test_accept_white_background_makes_the_new_main(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    candidate, p, src = await _ready(api, images_db, store, kind="white_background")
+    response = await _decide(api, images_db, candidate, "accept")
+    assert response.status_code == 202, response.text
+    body = response.json()
+    new_id = uuid.UUID(body["image_id"])
+    rows = {r["id"]: r for r in _images(images_db, p)}
+    new, old = rows[new_id], rows[src]
+    assert (new["slot"], new["origin"], new["parent_image_id"], new["candidate_id"]) == (
+        "main",
+        "generated",
+        src,
+        candidate,
+    )
+    assert old["slot"] == "secondary" and old["deleted_at"] is None
+    live_mains = [r for r in rows.values() if r["slot"] == "main" and r["deleted_at"] is None]
+    assert len(live_mains) == 1
+    for image_id in (new_id, src):
+        jobs = count(
+            images_db.conn,
+            "SELECT count(*) FROM job_runs WHERE entity_type = 'image' AND entity_id = %s",
+            [image_id],
+        )
+        assert jobs >= 1
+    row = candidate_row(images_db.conn, candidate)
+    assert row["status"] == "accepted" and row["accepted_image_id"] == new_id
+    actions = {
+        r[0]
+        for r in images_db.conn.execute(
+            "SELECT action FROM audit_log WHERE entity_id IN (%s, %s, %s)", [candidate, src, new_id]
+        ).fetchall()
+    }
+    assert {"image.demoted", "image.uploaded", "image_candidate.accepted"} <= actions
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="conflict")
+async def test_accept_replay_and_conflicts(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, _, _ = await _ready(api, images_db, store)
+    key = str(uuid.uuid4())
+    first = await _decide(api, images_db, candidate, "accept", key=key)
+    objects_after_first = len(store.objects)
+    again = await _decide(api, images_db, candidate, "accept", key=key)
+    assert first.status_code == again.status_code == 202 and first.json() == again.json()
+    assert len(store.objects) == objects_after_first  # a replay copies no object
+    other = await api.post(
+        f"{CANDIDATES}/{uuid.uuid4()}/accept", headers=headers(images_db, key=key)
+    )
+    assert other.status_code == 409
+    twice = await _decide(api, images_db, candidate, "accept")
+    assert twice.status_code == 409
+    assert twice.json()["error"]["type"] == "INVALID_STATUS_TRANSITION"
+
+
+@pytest.mark.parametrize("status", ["rejected", "failed", "queued"])
+async def test_accept_needs_ready(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, status: str
+) -> None:
+    tenant = images_db.tenant("acme")
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    cols: dict[str, Any] = {"status": status}
+    if status == "rejected":
+        cols["storage_key"] = "k"
+    if status == "failed":
+        cols["failure_reason"] = "fidelity"
+    candidate = f.image_candidate(images_db.conn, tenant, p, src, **cols)
+    before = len(store.objects)
+    response = await _decide(api, images_db, candidate, "accept")
+    assert response.status_code == 409
+    assert len(store.objects) == before  # refused before any object copy
+
+
+async def test_accept_after_a_new_main_or_a_deleted_source_is_409(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    from datetime import UTC, datetime
+
+    candidate, _, src = await _ready(api, images_db, store)
+    images_db.conn.execute(
+        "UPDATE images SET clean_content_hash = %s WHERE id = %s", ["c" * 64, src]
+    )
+    assert (await _decide(api, images_db, candidate, "accept")).status_code == 409
+    other, _, src2 = await _ready(api, images_db, store)
+    images_db.conn.execute(
+        "UPDATE images SET deleted_at = %s WHERE id = %s", [datetime.now(UTC), src2]
+    )
+    assert (await _decide(api, images_db, other, "accept")).status_code == 409
+
+
+async def test_accept_a_size_chart_replaces_the_old_one(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, p, _ = await _ready(api, images_db, store, kind="size_chart")
+    old = image_row(images_db.conn, images_db.tenant("acme"), p, slot="size_chart")
+    response = await _decide(api, images_db, candidate, "accept")
+    assert response.status_code == 202, response.text
+    rows = {r["id"]: r for r in _images(images_db, p)}
+    assert rows[old]["deleted_at"] is not None
+    new = rows[uuid.UUID(response.json()["image_id"])]
+    assert (new["slot"], new["origin"], new["parent_image_id"]) == ("size_chart", "rendered", None)
+
+
+async def test_accept_races_a_main_upload_one_main(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    from datetime import UTC, datetime
+
+    from app.services.image_keys import image_object_key
+
+    from .images_support import picture, register_key
+
+    candidate, p, _ = await _ready(api, images_db, store)
+    tenant = images_db.tenant("acme")
+    image_id = uuid.uuid4()
+    key = image_object_key(tenant, p, image_id)
+    store.objects[key] = (picture(1000, 1000), "image/jpeg", datetime.now(UTC))
+    accept, upload = await asyncio.gather(
+        _decide(api, images_db, candidate, "accept"),
+        register_key(api, headers(images_db), p, key),
+    )
+    assert upload.status_code == 202
+    mains = [r for r in _images(images_db, p) if r["slot"] == "main" and r["deleted_at"] is None]
+    assert len(mains) == 1
+    assert accept.status_code in (202, 409)
+
+
+async def test_reject_then_create_again_is_ready_at_no_cost(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, p, src = await _ready(api, images_db, store)
+    rejected = await _decide(api, images_db, candidate, "reject")
+    assert rejected.status_code == 200 and rejected.json()["status"] == "rejected"
+    again = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(src)})
+    assert again.json()["candidate_id"] == str(candidate) and again.json()["status"] == "ready"
+    assert again.json()["job_id"] is None
+    assert _jobs_for(images_db, candidate) == 1
+    assert count(images_db.conn, "SELECT count(*) FROM agent_runs") == 0
+
+
+@pytest.mark.endpoint("image_candidates_reject", case="success")
+async def test_reject_has_no_previews_and_no_signed_url_is_stored(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, p, src = await _ready(api, images_db, store)
+    rejected = await _decide(api, images_db, candidate, "reject")
+    body = rejected.json()
+    assert body["preview_url"] is None and body["source_preview_url"] is None
+    assert candidate_row(images_db.conn, candidate)["storage_key"] is not None  # kept
+    await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(src)})
+    other, _, _ = await _ready(api, images_db, store)
+    await _decide(api, images_db, other, "accept")
+    listed = await api.get(_url(p), headers=as_member(images_db, "operator@acme.test"))
+    assert "X-Amz-Signature" in listed.text  # the list signs, and is not stored
+    stored = images_db.conn.execute("SELECT response_json::text FROM idempotency_keys").fetchall()
+    assert stored and not any(
+        "X-Amz-Signature" in (b or "") or "X-Goog-Signature" in (b or "") for (b,) in stored
+    )
+
+
+@pytest.mark.endpoint("image_candidates_reject", case="conflict")
+async def test_reject_twice_and_reject_conflicts(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, _, _ = await _ready(api, images_db, store)
+    first = await _decide(api, images_db, candidate, "reject")
+    second = await _decide(api, images_db, candidate, "reject")
+    assert second.status_code == 200 and second.json() == first.json()
+    tenant = images_db.tenant("acme")
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    failed = f.image_candidate(
+        images_db.conn, tenant, p, src, status="failed", failure_reason="fidelity"
+    )
+    assert (await _decide(api, images_db, failed, "reject")).status_code == 409
+    key = str(uuid.uuid4())
+    await _decide(api, images_db, candidate, "reject", key=key)
+    reused = await api.post(f"{CANDIDATES}/{failed}/reject", headers=headers(images_db, key=key))
+    assert reused.status_code == 409
+
+
+async def test_reject_an_accepted_candidate_is_409(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, _, _ = await _ready(api, images_db, store)
+    assert (await _decide(api, images_db, candidate, "accept")).status_code == 202
+    assert (await _decide(api, images_db, candidate, "reject")).status_code == 409
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="wrong_role")
+@pytest.mark.endpoint("image_candidates_reject", case="wrong_role")
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_reviewer_cannot_decide(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, action: str
+) -> None:
+    candidate, _, _ = await _ready(api, images_db, store)
+    response = await _decide(api, images_db, candidate, action, email="reviewer@acme.test")
+    assert response.status_code == 403
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="wrong_tenant")
+@pytest.mark.endpoint("image_candidates_reject", case="wrong_tenant")
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_other_tenants_candidate_is_404(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, action: str
+) -> None:
+    candidate, _, _ = await _ready(api, images_db, store, slug="bharat")
+    response = await _decide(api, images_db, candidate, action)
+    assert response.status_code == 404
+    assert candidate_row(images_db.conn, candidate)["status"] == "ready"
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="not_found")
+@pytest.mark.endpoint("image_candidates_reject", case="not_found")
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_unknown_candidate_is_404(
+    images_db: JobWorld, api: httpx.AsyncClient, action: str
+) -> None:
+    assert (await _decide(api, images_db, uuid.uuid4(), action)).status_code == 404
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="validation")
+@pytest.mark.endpoint("image_candidates_reject", case="validation")
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_bad_candidate_id_is_422(
+    images_db: JobWorld, api: httpx.AsyncClient, action: str
+) -> None:
+    assert (await _decide(api, images_db, "not-a-uuid", action)).status_code == 422
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="missing_auth")
+@pytest.mark.endpoint("image_candidates_reject", case="missing_auth")
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_decide_missing_auth(
+    images_db: JobWorld, api: httpx.AsyncClient, action: str
+) -> None:
+    response = await api.post(f"{CANDIDATES}/{uuid.uuid4()}/{action}")
+    assert response.status_code == 401
+
+
+@pytest.mark.endpoint("image_candidates_accept", case="invalid_token", variant="expired")
+@pytest.mark.endpoint("image_candidates_accept", case="invalid_token", variant="bad_signature")
+@pytest.mark.endpoint("image_candidates_accept", case="invalid_token", variant="wrong_typ")
+@pytest.mark.endpoint("image_candidates_reject", case="invalid_token", variant="expired")
+@pytest.mark.endpoint("image_candidates_reject", case="invalid_token", variant="bad_signature")
+@pytest.mark.endpoint("image_candidates_reject", case="invalid_token", variant="wrong_typ")
+@pytest.mark.parametrize("variant", ["expired", "bad_signature", "wrong_typ"])
+@pytest.mark.parametrize("action", ["accept", "reject"])
+async def test_decide_invalid_token(
+    images_db: JobWorld, api: httpx.AsyncClient, variant: str, action: str
+) -> None:
+    hdrs = {**bad_token(images_db, variant), "Idempotency-Key": str(uuid.uuid4())}
+    response = await api.post(f"{CANDIDATES}/{uuid.uuid4()}/{action}", headers=hdrs)
+    assert response.status_code == 401
+
+
+async def test_object_copy_failure_writes_no_row(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    from app.adapters.storage import StorageUnavailable
+
+    candidate, p, _ = await _ready(api, images_db, store)
+    before = len(_images(images_db, p))
+    store.fail = {"put": StorageUnavailable("down")}
+    response = await _decide(api, images_db, candidate, "accept")
+    assert response.status_code == 500
+    assert len(_images(images_db, p)) == before
+    assert candidate_row(images_db.conn, candidate)["status"] == "ready"
+
+
+async def test_accept_caps(images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage) -> None:
+    from .images_support import enqueue_image_job
+
+    candidate, _, _ = await _ready(api, images_db, store)
+    tenant = images_db.tenant("acme")
+    for _ in range(19):  # 19 live + the 2 the accept adds > 20
+        await enqueue_image_job(tenant, uuid.uuid4())
+    assert (await _decide(api, images_db, candidate, "accept")).status_code == 429
+
+
+async def test_deleting_the_source_fails_its_open_candidates(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, _, src = await _ready(api, images_db, store)
+    key = candidate_row(images_db.conn, candidate)["storage_key"]
+    assert key in store.objects
+    response = await api.delete(
+        f"/api/v1/images/{src}", headers=as_member(images_db, "operator@acme.test")
+    )
+    assert response.status_code == 204
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_unusable")
+    assert key not in store.objects

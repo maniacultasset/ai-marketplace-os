@@ -19,23 +19,38 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import JobKind
+from mkos_schemas.enums import ImageSlot, JobKind
 
-from app.adapters.storage import get_storage, images_bucket
+from app.adapters.storage import (
+    StorageNotFound,
+    StorageObjectTooLarge,
+    get_storage,
+    images_bucket,
+)
 from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.db.models.catalog_assets import Image, ImageCandidate
+from app.repositories.idempotency import IdempotencyKeyRepository, Mismatch, Replay
 from app.repositories.image_candidates import NewCandidate
+from app.repositories.images import NewImage
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
-from app.services.idempotency import idempotent
-from app.services.image_keys import CLEAN_NAMES, derived_key
-from app.services.images import enforce_live_image_cap
+from app.services.idempotency import idempotent, key_reused, request_hash
+from app.services.image_keys import CLEAN_NAMES, derived_key, image_object_key
+from app.services.images import (
+    IMAGE_JOB_LOCK,
+    MAX_LIVE_IMAGES_PER_PRODUCT,
+    accepted_body,
+    enforce_live_image_cap,
+    insert_image_and_job,
+    remove_objects_after_commit,
+)
 from app.services.products import fibres_view, size_chart_view
 from app.services.size_chart_image import ChartRefused, layout_size_chart
 from app.workers.budget import (
@@ -361,3 +376,231 @@ async def list_candidates(principal: Principal, product_id: uuid.UUID) -> list[d
             source_preview = await storage.presign_get(bucket, clean_key, expires_s=PREVIEW_TTL_S)
         out.append(candidate_view(row, preview_url=preview, source_preview_url=source_preview))
     return out
+
+
+# ---- T14: accept and reject ----
+
+MAX_CANDIDATE_BYTES: Final = 10_485_760
+
+
+def _not_ready() -> ConflictError:
+    return ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "image_candidates")
+
+
+async def _peek(principal: Principal, key: str, path: str, payload: bytes) -> dict[str, Any] | None:
+    """A completed replay's stored body (before any object copy, CODE-PLAN §12 LOW 7); another
+    body or member under the key is 409."""
+    digest = request_hash("POST", path, payload)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        seen = await IdempotencyKeyRepository(uow.session, principal.tenant_id).peek(
+            key, f"POST {path}", digest, principal.user_id
+        )
+    if isinstance(seen, Mismatch):
+        raise key_reused()
+    if isinstance(seen, Replay):
+        return seen.body
+    return None
+
+
+async def _still_current(uow: TenantUnitOfWork, row: ImageCandidate) -> Image | None:
+    """The candidate's source is unchanged since it was made: the same live main (same clean
+    hash), or the same size chart. Returns the source image (None for a size chart); 409
+    otherwise."""
+    if row.kind == "size_chart":
+        product = await uow.products.get_by_id(row.product_id)
+        source = None if product is None else size_chart_source(product.attributes)
+        if source is None or source.source_hash != row.source_hash:
+            raise _not_ready()
+        return None
+    image = None if row.source_image_id is None else await uow.images.get_live(row.source_image_id)
+    if (
+        image is None
+        or image.slot != "main"
+        or image.product_id != row.product_id
+        or image.clean_content_hash != row.source_hash
+    ):
+        raise _not_ready()
+    return image
+
+
+async def _audit_image(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    action: str,
+    image_id: uuid.UUID,
+    *,
+    before: dict[str, Any] | None,
+    after: dict[str, Any],
+) -> None:
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action=action,
+        entity_type="image",
+        entity_id=image_id,
+        before=None if before is None else json.dumps(before),
+        after=json.dumps(after),
+    )
+
+
+async def accept_candidate(
+    principal: Principal, candidate_id: uuid.UUID, idem_key: str, path: str
+) -> dict[str, Any]:
+    """`POST /image-candidates/{candidate_id}/accept`: the candidate becomes a product image.
+
+    The object is copied to a fresh image key before the transaction (an orphan after a crash
+    is swept by the image orphan sweep). Then, under the tenant image-job lock and the product
+    lock: the row must be `ready` and its source unchanged (409 otherwise); a main candidate
+    demotes the live main to `secondary` (kept, with a re-check job: its report was for main
+    rules); a size chart replaces the live size-chart image. The new row carries its provenance
+    and gets its own `image_compliance` job. A marketplace sees it only in a new listing version
+    another user approves (design §2.8)."""
+    tenant = principal.tenant_id
+    payload = b""
+    replay = await _peek(principal, idem_key, path, payload)
+    if replay is not None:
+        return replay
+    async with tenant_uow(tenant, user_id=principal.user_id) as uow:
+        pre = await uow.image_candidates.get(candidate_id)
+    if pre is None:
+        raise NotFoundError("candidate_id")
+    if pre.status != "ready" or not pre.storage_key:
+        raise _not_ready()
+    new_id = uuid.uuid4()
+    new_key = image_object_key(tenant, pre.product_id, new_id)
+    storage = get_storage()
+    try:
+        data = await storage.get(images_bucket(), pre.storage_key, max_bytes=MAX_CANDIDATE_BYTES)
+    except (StorageNotFound, StorageObjectTooLarge):
+        raise _not_ready() from None
+    await storage.put(images_bucket(), new_key, data, "image/jpeg")
+    replaced: list[uuid.UUID] = []
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, tenant)
+        await uow.images.lock_tenant_image_jobs()
+        await uow.images.lock_product_images(pre.product_id)
+        row = await uow.image_candidates.get_for_update(candidate_id)
+        if row is None:
+            raise NotFoundError("candidate_id")
+        if row.status != "ready":
+            raise _not_ready()
+        source = await _still_current(uow, row)
+        main = row.kind != "size_chart"
+        await enforce_live_image_cap(uow.images, adding=2 if main else 1)
+        if await uow.images.count_live(row.product_id) >= MAX_LIVE_IMAGES_PER_PRODUCT:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "images")
+        if main:
+            assert source is not None  # noqa: S101 - _still_current
+            position = await uow.images.next_position(
+                row.product_id, source.colourway_id, ImageSlot.SECONDARY
+            )
+            if not await uow.images.demote_main(source.id, position):
+                raise _not_ready()
+            await _audit_image(
+                uow,
+                principal,
+                "image.demoted",
+                source.id,
+                before={"slot": "main"},
+                after={"slot": "secondary"},
+            )
+            await uow.job_runs.enqueue(
+                EnqueueSpec(
+                    kind=JobKind.IMAGE_COMPLIANCE,
+                    entity_type="image",
+                    entity_id=source.id,
+                    created_by=principal.user_id,
+                    payload={"image_id": str(source.id)},
+                    lock=IMAGE_JOB_LOCK,
+                )
+            )
+            slot, colourway = ImageSlot.MAIN, source.colourway_id
+        else:
+            for detail in await uow.images.details_for_product(row.product_id):
+                if detail.slot == "size_chart" and detail.colourway_id is None:
+                    await uow.images.soft_delete(detail.image_id)
+                    replaced.append(detail.image_id)
+                    await _audit_image(
+                        uow,
+                        principal,
+                        "image.replaced",
+                        detail.image_id,
+                        before={"deleted_at": None},
+                        after={"deleted_at": datetime.now(UTC).isoformat()},
+                    )
+            slot, colourway = ImageSlot.SIZE_CHART, None
+        job_id = await insert_image_and_job(
+            uow,
+            principal,
+            NewImage(
+                id=new_id,
+                product_id=row.product_id,
+                colourway_id=colourway,
+                storage_key=new_key,
+                slot=slot,
+                bytes=len(data),
+                position=0,
+                origin="generated" if row.kind == "white_background" else "rendered",
+                parent_image_id=None if source is None else source.id,
+                candidate_id=row.id,
+            ),
+            field="candidate_id",
+        )
+        if not await uow.image_candidates.mark_accepted(row.id, new_id, principal.user_id):
+            raise _not_ready()
+        await _audit_candidate(
+            uow, principal, "image_candidate.accepted", row.id, kind=row.kind, status="accepted"
+        )
+        return 202, accepted_body(new_id, job_id)
+
+    _status, body = await idempotent(principal, idem_key, "POST", path, payload, handler)
+    for old_id in replaced:
+        await remove_objects_after_commit(principal, old_id)
+    log.info(
+        "image_candidate.accepted",
+        tenant_id=str(tenant),
+        candidate_id=str(candidate_id),
+        image_id=body.get("image_id"),
+    )
+    return body
+
+
+def _public_view(row: ImageCandidate) -> dict[str, Any]:
+    """The candidate as JSON with no signed URL (CP-D18: an idempotent answer is stored)."""
+    view = candidate_view(row, preview_url=None, source_preview_url=None)
+    for key in ("id", "source_image_id", "colourway_id", "accepted_image_id"):
+        view[key] = None if view[key] is None else str(view[key])
+    view["cost_usd"] = format(Decimal(view["cost_usd"]).quantize(Decimal("0.000001")), "f")
+    view["created_at"] = view["created_at"].isoformat()
+    return view
+
+
+async def reject_candidate(
+    principal: Principal, candidate_id: uuid.UUID, idem_key: str, path: str
+) -> dict[str, Any]:
+    """`POST /image-candidates/{candidate_id}/reject`: a `ready` candidate becomes `rejected`
+    (its object is kept: asking again reopens it, PLAN D10); `rejected` again is the same 200;
+    `queued`, `failed` or `accepted` is 409. The answer has no preview URLs (CP-D18)."""
+    tenant = principal.tenant_id
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, tenant)
+        row = await uow.image_candidates.get_for_update(candidate_id)
+        if row is None:
+            raise NotFoundError("candidate_id")
+        if row.status == "ready":
+            await uow.image_candidates.reject(row.id, principal.user_id)
+            await _audit_candidate(
+                uow, principal, "image_candidate.rejected", row.id, kind=row.kind, status="rejected"
+            )
+            fresh = await uow.image_candidates.get(row.id)
+            assert fresh is not None  # noqa: S101 - locked above
+            row = fresh
+        elif row.status != "rejected":
+            raise _not_ready()
+        return 200, _public_view(row)
+
+    _status, body = await idempotent(principal, idem_key, "POST", path, b"", handler)
+    return body

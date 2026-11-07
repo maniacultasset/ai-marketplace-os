@@ -86,6 +86,8 @@ Q7: dict[str, str] = {
     "images_delete": "product:import",
     "image_candidates_create": "product:import",
     "image_candidates_list": "tenant:read",
+    "image_candidates_accept": "product:import",
+    "image_candidates_reject": "product:import",
     "rules_list": "tenant:read",
     "rules_dry_run": "listing:edit",
     "jobs_get": "tenant:read",
@@ -126,8 +128,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI7 two
-    assert len(OPS) == 82
+    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI7 four
+    assert len(OPS) == 84
     assert set(OPS) == set(Q7)
 
 

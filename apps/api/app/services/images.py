@@ -23,7 +23,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, JobKind, Marketplace
 from mkos_schemas.images import ImageReport
 
-from app.adapters.storage import get_storage, images_bucket
+from app.adapters.storage import StorageUnavailable, get_storage, images_bucket
 from app.core.errors import DomainError, InputError, LimitError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
@@ -252,7 +252,7 @@ async def _register(
             position = 0
         else:
             position = await uow.images.next_position(form.product_id, form.colourway_id, form.slot)
-        job_id = await _insert_image_and_job(
+        job_id = await insert_image_and_job(
             uow,
             principal,
             NewImage(
@@ -280,7 +280,7 @@ async def _register(
     return body
 
 
-async def _insert_image_and_job(
+async def insert_image_and_job(
     uow: TenantUnitOfWork, principal: Principal, new: NewImage, *, field: str
 ) -> uuid.UUID:
     """The image row, its `image_compliance` job and the `image.uploaded` audit row; the job id.
@@ -368,7 +368,7 @@ async def register_on_create(
             position = 0
         else:
             position = await uow.images.next_position(product_id, None, slot)
-        await _insert_image_and_job(
+        await insert_image_and_job(
             uow,
             principal,
             NewImage(
@@ -517,7 +517,14 @@ async def delete_image(principal: Principal, image_id: uuid.UUID) -> None:
             before={"deleted_at": None},
             after={"deleted_at": datetime.now(UTC).isoformat()},
         )
+        # SI7 (CODE-PLAN §12 LOW 8): its open candidates can no longer be accepted
+        candidate_keys = await uow.image_candidates.fail_for_source(image_id)
     await remove_objects_after_commit(principal, image_id)
+    for key in candidate_keys:
+        try:
+            await get_storage().delete(images_bucket(), key)
+        except StorageUnavailable:  # the 30-day candidate sweep deletes it by key later
+            log.info("image_candidate.object_kept", image_id=str(image_id), reason="store_down")
 
 
 # ---- T12: the report ----
