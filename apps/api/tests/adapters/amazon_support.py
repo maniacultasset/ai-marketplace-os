@@ -40,6 +40,7 @@ SELLER_FACTS = SellerFacts(
     country_of_origin="IN",
     manufacturer_name="Test Mills Pvt Ltd",
     manufacturer_address="1 Mill Road, Surat, GJ, 395003, IN",
+    fiber_composition_text="100% Cotton",
 )
 
 

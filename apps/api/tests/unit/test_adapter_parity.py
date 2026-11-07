@@ -230,6 +230,9 @@ def _amazon_only_names() -> set[str]:
         for key, spec in seed.template.specs.items():
             if spec.marketplace_field and spec.marketplace_field != key:
                 names.add(spec.marketplace_field)
+    # SI2: Amazon's composition attribute is spelled like the canonical `fabric_type` key (which
+    # Amazon now takes as `material`); the shared spelling is a coincidence, not a leak
+    names.discard("fabric_type")
     return names
 
 
