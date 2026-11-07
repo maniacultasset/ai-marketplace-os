@@ -43,6 +43,7 @@ async def new_product(world: GenWorld, email: str = OPERATOR, sku: str | None = 
             images=(),
             attributes={"color": "blue", "fabric_type": "cotton"},
             mrp=Decimal("1499.00"),  # SI1 D8: a unit without MRP is refused at publish
+            selling_price=Decimal("999.00"),  # SI2: the Amazon offer and Flipkart price block
         ),
     )
     return sku

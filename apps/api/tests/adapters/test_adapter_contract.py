@@ -43,7 +43,10 @@ async def test_adapter_contract_amazon() -> None:
         reject(app, fail)
         return amazon_adapter(app)
 
-    assert await run_contract_suite(factory, prepare=prepare) == []  # type: ignore[arg-type]
+    assert (
+        await run_contract_suite(factory, prepare=prepare, seller_facts=True)  # type: ignore[arg-type]
+        == []
+    )
 
 
 async def test_adapter_contract_flipkart() -> None:
@@ -58,7 +61,10 @@ async def test_adapter_contract_flipkart() -> None:
         reject(app, fail)
         return flipkart_adapter(app)
 
-    assert await run_contract_suite(factory, prepare=prepare) == []  # type: ignore[arg-type]
+    assert (
+        await run_contract_suite(factory, prepare=prepare, seller_facts=True)  # type: ignore[arg-type]
+        == []
+    )
 
 
 FLIPKART_FIXTURES = (

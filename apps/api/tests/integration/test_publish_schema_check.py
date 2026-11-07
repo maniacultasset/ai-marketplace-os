@@ -143,3 +143,35 @@ async def test_update_patch_is_not_blocked_by_a_schema_error(
     )
     assert set(sent) == {("content.title", "succeeded")}
     assert amz.pub.job(response.json()["job_id"])["status"] == "succeeded"
+
+
+# ---- SI2 T11 (AC13; D3): two stored definitions per product type ----
+
+OFFER_REQUIRED: dict[str, Any] = {
+    "type": "object",
+    "title": "LISTING requires the offer",
+    "required": ["purchasable_offer"],
+    "properties": {"purchasable_offer": {"title": "Offer", "type": "array"}},
+}
+
+
+async def test_si2_priced_item_passes_the_listing_definition(
+    api: httpx.AsyncClient, amz: AmzWorld
+) -> None:
+    store(amz.pub.conn, OFFER_REQUIRED)  # the LISTING row (sellable items)
+    made = await approved(amz.pub)
+    item = await publish_one(api, amz.pub, made)
+    await _run(item["job_id"])
+    assert amz.pub.job(item["job_id"])["status"] == "succeeded"
+    assert amz.writes() == 1
+
+
+async def test_si2_only_a_parent_definition_never_checks_a_standalone(
+    api: httpx.AsyncClient, amz: AmzWorld
+) -> None:
+    store(amz.pub.conn, STRICT, requirements="LISTING_PRODUCT_ONLY")
+    made = await approved(amz.pub)
+    item = await publish_one(api, amz.pub, made)
+    await _run(item["job_id"])
+    assert amz.pub.job(item["job_id"])["status"] == "succeeded"
+    assert _ptd_errors(amz, made.listing_id, amz.pub.job(item["job_id"])) == []

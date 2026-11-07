@@ -8,6 +8,7 @@ import uuid
 import pytest
 
 from . import factories as f
+from .adapter_facts import facts_of
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
 from .family_support import family
@@ -35,7 +36,9 @@ async def test_colour_images_stable_across_post_approval_uploads(
     navy = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], position=4)
     listing_id = _fk_listing(auth_db, acme, style, _full_body(style_image, navy))
     before = await _source(products_world, listing_id)
-    first = build_adapter_listing(before, image_refs=_refs(style_image, navy), idempotency_key="k")
+    first = build_adapter_listing(
+        before, facts=facts_of(before), image_refs=_refs(style_image, navy), idempotency_key="k"
+    )
 
     late = f.image(auth_db, acme, style, colourway_id=cw["navy blue"], slot="main", position=0)
     late_maroon = f.image(auth_db, acme, style, colourway_id=cw["maroon"], slot="main")
@@ -43,7 +46,10 @@ async def test_colour_images_stable_across_post_approval_uploads(
     assert late in after.colour_images["navy blue"]  # the raw live read does see it
     assert colour_image_ids(after) == {navy}
     replay = build_adapter_listing(
-        after, image_refs=_refs(style_image, navy, late, late_maroon), idempotency_key="k"
+        after,
+        facts=facts_of(after),
+        image_refs=_refs(style_image, navy, late, late_maroon),
+        idempotency_key="k",
     )
     assert dict(replay.colour_image_refs) == dict(first.colour_image_refs)
     assert dict(replay.colour_image_refs) == {"navy blue": (f"image:{navy}",)}
@@ -63,7 +69,9 @@ async def test_colour_image_deleted_after_approval_not_sent(
     auth_db.execute("UPDATE images SET deleted_at = now() WHERE id = %s", [navy])
     source = await _source(products_world, listing_id)
     assert colour_image_ids(source) == set()
-    built = build_adapter_listing(source, image_refs=_refs(style_image), idempotency_key="k")
+    built = build_adapter_listing(
+        source, facts=facts_of(source), image_refs=_refs(style_image), idempotency_key="k"
+    )
     assert dict(built.colour_image_refs) == {}
 
 
@@ -80,7 +88,9 @@ async def test_legacy_version_body_sends_no_colour_images(
     source = await _source(products_world, _fk_listing(auth_db, acme, style, dict(CONTENT)))
     assert navy in source.colour_images["navy blue"]
     assert colour_image_ids(source) == set()
-    built = build_adapter_listing(source, image_refs=_refs(navy), idempotency_key="k")
+    built = build_adapter_listing(
+        source, facts=facts_of(source), image_refs=_refs(navy), idempotency_key="k"
+    )
     assert dict(built.colour_image_refs) == {}
 
 

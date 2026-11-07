@@ -286,7 +286,7 @@ async def test_fetch_happy_path() -> None:
     app = build_fake()
     link = Recording(httpx.ASGITransport(app))
     client = _definitions(app, link_transport=link)
-    fetched = await client.get_product_type("KURTA")
+    fetched = await client.get_product_type("KURTA", requirements="LISTING_PRODUCT_ONLY")
     expected = json.loads(ptd_fixture("KURTA.schema.json"))
     assert fetched.schema == expected
     assert fetched.digest == canonical_digest(expected) and len(fetched.digest) == 32
@@ -466,7 +466,7 @@ async def test_oversize_schema_refused_and_cap_boundary() -> None:
     with pytest.raises(MarketplaceUnavailable):
         await _definitions(app, link_transport=gz).get_product_type("KURTA")
     # exactly the cap is accepted (a small cap keeps the test fast)
-    body = ptd_fixture("KURTA.schema.json")
+    body = ptd_fixture("KURTA.listing.schema.json")  # SI2: the default is the LISTING one
     fetched = await _definitions(app, max_schema=len(body)).get_product_type("KURTA")
     assert fetched.schema == json.loads(body)
     with pytest.raises(MarketplaceUnavailable):
@@ -589,3 +589,12 @@ def test_fetched_definition_is_light_in_repr() -> None:
         None, {"$defs": {}}, b"\x00" * 32,
     )  # fmt: skip
     assert "$defs" not in repr(fetched)
+
+
+async def test_si2_listing_requirements_serve_the_listing_definition() -> None:
+    """SI2 T11: the default fetch is the LISTING definition (offer included)."""
+    app = build_fake()
+    fetched = await _definitions(app).get_product_type("KURTA")
+    assert fetched.requirements == "LISTING"
+    assert fetched.schema == json.loads(ptd_fixture("KURTA.listing.schema.json"))
+    assert "purchasable_offer" in fetched.schema["required"]

@@ -70,8 +70,10 @@ async def _children(world: World, listing_id: uuid.UUID) -> list[Any]:
 
     async with tenant_uow(world.tenant("acme")) as uow:
         source = await uow.listings.preview_source(listing_id)
-    assert source is not None
-    built = build_adapter_listing(source, image_refs={}, idempotency_key="preview")
+        assert source is not None
+        facts = await uow.product_facts.resolve_family(source.product.id)
+    assert facts is not None
+    built = build_adapter_listing(source, facts=facts, image_refs={}, idempotency_key="preview")
     return [i for i in built.items if i.item_role == "child"]
 
 

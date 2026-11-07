@@ -98,12 +98,14 @@ async def test_an_enum_spelling_is_remapped(
 async def test_the_stored_listing_is_the_pure_pass_on_the_raw_output(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """AC7: the stored listing equals `auto_fix` re-run on the pipeline's raw final listing."""
+    """AC7: the stored listing equals `auto_fix` re-run on the pipeline's raw final listing,
+    after the seller-value overlay the worker applies first (SI2 T16)."""
     from app.repositories.uow import tenant_uow
     from app.services.auto_fix.apply import auto_fix
     from app.services.auto_fix.fixers import FixContext
     from app.services.generation_result import recheck
     from app.services.rules_loader import load_rules
+    from app.services.seller_facts import seller_overlay
     from app.workers import generation
     from mkos_pipeline import run_listing_pipeline as real
 
@@ -131,6 +133,7 @@ async def test_the_stored_listing_is_the_pure_pass_on_the_raw_output(
     assert facts is not None
     product = for_rules(facts)
     raw = seen[0].model_copy(update={"images": [], "listing_id": listing.id})
+    raw = seller_overlay(raw, facts, rules.template)
     ctx = FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical)
     again = auto_fix(raw, lambda item: recheck(item, rules, product), ctx)
     assert again.listing.content.model_dump(mode="json") == stored["content"]

@@ -4,10 +4,13 @@ Two new template rows, written by `seed_amazon_mappings` (`app/db/seed_ops.py`) 
 template loader, so a rerun is a no-op and content is never edited in place (0004's template
 guard keeps it immutable; only `is_current` moves):
 
-- Amazon `ethnic_wear_kurta_sets` **version 2**: S9's version 1 content plus the Amazon
-  `product_type`, each spec's `marketplace_field` and `value_map` (adapter-only columns,
-  invariant 4) and the three neutral axis sets as `variation_themes`. Promoted over S9's v1.
-- Amazon `tshirts` **version 1**, current.
+- Amazon `ethnic_wear_kurta_sets` **version 3** (SI2): version 2 (S9's v1 content plus the
+  Amazon `product_type`, each spec's `marketplace_field` and `value_map`, adapter-only columns,
+  invariant 4, and the three neutral axis sets as `variation_themes`) with wider colour and
+  fabric lists and value maps, `fabric_type` sent as `material`, and the seller-fact specs
+  `fiber_composition` (Amazon `fabric_type`), `manufacturer` and an enum `country_of_origin`
+  (ISO codes). Promoted over version 2.
+- Amazon `tshirts` **version 2** (SI2), the same changes over version 1.
 
 S9's v1 rows (`seed_ops._template_rows`) are not touched. A2 (ai-deps PLAN) adds the
 `home_decor_lamps` mappings for both marketplaces at the end of this module.
@@ -28,31 +31,146 @@ from mkos_schemas.jobs import CategoryTemplate
 
 SOURCE: Final = "manual"
 
-COLORS: Final = (
-    "Black",
-    "Blue",
-    "Green",
-    "Grey",
-    "Indigo",
-    "Maroon",
-    "Navy",
-    "Pink",
-    "Red",
-    "White",
-    "Yellow",
+# SI2: the seller's own colours and fabrics (gap doc :15); every map target is an allowed value
+_EXTRA_COLORS: Final = (
+    "Beige",
+    "Brown",
+    "Charcoal",
+    "Coral",
+    "Cream",
+    "Gold",
+    "Lavender",
+    "Mint",
+    "Multicolor",
+    "Mustard",
+    "Off White",
+    "Olive",
+    "Orange",
+    "Peach",
+    "Purple",
+    "Rust",
+    "Silver",
+    "Teal",
+)
+_COLOR_SYNONYMS: Final = {
+    "multicolour": "Multicolor",
+    "multi": "Multicolor",
+    "off-white": "Off White",
+    "off white": "Off White",
+    "mustard yellow": "Mustard",
+    "peach puff": "Peach",
+}
+COLORS: Final = tuple(
+    sorted(
+        (
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow",
+            *_EXTRA_COLORS,
+        )
+    )
 )
 COLOR_MAP: Final = {
     "navy blue": "Navy",
     "dark blue": "Navy",
     "wine": "Maroon",
     "burgundy": "Maroon",
-    "off white": "White",
     "gray": "Grey",
+    **_COLOR_SYNONYMS,
 }
 SIZES: Final = ("XS", "S", "M", "L", "XL", "XXL", "3XL")
 SIZE_MAP: Final = {"small": "S", "medium": "M", "large": "L", "2xl": "XXL", "xxxl": "3XL"}
-FABRICS: Final = ("Cotton", "Linen", "Organic Cotton", "Polyester", "Rayon", "Silk", "Viscose")
-FABRIC_MAP: Final = {"organic cotton blend": "Organic Cotton", "poly": "Polyester"}
+_EXTRA_FABRICS: Final = (
+    "Chanderi",
+    "Chiffon",
+    "Cotton Blend",
+    "Cotton Lycra",
+    "Crepe",
+    "Denim",
+    "Georgette",
+    "Khadi",
+    "Modal",
+    "Muslin",
+    "Net",
+    "Satin",
+    "Velvet",
+    "Wool",
+)
+_FABRIC_SYNONYMS: Final = {
+    "cotton spandex": "Cotton Lycra",
+    "lycra cotton": "Cotton Lycra",
+    "poly cotton": "Cotton Blend",
+}
+FABRICS: Final = tuple(
+    sorted(
+        (
+            "Cotton",
+            "Linen",
+            "Organic Cotton",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose",
+            *_EXTRA_FABRICS,
+        )
+    )
+)
+FABRIC_MAP: Final = {
+    "organic cotton blend": "Organic Cotton",
+    "poly": "Polyester",
+    **_FABRIC_SYNONYMS,
+}
+# SI2 (AC6): the country of origin. Amazon takes ISO 3166-1 alpha-2 codes (believed; DW1/DW2),
+# Flipkart the English name. Each map takes the common names and spellings sellers write.
+COUNTRIES: Final = {
+    "BD": "Bangladesh",
+    "CN": "China",
+    "GB": "United Kingdom",
+    "ID": "Indonesia",
+    "IN": "India",
+    "IT": "Italy",
+    "LK": "Sri Lanka",
+    "NP": "Nepal",
+    "PK": "Pakistan",
+    "TH": "Thailand",
+    "TR": "Turkey",
+    "US": "United States",
+    "VN": "Vietnam",
+}
+_COUNTRY_SYNONYMS: Final = {
+    "bharat": "IN",
+    "hindustan": "IN",
+    "prc": "CN",
+    "people's republic of china": "CN",
+    "uk": "GB",
+    "great britain": "GB",
+    "britain": "GB",
+    "england": "GB",
+    "usa": "US",
+    "united states of america": "US",
+    "america": "US",
+    "türkiye": "TR",
+    "turkiye": "TR",
+    "viet nam": "VN",
+}
+COUNTRY_CODES: Final = tuple(sorted(COUNTRIES))
+COUNTRY_TO_CODE: Final = {
+    **{name.casefold(): code for code, name in COUNTRIES.items()},
+    **_COUNTRY_SYNONYMS,
+}
+COUNTRY_NAMES: Final = tuple(sorted(COUNTRIES.values()))
+CODE_TO_NAME: Final = {
+    **{code.casefold(): name for code, name in COUNTRIES.items()},
+    **{k: COUNTRIES[v] for k, v in _COUNTRY_SYNONYMS.items()},
+}
 SLEEVES: Final = ("Long Sleeve", "Short Sleeve", "Sleeveless", "Three-Quarter Sleeve")
 SLEEVE_MAP: Final = {
     "long": "Long Sleeve",
@@ -96,18 +214,21 @@ def _text(field: str, req: str = "optional", max_length: int | None = None) -> d
 def _apparel_specs() -> dict[str, Any]:
     return {
         "color": _enum("color", COLORS, COLOR_MAP, "required"),
-        "fabric_type": _enum("fabric_type", FABRICS, FABRIC_MAP, "required"),
+        "fabric_type": _enum("material", FABRICS, FABRIC_MAP, "required"),
         "size": _enum("size", SIZES, SIZE_MAP, "optional"),
         "sleeve_length": _enum("sleeve_length_description", SLEEVES, SLEEVE_MAP, "optional"),
         "fit": _enum("fit_type", FITS, {}, "optional"),
         "neckline": _enum("neck_style", NECKS, NECK_MAP, "optional"),
         "pattern": _text("pattern"),
-        "country_of_origin": _text("country_of_origin"),
+        "country_of_origin": _enum("country_of_origin", COUNTRY_CODES, COUNTRY_TO_CODE, "optional"),
         "number_of_pieces": {
             "requirement": "optional",
             "marketplace_field": "number_of_items",
             "value_type": "number",
         },
+        # SI2: seller facts the adapter sends at `facts.<key>` (never AI attributes)
+        "fiber_composition": _text("fabric_type"),
+        "manufacturer": _text("manufacturer"),
     }
 
 
@@ -158,33 +279,41 @@ TSHIRT_PRODUCT_TYPE: Final = "SHIRT"
 def seed_templates() -> list[SeedTemplate]:
     """The three Amazon mappings, as the S13 loader takes them (no database needed)."""
     return [
-        SeedTemplate(KURTA_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_kurta())),
-        SeedTemplate(TSHIRT_PRODUCT_TYPE, 1, CategoryTemplate.model_validate(_tshirt())),
+        SeedTemplate(KURTA_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_kurta())),
+        SeedTemplate(TSHIRT_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_tshirt())),
         SeedTemplate(LAMP_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_amazon_lamp())),
     ]
 
 
 # ---- S22 T5/T15 (PLAN D4, D7; C7): the Flipkart mappings for the two launch categories ----
 #
-# Flipkart kurta **version 2** (S9's v1 content plus the Flipkart vertical, each spec's
-# `marketplace_field` and `value_map`, promoted over v1) and Flipkart `tshirts` **version 1**.
-# Every Flipkart name (vertical, attribute names, enum spellings) is believed (spec L10635:
-# canonical `color="navy blue"` -> Flipkart `Colour="Navy Blue"`), not confirmed: DW1 and DW2
-# confirm them. The lamp mapping (A2) is at the end of this module. No price, MRP, stock, HSN,
-# package or fulfilment attribute (user decision: content only).
+# Flipkart kurta **version 3** and `tshirts` **version 2** (SI2): version 2 / 1 (S9's v1 content
+# plus the Flipkart vertical, each spec's `marketplace_field` and `value_map`) with the same wider
+# colour and fabric lists as Amazon, in Flipkart spelling, and the seller-fact specs
+# `fiber_composition` (`Fabric Composition`), `manufacturer` (`Manufacturer Details`) and an enum
+# `country_of_origin` (English names). Every Flipkart name (vertical, attribute names, enum
+# spellings) is believed (spec L10635: canonical `color="navy blue"` -> Flipkart `Colour="Navy
+# Blue"`), not confirmed: DW1 and DW2 confirm them. The lamp mapping (A2) is at the end of this
+# module. Price and MRP travel as the adapter's own `price` block (SI2 T10), never as a template
+# spec; no stock, HSN, package or fulfilment attribute.
 
-FK_COLORS: Final = (
-    "Black",
-    "Blue",
-    "Green",
-    "Grey",
-    "Indigo",
-    "Maroon",
-    "Navy Blue",
-    "Pink",
-    "Red",
-    "White",
-    "Yellow",
+FK_COLORS: Final = tuple(
+    sorted(
+        (
+            "Black",
+            "Blue",
+            "Green",
+            "Grey",
+            "Indigo",
+            "Maroon",
+            "Navy Blue",
+            "Pink",
+            "Red",
+            "White",
+            "Yellow",
+            *_EXTRA_COLORS,
+        )
+    )
 )
 FK_COLOR_MAP: Final = {
     "navy blue": "Navy Blue",
@@ -192,14 +321,28 @@ FK_COLOR_MAP: Final = {
     "dark blue": "Navy Blue",
     "wine": "Maroon",
     "burgundy": "Maroon",
-    "off white": "White",
     "gray": "Grey",
+    **_COLOR_SYNONYMS,
 }
-FK_FABRICS: Final = ("Cotton", "Cotton Blend", "Linen", "Polyester", "Rayon", "Silk", "Viscose")
+FK_FABRICS: Final = tuple(
+    sorted(
+        {
+            "Cotton",
+            "Cotton Blend",
+            "Linen",
+            "Polyester",
+            "Rayon",
+            "Silk",
+            "Viscose",
+            *_EXTRA_FABRICS,
+        }
+    )
+)
 FK_FABRIC_MAP: Final = {
     "organic cotton": "Cotton",
     "organic cotton blend": "Cotton Blend",
     "poly": "Polyester",
+    **_FABRIC_SYNONYMS,
 }
 FK_SLEEVES: Final = ("3/4 Sleeve", "Full Sleeve", "Half Sleeve", "Sleeveless")
 FK_SLEEVE_MAP: Final = {
@@ -229,12 +372,15 @@ def _flipkart_apparel_specs() -> dict[str, Any]:
         "fit": _enum("Fit", FITS, {}, "optional"),
         "neckline": _enum("Neck", FK_NECKS, FK_NECK_MAP, "optional"),
         "pattern": _text("Pattern"),
-        "country_of_origin": _text("Country of Origin"),
+        "country_of_origin": _enum("Country of Origin", COUNTRY_NAMES, CODE_TO_NAME, "optional"),
         "number_of_pieces": {
             "requirement": "optional",
             "marketplace_field": "Number of Contents in Sales Package",
             "value_type": "number",
         },
+        # SI2: seller facts the adapter sends at `facts.<key>` (never AI attributes)
+        "fiber_composition": _text("Fabric Composition"),
+        "manufacturer": _text("Manufacturer Details"),
     }
 
 
@@ -261,8 +407,8 @@ def flipkart_seed_templates() -> list[SeedTemplate]:
     tshirt = _flipkart("tshirts", {})
     lamp = _flipkart_lamp()
     return [
-        SeedTemplate(FLIPKART_KURTA_VERTICAL, 2, CategoryTemplate.model_validate(kurta)),
-        SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 1, CategoryTemplate.model_validate(tshirt)),
+        SeedTemplate(FLIPKART_KURTA_VERTICAL, 3, CategoryTemplate.model_validate(kurta)),
+        SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 2, CategoryTemplate.model_validate(tshirt)),
         SeedTemplate(FLIPKART_LAMP_VERTICAL, 2, CategoryTemplate.model_validate(lamp)),
     ]
 

@@ -22,6 +22,10 @@ __all__ = ["gen_world"]
 CATEGORY = "ethnic_wear_kurta_sets"
 FIBER = "fiber_composition"
 TARGET = f"facts.attributes.{FIBER}"
+# SI2 (D5): a factual attribute is the seller's only, so neither the AI nor a listing edit fills
+# one, and `fiber_composition` is a seller fact never carried in the listing. The tests where a
+# regenerate or an edit fills the missing value use a non-factual dictionary key the AI may fill.
+FILLABLE = "neckline"
 
 
 def require(world: GenWorld, key: str, *, severity: str = "error") -> None:
@@ -106,6 +110,23 @@ def state(world: GenWorld, made: Made) -> tuple[str, str | None]:
     return row["status"], row["status_reason"]
 
 
+def _attributes(world: GenWorld, made: Made) -> dict[str, Any]:
+    content = world.scalar(
+        "SELECT content_json FROM listing_versions WHERE id = %s", [made.version_id]
+    )
+    return dict(content["attributes"])
+
+
+def _allowed(key: str) -> str:
+    """The first allowed value of `key` on the seeded Amazon kurta template."""
+    from app.db.seed_templates import seed_templates
+
+    (seed,) = [s for s in seed_templates() if s.template.category == CATEGORY]
+    values = seed.template.specs[key].allowed_values
+    assert values
+    return values[0]
+
+
 async def regenerate(world: GenWorld, made: Made, instructions: str | None = None) -> None:
     from app.repositories.uow import tenant_uow
     from app.services.generation import request_regeneration
@@ -163,9 +184,9 @@ async def test_two_marketplace_listings_share_one_question(
 async def test_a_regenerate_that_fills_the_fact_cancels_the_question(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    require(gen_world, FIBER)
+    require(gen_world, FILLABLE)
     pipeline = Pipeline(monkeypatch)
-    pipeline.overrides[FIBER] = None
+    pipeline.overrides[FILLABLE] = None
     made = await generated(gen_world)
     [task] = tasks(gen_world, product_of(gen_world, made))
     pipeline.overrides.clear()  # `stub:ok` fills every required attribute
@@ -184,9 +205,9 @@ async def test_a_regenerate_that_fills_the_fact_cancels_the_question(
 async def test_the_question_waits_for_every_listing(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    require(gen_world, FIBER)
+    require(gen_world, FILLABLE)
     pipeline = Pipeline(monkeypatch)
-    pipeline.overrides[FIBER] = None
+    pipeline.overrides[FILLABLE] = None
     amazon = await generated(gen_world)
     flipkart = await generated(gen_world, sku=sku_of(gen_world, amazon), marketplace="flipkart")
     product = product_of(gen_world, amazon)
@@ -282,14 +303,15 @@ async def test_an_edit_opens_and_then_closes_the_question(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:
     made = await generated(gen_world)
-    require(gen_world, FIBER)
-    body = {
+    require(gen_world, FILLABLE)
+    attributes = {k: v for k, v in _attributes(gen_world, made).items() if k != FILLABLE}
+    body: dict[str, Any] = {
         "content": {
             "title": "Cotton Kurta Set for Women",
             "bullets": ["Soft cotton fabric"],
             "description": "A cotton kurta set with a straight fit.",
         },
-        "attributes": {"color": "Black", "fabric_type": "Cotton"},
+        "attributes": attributes,  # SI2 T17: the factual values stay the seller's
     }
     headers = {**bearer_for(gen_world, OPERATOR), "If-Match": f'"{made.version_id}"'}
     first = await api.patch(
@@ -299,7 +321,7 @@ async def test_an_edit_opens_and_then_closes_the_question(
     assert state(gen_world, made) == ("blocked", "human_task_open")
     [task] = tasks(gen_world, product_of(gen_world, made))
     assert task["status"] == "open"
-    body["attributes"] = {**body["attributes"], FIBER: "100% cotton"}  # type: ignore[dict-item]
+    body["attributes"] = {**attributes, FILLABLE: _allowed(FILLABLE)}
     headers["If-Match"] = f'"{first.json()["current_version_id"]}"'
     second = await api.patch(
         f"/api/v1/listings/{made.listing_id}/content", headers=headers, json=body
