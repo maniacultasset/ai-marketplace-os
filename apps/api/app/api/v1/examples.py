@@ -253,6 +253,35 @@ _TASK: Final[dict[str, Any]] = {
     "created_at": T0,
     "updated_at": T0,
 }
+# SI3: a photo colour question, answered and applied.
+_FACT_TASK: Final[dict[str, Any]] = {
+    **_TASK,
+    "kind": "missing_fact",
+    "product_id": PRODUCT_1,
+    "target_path": "facts.attributes.color",
+    "marketplace_account_id": None,
+    "image_id": IMAGE,
+    "question": "What is the colour of this product?",
+    "reason": "The photos suggest maroon, but not clearly enough to use it.",
+    "expected_answer": {"type": "attribute", "key": "color", "values": ["maroon", "red"]},
+    "suggestions": [
+        {"value": "maroon", "label": "maroon", "source": "ai", "evidence_ref": f"image:{IMAGE}"}
+    ],
+    "status": "applied",
+    "answered_by_user_id": USER,
+    "answered_at": T1,
+    "resume_from": "generate",
+    "applied_at": T1,
+    "updated_at": T1,
+}
+_PHOTO_FACT: Final = {
+    "key": "neckline",
+    "value": "v-neck",
+    "confidence": 0.95,
+    "image_id": IMAGE,
+    "confirmed": False,
+    "confirmed_at": None,
+}
 _CONTENT: Final = {
     "schema_version": "2.0.0",
     "listing_id": LISTING,
@@ -563,7 +592,10 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 _product(PRODUCT_2, "FAB-KURTA-002", "Handloom Cotton Kurta"),
             ]
         ),
-        "products_get": _product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+        "products_get": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "photo_facts": [_PHOTO_FACT],
+        },
         "brand_profile_get": _BRAND_PROFILE,
         "brand_profile_update": _BRAND_PROFILE,
         "products_update": {
@@ -572,6 +604,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "mrp": "1499.00",
             "selling_price": "1299.00",
             "currency": "INR",
+            "photo_facts": [{**_PHOTO_FACT, "confirmed": True, "confirmed_at": T1}],
         },
         "products_bulk": {
             "import_id": IMPORT,
@@ -747,6 +780,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "updated_at": T1,
         },
         "tasks_list": _page([_TASK]),
+        "tasks_answer": _FACT_TASK,
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
         "signup_create": {"request_id": SIGNUP, "status": "pending"},

@@ -72,6 +72,14 @@ def _no_nul(value: str) -> str:
     return value
 
 
+# SI3: a task answer; the attribute text rule plus no NUL (it lands in the evidence snapshot).
+AnswerScalar = (
+    Annotated[str, Field(max_length=MAX_ATTRIBUTE_TEXT), AfterValidator(_no_nul)]
+    | bool
+    | int
+    | Annotated[float, Field(allow_inf_nan=False)]
+)
+
 Money = Annotated[
     str,
     Field(
@@ -142,6 +150,13 @@ class ProductCreate(StrictModel):
 
 
 _NOT_NULLABLE: Final = ("title", "category")
+MAX_CONFIRM_ATTRIBUTES: Final = 32
+
+
+def _unique_keys(keys: list[str]) -> list[str]:
+    if len(set(keys)) != len(keys):
+        raise PydanticCustomError("mkos_invalid", "A key appears more than once.")
+    return keys
 
 
 class ProductPatch(StrictModel):
@@ -162,10 +177,21 @@ class ProductPatch(StrictModel):
         ]
         | None
     ) = None
+    confirm_attributes: (
+        Annotated[
+            list[AttributeKey],
+            Field(min_length=1, max_length=MAX_CONFIRM_ATTRIBUTES),
+            AfterValidator(_unique_keys),
+        ]
+        | None
+    ) = Field(
+        default=None,
+        description="SI3: photo-derived attribute keys the seller confirms as they are.",
+    )
 
     @model_validator(mode="after")
     def _not_null(self) -> ProductPatch:
-        for name in (*_NOT_NULLABLE, "attributes"):
+        for name in (*_NOT_NULLABLE, "attributes", "confirm_attributes"):
             if name in self.model_fields_set and getattr(self, name) is None:
                 raise PydanticCustomError("mkos_invalid", f"`{name}` cannot be null.")
         return self
@@ -189,6 +215,18 @@ class ColourwayOut(WireModel):
     id: UUID
     colour: str
     colour_sku: str | None = None
+
+
+class PhotoFactOut(WireModel):
+    """SI3: an attribute value read from the product photos, shown with a "from photo" badge until
+    the seller confirms or changes it. It never backs a claim while unconfirmed."""
+
+    key: str
+    value: AttributeScalar
+    confidence: float
+    image_id: UUID
+    confirmed: bool
+    confirmed_at: AwareDatetime | None = None
 
 
 class ProductOut(WireModel):
@@ -215,6 +253,7 @@ class ProductOut(WireModel):
     )
     image_details: list[ProductImageOut] = Field(default_factory=list)
     colourways: list[ColourwayOut] = Field(default_factory=list)
+    photo_facts: list[PhotoFactOut] = Field(default_factory=list)
 
 
 class ProductPage(Page[ProductOut]):

@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, NoReturn
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from fastapi import Path as PathParam
 
+from app.api.errors import NotImplementedYet
 from app.api.pagination import PageInfo, PageParams, encode_cursor
-from app.api.v1.deps import get_current_principal
-from app.api.v1.schemas.tasks import TaskOut, TaskPage
-from app.api.v1.surface import OPS, route
+from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.schemas.tasks import TaskAnswerIn, TaskOut, TaskPage
+from app.api.v1.surface import OPS, route, stub
 from app.core.rbac import Principal
 from app.services import tasks
 
@@ -33,3 +36,15 @@ async def tasks_list(
             limit=page.limit,
         ),
     )
+
+
+@route(router, OPS["tasks_answer"])
+@stub
+async def tasks_answer(
+    task_id: Annotated[UUID, PathParam()],
+    body: TaskAnswerIn,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+) -> NoReturn:
+    """Answer a fact question (SI3 T16)."""
+    raise NotImplementedYet("tasks_answer")
