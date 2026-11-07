@@ -143,6 +143,8 @@ class Product(TenantScoped, Base):
     product_weight_g: Mapped[int | None] = mapped_column(Integer)
     attributes: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
+    # 0020 (SI9): {V1 photo key: the rejected value}; never part of ProductFacts or the digest
+    photo_rejections: Mapped[dict[str, str]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
