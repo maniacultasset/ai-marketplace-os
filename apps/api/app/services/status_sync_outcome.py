@@ -13,11 +13,11 @@ counts its poll and reschedules (or exhausts).
 from __future__ import annotations
 
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorSource, JobKind
+from mkos_schemas.enums import ErrorSource, JobKind, Severity
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.adapters.registry import live_url
@@ -25,6 +25,7 @@ from app.core.logging import get_logger
 from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
 from app.repositories.uow import TenantUnitOfWork, repositories_on
+from app.services.issues import adapter_source, dedupe_key, sync_issues
 from app.services.status_sync import DAILY, ItemRead, SyncDecision, next_slot, sync_decision
 from app.workers.registry import Outcome
 
@@ -50,7 +51,12 @@ def _unconfirmed() -> ErrorReport:
     )
 
 
-async def _settle(uow: TenantUnitOfWork, listing: Any, decision: SyncDecision) -> None:
+async def _settle(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    decision: SyncDecision,
+    errors: Sequence[ErrorItem] = (),
+) -> None:
     if decision.submission_to is None:
         return
     open_row = await uow.submissions.open_for_listing(listing.id)
@@ -65,15 +71,71 @@ async def _settle(uow: TenantUnitOfWork, listing: Any, decision: SyncDecision) -
             report=report.model_dump(mode="json"),
         )
     elif decision.submission_to == "rejected":
-        report = ErrorReport(status="failed", error_code=ErrorCode.PUBLISH_FAILED)
+        # SI4 A17: the read's items ride on the rejection's report (one ErrorReport shape)
+        blocking = [e for e in errors if e.severity is Severity.ERROR]
+        code = blocking[0].error_code if blocking else ErrorCode.PUBLISH_FAILED
+        report = ErrorReport(status="failed", error_code=code, errors=list(errors))
         await uow.submissions.settle_accepted(
             open_row.id,
             outcome="rejected",
-            error_code=ErrorCode.PUBLISH_FAILED.value,
+            error_code=code.value,
             report=report.model_dump(mode="json"),
         )
     else:
         await uow.submissions.settle_accepted(open_row.id, outcome="live")
+
+
+def _merged_reads(
+    listing: Any, reads: Sequence[ItemRead], rows: Mapping[str, Any]
+) -> tuple[list[ErrorItem], dict[str, uuid.UUID], list[str]]:
+    """SI4 A17 (CP-D16): every read of the family as one report. Items dedupe by key (the first
+    read naming one wins, and its SKU's item id rides on a new row); the scope is every path any
+    read read or named, plus `listing`."""
+    source = adapter_source(listing.marketplace)
+    merged: dict[str, ErrorItem] = {}
+    item_ids: dict[str, uuid.UUID] = {}
+    for read in reads:
+        row = rows.get(read.seller_sku)
+        for error in read.errors:
+            key = dedupe_key(source, error)
+            if key in merged:
+                continue
+            merged[key] = error
+            if row is not None:
+                item_ids[key] = row.id
+    scope = {"listing"}
+    for read in reads:
+        scope |= set(read.fields) | {e.field for e in read.errors}
+    return list(merged.values()), item_ids, sorted(scope)
+
+
+async def _sync_read_issues(
+    uow: TenantUnitOfWork,
+    job_id: uuid.UUID,
+    listing: Any,
+    errors: Sequence[ErrorItem],
+    item_ids: Mapping[str, uuid.UUID],
+    scope: Sequence[str],
+    *,
+    close: bool,
+) -> None:
+    """One `sync_issues` per sync (CP-D16): a clean read clears a published listing's open
+    adapter rows on the scoped fields (`marketplace_cleared`, CP-D13); a `failed` listing's sync
+    opens and repeats but never closes (its read may show an older live version or nothing)."""
+    failed = any(e.severity is Severity.ERROR for e in errors)
+    await sync_issues(
+        uow,
+        listing,
+        adapter_source(listing.marketplace),
+        ErrorReport(status="failed" if failed else "passed", errors=list(errors)),
+        run_id=None,
+        cause="status_sync",
+        scope_fields=scope,
+        job_id=job_id,
+        critical_keys=await uow.product_facts.critical_keys(),
+        listing_item_ids=item_ids,
+        close=close,
+    )
 
 
 async def apply_sync(
@@ -87,6 +149,7 @@ async def apply_sync(
         or listing.archived_at
     ):
         return None
+    published = listing.status == "published"  # read before any move (CP-D16)
     rows = {r.seller_sku: r for r in await uow.listing_items.for_listing(listing.id)}
     open_row = await uow.submissions.open_for_listing(listing.id)
     decision = sync_decision(
@@ -125,7 +188,9 @@ async def apply_sync(
         if row.item_role in ("standalone", "parent") and state == "live":
             root_url, root_external = url, external
         await uow.listing_items.write_state(row.id, job_id=job_id, **values)
-    await _settle(uow, listing, decision)
+    merged, item_ids, scope = _merged_reads(listing, reads, rows)
+    await _settle(uow, listing, decision, merged)
+    await _sync_read_issues(uow, job_id, listing, merged, item_ids, scope, close=published)
     columns: dict[str, Any] = {
         "last_synced_at": DbNow(),
         "sync_poll_count": decision.poll_count,

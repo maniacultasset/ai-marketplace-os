@@ -127,3 +127,64 @@ def test_classify_needs_the_critical_keys() -> None:
 
 def test_resolution_for_status_sync() -> None:
     assert resolution_for("status_sync") == "marketplace_cleared"
+
+
+# ---- SI4 A17 (CP-D16): an open-only sync ----
+
+
+class _Issues:
+    def __init__(self) -> None:
+        self.upserts: list[object] = []
+        self.closes = 0
+
+    async def upsert_open(self, new: object) -> tuple[object, bool]:
+        self.upserts.append(new)
+        return new, len(self.upserts) == 1
+
+    async def close_missing(self, *args: object, **kwargs: object) -> int:
+        self.closes += 1
+        return 3
+
+
+class _Uow:
+    def __init__(self) -> None:
+        self.listing_issues = _Issues()
+
+
+class _Listing:
+    id = uuid.UUID("00000000-0000-4000-8000-0000000000a1")
+    marketplace = "amazon"
+
+
+async def test_sync_close_false_opens_but_closes_nothing() -> None:
+    from app.services.issues import sync_issues
+    from mkos_schemas.errors import ErrorReport
+
+    uow = _Uow()
+    item = _item(field="content.title", source=ErrorSource.AMAZON_ADAPTER, raw_code="E1")
+    key = dedupe_key("amazon_adapter", item)
+    sku_item = uuid.UUID("00000000-0000-4000-8000-0000000000b2")
+    result = await sync_issues(
+        uow,  # type: ignore[arg-type]
+        _Listing(),
+        "amazon_adapter",
+        ErrorReport(status="passed", errors=[item]),
+        run_id=None,
+        cause="status_sync",
+        critical_keys=frozenset(),
+        listing_item_ids={key: sku_item},
+        close=False,
+    )
+    assert (result.opened, result.closed) == (1, 0)
+    assert uow.listing_issues.closes == 0
+    assert uow.listing_issues.upserts[0].listing_item_id == sku_item  # type: ignore[attr-defined]
+    await sync_issues(
+        uow,  # type: ignore[arg-type]
+        _Listing(),
+        "amazon_adapter",
+        ErrorReport(status="passed"),
+        run_id=None,
+        cause="status_sync",
+        critical_keys=frozenset(),
+    )
+    assert uow.listing_issues.closes == 1

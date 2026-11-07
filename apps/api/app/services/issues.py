@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
@@ -64,6 +64,14 @@ class SyncResult:
     opened: int
     repeated: int
     closed: int
+
+
+def adapter_source(marketplace: str) -> str:
+    """The issue source of a marketplace's adapter results (`<marketplace>_adapter`)."""
+    source = f"{marketplace}_adapter"
+    if source not in ISSUE_SOURCES:
+        raise ValueError(f"{marketplace} has no adapter issue source")
+    return source
 
 
 def resolution_for(cause: str) -> str:
@@ -117,6 +125,7 @@ def _issue(
     version_id: uuid.UUID | None,
     job_id: uuid.UUID | None,
     critical_keys: frozenset[str],
+    listing_item_id: uuid.UUID | None = None,
 ) -> NewIssue:
     error_class, retry_class, fix_action = classify(
         item, critical_keys=critical_keys, source=source
@@ -136,6 +145,7 @@ def _issue(
         listing_version_id=version_id,
         validation_run_id=run_id,
         job_id=job_id,
+        listing_item_id=listing_item_id,
         auto_fixable=fix_action is not None,
         fix_action=fix_action,
         rule_id=item.rule_id,
@@ -157,7 +167,12 @@ async def sync_issues(
     critical_keys: frozenset[str],
     version_id: uuid.UUID | None = None,
     job_id: uuid.UUID | None = None,
+    listing_item_ids: Mapping[str, uuid.UUID] | None = None,
+    close: bool = True,
 ) -> SyncResult:
+    """Steps 1-3 (module docstring). SI4 A17: `listing_item_ids` (dedupe key → the SKU's
+    `listing_items` id) is set on a new row only (the key keeps today's shape); `close=False`
+    opens and repeats but closes nothing (a status read of a `failed` listing, CP-D16)."""
     if source not in ISSUE_SOURCES:
         raise ValueError(f"{source} is not an issue source")
     items: dict[str, ErrorItem] = {}
@@ -176,19 +191,22 @@ async def sync_issues(
             version_id=version_id,
             job_id=job_id,
             critical_keys=critical_keys,
+            listing_item_id=None if listing_item_ids is None else listing_item_ids.get(key),
         )
         _row, created = await uow.listing_issues.upsert_open(new)
         if created:
             opened += 1
         else:
             repeated += 1
-    closed = await uow.listing_issues.close_missing(
-        listing.id,
-        source,
-        list(items),
-        resolution_for(cause),
-        field_paths=scope_fields,
-    )
+    closed = 0
+    if close:
+        closed = await uow.listing_issues.close_missing(
+            listing.id,
+            source,
+            list(items),
+            resolution_for(cause),
+            field_paths=scope_fields,
+        )
     result = SyncResult(opened=opened, repeated=repeated, closed=closed)
     if opened or closed:
         log.info(

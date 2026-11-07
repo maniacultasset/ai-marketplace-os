@@ -48,7 +48,7 @@ from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
 from app.repositories.submissions import NewFieldResult
 from app.repositories.uow import TenantUnitOfWork, repositories_on
-from app.services.issues import ISSUE_SOURCES, sync_issues
+from app.services.issues import adapter_source, sync_issues
 from app.services.publish_ledger import Decision
 from app.workers.registry import Outcome
 
@@ -180,14 +180,6 @@ def _scope(ctx: AttemptCtx, decision: Decision) -> list[str]:
     field the report names (a whole-call failure is reported on `listing`)."""
     named = {e.field for e in (decision.report.errors if decision.report else [])}
     return sorted({*ctx.sent_paths, "listing", *named})
-
-
-def adapter_source(marketplace: str) -> str:
-    """The issue source of a marketplace's adapter results (`<marketplace>_adapter`)."""
-    source = f"{marketplace}_adapter"
-    if source not in ISSUE_SOURCES:
-        raise ValueError(f"{marketplace} has no adapter issue source")
-    return source
 
 
 def _issue_report(decision: Decision) -> ErrorReport:
