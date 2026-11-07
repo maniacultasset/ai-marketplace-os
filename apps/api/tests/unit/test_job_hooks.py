@@ -21,9 +21,11 @@ def test_hook_type_aliases_literal() -> None:
 
 def test_hook_maps_hold_only_the_owned_kinds() -> None:
     """Only the kinds a merged step owns have hooks: S13b's `bulk_import`, S16's
-    `brand_embed`, and S18's `listing_generate` (regenerate is that same kind). S21 adds publish."""
+    `brand_embed`, and S18's `listing_generate` (regenerate is that same kind). S21 adds publish;
+    SI7 adds `image_compliance` (a no-op for upload jobs, the candidate jobs' end and requeue)."""
     from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
     from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
+    from app.services.image_candidate_hooks import on_image_requeue, on_image_terminal
     from app.services.imports.hooks import import_requeue_hook, import_terminal_hook
     from app.services.publish_outcome import on_publish_requeue, on_publish_terminal
     from app.services.status_sync_outcome import count_failed_poll, refuse_requeue
@@ -35,6 +37,7 @@ def test_hook_maps_hold_only_the_owned_kinds() -> None:
         JobKind.LISTING_GENERATE: on_generate_terminal,
         JobKind.LISTING_PUBLISH: on_publish_terminal,
         JobKind.LISTING_STATUS_SYNC: count_failed_poll,
+        JobKind.IMAGE_COMPLIANCE: on_image_terminal,
     } == job_hooks.TERMINAL_HOOKS
     assert {
         JobKind.BULK_IMPORT: import_requeue_hook,
@@ -42,4 +45,5 @@ def test_hook_maps_hold_only_the_owned_kinds() -> None:
         JobKind.LISTING_GENERATE: on_generate_requeue,
         JobKind.LISTING_PUBLISH: on_publish_requeue,
         JobKind.LISTING_STATUS_SYNC: refuse_requeue,
+        JobKind.IMAGE_COMPLIANCE: on_image_requeue,
     } == job_hooks.REQUEUE_HOOKS
