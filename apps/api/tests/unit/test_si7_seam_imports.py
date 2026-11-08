@@ -1,11 +1,13 @@
-"""SI7 (CODE-PLAN §12 LOW 9): besides `app/workers/generation.py`, only
-`app/workers/image_edit_seam.py` reaches `mkos_pipeline`, and it does so lazily (`importlib`), so
-an older pipeline pin degrades to "not available"."""
+"""SI7 (CODE-PLAN §12 LOW 9), SI12: besides `app/workers/generation.py`, only
+`app/workers/image_edit_seam.py` and `app/workers/size_chart_seam.py` reach `mkos_pipeline`, and
+they do so lazily (`importlib`), so an older pipeline pin degrades to "not available"."""
 
 from __future__ import annotations
 
 import ast
 from pathlib import Path
+
+import pytest
 
 APP = Path(__file__).resolve().parents[2] / "app"
 
@@ -26,17 +28,22 @@ def _reaches_pipeline(tree: ast.AST) -> bool:
     return False
 
 
-def test_only_two_modules_reach_the_pipeline() -> None:
+def test_only_three_modules_reach_the_pipeline() -> None:
     hits = sorted(
         str(path.relative_to(APP))
         for path in APP.rglob("*.py")
         if _reaches_pipeline(ast.parse(path.read_text(encoding="utf-8")))
     )
-    assert hits == ["workers/generation.py", "workers/image_edit_seam.py"]
+    assert hits == [
+        "workers/generation.py",
+        "workers/image_edit_seam.py",
+        "workers/size_chart_seam.py",
+    ]
 
 
-def test_the_seam_imports_lazily() -> None:
-    tree = ast.parse((APP / "workers" / "image_edit_seam.py").read_text(encoding="utf-8"))
+@pytest.mark.parametrize("seam", ["image_edit_seam.py", "size_chart_seam.py"])
+def test_the_seam_imports_lazily(seam: str) -> None:
+    tree = ast.parse((APP / "workers" / seam).read_text(encoding="utf-8"))
     static = [
         n
         for n in ast.walk(tree)

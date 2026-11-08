@@ -187,6 +187,65 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def open_by_ids(
+        self, listing_id: uuid.UUID, issue_ids: Sequence[uuid.UUID]
+    ) -> builtins.list[ListingIssue]:
+        """SI11 T15: the listing's still open rows among `issue_ids`, oldest first."""
+        if not issue_ids:
+            return []
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.status == OPEN,
+                ListingIssue.id.in_(builtins.list(issue_ids)),
+            )
+            .order_by(ListingIssue.created_at, ListingIssue.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def listings_for_task(
+        self, task_id: uuid.UUID, sources: Sequence[str]
+    ) -> builtins.list[uuid.UUID]:
+        """SI11 T17: the listings with a row of `sources` linked to the task, in id order."""
+        stmt = (
+            self._select()
+            .where(ListingIssue.human_task_id == task_id, ListingIssue.source.in_(tuple(sources)))
+            .with_only_columns(ListingIssue.listing_id)
+            .distinct()
+            .order_by(ListingIssue.listing_id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def answered_paths(
+        self, listing_id: uuid.UUID, sources: Sequence[str], kinds: Sequence[str]
+    ) -> builtins.list[str]:
+        """SI11 T17: the target paths of the answered questions behind this listing's open rows of
+        `sources` (the facts one fact-only version records), sorted."""
+        answered = (
+            select(HumanTask.target_path)
+            .where(
+                HumanTask.tenant_id == ListingIssue.tenant_id,
+                HumanTask.id == ListingIssue.human_task_id,
+                HumanTask.status.in_(("answered", "applied")),
+                HumanTask.kind.in_(tuple(kinds)),
+                HumanTask.target_path.is_not(None),
+            )
+            .scalar_subquery()
+        )
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.status == OPEN,
+                ListingIssue.source.in_(tuple(sources)),
+                ListingIssue.human_task_id.is_not(None),
+            )
+            .with_only_columns(answered)
+            .distinct()
+        )
+        return sorted(p for p in (await self.db.execute(stmt)).scalars() if p is not None)
+
     async def live_task_ids(self, listing_id: uuid.UUID) -> builtins.list[uuid.UUID]:
         """SI4 A12: the distinct human tasks linked to this listing's rows (any status) whose
         task is still live (`open`/`answered`): the ones to re-check after a sync."""

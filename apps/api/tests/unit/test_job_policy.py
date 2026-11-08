@@ -121,3 +121,24 @@ def test_candidate_jobs_take_a_tenant_lock() -> None:
     assert policy.lock_for(JobKind.LISTING_GENERATE, "image_candidate", tenant) is None
     with pytest.raises(ValueError):
         policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image_candidate", None)
+
+
+# ---- SI12 T16 (PLAN D4): a size-chart read takes the same per-tenant AI image lock ----
+
+
+def test_size_chart_read_takes_the_tenant_lock() -> None:
+    import uuid
+
+    from app.workers.budget import SIZE_CHART_READ_RESERVATION_USD
+
+    tenant = uuid.uuid4()
+    got = policy.lock_for(JobKind.IMAGE_COMPLIANCE, "size_chart_read", tenant)
+    assert got == f"image_candidate:{tenant}"
+    assert policy.SIZE_CHART_READ_ENTITY == "size_chart_read"
+    assert (
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == f"image_compliance:{tenant}"
+    )
+    assert policy.lock_for(JobKind.LISTING_GENERATE, "size_chart_read", tenant) is None
+    with pytest.raises(ValueError):
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE, "size_chart_read", None)
+    assert str(SIZE_CHART_READ_RESERVATION_USD) == "0.02"

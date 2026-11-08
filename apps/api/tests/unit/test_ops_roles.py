@@ -76,6 +76,7 @@ Q7: dict[str, str] = {
     "listings_regenerate": "listing:regenerate",
     "listings_retry_fields": "listing:publish",
     "listings_submissions": "tenant:read",  # S21 CP7
+    "listings_resolution": "tenant:read",  # SI11 T20
     "listings_refresh_status": "listing:publish",  # S21 CP7
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
@@ -87,6 +88,8 @@ Q7: dict[str, str] = {
     "images_report": "tenant:read",
     "images_delete": "product:import",
     "image_candidates_create": "product:import",
+    "size_chart_read_create": "product:import",  # SI12
+    "catalog_requirements_get": "tenant:read",  # SI12
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
     "image_candidates_reject": "product:import",
@@ -146,8 +149,8 @@ def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
     # + SI9 two
-    # + SI10 two
-    assert len(OPS) == 99
+    # + SI10 two + SI11 one + SI12 two
+    assert len(OPS) == 102
     assert set(OPS) == set(Q7)
 
 

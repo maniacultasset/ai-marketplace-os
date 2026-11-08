@@ -88,6 +88,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "tasks_answer",
         # SI7
         "image_candidates_create",
+        "size_chart_read_create",  # SI12
+        "catalog_requirements_get",  # SI12
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",
@@ -98,6 +100,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_publish",
         "listings_retry_fields",
         "listings_submissions",
+        "listings_resolution",
         "listings_refresh_status",
         "analytics_get",
         "analytics_summary",

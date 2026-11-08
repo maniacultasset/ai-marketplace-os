@@ -10,10 +10,10 @@ Ops:
 - `prepare`: the vision copy padded to a square with white, JPEG q90, at most 1024 px (the model's
   input, CP-D5). `border` is still the photo's own border.
 - `finish_white`: decode the model output (PNG, JPEG or WebP only, pixel and side caps), refuse a
-  coloured border at the frame edge or at the photo's own edge (`not_white`), judge it
-  against the clean copy padded with white as the model's input was (`fidelity`), keep the
-  seller's pixels (`composite`; the padding it may paste back is white), whiten a
-  near-white uniform background left by the model, frame it and run the main-image checks.
+  coloured border at the frame edge or at the photo's own edge (`not_white`), register it
+  onto the clean copy padded with white as the model's input was and judge the registered mask
+  (`fidelity`), build the candidate from the seller's pixels under that mask on pure white
+  (`composite`), frame it and run the main-image checks.
 - `fix`: frame the clean copy (`image_fix.fix`) and run the main-image checks.
 - `size_chart`: render the size chart.
 
@@ -210,9 +210,9 @@ def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[
     if not score.passed:
         return _refused("fidelity", fidelity=fidelity)
     try:
-        merged = composite(original, output)
-        # The model's background may itself be a near-white grey: whiten it deterministically,
-        # as `fix` does (the seller's product pixels are outside the background mask).
+        merged = composite(original, output, score.alignment)
+        # The composite's background is pure white already; this pass only refuses a near-white
+        # product that leaks into it, as `fix` does.
         merged_border = border_profile(merged)
         if merged_border.uniform and merged_border.near_white:
             merged = whiten_border(merged, merged_border)

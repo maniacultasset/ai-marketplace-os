@@ -361,6 +361,146 @@
         "title": "ApproveRequest",
         "type": "object"
       },
+      "AttemptFailureOut": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "seller_fact",
+              "ai_content",
+              "mapping",
+              "image",
+              "marketplace",
+              "unknown"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "lane": {
+            "enum": [
+              "auto_repair",
+              "auto_content",
+              "ai_field",
+              "seller",
+              "marketplace",
+              "retry",
+              "staff"
+            ],
+            "title": "Lane",
+            "type": "string"
+          },
+          "marketplace_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marketplace Code"
+          },
+          "message": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message",
+          "lane",
+          "cause"
+        ],
+        "title": "AttemptFailureOut",
+        "type": "object"
+      },
+      "AttemptOut": {
+        "properties": {
+          "actor": {
+            "enum": [
+              "user",
+              "system"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "maxItems": 50,
+            "title": "Changed",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptFailureOut"
+            },
+            "maxItems": 50,
+            "title": "Failed",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "precheck",
+              "submission"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "description": "The submission attempt (1-3); 0 for a pre-check.",
+            "maximum": 99.0,
+            "minimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "clean",
+              "issues",
+              "failed",
+              "pending",
+              "accepted",
+              "partially_accepted",
+              "rejected",
+              "error",
+              "live",
+              "superseded"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "number",
+          "version",
+          "at",
+          "actor",
+          "outcome"
+        ],
+        "title": "AttemptOut",
+        "type": "object"
+      },
       "AuditEventOut": {
         "description": "One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller\nread, and both are personal data (DATABASE.md §5.2).",
         "properties": {
@@ -638,6 +778,22 @@
             "format": "uuid",
             "title": "Product Id",
             "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: `back` or `close_up`, only with `slot: secondary`.",
+            "title": "Role"
           },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
@@ -954,6 +1110,51 @@
           "content"
         ],
         "title": "CanonicalListing",
+        "type": "object"
+      },
+      "ChangeOut": {
+        "properties": {
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "repair",
+              "content_fix",
+              "ai_correction",
+              "seller_answer"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "summary": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "field",
+          "summary"
+        ],
+        "title": "ChangeOut",
         "type": "object"
       },
       "Claim": {
@@ -1600,6 +1801,51 @@
         "title": "FieldResult",
         "type": "object"
       },
+      "FieldSourceOut": {
+        "description": "SI12: where a field's value came from. `sheet` the CSV import, `you` the seller in the app,\n`photo` read from a photo (unconfirmed), `confirmed` a photo value the seller confirmed,\n`size_chart` the seller's chart saved from a size-chart photo, `brand` the brand default.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Id"
+          },
+          "kind": {
+            "enum": [
+              "sheet",
+              "you",
+              "photo",
+              "confirmed",
+              "size_chart",
+              "brand"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "FieldSourceOut",
+        "type": "object"
+      },
       "FixAction": {
         "enum": [
           "remap_value",
@@ -2065,6 +2311,26 @@
           "owner_name"
         ],
         "title": "GoogleSignupRequest",
+        "type": "object"
+      },
+      "HsnSuggestionOut": {
+        "description": "SI12: a suggested HSN heading from the category; never stored until the seller saves it.",
+        "properties": {
+          "basis": {
+            "const": "category",
+            "title": "Basis",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "basis"
+        ],
+        "title": "HsnSuggestionOut",
         "type": "object"
       },
       "ImageAccepted": {
@@ -2666,6 +2932,22 @@
       "ImageUploadIn": {
         "additionalProperties": false,
         "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: `back` or `close_up`, only with `slot: secondary` (Front is `main`). A new holder takes the role; the old one stays a plain secondary.",
+            "title": "Role"
+          },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           },
@@ -5052,6 +5334,201 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "NextStepOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "none",
+              "wait",
+              "approve",
+              "answer",
+              "marketplace",
+              "resume",
+              "regenerate"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "task_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Task Ids",
+            "type": "array"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "NextStepOut",
+        "type": "object"
+      },
+      "PackageIn": {
+        "additionalProperties": false,
+        "description": "SI12: the shipping package. A JSON merge patch (CP-D8): a key not sent is unchanged. The\nthree dimensions are sent together, all set or all null (null clears them); `weight_g: null`\nclears the weight. `{}` is refused: send `package: null` to clear all four.",
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "examples": [
+                  450
+                ],
+                "maximum": 2000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "PackageIn",
+        "type": "object"
+      },
+      "PackageOut": {
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "PackageOut",
+        "type": "object"
+      },
       "PageInfo": {
         "properties": {
           "has_more": {
@@ -5574,6 +6051,22 @@
             "title": "Category",
             "type": "string"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "description": "SI12: ISO 3166 alpha-2, stored upper-cased.",
+                "examples": [
+                  "IN"
+                ],
+                "pattern": "^[A-Za-z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Origin"
+          },
           "gender": {
             "anyOf": [
               {
@@ -5593,6 +6086,22 @@
             ],
             "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "description": "SI12: the HSN code, 4, 6 or 8 digits.",
+                "examples": [
+                  "6109"
+                ],
+                "pattern": "^([0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
           },
           "id": {
             "anyOf": [
@@ -5665,6 +6174,16 @@
               }
             ],
             "title": "Mrp"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "product_identifier": {
             "anyOf": [
@@ -5853,6 +6372,22 @@
             "title": "Position",
             "type": "integer"
           },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: Back or Close-up.",
+            "title": "Role"
+          },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           },
@@ -5924,6 +6459,18 @@
             "title": "Colourways",
             "type": "array"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's, else the brand default on single reads; own on lists.",
+            "title": "Country Of Origin"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5954,6 +6501,14 @@
             ],
             "title": "Fiber Composition"
           },
+          "field_sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "description": "SI12: per dictionary key, where the value came from; `{}` on lists.",
+            "title": "Field Sources",
+            "type": "object"
+          },
           "gender": {
             "anyOf": [
               {
@@ -5973,6 +6528,18 @@
             ],
             "description": "SI8: the audience; own or the style's on single reads, own on lists.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's on single reads; own on lists.",
+            "title": "Hsn Code"
           },
           "id": {
             "format": "uuid",
@@ -6027,6 +6594,17 @@
               "1299.00"
             ],
             "title": "Mrp"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's on single reads; own on lists."
           },
           "parent_product_id": {
             "anyOf": [
@@ -6093,6 +6671,17 @@
               }
             ]
           },
+          "size_chart_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChartSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: the size-chart read of a style or standalone; null on lists."
+          },
           "size_chart_url": {
             "anyOf": [
               {
@@ -6128,6 +6717,10 @@
               }
             ],
             "title": "Style Number"
+          },
+          "suggestions": {
+            "$ref": "#/components/schemas/SuggestionsOut",
+            "description": "SI12: values to suggest while the field is empty; empty on lists."
           },
           "title": {
             "maxLength": 500,
@@ -6183,7 +6776,7 @@
       },
       "ProductPatch": {
         "additionalProperties": false,
-        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,\n`brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,\n`manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not\na field.",
+        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,\n`brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,\n`manufacturer` (back to the inherited party), `hsn_code`, `package`, `country_of_origin` and an\nattribute key. `sku` is immutable and not a field.",
         "properties": {
           "attributes": {
             "anyOf": [
@@ -6263,6 +6856,22 @@
             "description": "SI3: photo-derived attribute keys the seller confirms as they are.",
             "title": "Confirm Attributes"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "description": "SI12: ISO 3166 alpha-2, stored upper-cased.",
+                "examples": [
+                  "IN"
+                ],
+                "pattern": "^[A-Za-z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Origin"
+          },
           "gender": {
             "anyOf": [
               {
@@ -6282,6 +6891,22 @@
             ],
             "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "description": "SI12: the HSN code, 4, 6 or 8 digits.",
+                "examples": [
+                  "6109"
+                ],
+                "pattern": "^([0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
           },
           "identifier_exemption": {
             "anyOf": [
@@ -6321,6 +6946,17 @@
             ],
             "title": "Mrp"
           },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: merges; `null` clears all four values."
+          },
           "product_identifier": {
             "anyOf": [
               {
@@ -6357,6 +6993,19 @@
                 "type": "null"
               }
             ]
+          },
+          "size_chart_image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: the live size-chart image this chart was read from (only with a non-null `size_chart`); stored as the chart's evidence.",
+            "title": "Size Chart Image Id"
           },
           "style_number": {
             "anyOf": [
@@ -6547,6 +7196,35 @@
         "title": "RemoteCheckOut",
         "type": "object"
       },
+      "RequirementsOut": {
+        "description": "Each list is the sorted dictionary keys the marketplace needs before it accepts a listing\nof this category: its required facts, the category template's required attributes and a\nreviewed extras table. Shown to the seller; the extras are never sent.",
+        "properties": {
+          "amazon": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Amazon",
+            "type": "array"
+          },
+          "category": {
+            "pattern": "^[a-z0-9_]{2,64}$",
+            "title": "Category",
+            "type": "string"
+          },
+          "flipkart": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Flipkart",
+            "type": "array"
+          }
+        },
+        "required": [
+          "category"
+        ],
+        "title": "RequirementsOut",
+        "type": "object"
+      },
       "ResetLinkOut": {
         "properties": {
           "expires_at": {
@@ -6565,6 +7243,66 @@
           "expires_at"
         ],
         "title": "ResetLinkOut",
+        "type": "object"
+      },
+      "ResolutionOut": {
+        "properties": {
+          "attempts": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/AttemptOut"
+            },
+            "maxItems": 10,
+            "title": "Attempts",
+            "type": "array"
+          },
+          "cycles_used": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Cycles Used",
+            "type": "integer"
+          },
+          "max_cycles": {
+            "const": 3,
+            "default": 3,
+            "title": "Max Cycles",
+            "type": "integer"
+          },
+          "next_step": {
+            "$ref": "#/components/schemas/NextStepOut"
+          },
+          "remote_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "checking",
+              "fixing",
+              "resubmitted",
+              "fix_ready",
+              "needs_you",
+              "needs_marketplace",
+              "stopped",
+              "live",
+              "idle"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "cycles_used",
+          "next_step"
+        ],
+        "title": "ResolutionOut",
         "type": "object"
       },
       "RetryClass": {
@@ -7179,6 +7917,57 @@
         "title": "SizeChart",
         "type": "object"
       },
+      "SizeChartReadOut": {
+        "description": "202 with the job while it is queued or reading; 200 with `read` or `unreadable` when the\ncurrent photo was already read (no job). Poll the product for `size_chart_suggestion`.",
+        "properties": {
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "poll_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poll Url"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "reading",
+              "read",
+              "unreadable",
+              "failed",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "status"
+        ],
+        "title": "SizeChartReadOut",
+        "type": "object"
+      },
       "SizeChartRow": {
         "additionalProperties": false,
         "properties": {
@@ -7284,6 +8073,67 @@
           "size"
         ],
         "title": "SizeChartRow",
+        "type": "object"
+      },
+      "SizeChartSuggestionOut": {
+        "description": "SI12: the chart read from the live size-chart photo, a suggestion the seller edits and\nsaves (with `size_chart_image_id`); never a fact by itself.",
+        "properties": {
+          "chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "reading",
+              "read",
+              "unreadable",
+              "failed",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "status"
+        ],
+        "title": "SizeChartSuggestionOut",
         "type": "object"
       },
       "StepUpOut": {
@@ -7558,6 +8408,22 @@
           "page"
         ],
         "title": "SubmissionPage",
+        "type": "object"
+      },
+      "SuggestionsOut": {
+        "properties": {
+          "hsn_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HsnSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "SuggestionsOut",
         "type": "object"
       },
       "SwitchTenantRequest": {
@@ -21501,6 +22367,321 @@
         "x-mkos-action": "settings:manage"
       }
     },
+    "/api/v1/catalog/requirements": {
+      "get": {
+        "description": "The dictionary keys Amazon and Flipkart need for a listing of `category`: each\nmarketplace's required facts, the category template's required attributes and a reviewed\nextras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN\nexemption, and the audience for Kurta sets and T-shirts). Shown as \"Needed\"; the extras are\nnever sent. An unknown category answers the facts and extras only.",
+        "operationId": "catalog_requirements_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "examples": [
+                "tshirts"
+              ],
+              "pattern": "^[a-z0-9_]{2,64}$",
+              "title": "Category",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "amazon": [
+                    "brand_name",
+                    "color",
+                    "country_of_origin",
+                    "fabric_type",
+                    "gender",
+                    "identifier",
+                    "manufacturer",
+                    "mrp",
+                    "selling_price"
+                  ],
+                  "category": "tshirts",
+                  "flipkart": [
+                    "color",
+                    "country_of_origin",
+                    "fabric_type",
+                    "hsn_code",
+                    "manufacturer",
+                    "mrp",
+                    "package_dimensions",
+                    "package_weight",
+                    "selling_price"
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/RequirementsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What each marketplace needs for a category",
+        "tags": [
+          "catalog"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
     "/api/v1/image-candidates/{candidate_id}/accept": {
       "post": {
         "description": "Use a `ready` candidate as a product image. A white-background or fix candidate becomes\nthe main image and the old main stays as an additional image; a size-chart candidate\nreplaces the size-chart image. The new image gets its own checks (poll `poll_url`). A\ncandidate whose photo or size chart changed since it was made is 409.",
@@ -34012,6 +35193,368 @@
         "x-mkos-action": "listing:regenerate"
       }
     },
+    "/api/v1/listings/{listing_id}/resolution": {
+      "get": {
+        "description": "SI11: the resolution timeline (state, cycles used, dry-run verdict, attempts newest first\nwith their failures and changes, and the next step). A read: the engine never runs here.",
+        "operationId": "listings_resolution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": [
+                    {
+                      "actor": "system",
+                      "at": "2026-10-05T09:31:00Z",
+                      "changed": [],
+                      "failed": [
+                        {
+                          "cause": "seller_fact",
+                          "field": "attributes.color",
+                          "lane": "seller",
+                          "marketplace_code": "90220",
+                          "message": "The value for 'color' is not one of the allowed values."
+                        }
+                      ],
+                      "kind": "precheck",
+                      "number": 0,
+                      "outcome": "issues",
+                      "version": 1
+                    }
+                  ],
+                  "cycles_used": 1,
+                  "max_cycles": 3,
+                  "next_step": {
+                    "kind": "answer",
+                    "task_ids": [
+                      "0b1c2d3e-0000-4000-8000-000000001101"
+                    ],
+                    "text": "Answer the open question so Kuinn can fix the listing."
+                  },
+                  "remote_check": {
+                    "at": "2026-10-05T09:31:00Z",
+                    "status": "issues",
+                    "version_id": "0b1c2d3e-0000-4000-8000-000000000202"
+                  },
+                  "state": "needs_you"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What Kuinn tried, changed and needs for this listing",
+        "tags": [
+          "listings"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
     "/api/v1/listings/{listing_id}/status": {
       "get": {
         "description": "Status by listing id: a convenience alias; poll `/jobs/{job_id}` for progress.",
@@ -41065,6 +42608,479 @@
           }
         ],
         "summary": "Change the category of a product that has listings; its unpublished listings take the new category and wait for a regenerate (409 when any listing was published)",
+        "tags": [
+          "products"
+        ],
+        "x-mkos-action": "product:import"
+      }
+    },
+    "/api/v1/products/{product_id}/size-chart-read": {
+      "post": {
+        "description": "Read the product's size-chart photo (a style or standalone product) into a suggestion. 202\nnames the job (poll the product for `size_chart_suggestion`); 200 answers a photo already\nread (`read` or `unreadable`) with no new job. Nothing is saved as a fact: save the edited\nchart with `PATCH /products/{product_id}` and `size_chart_image_id`. A variant is 422\n`FACT_LEVEL_INVALID`, no size-chart photo 422, a photo still being checked 409. While AI is\npaused for every brand it is 503 with the pause's code (SI10); past the daily cap 429.",
+        "operationId": "size_chart_read_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Product Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "1-255 visible ASCII characters. The same key with the same body replays the stored response; with a different body it is 409 IDEMPOTENCY_KEY_REUSED (24 h).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "1-255 visible ASCII characters. The same key with the same body replays the stored response; with a different body it is 409 IDEMPOTENCY_KEY_REUSED (24 h).",
+              "pattern": "^[\\x21-\\x7E]{1,255}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "image_id": "0b1c2d3e-0000-4000-8000-000000000501",
+                  "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
+                  "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
+                  "status": "queued"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SizeChartReadOut"
+                }
+              }
+            },
+            "description": "Done; answered from a result already stored (no new job)."
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "image_id": "0b1c2d3e-0000-4000-8000-000000000501",
+                  "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
+                  "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
+                  "status": "queued"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SizeChartReadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "IDEMPOTENCY_KEY_REUSED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "IDEMPOTENCY_KEY_REUSED",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "IDEMPOTENCY_KEY_REUSED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`, `INVALID_STATUS_TRANSITION`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`, `FACT_LEVEL_INVALID`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`, `BUDGET_EXCEEDED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "AI_CREDIT_EXHAUSTED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "AI_CREDIT_EXHAUSTED",
+                          "field": "request",
+                          "message": "The marketplace is unavailable; try again.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The marketplace is unavailable; try again.",
+                    "status": 503,
+                    "type": "AI_CREDIT_EXHAUSTED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The marketplace is unavailable; try again. Codes: `AI_CREDIT_EXHAUSTED`, `AI_PROVIDER_KEY_INVALID`."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Read the size-chart photo into a suggestion",
         "tags": [
           "products"
         ],

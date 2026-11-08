@@ -985,6 +985,22 @@
           "title": "Image Id",
           "type": "string"
         },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "back",
+                "close_up"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
         "slot": {
           "$ref": "#/$defs/ImageSlot"
         },

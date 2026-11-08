@@ -46,6 +46,7 @@ from app.api.v1.schemas.listings import (
     RegenerateRequest,
     ValidateRequest,
 )
+from app.api.v1.schemas.resolution import ResolutionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
@@ -330,6 +331,15 @@ async def listings_submissions(
             limit=page.limit,
         ),
     )
+
+
+@route(router, OPS["listings_resolution"])
+async def listings_resolution(listing_id: ListingId, principal: CurrentPrincipal) -> ResolutionOut:
+    """SI11: the resolution timeline (state, cycles used, dry-run verdict, attempts newest first
+    with their failures and changes, and the next step). A read: the engine never runs here."""
+    from app.services.resolution.read import resolution_for
+
+    return ResolutionOut.model_validate(await resolution_for(principal, listing_id))
 
 
 @route(router, OPS["listings_refresh_status"])

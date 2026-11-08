@@ -801,9 +801,9 @@ def test_0021_is_the_single_head() -> None:
     # the trusted browsers (ADR-0023) on top of Google sign-in, the PTD table (DW2) on top of them,
     # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
     # image candidates (SI7) on top of team access, status truth (SI9) on top of that, the `baby`
-    # audience (SI8) on top of that, the AI credit state (SI10) on top of those, and autonomous
-    # resolution (SI11) on top of the AI credit state, then the budget indexes (V1 hardening #10)
-    # and the invitee email flag (#12)
+    # audience (SI8) on top of that, the AI credit state (SI10) on top of those, autonomous
+    # resolution (SI11) on top of the AI credit state, the photo role (SI12) on top of it, then
+    # the budget indexes (V1 hardening #10) and the invitee email flag (#12)
     assert revisions - parents == {"0026_invitee_email_unverified"}
 
 

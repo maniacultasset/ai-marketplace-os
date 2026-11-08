@@ -5,7 +5,9 @@
   images by slot (`secondary`, `lifestyle`, `size_chart`) then position, then every colourway's
   main (colourways by position, then id), then the other colourway images (colourways in the
   same order, then slot and position), so the cut never drops a colourway's main for another's
-  extras. Every live image in a publishable slot counts, whatever its compliance status (CP5:
+  extras. SI12: inside the slot order a `secondary` with role `back` comes first, then
+  `close_up`, then the other secondaries (main, back, close_up, secondary, lifestyle,
+  size_chart); rows without a role sort exactly as before. Every live image in a publishable slot counts, whatever its compliance status (CP5:
   the approve image gate then blocks a pending or failed one). `packaging_label` is never
   publishable. Cut at 20.
 - `pick_context(rows)` (pure): up to 6 publishable images in the same order plus the newest
@@ -42,8 +44,16 @@ log = get_logger(__name__)
 MAX_LISTING_IMAGES: Final = 20
 MAX_CONTEXT_PRODUCT_IMAGES: Final = 6
 MAX_VISION_BYTES: Final = 2 * 1024 * 1024
-SLOT_RANK: Final = {"main": 0, "secondary": 1, "lifestyle": 2, "size_chart": 3}
+SLOT_RANK: Final = {"main": 0, "secondary": 3, "lifestyle": 4, "size_chart": 5}
+# SI12: the seller's Back and Close-up photos rank between the main and the other secondaries
+ROLE_RANK: Final = {"back": 1, "close_up": 2}
 LABEL: Final = ImageSlot.PACKAGING_LABEL.value
+
+
+def _rank(row: ListingImageRow) -> int:
+    if row.slot == ImageSlot.SECONDARY.value and row.role in ROLE_RANK:
+        return ROLE_RANK[row.role]
+    return SLOT_RANK.get(row.slot, 99)
 
 
 def _key(row: ListingImageRow) -> tuple[Any, ...]:
@@ -60,7 +70,7 @@ def _key(row: ListingImageRow) -> tuple[Any, ...]:
         phase,
         colourway_pos,
         colourway_id,
-        SLOT_RANK.get(row.slot, 99),
+        _rank(row),
         row.position,
         row.created_at,
         str(row.image_id),
@@ -119,6 +129,7 @@ async def load_context_images(
                     image_id=row.image_id,
                     slot=ImageSlot(row.slot),
                     colourway_id=row.colourway_id,
+                    role=row.role if row.slot == ImageSlot.SECONDARY.value else None,
                     width=size[0],
                     height=size[1],
                     data_b64=base64.b64encode(data).decode("ascii"),

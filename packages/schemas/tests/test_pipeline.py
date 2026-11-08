@@ -70,9 +70,13 @@ def test_pipeline_reexports() -> None:
         "ImageEditRequest",
         "ImageEditResult",
         "ModelCredentials",
+        "ReadSizeChart",
         "Rule",
         "RuleSet",
+        "SizeChartReadRequest",
+        "SizeChartReadResult",
         "edit_image",
+        "read_size_chart",
     }
     assert len(pipeline_mod.__all__) == len(expected_all)
     assert set(pipeline_mod.__all__) == expected_all
@@ -85,7 +89,14 @@ def test_pipeline_defines_only_protocol_and_signature() -> None:
         if inspect.isclass(obj) or inspect.isfunction(obj)
         if getattr(obj, "__module__", None) == pipeline_mod.__name__
     }
-    assert owned == {"PipelineDeps", "run_listing_pipeline", "EditImage", "edit_image"}
+    assert owned == {
+        "PipelineDeps",
+        "run_listing_pipeline",
+        "EditImage",
+        "edit_image",
+        "ReadSizeChart",
+        "read_size_chart",
+    }
 
 
 def test_run_listing_pipeline_signature() -> None:

@@ -1,0 +1,9 @@
+{
+  "unit": "cm",
+  "basis": "garment",
+  "rows": [
+    {"size": "S", "chest": 96, "length": 104},
+    {"size": "M", "chest": 101, "length": 106},
+    {"size": "L", "chest": 106, "length": 108}
+  ]
+}

@@ -23,6 +23,10 @@ from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
+    FieldSourceOut,
+    HsnSuggestionOut,
+    PackageIn,
+    PackageOut,
     PhotoFactOut,
     PhotoReadOut,
     ProductCreate,
@@ -34,6 +38,8 @@ from app.api.v1.schemas.products import (
     RecategorizeIn,
     SizeChart,
     SizeChartRow,
+    SizeChartSuggestionOut,
+    SuggestionsOut,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
@@ -84,6 +90,19 @@ def _image_out(detail: Any) -> ProductImageOut:
     fields = {name: getattr(detail, name) for name in ProductImageOut.model_fields}
     fields["fixes"] = list(detail.fixes)
     return ProductImageOut.model_construct(**fields)
+
+
+def _suggestion(found: dict[str, Any] | None) -> SizeChartSuggestionOut | None:
+    """SI12: the size-chart read of the live photo; the chart is the normalised stored table."""
+    if found is None:
+        return None
+    return SizeChartSuggestionOut.model_construct(
+        image_id=found["image_id"],
+        status=found["status"],
+        chart=_chart(found.get("chart")),
+        confidence=found.get("confidence"),
+        read_at=found.get("read_at"),
+    )
 
 
 def _chart(chart: dict[str, Any] | None) -> SizeChart | None:
@@ -153,6 +172,25 @@ def _out(view: products.ProductView) -> ProductOut:
             )
         ),
         identifier_exemption=view.identifier_exemption,
+        hsn_code=view.hsn_code,
+        package=None if view.package is None else PackageOut.model_construct(**view.package),
+        country_of_origin=view.country_of_origin,
+        field_sources={
+            key: FieldSourceOut.model_construct(
+                kind=source.kind, image_id=source.image_id, confidence=source.confidence
+            )
+            for key, source in view.field_sources.items()
+        },
+        size_chart_suggestion=_suggestion(view.size_chart_suggestion),
+        suggestions=SuggestionsOut.model_construct(
+            hsn_code=(
+                None
+                if view.hsn_suggestion is None
+                else HsnSuggestionOut.model_construct(
+                    value=view.hsn_suggestion.value, basis=view.hsn_suggestion.basis
+                )
+            )
+        ),
     )
 
 
@@ -179,7 +217,8 @@ async def products_create(
             size_chart=None if body.size_chart is None else size_chart_dict(body.size_chart),
             id=body.id,
             image_uploads=tuple(
-                CreateUpload(storage_key=u.storage_key, slot=u.slot) for u in body.image_uploads
+                CreateUpload(storage_key=u.storage_key, slot=u.slot, role=u.role)
+                for u in body.image_uploads
             ),
             product_identifier=(
                 None
@@ -187,10 +226,25 @@ async def products_create(
                 else (body.product_identifier.type, body.product_identifier.value)
             ),
             identifier_exemption=body.identifier_exemption,
+            hsn_code=body.hsn_code,
+            country_of_origin=body.country_of_origin,
+            package_dims=_package_dims(body.package),
+            package_weight_g=None if body.package is None else body.package.weight_g,
         ),
     )
     response.headers["ETag"] = view.etag
     return _out(view)
+
+
+def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal] | None:
+    """SI12: the create's three dimensions, or None when they are not all set (the wire model
+    keeps them all set or all null)."""
+    if package is None:
+        return None
+    dims = (package.length_cm, package.breadth_cm, package.height_cm)
+    if dims[0] is None or dims[1] is None or dims[2] is None:
+        return None
+    return (dims[0], dims[1], dims[2])
 
 
 @route(router, OPS["products_list"])
@@ -261,6 +315,8 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = tuple(value)
         elif name == "product_identifier":
             out[name] = (value.type, value.value)
+        elif name == "package":  # SI12: only the keys sent (a merge patch)
+            out[name] = {key: getattr(value, key) for key in value.model_fields_set}
         else:
             out[name] = value
     return out

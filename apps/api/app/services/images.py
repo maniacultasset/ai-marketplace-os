@@ -64,6 +64,8 @@ class CreateUpload:
 
     storage_key: str
     slot: ImageSlot
+    # SI12: `back` | `close_up`, only on a secondary image
+    role: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,6 +74,8 @@ class ImageUploadForm:
     slot: ImageSlot
     colourway_id: uuid.UUID | None
     storage_key: str | None
+    # SI12: `back` | `close_up`, only on a secondary image
+    role: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,10 +142,13 @@ UPLOAD_PATH: Final = f"{API_V1}/images/upload"
 
 def upload_payload(form: ImageUploadForm, file: bytes | None) -> bytes:
     """The bytes the request hash covers (CP2): every form field and the file part, NUL-joined;
-    the multipart boundary and part order never count."""
+    the multipart boundary and part order never count. SI12: a role is folded into the slot part
+    (`secondary:back`), so a role-less form hashes exactly as before and no file byte can
+    impersonate a role."""
+    slot = ImageSlot(form.slot).value
     parts = [
         str(form.product_id).encode(),
-        ImageSlot(form.slot).value.encode(),
+        (slot if form.role is None else f"{slot}:{form.role}").encode(),
         str(form.colourway_id or "").encode(),
         (form.storage_key or "").encode(),
     ]
@@ -190,15 +197,17 @@ async def _check_target(uow: TenantUnitOfWork, form: ImageUploadForm) -> None:
 async def _existing(
     uow: TenantUnitOfWork, key: str, form: ImageUploadForm
 ) -> dict[str, Any] | None:
-    """PLAN D8: a live row on the key with the same product, slot and colourway is the same
-    image (its latest job is replayed); a row that differs, or a deleted one, is 422."""
+    """PLAN D8: a live row on the key with the same product, slot, colourway and role (SI12) is
+    the same image (its latest job is replayed); a row that differs, or a deleted one, is 422. A
+    row whose role a later upload took differs too."""
     row = await uow.images.get_by_key(key)
     if row is None:
         return None
-    same = (row.product_id, row.slot, row.colourway_id) == (
+    same = (row.product_id, row.slot, row.colourway_id, row.role) == (
         form.product_id,
         ImageSlot(form.slot).value,
         form.colourway_id,
+        form.role,
     )
     if row.deleted_at is not None or not same:
         raise InputError(ErrorCode.VALIDATION_FAILED, "storage_key")
@@ -224,6 +233,8 @@ async def _register(
     tenant = principal.tenant_id
     replaced: list[uuid.UUID] = []
     candidate_keys: list[str] = []
+    if form.role is not None and form.slot is not ImageSlot.SECONDARY:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "role")
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = _uow_on(session, tenant)
@@ -254,6 +265,8 @@ async def _register(
             position = 0
         else:
             position = await uow.images.next_position(form.product_id, form.colourway_id, form.slot)
+        if form.role is not None:
+            await take_role(uow, principal, form.product_id, form.colourway_id, form.role)
         job_id = await insert_image_and_job(
             uow,
             principal,
@@ -265,6 +278,7 @@ async def _register(
                 slot=form.slot,
                 bytes=size,
                 position=position,
+                role=form.role,
             ),
             field="storage_key",
         )
@@ -281,6 +295,19 @@ async def _register(
         job_id=body.get("job_id"),
     )
     return body
+
+
+async def take_role(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    product_id: uuid.UUID,
+    colourway_id: uuid.UUID | None,
+    role: str,
+) -> None:
+    """SI12, under the product lock: the live holder of `role` gives it up and stays a plain
+    `secondary` image, one `image.role_cleared` audit row each."""
+    for cleared in await uow.images.clear_role(product_id, colourway_id, role):
+        await _audit(uow, principal, "image.role_cleared", cleared, after={"slot": "secondary"})
 
 
 async def insert_image_and_job(
@@ -327,6 +354,11 @@ async def check_create_uploads(
     exists, is at most 10 MiB and is inside the register window. A foreign key, a missing
     object and a key under another id answer the same 404 `image_uploads[i]` (no oracle)."""
     if sum(1 for u in uploads if u.slot is ImageSlot.MAIN) > 1:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
+    roles = [u.role for u in uploads if u.role is not None]
+    if len(set(roles)) != len(roles):  # SI12: one Back and one Close-up
+        raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
+    if any(u.role is not None and u.slot is not ImageSlot.SECONDARY for u in uploads):
         raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
     if len({u.storage_key for u in uploads}) != len(uploads):
         raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
@@ -381,6 +413,7 @@ async def register_on_create(
                 slot=slot,
                 bytes=item.size,
                 position=position,
+                role=item.upload.role,
             ),
             field=f"image_uploads[{i}]",
         )

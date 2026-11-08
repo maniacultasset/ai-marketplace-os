@@ -1,8 +1,9 @@
 """jobruns_budget_idx: the job_runs indexes of the AI budget admission (V1 hardening #10)
 
-CANON.md ledger row 0025 (claimed 2026-11-08 under the V1 delegation; 0023 and 0024 are claimed
-by lanes not yet on main, so the conductor re-chains this revision onto whichever of them merges
-first). Expand only, as migrator, no table change.
+CANON.md ledger row 0025 (claimed 2026-11-08 under the V1 delegation; chained on SI12's
+`0023_image_role`, the single head on main at the 2026-11-08 merge, re-chained from
+`0022_autonomous_resolution`; SI13's 0024 merges after this and is re-chained onto 0026).
+Expand only, as migrator, no table change.
 
 Every AI claim sums today's `cost_reserved_usd` over the reserving job kinds
 (`app/repositories/budget.py`, `RESERVING_KINDS`), per tenant and across all tenants, while it
@@ -19,7 +20,7 @@ CONCURRENTLY in an autocommit block, preceded by `DROP INDEX CONCURRENTLY IF EXI
 after an interrupted build replaces an INVALID index. Downgrade drops both concurrently.
 
 Revision ID: 0025_jobruns_budget_idx
-Revises: 0022_autonomous_resolution
+Revises: 0023_image_role
 Create Date: 2026-11-08
 
 """
@@ -31,8 +32,8 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0025_jobruns_budget_idx"
-# The single head on main at build (0023 and 0024 are not on main yet: re-chain at merge).
-down_revision: str | Sequence[str] | None = "0022_autonomous_resolution"
+# The single head on main at the 2026-11-08 merge (0022_autonomous_resolution at build).
+down_revision: str | Sequence[str] | None = "0023_image_role"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

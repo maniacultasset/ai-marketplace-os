@@ -181,6 +181,37 @@ class _ModelConfig:
         )
 
 
+def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
+    """The credentials of one model purpose (D5); a missing key outside `local` is
+    `MODEL_UNAVAILABLE`, and locally a placeholder stands in (the stub pipeline)."""
+    if purpose not in PURPOSES:
+        raise SeamPortError(ErrorCode.VALIDATION_FAILED, "purpose")
+    provider: Literal["openai", "deepseek"]
+    if purpose == "embedding":
+        provider, key, model = "openai", models.embedding_key, models.embedding_model
+    elif purpose == "vision":
+        provider, key, model = models.vision_provider, models.vision_key, models.vision_model
+    else:
+        provider, key, model = models.provider, models.generation_key, models.generation_model
+    if key is None:
+        if models.app_env != "local":
+            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, purpose)
+        key = SecretStr(LOCAL_PLACEHOLDER_KEY)
+    return ModelCredentials(
+        provider=provider,
+        api_key=key,
+        api_base=models.api_base,
+        model=model,
+        timeout_seconds=models.timeout_seconds,
+    )
+
+
+def size_chart_read_credentials(settings: Settings) -> ModelCredentials:
+    """SI12: the size-chart read is one vision call, so it uses the vision model and key from the
+    existing settings (no new env var)."""
+    return credentials_for(_ModelConfig.from_settings(settings), "vision")
+
+
 def image_edit_credentials(settings: Settings) -> ModelCredentials:
     """SI7: the credentials of the image-edit seam call. The edit goes only through OpenRouter
     (`LLM_MODEL_IMAGE_EDIT` is a `vendor/model` id), with the gateway key and base. Locally under
@@ -470,27 +501,7 @@ class BackendPipelineDeps:
     # ---- get_model_credentials (D5) ----
 
     async def get_model_credentials(self, purpose: Purpose) -> ModelCredentials:
-        models = self._models
-        if purpose not in PURPOSES:
-            raise SeamPortError(ErrorCode.VALIDATION_FAILED, "purpose")
-        provider: Literal["openai", "deepseek"]
-        if purpose == "embedding":
-            provider, key, model = "openai", models.embedding_key, models.embedding_model
-        elif purpose == "vision":
-            provider, key, model = models.vision_provider, models.vision_key, models.vision_model
-        else:
-            provider, key, model = models.provider, models.generation_key, models.generation_model
-        if key is None:
-            if models.app_env != "local":
-                raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, purpose)
-            key = SecretStr(LOCAL_PLACEHOLDER_KEY)
-        return ModelCredentials(
-            provider=provider,
-            api_key=key,
-            api_base=models.api_base,
-            model=model,
-            timeout_seconds=models.timeout_seconds,
-        )
+        return credentials_for(self._models, purpose)
 
     # ---- emit_node_event ----
 

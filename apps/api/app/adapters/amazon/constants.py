@@ -30,6 +30,17 @@ CONDITION_NEW: Final = "new_new"
 CURRENCY: Final = "INR"
 MAX_MONEY: Final = Decimal("9999999999.99")
 REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin", "brand_name")
+# SI12 B7 (PLAN D7, CP-D1): the other dictionary keys Amazon needs before it accepts a listing,
+# shown to the seller as "Needed" (key None: every category). `identifier`: a barcode or the GTIN
+# exemption (SI5, `services/product_identifier.py`); `gender`: the Kurta set and T-shirt product
+# types send target_gender, department and age_range_description from it (SI8).
+EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
+    {
+        None: ("identifier",),
+        "tshirts": ("gender",),
+        "ethnic_wear_kurta_sets": ("gender",),
+    }
+)
 # SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
 MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
 # SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,

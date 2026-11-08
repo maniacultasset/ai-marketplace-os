@@ -90,16 +90,17 @@ def test_mock_callback_303(client: TestClient) -> None:
 def test_mock_every_op_answers(client: TestClient, spec: dict[str, Any]) -> None:
     ops = _ops(spec)
     assert (
-        len(ops) == 99
-    )  # S3 35, S10 3, S15 2, S16 3, S20 1, S19 4, S21 2, ADR-0019 5, DPP-1 10, ADR-0020 7, ADR-0023 3, SI1 4, SI3 1, SI5 11, SI7 4, SI9 2, SI10 2
+        len(ops) == 102
+    )  # S3 35, S10 3, S15 2, S16 3, S20 1, S19 4, S21 2, ADR-0019 5, DPP-1 10, ADR-0020 7, ADR-0023 3, SI1 4, SI3 1, SI5 11, SI7 4, SI9 2, SI10 2, SI11 1, SI12 2
     for method, template in ops:
         path = template.replace("{marketplace}", "amazon")
         for name in ("product_id", "import_id", "listing_id", "image_id", "job_id", "user_id"):
             path = path.replace("{" + name + "}", PID)
         response = client.request(method, path, follow_redirects=False)
         declared = spec["paths"][template][method.lower()]["responses"]
-        success = [s for s in declared if s.isdigit() and int(s) < 400]
-        assert [str(response.status_code)] == success, (method, template)
+        success = sorted(s for s in declared if s.isdigit() and int(s) < 400)
+        # SI12: an op may declare a second 2xx (`also_status`); the mock answers the lowest
+        assert [str(response.status_code)] == success[:1], (method, template)
         for status in (s for s in declared if s.isdigit() and int(s) >= 400):
             preferred = client.request(method, path, headers={"Prefer": f"code={status}"})
             assert preferred.status_code == int(status), (method, template, status)

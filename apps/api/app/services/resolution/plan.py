@@ -12,10 +12,12 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    approve a brand or category);
 4. an issue the marketplace's repairer could fix (`ctx.repairable`) -> `auto_repair` (the
    repairer already refused text, price, MRP and party values);
-5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `seller`
-   (`auto_content` stays declared but unplanned until its writer, the content auto-fix T15,
-   is built: fix round 3); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
-   critical, else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
+5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `auto_content`
+   on a content or keyword path the content fix can change (`ctx.content_fixable`: the
+   executor ran the same pure fixer first, T15), else `seller` (fix round 3: never a lane with
+   nothing behind it); AI_FIELD -> `ai_field` when the AI is allowed (`ctx.ai_allowed`: SI10's
+   credit gate admits), the path is not critical, the row is the marketplace's and the merge can
+   keep only that path (`merge.mergeable`), else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
    marketplace error); RETRY -> `retry`; OPS -> `staff`.
 6. a `seller` step only where the inbox can ask (`seller_answers`: one image, or a fact key it
    answers, CP-D25); otherwise `staff`: `content_review` on a content or keyword path, `mapping`
@@ -46,6 +48,7 @@ from app.services.auto_fix.policy import (
     fact_key,
     route,
 )
+from app.services.resolution.merge import mergeable
 
 Lane = Literal["auto_repair", "auto_content", "ai_field", "seller", "marketplace", "retry", "staff"]
 Cause = Literal["seller_fact", "ai_content", "mapping", "image", "marketplace", "unknown"]
@@ -83,6 +86,8 @@ class PlanContext:
     approved_current: bool = False
     cycles_used: int = 0
     ai_allowed: bool = False
+    content_fixable: frozenset[uuid.UUID] = frozenset()
+    """Content and keyword issues the deterministic content fix can change (T15)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,12 +212,20 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
     routing = route(_item(issue), source=issue.source, critical_keys=ctx.critical_keys)
     path = issue.field_path
     if routing.route is Route.DETERMINISTIC:
-        # fix round 3: `auto_content` waits for its writer (the content auto-fix, T15, not built):
-        # until then a content or keyword path is a staff content review, never a silent lane
+        # T15: only an issue the content fix can change takes `auto_content` (its writer, the
+        # auto-fix job); any other content or keyword path is a staff content review (round 3)
+        if issue.id in ctx.content_fixable and path.startswith(_CONTENT_ROOTS):
+            return "auto_content", "content_fix"
         return _seller_or_staff(path)
     if routing.route is Route.AI_FIELD:
         key = path.split(".", 1)[1] if "." in path else path
-        if ctx.ai_allowed and key not in ctx.critical_keys and not path.startswith("images"):
+        if (
+            ctx.ai_allowed
+            and key not in ctx.critical_keys
+            and not path.startswith("images")
+            and issue.source in ADAPTER_SOURCES
+            and mergeable(path)
+        ):
             return "ai_field", "ai_rewrite"
         return _seller_or_staff(path)
     if routing.route is Route.ASK:
@@ -249,3 +262,12 @@ def lane_for(error_code: str, error_class: str, source: str = "amazon_adapter") 
     )
     found = _lane(view, PlanContext())
     return "staff" if found is None else found[0]
+
+
+def label(issue: IssueView, ctx: PlanContext) -> tuple[Lane, Cause] | None:
+    """The lane and cause the planner gives one issue (None for a WARNING): the resolution read
+    and the inbox label each row with the same rules the executor plans with (T20)."""
+    found = _lane(issue, ctx)
+    if found is None:
+        return None
+    return found[0], cause_of(issue, found[0], ctx.provenance)

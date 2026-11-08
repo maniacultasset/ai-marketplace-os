@@ -110,6 +110,8 @@ _QUERY: dict[str, dict[str, str]] = {
     # ADR-0020
     "auth_google_start": {"b": "B" * 43},
     "auth_google_callback": {"code": "g-code", "state": "st_0123456789"},
+    # SI12
+    "catalog_requirements_get": {"category": "tshirts"},
 }
 
 
@@ -175,6 +177,8 @@ def invalid_request(op: Operation) -> Call:
         call.params = {"b": "too-short"}
     elif op.op_id == "auth_google_callback":
         call.params = {"state": "s" * 2049}
+    elif op.op_id == "catalog_requirements_get":
+        call.params = {"category": "Bad-Slug"}
     elif op.op_id in _QUERY:
         call.params = {**call.params, "from": "not-a-date"}
     elif op.op_id in _INVALID_JSON:

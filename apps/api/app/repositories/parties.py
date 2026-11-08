@@ -196,6 +196,15 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         ).scalar_one_or_none()
         return found
 
+    async def default_country(self) -> str | None:
+        """SI12: the brand default country of origin, or None (no row or none set)."""
+        found: str | None = (
+            await self.db.execute(
+                self._select().with_only_columns(BrandProfile.default_country_of_origin)
+            )
+        ).scalar_one_or_none()
+        return found
+
     async def get_for_update(self) -> BrandProfile:
         """This tenant's profile row, locked (call `ensure` first)."""
         row: BrandProfile = (await self.db.execute(self._select().with_for_update())).scalar_one()

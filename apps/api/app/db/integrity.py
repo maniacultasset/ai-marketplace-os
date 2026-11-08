@@ -26,6 +26,9 @@ CONSTRAINT_CODES: Final[Mapping[str, ErrorCode]] = MappingProxyType(
         "products_tenant_sku_idx": ErrorCode.SKU_CONFLICT,  # DATABASE.md:407
         "ux_ls_open": ErrorCode.SUBMISSION_IN_FLIGHT,  # one open submission per listing (:872)
         "ux_job_runs_live": ErrorCode.LISTING_BUSY,  # one live job per (listing, kind) (:949)
+        # SI12: one live Back and one live Close-up per product and colourway. Unreachable under the
+        # product image lock; a race is a retryable 409, never a 500 (CP-D5).
+        "images_one_role": ErrorCode.INVALID_STATUS_TRANSITION,
     }
 )
 GUARD_SQLSTATES: Final[Mapping[str, ErrorCode]] = MappingProxyType(

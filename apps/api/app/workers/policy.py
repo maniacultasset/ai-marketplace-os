@@ -80,20 +80,25 @@ def image_job_lock(tenant_id: object) -> str:
 # runs one candidate at a time (PLAN D19).
 CANDIDATE_ENTITY: Final = "image_candidate"
 CANDIDATE_LOCK_PREFIX: Final = "image_candidate:"
+# SI12 (PLAN D4): a size-chart read is an `image_compliance` job about a `size_chart_read`; it takes
+# the same per-tenant AI image lock, so one AI image call runs per brand and uploads never wait.
+SIZE_CHART_READ_ENTITY: Final = "size_chart_read"
+TENANT_LOCKED_ENTITIES: Final = frozenset({CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY})
 
 
 def lock_for(
     kind: JobKind | str, entity_type: str | None = None, tenant_id: object | None = None
 ) -> str | None:
     """The procrastinate lock every queue entry of `kind` carries, or None (unserialised). An
-    upload image job takes `image_compliance:<tenant_id>`, a candidate job
-    (`entity_type='image_candidate'`) `image_candidate:<tenant_id>`."""
+    upload image job takes `image_compliance:<tenant_id>`; a candidate job
+    (`entity_type='image_candidate'`) and a size-chart read (`size_chart_read`, SI12) take
+    `image_candidate:<tenant_id>`."""
     known = JobKind(kind)
     if known is not JobKind.IMAGE_COMPLIANCE:
         return None
-    if entity_type == CANDIDATE_ENTITY:
+    if entity_type in TENANT_LOCKED_ENTITIES:
         if tenant_id is None:
-            raise ValueError("a candidate job's lock needs its tenant")
+            raise ValueError("a candidate or size-chart read job's lock needs its tenant")
         return f"{CANDIDATE_LOCK_PREFIX}{tenant_id}"
     return image_job_lock(tenant_id)
 

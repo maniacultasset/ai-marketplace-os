@@ -41,6 +41,7 @@ from app.services.imports.headers import (
     normalize_header,
     row_key,
 )
+from app.services.intake_values import COUNTRY_PATTERN, DIMENSION_PATTERN, HSN_PATTERN, MAX_GRAMS
 
 __all__ = [
     "ATTRIBUTE_COLUMNS",
@@ -58,13 +59,10 @@ ROW_FIELD: Final = "file.row"
 # `\s` does not, so it is named (an imported SKU is later returned by the products API).
 SKU_PATTERN: Final = re.compile(r"[^\]\s\ufeff]{1,64}")
 SLUG_PATTERN: Final = re.compile(r"[a-z0-9_]{2,64}")
-HSN_PATTERN: Final = re.compile(r"[0-9]{4}|[0-9]{6}|[0-9]{8}")
 MONEY_PATTERN: Final = re.compile(r"[0-9]{1,10}(\.[0-9]{1,2})?")
 TAX_PATTERN: Final = re.compile(r"[0-9]{1,3}(\.[0-9]{1,2})?")
-DIMENSION_PATTERN: Final = re.compile(r"[0-9]{1,5}(\.[0-9]{1,2})?")
 WEIGHT_PATTERN: Final = re.compile(r"([0-9]{1,7}(?:\.[0-9]{1,3})?)\s?(g|kg)", re.IGNORECASE)
 GRAMS_PATTERN: Final = re.compile(r"[0-9]{1,7}")
-COUNTRY_PATTERN: Final = re.compile(r"[A-Za-z]{2}")
 SIZE_KEY_PATTERN: Final = re.compile(r"[a-z0-9][a-z0-9 ./+-]{0,31}")
 EMAIL_PATTERN: Final = re.compile(r"[^@\s]+@[^@\s]+")
 PHONE_PATTERN: Final = re.compile(r"[+]?[0-9][0-9 -]{5,19}")
@@ -79,7 +77,6 @@ MAX_COLOUR: Final = 64
 MAX_EMAIL_BYTES: Final = 254
 MAX_MEDIA_URLS: Final = 9
 MAX_URL: Final = 2_048
-MAX_GRAMS: Final = 2_000_000
 MAX_TAX: Final = Decimal(100)
 MAX_STYLE_NUMBER: Final = 64
 

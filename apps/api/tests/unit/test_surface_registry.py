@@ -94,6 +94,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
+    ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -137,13 +138,16 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI10: the platform admin's AI credit card (95 + 2)
     ("admin_ai_credit_get", "GET", "/admin/ai-credit"),
     ("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume"),
+    # SI12: the size-chart read and the marketplace needs (100 + 2)
+    ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
+    ("catalog_requirements_get", "GET", "/catalog/requirements"),
 )
 
 E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 99
+    assert len(FROZEN) == 102
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -272,6 +276,7 @@ D9_IDEMPOTENT = {
     "listings_refresh_status",  # S21
     "tasks_answer",  # SI3
     "image_candidates_create",  # SI7
+    "size_chart_read_create",  # SI12
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -435,8 +440,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_99_operations() -> None:
-    assert len(OPS) == 99
+def test_102_operations() -> None:
+    assert len(OPS) == 102
 
 
 def test_error_codes_per_d2() -> None:
@@ -456,6 +461,7 @@ def test_error_codes_per_d2() -> None:
         "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # SI7: a candidate taken over by another job, or decided already
         "image_candidates_create": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "size_chart_read_create": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
@@ -485,7 +491,7 @@ def test_error_codes_per_d2() -> None:
         "admin_tenants_extend_trial": (E.INVALID_STATUS_TRANSITION,),
     }
     # SI10: generate and regenerate also answer a daily cap (429) and the platform AI pause (503)
-    ai_admission = {"listings_generate", "listings_regenerate"}
+    ai_admission = {"listings_generate", "listings_regenerate", "size_chart_read_create"}
     for op in OPS.values():
         codes = op.error_codes
         c = cases(op)
@@ -549,6 +555,7 @@ def test_error_codes_per_d2() -> None:
                 "products_update": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI1 D1b
                 "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
                 "tasks_answer": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI3 CP-D8
+                "size_chart_read_create": (E.FACT_LEVEL_INVALID,),  # SI12: a variant
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
@@ -559,7 +566,8 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
+        "SI12",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

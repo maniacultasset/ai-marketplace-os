@@ -361,4 +361,24 @@ async def enqueue_pending(session: Any, job: JobRun) -> None:
         return
     payload = job.payload_json if isinstance(job.payload_json, dict) else {}
     trigger: Trigger = "resolution" if payload.get("trigger") == "resolution" else "system"
-    await request_preview(uow, listing, listing.current_version_id, trigger=trigger)
+    if await request_preview(uow, listing, listing.current_version_id, trigger=trigger) is None:
+        await settle_orphan_check(uow, await uow.listings.get(listing.id))
+
+
+async def settle_orphan_check(uow: TenantUnitOfWork, listing: Any) -> None:
+    """Part B fix round 2: a `pending` stamp with no live `listing_status_sync` job behind it
+    settles `failed` (the dry run ended without a verdict). It is left when the job it waited
+    behind ended while the listing could not be previewed (a fix job's `generating`, then
+    `failed`): no job would ever give it a verdict, and the read would wait forever."""
+    if listing is None or listing.remote_check_status != "pending":
+        return
+    version = listing.remote_check_version_id
+    if version is None:
+        return
+    if await uow.job_runs.live_for_listing(listing.id, JobKind.LISTING_STATUS_SYNC) is not None:
+        return  # a real wait: that job's terminal asks again
+    settled = await uow.listings.set_remote_check(
+        listing.id, version, "failed", only_version=version, only_status="pending"
+    )
+    if settled:
+        log.info("preview.pending_settled", listing_id=str(listing.id), version_id=str(version))

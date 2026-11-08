@@ -12,6 +12,7 @@ from app.api.v1.routers import (
     analytics,
     auth,
     brand,
+    catalog,
     google,
     image_candidates,
     images,
@@ -25,6 +26,7 @@ from app.api.v1.routers import (
     products,
     rules,
     signup,
+    size_chart_read,
     tasks,
     tenants,
 )
@@ -50,5 +52,7 @@ for module in (
     analytics,
     signup,
     admin,
+    size_chart_read,
+    catalog,
 ):
     router.include_router(module.router)
