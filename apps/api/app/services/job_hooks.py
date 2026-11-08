@@ -78,7 +78,9 @@ async def on_sync_terminal(session: Any, job: JobRun, outcome: Outcome | None) -
 
 async def _read_entry(session: Any, job: JobRun) -> None:
     """SI11 T13: a status read that left adapter issues open on a `failed` (rejected) or
-    `published` (BUYABLE with ERROR issues) listing runs the resolution engine."""
+    `published` (BUYABLE with ERROR issues) listing runs the resolution engine; so does one the
+    read moved to `blocked/marketplace_action_required` (T18: the marketplace lane opens the
+    Seller Central step; it never enqueues a job)."""
     from app.repositories.uow import repositories_on
     from app.services.resolution.run import resolve
 
@@ -86,7 +88,10 @@ async def _read_entry(session: Any, job: JobRun) -> None:
         return
     uow = repositories_on(session, job.tenant_id)
     listing = await uow.listings.get(job.listing_id)
-    if listing is not None and listing.status in ("failed", "published"):
+    if listing is not None and (
+        listing.status in ("failed", "published")
+        or (listing.status == "blocked" and listing.status_reason == "marketplace_action_required")
+    ):
         await resolve(uow, listing, entry="read", job=job)
 
 
