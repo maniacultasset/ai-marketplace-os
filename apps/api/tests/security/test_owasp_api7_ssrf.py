@@ -34,6 +34,9 @@ OUTBOUND_CLIENTS = {
     # DW2 (C7): the PTD schema link: https, a host on AMAZON_PTD_LINK_HOSTS, every resolved
     # address public, connected by the checked address (definitions.check_link, _addresses)
     "adapters/amazon/definitions.py": ("adapters/amazon/definitions.py", "is_public_address"),
+    # SI10 T4: the OpenRouter key check, one GET to the pinned https OPENROUTER_BASE_URL
+    # (core/config.py), a 5 s timeout and follow_redirects=False
+    "adapters/openrouter/key.py": ("adapters/openrouter/key.py", "{OPENROUTER_BASE_URL}/key"),
 }
 CLIENT_CTORS = {"Client", "AsyncClient", "AsyncOpenAI"}
 MODULE_CALLS = {"get", "post", "put", "patch", "delete", "request", "stream", "head", "options"}
