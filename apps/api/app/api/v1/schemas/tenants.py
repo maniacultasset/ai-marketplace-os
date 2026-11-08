@@ -1,4 +1,5 @@
-"""The brand profile read and update (owner step S16)."""
+"""The brand profile read and update (owner step S16), and the platform admin's tenant list and
+trial recovery (SI5, ADR-0029)."""
 
 from __future__ import annotations
 
@@ -6,8 +7,10 @@ from typing import Annotated, Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import AfterValidator, Field, model_validator
+from pydantic import AfterValidator, AwareDatetime, Field, StrictInt, model_validator
 from pydantic_core import PydanticCustomError
+
+from app.api.pagination import Page
 
 # The tenant slug is `ck_tenants_slug` (0001_core_tenancy; DATABASE.md tenants row): hyphens, no
 # underscores, 2-40 chars. It is not the category/rule `Slug` (`^[a-z0-9_]{2,64}$`).
@@ -67,3 +70,36 @@ class TenantPatch(StrictModel):
         if not self.model_fields_set:
             raise PydanticCustomError("mkos_invalid", "Give at least one field.")
         return self
+
+
+# ---- trial recovery by a platform admin (SI5, ADR-0029 §5) ----
+
+RECOVERY_REASON_MAX: Final = 500
+RecoveryReason = Annotated[
+    NonBlankStr, Field(max_length=RECOVERY_REASON_MAX), AfterValidator(_no_nul)
+]
+TenantStatus = Literal["trial", "active", "suspended", "offboarded"]
+
+
+class TenantAdminOut(WireModel):
+    id: UUID
+    name: str
+    slug: TenantSlug
+    status: TenantStatus
+    trial_ends_at: AwareDatetime | None = Field(
+        default=None, description="Shown for a `trial` tenant; kept as stored after activation."
+    )
+    created_at: AwareDatetime
+
+
+class TenantAdminPage(Page[TenantAdminOut]):
+    pass
+
+
+class TenantActivate(StrictModel):
+    reason: RecoveryReason
+
+
+class TenantExtendTrial(StrictModel):
+    days: Annotated[StrictInt, Field(ge=1, le=90)]
+    reason: RecoveryReason

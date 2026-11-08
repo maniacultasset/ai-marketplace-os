@@ -122,6 +122,18 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "auth_devices_list",
         "auth_devices_remove",
         "auth_devices_sign_out_all",
+        # SI5 (ADR-0029)
+        "invites_create",
+        "invites_list",
+        "invites_revoke",
+        "invites_lookup",
+        "invites_accept",
+        "invites_join",
+        "members_password_reset",
+        "auth_password_reset",
+        "admin_tenants_list",
+        "admin_tenants_activate",
+        "admin_tenants_extend_trial",
     }
 )
 

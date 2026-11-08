@@ -1,5 +1,9 @@
 """`PATCH /products/{product_id}` (SI1 T12; PLAN D1b, AC3-AC5; CP12-CP14).
 
+SI5: `product_identifier` and `identifier_exemption` (`product_identifier.plan`); on a style the
+exemption fans out to its live variants without a barcode (one audit row each), and the style row
+itself is not written.
+
 A JSON merge patch: an absent field is unchanged; `null` clears `style_number`, `mrp`,
 `selling_price`, `size_chart`, `manufacturer` (back to the inherited party) and an attribute key
 (only a seller-written Fact). `sku` is immutable. `category` changes only while the product has
@@ -38,11 +42,13 @@ from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
+from sqlalchemy.exc import DBAPIError
 
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import tenant_uow
+from app.services import product_identifier
 from app.services.intake_values import PartyInput
 from app.services.product_facts import (
     SIZE_CHART_KEY,
@@ -76,6 +82,9 @@ PATCH_FIELDS: Final = frozenset(
         "size_chart",
         "attributes",
         "confirm_attributes",
+        # SI5: the barcode and the GTIN exemption (`product_identifier.plan`)
+        "product_identifier",
+        "identifier_exemption",
     }
 )
 # typed body field → (products column, dictionary key, owner levels)
@@ -299,7 +308,42 @@ def _envelopes(row: Any, change: ProductChange, column_keys: Mapping[str, str]) 
     }
 
 
+async def _apply_fan_out(
+    uow: Any, principal: Principal, fan_out: Sequence[tuple[uuid.UUID, Any, Any]], fact: Any
+) -> None:
+    """SI5 (T11): each changed variant written, with its own `product.fact_updated` row."""
+    key = product_identifier.IDENTIFIER_KEY
+    for variant_id, id_change, before in fan_out:
+        await product_identifier.apply(uow.facts, variant_id, id_change, fact)
+        await uow.audit.write(
+            tenant_id=principal.tenant_id,
+            actor_type="user",
+            actor_user_id=principal.user_id,
+            action="product.fact_updated",
+            entity_type="product",
+            entity_id=variant_id,
+            before=json.dumps({"attributes": {}, "provenance": {key: before}}, sort_keys=True),
+            after=json.dumps(
+                {"attributes": {}, "provenance": {key: None if id_change.clears else fact}},
+                sort_keys=True,
+            ),
+        )
+
+
 async def update_product(
+    principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
+) -> ProductView:
+    """SI5: a barcode used by another live product of the tenant (the pre-check, or the unique
+    index after the transaction rolled back) is 422 at `product_identifier.value`."""
+    try:
+        return await _update_product(principal, product_id, patch, if_match)
+    except (DBAPIError, ConflictError) as exc:
+        if product_identifier.is_duplicate(exc):
+            raise product_identifier.duplicate() from None
+        raise
+
+
+async def _update_product(
     principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
 ) -> ProductView:
     now = datetime.now(UTC)
@@ -344,16 +388,39 @@ async def update_product(
             party_id=party_id,
             children=children,
         )
-        if change.empty:
+        id_change = product_identifier.plan(
+            level,
+            row,
+            identifier=patch.get("product_identifier"),
+            exemption=patch.get("identifier_exemption"),
+            sent=product_identifier.FIELDS & set(patch),
+        )
+        fan_out: list[tuple[uuid.UUID, Any, Any]] = []
+        if level == "style" and patch.get("identifier_exemption") is not None:
+            states = await uow.products.child_identifier_states(row.id)
+            fan_out = product_identifier.plan_fan_out(states, bool(patch["identifier_exemption"]))
+        if change.empty and id_change is None and not fan_out:
             return await full_view(uow, row)
         if product_etag(row.id, row.updated_at) != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "products_etag")
+        await _apply_fan_out(uow, principal, fan_out, column_fact)
+        if change.empty and id_change is None:
+            return await full_view(uow, row)  # only the variants changed (CP-D11)
         column_keys: dict[str, str] = {}
         for column in change.typed_set:
             key = await uow.facts.column_key(column)
             assert key is not None  # noqa: S101 - TYPED names dictionary columns
             column_keys[column] = key
         before = _envelopes(row, change, column_keys)
+        if id_change is not None:
+            if id_change.value is not None and await uow.products.identifier_taken(
+                id_change.value, row.id
+            ):
+                raise product_identifier.duplicate()
+            before["provenance"][product_identifier.IDENTIFIER_KEY] = (row.provenance or {}).get(
+                product_identifier.IDENTIFIER_KEY
+            )
+            await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
         for column, value in change.typed_set.items():
             await uow.facts.set_typed(row.id, column, value, column_fact)
         for key in change.typed_clear:
@@ -390,6 +457,10 @@ async def update_product(
                 **dict.fromkeys(change.typed_clear),
             },
         }
+        if id_change is not None:
+            after["provenance"][product_identifier.IDENTIFIER_KEY] = (
+                None if id_change.clears else column_fact
+            )
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",

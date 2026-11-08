@@ -26,6 +26,7 @@ ALLOWLIST: dict[str, set[str]] = {
     "listing": {"status", "status_reason", "paused_at", "archived_at"},
     "rules": {"enabled"},
     "membership": {"role", "is_active"},
+    "invitation": {"role"},  # 0017 (ADR-0029)
     "tenant": {"name", "tone", "guidelines", "glossary"},
     "marketplace_account": {"status", "settings"},
     "business_party": {"roles", "source"},
@@ -149,7 +150,7 @@ def test_audit_unknown_entity_raises(db: Conn) -> None:
                 "system",
                 None,
                 "x.y",
-                "invitation",
+                "refresh_token",  # not audited (0017 made `invitation` an entity)
                 None,
                 None,
                 None,

@@ -31,6 +31,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "seller_intake": ("seller_intake.sh",),  # SI1
     "auto_fix": ("auto_fix.sh",),  # SI4 A19
     "photo_facts": ("photo_facts.sh",),  # SI3
+    "team": ("team_access.sh",),  # SI5 (ADR-0029)
 }
 # the steps that may read the database (`psql` through the compose postgres), each with its reason;
 # every one is read-only (no write SQL), names as built
@@ -149,6 +150,17 @@ def test_every_flow_has_e2e_script(repo_root: Path) -> None:
         "this_session_kept_200",
     ):
         assert step in trusted, step
+    _, team = _split(scripts["team_access.sh"])
+    for step in (
+        "owner_invites_201",
+        "accept_password_200",
+        "accept_replay_404",
+        "reset_link_off_403",
+        "extend_trial_200",
+        "activate_200",
+        "owner_login_again_200",
+    ):
+        assert step in team, step
     _, jobs = _split(scripts["jobs.sh"])
     for step in ("poll_queued", "cancel_200", "cancel_again_409", "bharat_get_404"):
         assert step in jobs, step

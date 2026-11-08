@@ -91,6 +91,9 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "secret_blob",
         "recovery_code",
         "recovery_codes",
+        # SI5 (ADR-0029): the copied invite and reset links carry their token in the fragment
+        "invite_url",
+        "reset_url",
         "challenge_token",
         "challenge_hash",
         "current_password",
@@ -178,7 +181,8 @@ _JWT: Final = re.compile(
 # `scheme://user:password@` keeps the user; `scheme://token@` (no colon) loses the whole userinfo.
 _USERINFO: Final = re.compile(r"://([^\s/?#@:]{1,256})(?::[^\s/?#@]{1,256})?@")
 # A `name=value` parameter, after `?`, `&`, `;`, whitespace or at the start of the string.
-_QUERY: Final = re.compile(r"(^|[?&;\s])([A-Za-z0-9_.\-]{1,64})=([^&#\s\"'<>]{0,1024})")
+# `#` leads a URL fragment too: the copied links' `#token=<token>` (SI5, ADR-0029).
+_QUERY: Final = re.compile(r"(^|[?&;#\s])([A-Za-z0-9_.\-]{1,64})=([^&#\s\"'<>]{0,1024})")
 _DETAIL: Final = re.compile(
     r"Key \(([^=\n]{1,512})\)=\("
     r"(?:[^\n]{0,1024}?\)(?= already exists| is not present| is still referenced| conflicts"

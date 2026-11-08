@@ -15,8 +15,9 @@ parent.
 Auth and brand rows (audit DB-3; DATABASE.md retention table): `refresh_tokens` 7 days after
 `expires_at` (deleting a successor first only clears its predecessor's `replaced_by`, the FK's
 `ON DELETE SET NULL (replaced_by)`), `invitations` 30 days after they closed (accepted, revoked,
-or else expired), and inactive `brand_chunks` 30 days after they were deactivated (`updated_at`,
-stamped by the trigger when `is_active` went false).
+or else expired), `password_reset_links` 30 days after they closed (used, revoked, or else
+expired; SI5, ADR-0029), and inactive `brand_chunks` 30 days after they were deactivated
+(`updated_at`, stamped by the trigger when `is_active` went false).
 """
 
 from __future__ import annotations
@@ -36,6 +37,7 @@ JOB_DAYS: Final = 90
 FAILED_JOB_DAYS: Final = 180
 REFRESH_TOKEN_DAYS: Final = 7
 INVITATION_DAYS: Final = 30
+RESET_LINK_DAYS: Final = 30
 BRAND_CHUNK_DAYS: Final = 30
 # `prune_tenant`'s keys, in run order (the daily totals start from these)
 PRUNED_TABLES: Final = (
@@ -44,6 +46,7 @@ PRUNED_TABLES: Final = (
     "job_runs",
     "refresh_tokens",
     "invitations",
+    "password_reset_links",
     "brand_chunks",
 )
 
@@ -72,6 +75,12 @@ _INVITATIONS: Final = text(
     "DELETE FROM invitations WHERE tenant_id = :t AND id IN ("
     " SELECT id FROM invitations WHERE tenant_id = :t"
     " AND coalesce(accepted_at, revoked_at, expires_at) < now() - make_interval(days => :days)"
+    " LIMIT :batch)"
+)
+_RESET_LINKS: Final = text(
+    "DELETE FROM password_reset_links WHERE tenant_id = :t AND id IN ("
+    " SELECT id FROM password_reset_links WHERE tenant_id = :t"
+    " AND coalesce(used_at, revoked_at, expires_at) < now() - make_interval(days => :days)"
     " LIMIT :batch)"
 )
 _BRAND_CHUNKS: Final = text(
@@ -151,6 +160,9 @@ async def prune_tenant(session: Any, tenant_id: uuid.UUID) -> dict[str, tuple[in
         ),
         "invitations": await _drain(
             session, _INVITATIONS, {"t": tenant_id, "days": INVITATION_DAYS}
+        ),
+        "password_reset_links": await _drain(
+            session, _RESET_LINKS, {"t": tenant_id, "days": RESET_LINK_DAYS}
         ),
         "brand_chunks": await _drain(
             session, _BRAND_CHUNKS, {"t": tenant_id, "days": BRAND_CHUNK_DAYS}
