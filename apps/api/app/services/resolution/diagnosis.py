@@ -1,15 +1,19 @@
 """The AI diagnosis of an unmapped marketplace code: its fixed prompts, its untrusted input and
 the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
 
-- `build_input` redacts Amazon's raw text before it reaches the model, in this order: each
-  `secrets` value (the listing's SKUs, brand, party values, barcode and the sent string values of
-  its attributes of at least 3 characters) becomes `{sku}`/`{brand}`/`{value}`; an ASIN
-  (`B0` + 8) `{asin}`; a digit run of 8 or more `{number}`; a URL or an email `{link}`; control and
-  bidi characters go, whitespace collapses, at most 1,000 characters (a code-point cut). The text
-  sits only at `data["message"]`, the untrusted block the `DEVELOPER` prompt names.
+- `build_input` redacts Amazon's raw text before it reaches the model. The text is folded first
+  (control, format and bidi characters go, NFKC, whitespace collapses), so a zero-width split
+  never hides a secret. Then, in this order: each `secrets` value, folded the same way (the
+  listing's SKUs, brand, party values, barcode, title, bullets, description, search terms and the
+  sent string values of its attributes, each of at least 3 characters) becomes
+  `{sku}`/`{brand}`/`{value}`; an ASIN (`B0` + 8) `{asin}`; a digit run of 8 or more `{number}`;
+  a URL or an email `{link}`; at most 1,000 characters (a code-point cut). The text sits only at
+  `data["message"]`, the untrusted block the `DEVELOPER` prompt names.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
-  holds a URL, `www.`, `<tag`, `&#`, a `{...}` token or a secret, or starts like a spreadsheet
-  formula (`=`, `+`, `-`, `@`, a tab or a CR); when the code or class is not a member of the
+  starts like a spreadsheet formula (`=`, `+`, `-`, `@`, a tab or a CR), holds a control, format or
+  bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, `data:`, `//host`,
+  `www.`, a bare domain on a short TLD list), `<tag`, `&#`, a `{...}` token or a folded secret;
+  when the code or class is not a member of the
   closed vocabularies; when the field hint is not a legal path in the field index; or when it
   proposes `auto` for a price, MRP, critical, identifier or image path or a permission class.
   A clean draft is `Proposed` with the same fields. Proposals never act: only a platform admin's
@@ -55,7 +59,15 @@ _URL: Final = re.compile(r"(?i)\b(?:https?://|ftp://|www\.)\S+")
 _EMAIL: Final = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _SPACE: Final = re.compile(r"\s+")
 _TOKEN: Final = re.compile(r"\{[^{}]*\}")
-_BAD_TEXT: Final = (re.compile(r"(?i)https?://|www\.|<[a-z/!]|&#|\{|\}"),)
+_BAD_TEXT: Final = (
+    re.compile(r"(?i)https?://|www\.|<[a-z/!]|&#|\{|\}"),
+    # any scheme link (`ftp://`, `javascript:alert(`), a protocol-relative `//host`, `data:`, or a
+    # bare domain on a short TLD list; the general `\w+\.[a-z]{2,}` would refuse "value.Then"
+    re.compile(
+        r"(?i)(?:[a-z][a-z0-9+.-]*:(?://|[^\s]*\()|//\S|javascript:|data:"
+        r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|net|org|io|co|ly|me|app|dev|example|xyz)\b)"
+    ),
+)
 _FORMULA_START: Final = ("=", "+", "-", "@", "\t", "\r")
 _BIDI: Final = frozenset({"‎", "‏", "‪", "‫", "‬", "‭", "‮"} | {"⁦", "⁧", "⁨", "⁩", "؜"})
 _MONEY_PATHS: Final = ("facts.mrp", "facts.selling_price", "mrp", "selling_price", "price")
@@ -111,12 +123,19 @@ def _strip(text: str) -> str:
     return _SPACE.sub(" ", "".join(kept)).strip()
 
 
+def _fold(text: str) -> str:
+    """NFKC with control, format and bidi characters gone: a zero-width split never hides a
+    secret and a fullwidth scheme reads as `https://`."""
+    return unicodedata.normalize("NFKC", _strip(text))
+
+
 def redact(message: str, secrets: Iterable[tuple[str, str]]) -> str:
-    """`message` with each (value, placeholder) secret replaced (longest first), then the ASIN,
-    long digit, URL and email patterns, control and bidi characters, at most 1,000 code points."""
-    text = message or ""
+    """`message` folded (NFKC, control and bidi characters gone), then each (value, placeholder)
+    secret replaced (longest first, folded the same way), then the ASIN, long digit, URL and
+    email patterns, at most 1,000 code points."""
+    text = _fold(message or "")
     pairs = sorted(
-        {(v.strip(), p) for v, p in secrets if v and len(v.strip()) >= SECRET_MIN},
+        {(_fold(v), p) for v, p in secrets if v and len(_fold(v)) >= SECRET_MIN},
         key=lambda pair: -len(pair[0]),
     )
     for value, placeholder in pairs:
@@ -125,7 +144,7 @@ def redact(message: str, secrets: Iterable[tuple[str, str]]) -> str:
     text = _EMAIL.sub("{link}", text)
     text = _ASIN.sub("{asin}", text)
     text = _DIGITS.sub("{number}", text)
-    return _strip(text)[:MESSAGE_MAX]
+    return text[:MESSAGE_MAX]
 
 
 def build_input(
@@ -156,11 +175,20 @@ def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
         return "length"
     if text.lstrip(" ").startswith(_FORMULA_START) or text.lstrip().startswith(_FORMULA_START):
         return "formula"
-    if any(p.search(text) for p in _BAD_TEXT) or _TOKEN.search(text):
+    if any(
+        ch in _BIDI or (unicodedata.category(ch) in ("Cc", "Cf") and ch not in "\t\n\r")
+        for ch in text
+    ):
+        return "control"
+    normal = unicodedata.normalize("NFKC", text)
+    if normal.lstrip().startswith(_FORMULA_START):
+        return "formula"
+    if any(p.search(normal) for p in _BAD_TEXT) or _TOKEN.search(normal):
         return "markup"
-    folded = text.casefold()
+    folded = _fold(text).casefold()
     for secret in secrets:
-        if secret and len(secret) >= SECRET_MIN and secret.casefold() in folded:
+        mine = _fold(secret).casefold() if secret else ""
+        if len(mine) >= SECRET_MIN and mine in folded:
             return "secret"
     return None
 

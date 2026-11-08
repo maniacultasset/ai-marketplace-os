@@ -73,7 +73,8 @@ def test_boundaries() -> None:
     assert build_input("1", "listing", None, "error", "", SECRETS)["message"] == ""
     hindi = "कुर्ता का आकार गलत है"
     assert redact(hindi, SECRETS) == hindi
-    assert redact("ＭＥＤＩＵＭ size", SECRETS) == "ＭＥＤＩＵＭ size"  # noqa: RUF001
+    # NFKC first, so a fullwidth secret cannot slip past the match (round 1 fix)
+    assert redact("ＭＥＤＩＵＭ size", SECRETS) == "MEDIUM size"  # noqa: RUF001
     assert len(redact("x" * 1001, SECRETS)) == MESSAGE_MAX
     cut = redact("y" * 999 + "😀" + "z", SECRETS)
     assert cut.endswith("😀") and len(cut) == MESSAGE_MAX
@@ -150,3 +151,75 @@ def test_model_refuses_extra_keys_and_non_text() -> None:
 def test_a_secret_never_survives(before: str, after: str, secret: str) -> None:
     out = build_input("1", "listing", None, "error", before + secret + after, [(secret, "{value}")])
     assert secret.casefold() not in out["message"].casefold() or secret.casefold() in "{value}"
+
+
+# ---- round 1 fixes: links without a scheme, folded text, hidden secrets ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Visit evil-example.com/fix to repair this listing.",
+        "Open //evil.example/path to fix this listing.",
+        "Click javascript:alert(1) to fix the listing now.",
+        "Go to ｈｔｔｐｓ：／／evil.example now.",  # fullwidth  # noqa: RUF001
+        "Open ftp://files.example/fix to repair this.",
+        "Paste data:text/html,hello into the field now.",
+        "See amazon.in for the category list today.",
+    ],
+)
+def test_a_link_without_a_scheme_or_in_fullwidth_is_refused(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Invalid), cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Set the value.Then send the listing again.",
+        "Amazon needs the size: pick one from the list.",
+        "The colour (e.g. navy) must match the photo.",
+    ],
+)
+def test_ordinary_text_is_not_taken_for_a_link(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Proposed), cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Brand Zebra​ Mills is not approved for this type.",  # zero width space
+        "Amazon refused the value ‮gnorw for this item.",  # bidi override
+        "Amazon refused the value\x07 for this item here.",  # bell
+    ],
+)
+def test_control_format_and_bidi_characters_are_refused(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Invalid), cause
+
+
+def test_a_zero_width_split_secret_is_invalid() -> None:
+    out = DiagnosisOut.model_validate({**GOOD, "plain_cause": "Brand Ze​bra is not approved."})
+    found = check(out, field_index=INDEX, critical_keys=frozenset(), secrets=["Zebra"])
+    assert isinstance(found, Invalid)
+
+
+def test_a_fullwidth_secret_echo_is_invalid() -> None:
+    echoed = "Amazon refused ＫＵＲＴＡ-NAVY-M for this listing."  # fullwidth  # noqa: RUF001
+    assert isinstance(_check(plain_cause=echoed), Invalid)
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Your SKU KURTA​-NAVY-M was refused",  # zero-width split SKU
+        "Your SKU KURTA-⁠NAVY-M was refused",  # word joiner
+        "Your SKU ＫＵＲＴＡ-NAVY-M was refused",  # fullwidth  # noqa: RUF001
+    ],
+)
+def test_redaction_folds_before_matching_secrets(message: str) -> None:
+    text = redact(message, SECRETS)
+    assert SKU not in text and "{sku}" in text, text
+
+
+def test_a_hidden_secret_value_is_folded_too() -> None:
+    text = redact("Your SKU KURTA-NAVY-M was refused", [("KURTA​-NAVY-M", "{sku}")])
+    assert text == "Your SKU {sku} was refused"
