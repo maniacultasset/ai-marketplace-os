@@ -62,7 +62,7 @@ def _bodies(bad: str) -> dict[str, dict[str, Any]]:
         "description": {"content": {**CLEAN, "description": bad}},
         "search_terms": {"content": CLEAN, "keywords": {"search_terms": [bad]}},
         "hidden_terms": {"content": CLEAN, "keywords": {"hidden_terms": [bad]}},
-        "attr_value": {"content": CLEAN, "attributes": {**ATTRS, "color": bad}},
+        "attr_value": {"content": CLEAN, "attributes": {**ATTRS, "pattern": bad}},
         "attr_list": {"content": CLEAN, "attributes": {**ATTRS, "sizes": ["s", bad]}},
     }
 

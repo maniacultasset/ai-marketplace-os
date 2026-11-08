@@ -40,6 +40,7 @@ import httpx
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
+from pydantic import SecretStr
 
 from app.adapters.amazon import constants as c
 from app.adapters.base import (
@@ -161,6 +162,7 @@ class SpApiClient:
         self._clock = clock
         self._max_body = max_body
         self._refreshed = False
+        self._used: list[SecretStr] = []
         self._http = httpx.AsyncClient(
             transport=transport, timeout=TIMEOUT, follow_redirects=False, trust_env=False
         )
@@ -174,6 +176,16 @@ class SpApiClient:
     @property
     def refreshed(self) -> bool:
         return self._refreshed
+
+    def used_secrets(self) -> list[str]:
+        """The token values this session sent, so the adapter can scrub them from any raw
+        marketplace text it keeps (an error that echoes the token). Never logged (SI4 A16)."""
+        return [s.get_secret_value() for s in self._used]
+
+    def _remember(self, secret: SecretStr) -> None:
+        value = secret.get_secret_value()
+        if all(seen.get_secret_value() != value for seen in self._used):
+            self._used.append(secret)
 
     # ---- the three calls ----
 
@@ -287,6 +299,7 @@ class SpApiClient:
             ) as span:
                 await self._limiter.acquire(route.operation)
                 secret = await self._tokens.get()
+                self._remember(secret)
                 request = self._request(route, content, secret.get_secret_value())
                 del secret
                 started = self._clock()

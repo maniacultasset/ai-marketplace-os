@@ -15,6 +15,10 @@ with S21's publish job). Pure: it reads only the `PreviewSource` the repository 
   image gate and the reviewer judged those, so a colourway image uploaded later, or never in
   the version, is never sent; a colourway left with none falls back to the listing's images.
 - The seller SKU is the product's `sku`; the template is the one the version pinned.
+- SI2: the canonical listing goes through `seller_overlay` (every factual attribute is the
+  seller's, or absent), and each unit carries its `SellerFacts` (`unit_facts`, keyed by product
+  id: the style and every child of a family). `allow_http_images` is set by the caller (preview
+  and the publish worker: APP_ENV=local only).
 """
 
 from __future__ import annotations
@@ -27,7 +31,11 @@ from mkos_schemas.listing import CanonicalListing
 
 from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate, ProductTypeSchema
 from app.adapters.registry import family_has_parent
+from app.core.resolved_facts import ProductFacts
 from app.repositories.listings import PreviewSource
+from app.services.seller_facts import seller_facts, seller_overlay
+
+FamilyFacts = tuple[ProductFacts, tuple[ProductFacts, ...]]
 
 _SCALARS = (str, int, float, bool)
 
@@ -99,10 +107,13 @@ def colour_image_ids(source: PreviewSource) -> set[uuid.UUID]:
 def build_adapter_listing(
     source: PreviewSource,
     *,
+    facts: FamilyFacts,
     image_refs: Mapping[uuid.UUID, str],
     idempotency_key: str,
     attempt: int = 1,
     product_type_schema: ProductTypeSchema | None = None,
+    parent_type_schema: ProductTypeSchema | None = None,
+    allow_http_images: bool = False,
 ) -> AdapterListing:
     pinned = source.template
     template = (
@@ -110,11 +121,15 @@ def build_adapter_listing(
         if pinned is not None
         else None
     )
+    main, children = facts
+    listing = seller_overlay(
+        canonical_listing(source), main, pinned.template if pinned is not None else None
+    )
     return AdapterListing(
         listing_id=source.listing_id,
         seller_sku=source.product.sku,
         idempotency_key=idempotency_key,
-        listing=canonical_listing(source),
+        listing=listing,
         items=_items(source),
         variation_theme=source.product.variation_theme,
         template=template,
@@ -126,4 +141,7 @@ def build_adapter_listing(
             if (refs := tuple(image_refs[i] for i in ids if i in image_refs))
         },
         product_type_schema=product_type_schema,
+        unit_facts={f.product_id: seller_facts(f) for f in (main, *children)},
+        parent_type_schema=parent_type_schema,
+        allow_http_images=allow_http_images,
     )

@@ -159,3 +159,65 @@ def test_cli_tenant_has_no_sql() -> None:
         s for s in strings if s.lstrip().startswith(("INSERT ", "UPDATE ", "SELECT ", "DELETE "))
     ]
     assert sql == []
+
+
+# ---- SI5 (ADR-0029): trial recovery ----
+
+ACTIVATE = [
+    "tenant",
+    "activate",
+    "--slug",
+    "acme-co",
+    "--reason",
+    "paid",
+    "--staff-email",
+    "s@ops.test",
+]
+EXTEND = [
+    "tenant",
+    "extend-trial",
+    "--slug",
+    "acme-co",
+    "--days",
+    "30",
+    "--reason",
+    "pilot",
+    "--staff-email",
+    "s@ops.test",
+]
+
+
+def test_recovery_parsers_accept_their_arguments() -> None:
+    activate = build_parser().parse_args(ACTIVATE)
+    assert (activate.command, activate.slug, activate.reason) == ("activate", "acme-co", "paid")
+    extend = build_parser().parse_args(EXTEND)
+    assert (extend.command, extend.days, extend.staff_email) == ("extend-trial", 30, "s@ops.test")
+
+
+@pytest.mark.parametrize("days", ["0", "91", "x", "-1"])
+def test_extend_days_bounds_exit_2(days: str, capsys: pytest.CaptureFixture[str]) -> None:
+    argv = [*EXTEND]
+    argv[argv.index("--days") + 1] = days
+    assert _exit(argv, capsys) == 2
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        [*ACTIVATE[:-2]],  # no --staff-email
+        ["tenant", "activate", "--slug", "acme-co", "--reason", " ", "--staff-email", "s@ops.test"],
+        [
+            "tenant",
+            "activate",
+            "--slug",
+            "Bad_Slug",
+            "--reason",
+            "r",
+            "--staff-email",
+            "s@ops.test",
+        ],
+        [*EXTEND[:2], *EXTEND[4:]],  # no --slug
+    ],
+)
+def test_recovery_bad_arguments_exit_2(argv: list[str], capsys: pytest.CaptureFixture[str]) -> None:
+    assert _exit(argv, capsys) == 2

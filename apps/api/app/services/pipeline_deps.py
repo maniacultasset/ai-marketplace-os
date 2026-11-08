@@ -61,7 +61,10 @@ from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
+from app.core.resolved_facts import ProductFacts
 from app.repositories.uow import tenant_uow
+from app.services.auto_fix.apply import auto_fix
+from app.services.auto_fix.fixers import FixContext
 from app.services.embeddings import (
     Embedder,
     EmbedderUnavailable,
@@ -71,6 +74,7 @@ from app.services.embeddings import (
 )
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
+from app.services.seller_facts import seller_overlay
 
 log = get_logger(__name__)
 
@@ -228,7 +232,9 @@ class BackendPipelineDeps:
 
     __slots__ = (
         "_attempt",
+        "_critical_keys",
         "_embedder",
+        "_facts",
         "_image_reports",
         "_job_id",
         "_marketplace",
@@ -255,9 +261,13 @@ class BackendPipelineDeps:
         image_reports: Mapping[UUID, ImageReport],
         embedder: Embedder | None,
         models: _ModelConfig,
+        critical_keys: frozenset[str],
         attempt: int = 1,
+        facts: ProductFacts | None = None,
     ) -> None:
         self._tenant_id = tenant_id
+        self._facts = facts
+        self._critical_keys = frozenset(critical_keys)
         self._job_id = job_id
         self._user_id = user_id
         self._marketplace = marketplace
@@ -297,6 +307,11 @@ class BackendPipelineDeps:
         """True once a stage past `PRE_MODEL_STAGES` has started. Also True when no stage was
         reported at all: nothing is known then, so a model call is assumed."""
         return not self._stages or not self._stages <= PRE_MODEL_STAGES
+
+    @property
+    def stored_image_reports(self) -> tuple[ImageReport, ...]:
+        """The product's stored image reports this job preloaded (SI4 A14), read-only."""
+        return tuple(self._image_reports.values())
 
     @property
     def validate_calls(self) -> int:
@@ -379,7 +394,22 @@ class BackendPipelineDeps:
                 or listing.category != ruleset.category
             ):
                 raise ValueError("the listing is outside the RuleSet's scope")
-            return evaluate(listing, ruleset, template=self._rules.template, product=self._product)
+            if self._facts is not None:
+                # SI2 T16 (D5): the engine judges the seller's factual values, so a correction
+                # round never chases an AI fact the seller already gave (invariant 9)
+                listing = seller_overlay(listing, self._facts, self._rules.template)
+            template, product = self._rules.template, self._product
+
+            def engine(candidate: CanonicalListing) -> ErrorReport:
+                return evaluate(candidate, ruleset, template=template, product=product)
+
+            # SI4 A8 (§2 fact 1): the fix pass runs on a copy and the fixed copy's verdict is
+            # reported, so the pipeline spends no correction attempt on a fixable item; the
+            # worker runs the same pass on the final listing (AC7), after the same overlay
+            fixes = FixContext(
+                ruleset=ruleset, template=template, critical_keys=self._critical_keys
+            )
+            return auto_fix(listing, engine, fixes).report
         except Exception as exc:  # fail closed: an internal error is a failed report, never a pass
             log.error(
                 "seam.validate_rules_failed", error=type(exc).__name__, job_id=str(self._job_id)
@@ -491,7 +521,9 @@ async def build_pipeline_deps(
     product_id: UUID,
     marketplace: Marketplace,
     rules: LoadedRules,
+    critical_keys: frozenset[str],
     product: Mapping[str, object] | None = None,
+    facts: ProductFacts | None = None,
 ) -> BackendPipelineDeps:
     """One short unit of work preloads the product's stored image reports (D6)."""
     market = Marketplace(marketplace)
@@ -513,5 +545,7 @@ async def build_pipeline_deps(
         image_reports=reports,
         embedder=embedder,
         models=_ModelConfig.from_settings(settings),
+        critical_keys=critical_keys,
         attempt=attempt,
+        facts=facts,
     )

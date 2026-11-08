@@ -111,7 +111,7 @@ class SignupRequestPage(Page[SignupRequestOut]):
 
 class SignupApprove(StrictModel):
     trial_days: Annotated[int, Field(ge=1, le=365)] | None = Field(
-        default=None, description="Trial length in days (default 14)."
+        default=None, description="Trial length in days (default 30)."
     )
 
 

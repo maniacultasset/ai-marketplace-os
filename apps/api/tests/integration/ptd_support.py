@@ -9,7 +9,8 @@ from typing import Any
 
 from app.adapters.amazon.definitions import canonical_digest
 
-KEY = ("A21TJRUUN4KGV", "KURTA", "LISTING_PRODUCT_ONLY", "en_IN")
+# SI2 D3: the sellable (`LISTING`) definition by default; pass `requirements=` for a parent's
+KEY = ("A21TJRUUN4KGV", "KURTA", "LISTING", "en_IN")
 
 
 def store(
@@ -20,8 +21,9 @@ def store(
     product_type: str = "KURTA",
     current: bool = True,
     enforced: str = "ENFORCED",
+    requirements: str = KEY[2],
 ) -> uuid.UUID:
-    marketplace_id, _, requirements, locale = KEY
+    marketplace_id, _, _, locale = KEY
     if current:
         conn.execute(
             "UPDATE product_type_definitions SET is_current = false WHERE marketplace_id = %s "

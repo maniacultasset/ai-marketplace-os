@@ -43,6 +43,12 @@ PERSONAL_OPS = frozenset(
         # ADR-0020: the person's own Google email, shown back to them (top level and in the
         # sign-up or link payload)
         "auth_google_complete",
+        # SI5 (ADR-0029): the invited email, shown to the inviting team and to the link holder
+        "invites_create",
+        "invites_list",
+        "invites_revoke",
+        "invites_lookup",
+        "invites_accept",
     }
 )
 # SI1 D2 and T5 (`PartyOut`): a manufacturer's GSTIN is the business's public tax
@@ -125,6 +131,9 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
     # logged); the reject answer declares the same keys and sends them null (CP-D18)
     "image_candidates_list": {"preview_url": False, "source_preview_url": False},
     "image_candidates_reject": {"preview_url": True, "source_preview_url": True},
+    # SI5 (ADR-0029): the copied link is shown once, to the owner or admin who asked for it
+    "invites_create": {"invite_url": True},
+    "members_password_reset": {"reset_url": True},
 }
 
 

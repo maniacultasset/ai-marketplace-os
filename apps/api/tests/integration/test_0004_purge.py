@@ -99,7 +99,7 @@ def _published(db: Conn, tenant_id: UUID | None = None) -> Any:
 
 def _world(db: Conn) -> tuple[UUID, UUID]:
     """Tenant A: the full 0002 + 0003 graph (built with the submission and item guards off for
-    that set-up only), a published listing, a brand profile, a cell, an invitation and an audit row
+    that set-up only), a published listing, a brand profile, a cell, an invitation, a reset link and an audit row
     with contact data; tenant B: the same graph."""
     for table, trigger in (("listing_submissions", "ls_guard"), ("listing_items", "li_guard")):
         db.execute(
@@ -147,6 +147,16 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
             role="reviewer",
             token_hash=bytes(side.tenant_id.bytes * 2),
             expires_at="2099-01-01T00:00:00Z",
+        )
+        # 0017 (ADR-0029): a copied reset link for a teammate
+        f.insert(
+            db,
+            "password_reset_links",
+            tenant_id=side.tenant_id,
+            user_id=f.member(db, side.tenant_id, "reviewer"),
+            issued_by_user_id=side.user_id,
+            token_hash=bytes(side.tenant_id.bytes[::-1] * 2),
+            expires_at=db.execute("SELECT now() + interval '1 hour'").fetchone()[0],  # type: ignore[index]
         )
         f.audit(
             db,

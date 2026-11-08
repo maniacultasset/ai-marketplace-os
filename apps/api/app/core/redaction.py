@@ -76,6 +76,12 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "x_forwarded_for",
         "x_real_ip",
         "forwarded",
+        # SI2: the manufacturer's address (DPDP, `db/models/facts.py:88`); Flipkart's
+        # `Manufacturer Details` normalises to `manufacturer_details`
+        "address",
+        "manufacturer_address",
+        "manufacturer_contact_information",
+        "manufacturer_details",
         # DPP-1 (ADR-0021): MFA secrets, codes and the sign-in challenge. `code` itself stays
         # query-only (below): as a dict key it is an error or rule code across the app. A TOTP
         # code travels only in request bodies, which nothing logs (the access line has no body,
@@ -85,6 +91,9 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "secret_blob",
         "recovery_code",
         "recovery_codes",
+        # SI5 (ADR-0029): the copied invite and reset links carry their token in the fragment
+        "invite_url",
+        "reset_url",
         "challenge_token",
         "challenge_hash",
         "current_password",
@@ -123,6 +132,7 @@ DENY_SUFFIXES: Final[tuple[str, ...]] = (
     "_token_hash",
     "_secret_key",
     "_webhook",
+    "_address",
 )
 # Query parameter names refused on top of the denied keys: the OAuth callback (CANON.md:36)
 # carries the authorization code and state. `code` and `state` are query-only: as dict keys
@@ -145,7 +155,7 @@ QUERY_DENY_KEYS: Final[frozenset[str]] = DENY_KEYS | QUERY_ONLY_DENY_KEYS
 
 
 def _normalise(key: str) -> str:
-    return key.casefold().replace("-", "_")
+    return key.casefold().replace("-", "_").replace(" ", "_")
 
 
 def is_denied_key(key: object) -> bool:
@@ -176,7 +186,8 @@ _JWT: Final = re.compile(
 # `scheme://user:password@` keeps the user; `scheme://token@` (no colon) loses the whole userinfo.
 _USERINFO: Final = re.compile(r"://([^\s/?#@:]{1,256})(?::[^\s/?#@]{1,256})?@")
 # A `name=value` parameter, after `?`, `&`, `;`, whitespace or at the start of the string.
-_QUERY: Final = re.compile(r"(^|[?&;\s])([A-Za-z0-9_.\-]{1,64})=([^&#\s\"'<>]{0,1024})")
+# `#` leads a URL fragment too: the copied links' `#token=<token>` (SI5, ADR-0029).
+_QUERY: Final = re.compile(r"(^|[?&;#\s])([A-Za-z0-9_.\-]{1,64})=([^&#\s\"'<>]{0,1024})")
 _DETAIL: Final = re.compile(
     r"Key \(([^=\n]{1,512})\)=\("
     r"(?:[^\n]{0,1024}?\)(?= already exists| is not present| is still referenced| conflicts"

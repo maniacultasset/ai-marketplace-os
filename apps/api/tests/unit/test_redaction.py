@@ -405,3 +405,41 @@ def test_si7_keys_redacted_in_log_lines_and_sentry_extra(log_lines: Any) -> None
     assert "Zq9" not in capture.text()
     event = before_send({"extra": dict(values), "message": "x"}, {})
     assert "Zq9" not in str(event)
+
+
+def test_copied_link_tokens_are_redacted() -> None:
+    """SI5 (ADR-0029): the invite and reset links carry their token in the URL fragment."""
+    from app.core.redaction import REDACTED, redact, redact_text
+
+    url = "https://kuinn.in/invite#token=" + "T" * 43
+    assert redact_text(url) == f"https://kuinn.in/invite#token={REDACTED}"
+    reset = "see https://kuinn.in/reset-password#token=" + "R" * 43 + " now"
+    assert "R" * 43 not in redact_text(reset)
+    body = redact({"invite_url": url, "reset_url": url, "invite": {"role": "admin"}})
+    assert body == {"invite_url": REDACTED, "reset_url": REDACTED, "invite": {"role": "admin"}}
+
+
+ADDRESS_KEYS = [
+    "manufacturer_address",
+    "manufacturer_contact_information",
+    "Manufacturer Details",
+    "address",
+    "registered_address",
+]
+
+
+@pytest.mark.parametrize("key", ADDRESS_KEYS)
+def test_si2_address_keys_redacted(key: str) -> None:
+    """SI2 T1 (AC5): the manufacturer's address never reaches a log line or a Sentry event."""
+    address = "1 Mill Road, Surat, GJ, 395003, IN"
+    event: dict[str, Any] = {"event": "publish", key: address, "extra": {"nested": {key: address}}}
+    out = redact(event)
+    assert out[key] == REDACTED
+    assert out["extra"]["nested"][key] == REDACTED
+    assert address not in json.dumps(out)
+
+
+def test_si2_address_keys_keep_non_matches() -> None:
+    assert is_denied_key("ip_address")
+    line = {"idempotency_key": "k-1", "manufacturer": "Test Mills Pvt Ltd", "address_count": 2}
+    assert redact(line) == line

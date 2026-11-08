@@ -203,9 +203,22 @@ class FakeAdapter(MarketplaceAdapter):
         )
 
     @staticmethod
+    def _fact_value(item: AdapterListing, key: str) -> object:
+        """SI2: a `facts.<key>` path's value, from the listing's own unit's seller facts."""
+        facts = item.unit_facts.get(item.listing.product_id)
+        if facts is None:
+            return None
+        name = {"manufacturer": "manufacturer_name", "fiber_composition": "fiber_composition_text"}
+        value = getattr(facts, name.get(key, key), None)
+        return None if value is None else str(value)
+
+    @staticmethod
     def _values(item: AdapterListing, fields: Sequence[str]) -> dict[str, object]:
         out: dict[str, object] = {}
         for field in fields:
+            if field.startswith("facts."):
+                out[field] = FakeAdapter._fact_value(item, field.removeprefix("facts."))
+                continue
             value = resolve(item.listing, field)
             out[field] = value.model_dump(mode="json") if hasattr(value, "model_dump") else value
         return out

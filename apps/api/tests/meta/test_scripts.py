@@ -2637,6 +2637,52 @@ def test_issues_e2e_no_db_access(repo_root: Path) -> None:
     assert "TRUNCATE" not in code.upper()
 
 
+# ---- SI4 A19 (Done when, phase A): auto_fix.sh ----
+
+AUTO_FIX_FLOW = "scripts/e2e/auto_fix.sh"
+AUTO_FIX_STEPS = (
+    "health",
+    "login_acme_operator",
+    "create_product_201",
+    "worker_start",
+    "generate_long_title_202",
+    "poll_validated",
+    "title_within_limit",
+    "issues_auto_fixed_one",
+    "history_has_auto_fixed",
+    "bharat_sees_none",
+    "worker_stop",
+)
+
+
+def test_auto_fix_e2e_steps(repo_root: Path) -> None:
+    code = _code((repo_root / AUTO_FIX_FLOW).read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert _steps(code) == AUTO_FIX_STEPS
+    assert "stub:$2" in code and 'generate "$product" long_title' in code
+    assert '"E2E-FIX-$(date +%s)-$RANDOM"' in code
+    assert 'cat "$body"' not in code
+    assert not re.search(r":\d{2,5}\b", code)
+
+
+def test_auto_fix_e2e_refuses_non_local_url(repo_root: Path, tmp_path: Path) -> None:
+    result = _run_flow(repo_root, tmp_path, AUTO_FIX_FLOW, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
+
+
+def test_auto_fix_e2e_logins_le_5_per_email(repo_root: Path) -> None:
+    code = _code((repo_root / AUTO_FIX_FLOW).read_text(encoding="utf-8"))
+    emails = re.findall(r"login ([a-z]+@[a-z]+\.test)\)", code)
+    assert emails and max(emails.count(e) for e in set(emails)) <= 5
+
+
+def test_auto_fix_e2e_no_db_access(repo_root: Path) -> None:
+    code = _code((repo_root / AUTO_FIX_FLOW).read_text(encoding="utf-8"))
+    assert "psql" not in code and "docker compose" not in code
+    assert "TRUNCATE" not in code.upper()
+
+
 S19B_LEGS = {
     "api-tests-dismiss-error-precheck": ("api-tests", "test_issue_dismiss_error_409"),
     "tenant-isolation-issues-unscoped": (

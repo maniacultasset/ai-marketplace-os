@@ -20,7 +20,7 @@ __all__ = ["gen_world"]
 _TITLE = '{"content": {"title": %s, "bullets": ["Soft cotton fabric"], "description": "A d."}}'
 _ATTR = (
     '{"content": {"title": "T", "bullets": ["b"], "description": "d"}, '
-    '"attributes": {"color": "blue", "fabric_type": "cotton", "weight": %s}}'
+    '"attributes": {"pattern": "solid", "neckline": "round", "weight": %s}}'
 )
 RAW = {
     "lone_surrogate_title": _TITLE % '"a\\ud800b"',
@@ -31,7 +31,7 @@ RAW = {
     "huge_number_attr": _ATTR % "1e400",
     "surrogate_attr_key": (
         '{"content": {"title": "T", "bullets": ["b"], "description": "d"}, '
-        '"attributes": {"color": "blue", "fabric_type": "cotton", "k\\udfff": "v"}}'
+        '"attributes": {"pattern": "solid", "neckline": "round", "k\\udfff": "v"}}'
     ),
 }
 

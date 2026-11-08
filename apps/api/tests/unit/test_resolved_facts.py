@@ -242,6 +242,44 @@ def test_digest_changes_when_address_changes() -> None:
     )
 
 
+# ---- SI2 T4 (D9; AC5, AC12): the family digest ----
+
+
+def _child(n: int, price: str = "499.00") -> ProductFacts:
+    return facts(
+        product_id=uuid.UUID(int=n),
+        sku=f"KURTA-001-{n}",
+        level="variant",
+        commercial=Commercial(mrp="999.00", selling_price=price, currency="INR"),
+    )
+
+
+def test_listing_digest_without_children_is_facts_digest() -> None:
+    from app.core.resolved_facts import listing_facts_digest
+
+    assert listing_facts_digest(facts()) == facts_digest(facts())
+    assert listing_facts_digest(facts(), ()) == facts_digest(facts())
+
+
+def test_listing_digest_family() -> None:
+    from app.core.resolved_facts import listing_facts_digest
+
+    style = facts(level="style")
+    kids = [_child(1), _child(2)]
+    base = listing_facts_digest(style, kids)
+    assert len(base) == 32 and base != facts_digest(style)
+    assert listing_facts_digest(style, list(reversed(kids))) == base
+    assert listing_facts_digest(style, [_child(1), _child(2, "450.00")]) != base
+    assert listing_facts_digest(style, [*kids, _child(3)]) != base
+
+
+def test_address_never_in_prompt_or_rules() -> None:
+    body = facts()
+    for view in (for_prompt(body), for_rules(body)):
+        text = json.dumps(view)
+        assert "1 MG Road" not in text and "Bengaluru" not in text
+
+
 # ---- SI3 T5: unconfirmed photo facts never reach the rules; confirmation stays out of the digest ----
 
 AI_VECTOR = "97b8407a32b5b460d4798547e876d9decf1e12b7e5ea49336f60cb4bf89234a4"  # from main, pre-SI3
@@ -340,6 +378,20 @@ def test_recheck_digest() -> None:
     pre, reread = with_attrs(), with_attrs(neckline=ai())
     assert recheck_digest(pre, reread, pinned) == facts_digest(reread)
     assert recheck_digest(with_attrs(neckline=ai()), pre, pinned) == pinned
+
+
+def test_recheck_digest_family_keeps_the_children() -> None:
+    """SI2 x SI3: a family's re-check stamps the family digest over the re-read style and the
+    pinned children, the same digest approve and publish compute (`listing_facts_digest`)."""
+    from app.core.resolved_facts import listing_facts_digest
+
+    pinned = b"p" * 32
+    kids = (_child(1), _child(2))
+    pre, reread = with_attrs(), with_attrs(neckline=ai())
+    got = recheck_digest(pre, reread, pinned, kids)
+    assert got == listing_facts_digest(reread, kids) and got != facts_digest(reread)
+    assert recheck_digest(with_attrs(neckline=ai()), pre, pinned, kids) == pinned
+    assert recheck_digest(pre, reread, pinned, ()) == facts_digest(reread)
 
 
 _AI_VALUES = st.sampled_from(["v-neck", "round neck", "boat neck"])

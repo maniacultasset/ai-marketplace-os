@@ -69,7 +69,7 @@ def test_platform_load_idempotent_no_tenants(
         "SELECT category, version, product_type FROM category_templates "
         "WHERE marketplace = 'amazon' AND is_current ORDER BY category"
     ).fetchall()
-    assert ("tshirts", 1, "SHIRT") in current and ("ethnic_wear_kurta_sets", 2, "KURTA") in current
+    assert ("tshirts", 2, "SHIRT") in current and ("ethnic_wear_kurta_sets", 3, "KURTA") in current
     assert ("home_decor_lamps", 2, "LAMP") in current
 
 
@@ -122,7 +122,7 @@ def test_platform_load_missing_error_map_exit_2(
 
 async def test_platform_load_then_seed_ok(cli_env: Path, superuser_conn: Conn) -> None:
     """The acceptance stack's order: platform rows first, then the demo seed. Kurta v2 is
-    already current when KURTA-001 is seeded, so it pins v2 on this path."""
+    already current when KURTA-001 is seeded, so it pins v2 on this path (v3 since SI2)."""
     from app.cli import ERROR_MAP_FAKE_PATH, run_platform_load, run_seed
     from app.db.seed_ops import demo_listing_ids
 
@@ -133,4 +133,4 @@ async def test_platform_load_then_seed_ok(cli_env: Path, superuser_conn: Conn) -
     pinned = superuser_conn.execute(
         "SELECT template_version FROM validation_runs WHERE id = %s", [run_id]
     ).fetchone()
-    assert pinned == (2,)
+    assert pinned == (3,)  # SI2: kurta version 3

@@ -17,7 +17,7 @@ from mkos_schemas.auth import JWTClaims
 from mkos_schemas.codes import ErrorCode
 
 from app.api.errors import ApiError, password_rules_error
-from app.api.rate_limit import enforce_login_limit, request_ip
+from app.api.rate_limit import enforce_login_limit, enforce_reset_limit, request_ip
 from app.api.v1.deps import access_claims, get_current_principal
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
@@ -45,10 +45,12 @@ from app.api.v1.schemas.auth import (
     TrustedDeviceOut,
     TrustedDevicesOut,
 )
+from app.api.v1.schemas.invites import PasswordResetIn
 from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.services import auth, mfa
+from app.services import password_reset_links as reset_links
 
 router = APIRouter()
 
@@ -455,3 +457,18 @@ async def auth_switch_tenant(
     if isinstance(pair, auth.Refusal):
         raise _refused(pair)
     return _tokens(pair)
+
+
+@route(router, OPS["auth_password_reset"])
+async def auth_password_reset(body: PasswordResetIn, request: Request) -> Response:
+    """Set a new password with a copied reset link: the password rules (422 names each broken
+    rule) and none of the last 10; the link then stops working, and every session and trusted
+    browser of the account ends. The authenticator stays. Any refusal of the link (unknown,
+    used, replaced, expired, or the account or its issuer no longer eligible) is the same 404."""
+    await enforce_reset_limit(request)
+    refusal = await reset_links.redeem(
+        body.token, body.new_password.get_secret_value(), ip=request_ip(request)
+    )
+    if refusal is not None:
+        raise _refused(refusal)
+    return Response(status_code=204)

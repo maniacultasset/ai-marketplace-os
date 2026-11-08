@@ -125,9 +125,13 @@ def test_row_model_gtin_lengths(gtin: str) -> None:
 
 
 def test_row_model_gtin_leading_zeros() -> None:
-    row = ok(product_identifier_type="upc", product_identifier="00012345600012")
+    # SI5 (PLAN D13): 14 digits are a `gtin`; `upc` is 12 digits only
+    row = ok(product_identifier_type="gtin", product_identifier="00012345600012")
     assert row.identifier_value == "00012345600012"
     assert gtin_valid("00012345600012")
+    assert codes(run(product_identifier_type="upc", product_identifier="00012345600012")) == [
+        ErrorCode.IDENTIFIER_INVALID
+    ]
 
 
 @pytest.mark.parametrize(
@@ -391,3 +395,63 @@ def test_row_model_style_number_and_size_chart_url() -> None:
 def test_row_model_fabric_composition_header() -> None:
     result = validate_row(normalize_row({**GOOD, "fabric_composition": "100% linen"}))
     assert result.row is not None and result.row.attributes["fiber_composition"] == "100% linen"
+
+
+# ---- SI5 (PLAN D15): barcode aliases and the exemption column ----
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "expected_type"),
+    [
+        ("ean", "4006381333931", "ean"),
+        ("ean", "73513537", "ean"),
+        ("upc", "036000291452", "upc"),
+        ("gtin", "10036000291459", "gtin"),
+        ("barcode", "036000291452", "upc"),
+        ("barcode", "4006381333931", "ean"),
+        ("barcode", "73513537", "ean"),
+        ("barcode", "10036000291459", "gtin"),
+    ],
+)
+def test_si5_alias_columns(column: str, value: str, expected_type: str) -> None:
+    row = ok(**{column: value})
+    assert (row.identifier_type, row.identifier_value) == (expected_type, value)
+
+
+def test_si5_barcode_of_ten_digits_is_invalid() -> None:
+    assert codes(run(barcode="1234567890")) == [ErrorCode.IDENTIFIER_INVALID]
+
+
+def test_si5_ean_with_twelve_digits_is_invalid() -> None:
+    assert codes(run(ean="036000291452")) == [ErrorCode.IDENTIFIER_INVALID]
+
+
+@pytest.mark.parametrize(
+    "cells",
+    [
+        {"ean": "4006381333931", "upc": "036000291452"},
+        {"ean": "4006381333931", "product_identifier_type": "ean",
+         "product_identifier": "4006381333931"},
+        {"ean": "4006381333931", "identifier_exemption": "yes"},
+    ],
+)  # fmt: skip
+def test_si5_identifier_conflicts(cells: dict[str, str]) -> None:
+    assert codes(run(**cells)) == [ErrorCode.CROSS_FIELD_MISMATCH]
+
+
+@pytest.mark.parametrize(
+    ("cell", "expected"),
+    [(" Yes ", True), ("TRUE", True), ("y", True), ("1", True), ("no", False), ("False", False),
+     ("N", False), ("0", False)],
+)  # fmt: skip
+def test_si5_exemption_values(cell: str, expected: bool) -> None:
+    assert ok(identifier_exemption=cell).identifier_exemption is expected
+
+
+def test_si5_exemption_maybe_is_not_allowed() -> None:
+    assert codes(run(identifier_exemption="maybe")) == [ErrorCode.VALUE_NOT_ALLOWED]
+
+
+def test_si5_exemption_false_with_a_barcode_is_fine() -> None:
+    row = ok(ean="4006381333931", identifier_exemption="no")
+    assert (row.identifier_value, row.identifier_exemption) == ("4006381333931", False)

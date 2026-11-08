@@ -1394,8 +1394,11 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
             assert name not in values, (env_name, name)
     prod, staging = found["prod"], found["staging"]
     assert (prod["LLM_GATEWAY"], prod["LLM_PROVIDER"]) == ("openrouter", "deepseek")
-    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-chat"
+    assert prod["LLM_MODEL_DEFAULT"] == "deepseek/deepseek-v4-flash"
     assert (prod["LLM_DAILY_BUDGET_USD"], prod["LLM_TENANT_DAILY_BUDGET_USD"]) == ("3", "1")
+    # SI5: 600 requests a minute per tenant on the api
+    assert prod["RATE_LIMIT_PER_TENANT_PER_MIN"] == "600"
+    assert staging["RATE_LIMIT_PER_TENANT_PER_MIN"] == ""
     # prod pins a full mkos-pipeline commit (ADR-0024), so its worker runs the real pipeline
     assert re.fullmatch(r"[0-9a-f]{40}", prod["PIPELINE_REF"])
     assert prod["WORKER_ENABLED"] == "true"
@@ -1419,6 +1422,26 @@ def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) ->
     for name in ("OPENROUTER_API_KEY", "DEEPSEEK_API_KEY"):
         assert f"secrets create {name} " not in setup and f"{name}: " not in setup, name
         assert name not in _secret_grants(setup, "aimos-worker"), name
+
+
+def test_tenant_rate_reaches_the_api_only(toolkit: Path, tmp_path: Path) -> None:
+    """SI5: a set per-tenant rate is in the api env and not the worker's (the worker serves no
+    HTTP); blank (staging as committed) omits it. prod.env's 600 is pinned above."""
+    plain = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "RATE_LIMIT_PER_TENANT_PER_MIN" not in _api_env(plain)
+    _set_env(toolkit, "staging", RATE_LIMIT_PER_TENANT_PER_MIN="600")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["RATE_LIMIT_PER_TENANT_PER_MIN"] == "600"
+    worker, _ = _worker_container(out)
+    assert worker["APP_ROLE"] == "worker"
+    assert "RATE_LIMIT_PER_TENANT_PER_MIN" not in worker
+
+
+@pytest.mark.parametrize("value", ["abc", "0", "-5", "1.5", "6e2"])
+def test_tenant_rate_must_be_digits(toolkit: Path, tmp_path: Path, value: str) -> None:
+    _set_env(toolkit, "staging", RATE_LIMIT_PER_TENANT_PER_MIN=value)
+    failed = _run_fail(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert "RATE_LIMIT_PER_TENANT_PER_MIN" in failed.stderr + failed.stdout
 
 
 def _openrouter_staging(toolkit: Path) -> None:

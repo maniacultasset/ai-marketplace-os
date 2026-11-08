@@ -1,7 +1,7 @@
 -- 0018/04_allowlist_purge.up.sql
--- SI7: audit_allowlist is 0014's body plus the image_candidate entity (kind and status only);
--- purge_tenant_order() is 0004's array with image_candidates first, ahead of agent_runs and
--- images, which it references. (SI5's 0017 redefines both: re-based at merge.)
+-- SI7: audit_allowlist is 0017's body plus the image_candidate entity (kind and status only);
+-- purge_tenant_order() is 0017's array with image_candidates first, ahead of agent_runs and
+-- images, which it references.
 CREATE OR REPLACE FUNCTION public.audit_allowlist(p_entity_type text) RETURNS text[]
   LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
   SET search_path = pg_catalog, public, pg_temp
@@ -25,6 +25,7 @@ BEGIN
     WHEN 'user' THEN ARRAY[]::text[]
     WHEN 'product_type_definition' THEN ARRAY['marketplace_id', 'product_type', 'requirements',
                                               'locale', 'product_type_version']
+    WHEN 'invitation' THEN ARRAY['role']
     WHEN 'image_candidate' THEN ARRAY['kind', 'status']
     ELSE public.audit_unknown_entity(p_entity_type)
   END;
@@ -41,5 +42,5 @@ BEGIN ATOMIC
     'import_rows', 'imports', 'idempotency_keys', 'job_runs', 'batches', 'listing_versions',
     'listings', 'oauth_states', 'refresh_tokens', 'variant_matrix_cells', 'images',
     'product_colourways', 'brand_chunks', 'brand_documents', 'marketplace_accounts', 'products',
-    'brand_profiles', 'business_parties', 'invitations', 'rules'];
+    'brand_profiles', 'business_parties', 'password_reset_links', 'invitations', 'rules'];
 END;

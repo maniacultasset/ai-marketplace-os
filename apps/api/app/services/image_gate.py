@@ -26,7 +26,7 @@ from uuid import UUID
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, Severity
-from mkos_schemas.errors import ErrorItem
+from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.images import ImageIssue, ImageReport
 from mkos_schemas.listing import CanonicalListing
 
@@ -100,3 +100,21 @@ def evaluate_image_gate(
                           issue=issues.get(check.check))
                 )  # fmt: skip
     return ImageGateResult(blocking=tuple(blocking), warnings=tuple(warnings))
+
+
+def image_issue_report(
+    listing: CanonicalListing,
+    stored: Mapping[UUID, ImageReport],
+    pipeline_reports: Sequence[ImageReport],
+) -> ErrorReport:
+    """SI4 A14 (CP-D1): the gate's items the issue inbox syncs as source `vision_model`. The
+    "not checked yet" item (`source=system`) is dropped: a pending check is not a seller issue.
+    The approve gate keeps calling `evaluate_image_gate` unchanged."""
+    gate = evaluate_image_gate(listing, stored, pipeline_reports)
+    items = [e for e in (*gate.blocking, *gate.warnings) if e.source is not ErrorSource.SYSTEM]
+    failed = any(e.severity is Severity.ERROR for e in items)
+    return ErrorReport(
+        status="failed" if failed else "passed",
+        errors=items,
+        listing_id=listing.listing_id,
+    )

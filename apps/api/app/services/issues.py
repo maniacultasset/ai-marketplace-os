@@ -1,6 +1,6 @@
 """The issue inbox (S19 T18-T20; DATABASE.md §5.7 :1304-1336; CP-D2).
 
-`sync_issues(uow, listing, source, report, *, run_id, cause, scope_fields=None, ...)` runs in the
+`sync_issues(uow, listing, source, report, *, run_id, cause, critical_keys, ...)` runs in the
 transaction that writes a version-linked `validation_runs` row (S18's backend re-check, the PATCH
 re-check, `validate`) or, from S21, an adapter result (`run_id=None`, `scope_fields` = the paths
 sent):
@@ -15,7 +15,9 @@ sent):
    else → `revalidated_clean`. An adapter result closes only rows on the fields it sent.
 
 The per-attempt rows the generation graph writes (no version) never reach the inbox.
-Step 4 (linking `user_action` items to human tasks) is C2, after v1.
+Step 4 (one Inbox question behind a seller-fixable error row) is `services/issue_questions.py`
+(SI4 A13, rules and vision sources; adapter sources in phase B). SI4 A6: a row hit by a safety
+override is never auto-fixable; A10: `record_auto_fixes` writes the fix pass's trail.
 
 `list_issues` and `dismiss` serve the two routes. A dismissal accepts an open **warning**; an
 error is never dismissed (the Rules Engine stays the arbiter, invariant 2): 409 before any SQL,
@@ -26,12 +28,13 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
+from mkos_schemas.enums import ErrorSource, FixAction, RetryClass, Severity
 from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.errors import ConflictError, NotFoundError
@@ -39,15 +42,22 @@ from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.auto_fix.fixers import FixRecord
+from app.services.auto_fix.policy import override_reason
 
 log = get_logger(__name__)
 
 ISSUE_SOURCES: Final = frozenset(
     {"schema", "rules_engine", "vision_model", "amazon_adapter", "flipkart_adapter"}
 )
-RESOLUTIONS: Final = {"edit": "human_edit", "regenerate": "regenerated"}
+RESOLUTIONS: Final = {
+    "edit": "human_edit",
+    "regenerate": "regenerated",
+    "status_sync": "marketplace_cleared",
+}
 VALUE_MAX: Final = 600
 TEMPLATE_PREFIX: Final = "attributes."
+RULES_SOURCE: Final = "rules_engine"
 Keyset = tuple[datetime, uuid.UUID]
 
 
@@ -56,6 +66,14 @@ class SyncResult:
     opened: int
     repeated: int
     closed: int
+
+
+def adapter_source(marketplace: str) -> str:
+    """The issue source of a marketplace's adapter results (`<marketplace>_adapter`)."""
+    source = f"{marketplace}_adapter"
+    if source not in ISSUE_SOURCES:
+        raise ValueError(f"{marketplace} has no adapter issue source")
+    return source
 
 
 def resolution_for(cause: str) -> str:
@@ -75,12 +93,23 @@ def dedupe_key(source: str, item: ErrorItem, listing_item_id: uuid.UUID | None =
     return key if listing_item_id is None else f"{key}|item:{listing_item_id}"
 
 
-def classify(item: ErrorItem) -> tuple[str, str, str | None]:
-    """`(error_class, retry_class, fix_action)`: the item's, else the code's metadata."""
+def classify(
+    item: ErrorItem, *, critical_keys: frozenset[str], source: str | None = None
+) -> tuple[str, str, str | None]:
+    """`(error_class, retry_class, fix_action)`: the item's, else the code's metadata. A row hit
+    by a safety override (SI4 A6, CP-D4: a critical key, a compliance or commercial gate, an
+    unknown class, an image, a variation rebuild) is never auto-fixable. `critical_keys` has no
+    default, so no caller can drop the override by omission (CP-D9)."""
     meta = ERROR_CODE_META.get(item.error_code)
     error_class = item.error_class or (meta.error_class if meta else None)
     retry_class = item.retry_class or (meta.retry_class if meta else None)
     fix_action = item.fix_action or (meta.fix_action if meta else None)
+    origin = item.source.value if source is None else source
+    if (
+        fix_action is FixAction.REBUILD_VARIATION
+        or override_reason(item, source=origin, critical_keys=critical_keys) is not None
+    ):
+        fix_action = None
     return (
         "unknown" if error_class is None else error_class.value,
         "user_action" if retry_class is None else retry_class.value,
@@ -97,8 +126,12 @@ def _issue(
     run_id: uuid.UUID | None,
     version_id: uuid.UUID | None,
     job_id: uuid.UUID | None,
+    critical_keys: frozenset[str],
+    listing_item_id: uuid.UUID | None = None,
 ) -> NewIssue:
-    error_class, retry_class, fix_action = classify(item)
+    error_class, retry_class, fix_action = classify(
+        item, critical_keys=critical_keys, source=source
+    )
     value = item.value_submitted
     return NewIssue(
         listing_id=listing.id,
@@ -114,6 +147,7 @@ def _issue(
         listing_version_id=version_id,
         validation_run_id=run_id,
         job_id=job_id,
+        listing_item_id=listing_item_id,
         auto_fixable=fix_action is not None,
         fix_action=fix_action,
         rule_id=item.rule_id,
@@ -132,9 +166,15 @@ async def sync_issues(
     run_id: uuid.UUID | None,
     cause: str,
     scope_fields: Sequence[str] | None = None,
+    critical_keys: frozenset[str],
     version_id: uuid.UUID | None = None,
     job_id: uuid.UUID | None = None,
+    listing_item_ids: Mapping[str, uuid.UUID] | None = None,
+    close: bool = True,
 ) -> SyncResult:
+    """Steps 1-3 (module docstring). SI4 A17: `listing_item_ids` (dedupe key → the SKU's
+    `listing_items` id) is set on a new row only (the key keeps today's shape); `close=False`
+    opens and repeats but closes nothing (a status read of a `failed` listing, CP-D16)."""
     if source not in ISSUE_SOURCES:
         raise ValueError(f"{source} is not an issue source")
     items: dict[str, ErrorItem] = {}
@@ -145,20 +185,30 @@ async def sync_issues(
     opened = repeated = 0
     for key, item in items.items():
         new = _issue(
-            listing, source, item, key, run_id=run_id, version_id=version_id, job_id=job_id
+            listing,
+            source,
+            item,
+            key,
+            run_id=run_id,
+            version_id=version_id,
+            job_id=job_id,
+            critical_keys=critical_keys,
+            listing_item_id=None if listing_item_ids is None else listing_item_ids.get(key),
         )
         _row, created = await uow.listing_issues.upsert_open(new)
         if created:
             opened += 1
         else:
             repeated += 1
-    closed = await uow.listing_issues.close_missing(
-        listing.id,
-        source,
-        list(items),
-        resolution_for(cause),
-        field_paths=scope_fields,
-    )
+    closed = 0
+    if close:
+        closed = await uow.listing_issues.close_missing(
+            listing.id,
+            source,
+            list(items),
+            resolution_for(cause),
+            field_paths=scope_fields,
+        )
     result = SyncResult(opened=opened, repeated=repeated, closed=closed)
     if opened or closed:
         log.info(
@@ -170,6 +220,94 @@ async def sync_issues(
             closed=closed,
         )
     return result
+
+
+# ---- SI4 A10: the trail of the fix pass ----
+
+AUTO_FIXED_ACTION: Final = "listing.auto_fixed"
+REASON_MAX: Final = 1000
+
+
+def _fixed_item(record: FixRecord) -> ErrorItem:
+    """The pre-fix item a record fixed (the recheck's source, `rules_engine`)."""
+    meta = ERROR_CODE_META.get(record.error_code)
+    retry = None if meta is None else meta.retry_class
+    return ErrorItem(
+        field=record.field,
+        error_code=record.error_code,
+        severity=Severity.ERROR,
+        message=record.message or record.action_taken,
+        source=ErrorSource.RULES_ENGINE,
+        retryable=retry in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT),
+        rule_id=record.rule_id,
+        auto_fixable=True,
+        fix_action=record.fix_action,
+    )
+
+
+def trail_reason(record: FixRecord, version: int) -> str:
+    """The audit `reason`: the trail text, then the fix action, the field, the version and the
+    two digests (never the slot text; the `listing` audit allow-list keeps only status keys)."""
+    tag = (
+        f" [{record.fix_action.value} {record.field} v{version} "
+        f"{record.before_sha[:16]}\u2192{record.after_sha[:16]}]"
+    )
+    return (record.action_taken + tag)[:REASON_MAX]
+
+
+async def record_auto_fixes(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    records: Sequence[FixRecord],
+    *,
+    run_id: uuid.UUID | None,
+    version_id: uuid.UUID | None,
+    version: int,
+    status: str,
+    job_id: uuid.UUID | None,
+    critical_keys: frozenset[str],
+    cause: str = "generate",
+) -> int:
+    """Per record: open this version's row for the pre-fix item, close it `auto_fixed` with the
+    trail text, and write one `system` audit row. Runs before the re-check's `sync_issues`
+    (CP-D2), so no row is closed by the sync and then reopened. A same-key row an older version
+    left open is closed first the way the sync closes it for `cause` (`resolution_for`), since
+    the guard keeps a row's `listing_version_id` immutable: the fresh row then carries the
+    fixing version (the fix shows in that version's review) and `recurrence_of_id` links it to
+    the older row. Returns the rows closed `auto_fixed`."""
+    closed = 0
+    for record in records:
+        item = _fixed_item(record)
+        key = dedupe_key(RULES_SOURCE, item)
+        older = await uow.listing_issues.open_row(listing.id, key)
+        if older is not None and older.listing_version_id != version_id:
+            await uow.listing_issues.close_open(older.id, resolution_for(cause))
+        new = _issue(
+            listing,
+            RULES_SOURCE,
+            item,
+            key,
+            run_id=run_id,
+            version_id=version_id,
+            job_id=job_id,
+            critical_keys=critical_keys,
+        )
+        row, _created = await uow.listing_issues.upsert_open(new)
+        if await uow.listing_issues.close_auto_fixed(row.id, record.action_taken):
+            closed += 1
+        await uow.audit.write(
+            tenant_id=listing.tenant_id,
+            actor_type="system",
+            actor_user_id=None,
+            action=AUTO_FIXED_ACTION,
+            entity_type="listing",
+            entity_id=listing.id,
+            after=json.dumps({"status": status}),
+            reason=trail_reason(record, version),
+        )
+    if records:
+        log.info("issues.auto_fixed", listing_id=str(listing.id), fixes=len(records))
+    return closed
 
 
 # ---- the inbox routes ----

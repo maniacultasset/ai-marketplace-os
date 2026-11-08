@@ -4,7 +4,10 @@
   what one submission sends (sorted keys, no whitespace), whose sha256 is the row's
   `payload_sha256` and feeds the marketplace idempotency key. Images appear only as
   `image:<id>@<content_hash>`, never a URL; the snapshot holds no token, no account secret and no
-  idempotency key.
+  idempotency key. SI2: it also carries each unit's seller facts (`facts`: price, MRP, currency,
+  country, the manufacturer's name and address, the composition; decimals as strings), so a
+  price-only change moves the sha256. The snapshot is a private object under the tenant prefix,
+  and holds the manufacturer's address exactly as the marketplace payload does (DPDP note).
 - `write_snapshot` / `write_raw`: one object each under the tenant prefix of the submissions
   bucket, `<tenant_id>/submissions/<submission_id>/{payload.json,raw.jsonl}`. The raw file is one
   JSON line per marketplace answer `{seller_sku, operation, body}` in call order; its sha256 is
@@ -21,7 +24,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
-from app.adapters.base import AdapterListing
+from app.adapters.base import AdapterListing, SellerFacts, composition_text
 from app.adapters.storage import ObjectStorage, submissions_bucket
 
 SNAPSHOT_TYPE: Final = "application/json"
@@ -35,6 +38,32 @@ def snapshot_key(tenant_id: uuid.UUID, submission_id: uuid.UUID) -> str:
 
 def raw_key(tenant_id: uuid.UUID, submission_id: uuid.UUID) -> str:
     return f"{tenant_id}/submissions/{submission_id}/raw.jsonl"
+
+
+def _money(value: Any) -> str | None:
+    return None if value is None else str(value)
+
+
+def _composition(facts: SellerFacts) -> str | None:
+    try:
+        return composition_text(facts.fiber_composition_text, facts.fiber_composition_parts)
+    except ValueError:
+        return None  # the adapter refuses it (VALUE_NOT_ALLOWED); nothing is sent
+
+
+def _facts(item: AdapterListing) -> dict[str, Any]:
+    return {
+        str(product_id): {
+            "mrp": _money(f.mrp),
+            "selling_price": _money(f.selling_price),
+            "currency": f.currency,
+            "country_of_origin": f.country_of_origin,
+            "manufacturer_name": f.manufacturer_name,
+            "manufacturer_address": f.manufacturer_address,
+            "fiber_composition": _composition(f),
+        }
+        for product_id, f in sorted(item.unit_facts.items(), key=lambda kv: str(kv[0]))
+    }
 
 
 def snapshot_bytes(
@@ -67,6 +96,7 @@ def snapshot_bytes(
         "product_type": None if item.template is None else item.template.product_type,
         "listing": listing,
         "images": [image_tags[i] for i in sorted(image_tags, key=str)],
+        "facts": _facts(item),
     }
     return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 

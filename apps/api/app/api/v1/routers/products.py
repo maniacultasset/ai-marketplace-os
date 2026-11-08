@@ -25,6 +25,7 @@ from app.api.v1.schemas.products import (
     FibreOut,
     PhotoFactOut,
     ProductCreate,
+    ProductIdentifierOut,
     ProductImageOut,
     ProductOut,
     ProductPage,
@@ -127,6 +128,15 @@ def _out(view: products.ProductView) -> ProductOut:
         created_at=view.created_at,
         updated_at=view.updated_at,
         photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
+        product_identifier=(
+            None
+            if view.product_identifier is None
+            else ProductIdentifierOut.model_construct(
+                type=view.product_identifier[0],  # type: ignore[arg-type]
+                value=view.product_identifier[1],
+            )
+        ),
+        identifier_exemption=view.identifier_exemption,
     )
 
 
@@ -153,6 +163,12 @@ async def products_create(
             image_uploads=tuple(
                 CreateUpload(storage_key=u.storage_key, slot=u.slot) for u in body.image_uploads
             ),
+            product_identifier=(
+                None
+                if body.product_identifier is None
+                else (body.product_identifier.type, body.product_identifier.value)
+            ),
+            identifier_exemption=body.identifier_exemption,
         ),
     )
     response.headers["ETag"] = view.etag
@@ -225,6 +241,8 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = dict(value)
         elif name == "confirm_attributes":
             out[name] = tuple(value)
+        elif name == "product_identifier":
+            out[name] = (value.type, value.value)
         else:
             out[name] = value
     return out

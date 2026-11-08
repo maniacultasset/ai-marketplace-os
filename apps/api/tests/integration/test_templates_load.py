@@ -271,3 +271,64 @@ def test_templates_load_default_file_is_the_platform_templates(
     assert (code, out.out) == (
         0, f"templates load: ok (0 inserted, {count} unchanged, 0 promoted)\n"
     )  # fmt: skip
+
+
+def test_si2_new_versions_promote_over_the_prod_rows(
+    cli_env: Path, superuser_conn: Conn, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SI2 T6 (AC9): over a database holding the pre-SI2 mappings (Amazon kurta v2 / tshirts
+    v1, Flipkart kurta v2 / t_shirt v1), the platform file inserts the four new versions and
+    promotes them; the old rows stay byte-identical, so a listing pinned to one keeps its pin;
+    a rerun inserts nothing."""
+    from app.cli import PLATFORM_TEMPLATES_PATH
+
+    loads = json.loads(PLATFORM_TEMPLATES_PATH.read_text(encoding="utf-8"))
+    old = {
+        ("amazon", "ethnic_wear_kurta_sets"): 2,
+        ("amazon", "tshirts"): 1,
+        ("flipkart", "ethnic_wear_kurta_sets"): 2,
+        ("flipkart", "tshirts"): 1,
+    }
+    before = []
+    for item in loads:
+        key = (item["template"]["marketplace"], item["template"]["category"])
+        if key in old:
+            prior = json.loads(json.dumps(item))
+            prior["version"] = old[key]
+            prior["template"]["specs"].pop("manufacturer")
+            prior["template"]["specs"].pop("fiber_composition")
+            prior["template"]["optional_attributes"] = [
+                a
+                for a in prior["template"]["optional_attributes"]
+                if a not in ("manufacturer", "fiber_composition")
+            ]
+            before.append(prior)
+    assert len(before) == 4
+    assert run(write(cli_env, before, "old.json"), capsys)[0] == 0
+    snapshot = superuser_conn.execute(
+        "SELECT marketplace, category, version, attributes::text FROM category_templates "
+        "WHERE source = 'manual' ORDER BY 1, 2, 3"
+    ).fetchall()
+    code = main(["templates", "load"])
+    capsys.readouterr()
+    assert code == 0
+    current = superuser_conn.execute(
+        "SELECT marketplace, category, version FROM category_templates "
+        "WHERE is_current AND category IN ('ethnic_wear_kurta_sets', 'tshirts') ORDER BY 1, 2"
+    ).fetchall()
+    assert current == [
+        ("amazon", "ethnic_wear_kurta_sets", 3),
+        ("amazon", "tshirts", 2),
+        ("flipkart", "ethnic_wear_kurta_sets", 3),
+        ("flipkart", "tshirts", 2),
+    ]
+    for marketplace, category, version, text in snapshot:
+        again = superuser_conn.execute(
+            "SELECT attributes::text FROM category_templates "
+            "WHERE marketplace = %s AND category = %s AND version = %s",
+            [marketplace, category, version],
+        ).fetchone()
+        assert again == (text,)
+    code = main(["templates", "load"])
+    out = capsys.readouterr()
+    assert code == 0 and "(0 inserted," in out.out

@@ -306,3 +306,20 @@ async def test_fake_ptd_calls_hold_header_names_only(fake: Any) -> None:
     assert [c["kind"] for c in calls] == ["ptd", "ptd_schema"]
     assert "x-amz-access-token" in calls[0]["header_names"]
     assert token not in repr(calls)
+
+
+async def test_si2_fake_ptd_serves_the_listing_definition(fake: Any) -> None:
+    """SI2 T11: `requirements=LISTING` serves `<PT>.listing.schema.json` and echoes the value;
+    PRODUCT_ONLY still serves the old fixture."""
+    from tests.support.fake_marketplace import ptd_fixture
+
+    client, token, _ = fake
+    listing = await client.get(
+        f"{PTD}/KURTA", params={**PTD_Q, "requirements": "LISTING"}, headers=_h(token)
+    )
+    assert listing.status_code == 200 and listing.json()["requirements"] == "LISTING"
+    body = await client.get(_link_path(listing.json()))
+    assert body.content == ptd_fixture("KURTA.listing.schema.json")
+    product = (await _envelope(client, token)).json()
+    assert product["requirements"] == "LISTING_PRODUCT_ONLY"
+    assert (await client.get(_link_path(product))).content == ptd_fixture("KURTA.schema.json")

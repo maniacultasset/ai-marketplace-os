@@ -41,7 +41,7 @@ from uuid import UUID
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ItemMarketplaceState, Marketplace, MarketplaceState, Severity
-from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.amazon import constants as c
@@ -69,8 +69,10 @@ from app.adapters.base import (
     RawResponseSink,
     UpdateFields,
     fields_by_sku,
+    issue_text,
+    party_secrets,
 )
-from app.adapters.error_map import ErrorMapper
+from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, read_issue
 
 NO_LISTING_ID: Final = UUID(int=0)
 MAX_PERFORMANCE_DAYS: Final = 366
@@ -157,8 +159,10 @@ class AmazonAdapter(MarketplaceAdapter):
         index: Mapping[str, tuple[str, ...]],
         scope: Iterable[str],
         values: Mapping[str, str | None],
+        secrets: Sequence[str] = (),
     ) -> tuple[dict[str, ErrorItem], dict[str, ErrorItem], list[ErrorItem]]:
-        """(failed path -> error, warned path -> warning, item-level errors)."""
+        """(failed path -> error, warned path -> warning, item-level errors). `secrets` (SI2:
+        the manufacturer strings, `party_secrets`) are scrubbed from every issue text."""
         body = _write_reply(response)
         issues = body.get("issues") or body.get("errors") or []
         in_scope = set(scope)
@@ -179,10 +183,11 @@ class AmazonAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=str(issue.get("message", "")),
+                    raw_message=issue_text(str(issue.get("message", "")), names, index, secrets),
                     field=path,
                     value=values.get(path) if path else None,
                     categories=categories,
+                    secrets=secrets,
                 )
                 if severity == "WARNING":
                     one = one.model_copy(update={"severity": Severity.WARNING})
@@ -203,10 +208,11 @@ class AmazonAdapter(MarketplaceAdapter):
         index: Mapping[str, tuple[str, ...]],
         scope: Sequence[str],
         sent: Sequence[str],
+        secrets: Sequence[str] = (),
     ) -> _Outcome:
         unit = mapped.unit
-        values: dict[str, str | None] = dict.fromkeys(scope)
-        failed, warned, loose = self._issue_items(response, mapped, index, scope, values)
+        values: dict[str, str | None] = dict.fromkeys(scope)  # never a party value (SI2)
+        failed, warned, loose = self._issue_items(response, mapped, index, scope, values, secrets)
         body = _write_reply(response)
         status = str(body.get("status", "")).upper()
         invalid = response.status != 200 or status != c.ACCEPTED
@@ -386,7 +392,9 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "put", response.raw)
             try:
-                outcome = self._outcome(response, one, index, one.paths, one.submitted)
+                outcome = self._outcome(
+                    response, one, index, one.paths, one.submitted, party_secrets(item)
+                )
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             results.append(outcome.item)
@@ -460,7 +468,7 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
             try:
-                outcome = self._outcome(response, one, index, scope, sent)
+                outcome = self._outcome(response, one, index, scope, sent, party_secrets(item))
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}
@@ -511,16 +519,53 @@ class AmazonAdapter(MarketplaceAdapter):
         else:
             state = MarketplaceState.PROCESSING
         asin = summary.get("asin")
-        return ListingResult(
+        read_fields, read_errors = self._read_fields(paths, issues, index)
+        return ListingRead(
             listing_id=listing_id or NO_LISTING_ID,
             marketplace=Marketplace.AMAZON,
             external_id=str(asin)[:64] if asin else None,
             status=status,
             idempotency_key=f"get:{seller_sku}"[:255],
-            fields=[FieldResult(field=p, status="succeeded") for p in paths],
+            fields=read_fields,
+            errors=read_errors,
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
         )
+
+    def _read_fields(
+        self, paths: Sequence[str], issues: Sequence[Any], index: Mapping[str, tuple[str, ...]]
+    ) -> tuple[list[FieldResult], list[ErrorItem]]:
+        """SI4 A16 (AC13): the read's ERROR and WARNING issues as field results (one per path)
+        and as items (one per issue, read order), mapped through
+        this adapter's error map like a write's (`_issue_items`). A named path fails on that
+        path (a warning keeps it `succeeded` with the item); an item-level one is `listing`. The
+        raw text is scrubbed of this session's tokens; no value is read back."""
+        fields = {p: FieldResult(field=p, status="succeeded") for p in paths}
+        errors: list[ErrorItem] = []  # every issue, in read order (round 3 F2)
+        secrets = self._client.used_secrets()
+        for issue in issues:
+            if not isinstance(issue, dict):
+                continue
+            severity = str(issue.get("severity", "")).upper()
+            if severity not in ("ERROR", "WARNING"):
+                continue
+            names = _names(issue.get("attributeNames"))
+            found: Sequence[str | None] = sorted(
+                {p for n in names for p in index.get(n, ()) if p != "variants"}
+            )
+            for path in found or [None]:
+                one = self._map.to_item(
+                    raw_code=str(issue.get("code", "")),
+                    raw_message=str(issue.get("message", "")),
+                    field=path,
+                    marketplace=Marketplace.AMAZON,
+                    categories=_names(issue.get("categories")),
+                    secrets=secrets,
+                )
+                one = read_issue(one, warning=severity == "WARNING")
+                errors.append(one)
+                fields = fold_read_issue(fields, one, warning=severity == "WARNING")
+        return sorted(fields.values(), key=lambda f: f.field), errors[:MAX_ERROR_ITEMS]
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

@@ -85,6 +85,14 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
         "brand_name": "Acme Naturals",
         "owner_name": "Asha Rao",
     },
+    # SI5
+    "invites_create": {"email": "meera@fabrica.example", "role": "reviewer"},
+    "invites_lookup": {"token": "T" * 43},
+    "invites_accept": {"token": "T" * 43, "password": COMPLIANT_PASSWORD},
+    "invites_join": {"token": "T" * 43},
+    "auth_password_reset": {"token": "R" * 43, "new_password": COMPLIANT_PASSWORD},
+    "admin_tenants_activate": {"reason": "Paid by bank transfer."},
+    "admin_tenants_extend_trial": {"days": 30, "reason": "Pilot runs longer."},
 }
 # Ops whose every body field is optional: `{}` is valid, so break a field instead.
 _INVALID_JSON: dict[str, dict[str, Any]] = {
@@ -129,8 +137,9 @@ def _path(op: Operation, value: str = ID) -> str:
     if op.path_id:
         path = path.replace("{" + op.path_id + "}", value)
     # ADR-0019: a platform row's id, not a tenant-owned one (so no `path_id`); ADR-0023: a
-    # trusted browser is the user's own, not the tenant's
-    path = path.replace("{request_id}", value).replace("{device_id}", value)
+    # trusted browser is the user's own, not the tenant's; SI5: a platform admin's target tenant
+    for name in ("request_id", "device_id", "target_tenant_id"):
+        path = path.replace("{" + name + "}", value)
     return PREFIX + path.replace("{marketplace}", "amazon")
 
 
@@ -153,7 +162,9 @@ def valid_request(op: Operation) -> Call:
 def invalid_request(op: Operation) -> Call:
     """Break one input. Raises when an op has no input (it then declares no 422)."""
     call = valid_request(op)
-    if op.path_id or "{request_id}" in op.path or "{device_id}" in op.path:
+    if op.path_id or any(
+        "{" + name + "}" in op.path for name in ("request_id", "device_id", "target_tenant_id")
+    ):
         call.url = _path(op, "not-a-uuid")
     elif op.op_id == "marketplaces_callback":
         call.params = {"code": "auth-code"}

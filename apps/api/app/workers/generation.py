@@ -59,8 +59,10 @@ from mkos_schemas.jobs import AgentBlockStatus
 from app.adapters.storage import get_storage
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.core.resolved_facts import facts_digest, for_rules
+from app.core.resolved_facts import for_rules, listing_facts_digest
 from app.repositories.uow import tenant_uow
+from app.services.auto_fix.apply import auto_fix
+from app.services.auto_fix.fixers import FixContext, FixRecord
 from app.services.generation_context import GenerationContextError, build_context
 from app.services.generation_images import load_context_images, order_for_listing, pick_context
 from app.services.generation_persist import PersistPlan, Pins, make_persist
@@ -74,6 +76,7 @@ from app.services.generation_result import (
 from app.services.photo_facts import PHOTO_PROMPT_PREFIX, build_targets, photo_set, screen
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
+from app.services.seller_facts import seller_overlay
 from app.workers import budget
 from app.workers.errors import JobFailed
 from app.workers.registry import JobContext, Outcome, register
@@ -191,9 +194,10 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 "The rules could not be loaded.",
                 zero_reservation=True,
             ) from None
-        facts = await uow.product_facts.resolve(listing.product_id)
-        if facts is None:
+        family = await uow.product_facts.resolve_family(listing.product_id)
+        if family is None:
             raise _fail(ctx, ErrorCode.NOT_FOUND, "The product is gone.", zero_reservation=True)
+        facts = family[0]
         try:
             gctx = await build_context(
                 uow,
@@ -211,6 +215,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         claim_started_at = job.started_at or datetime.now(UTC)
         created_by = job.created_by
         image_rows = await uow.images.listing_set(listing.product_id)
+        critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
@@ -236,7 +241,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         rules_version=rules.ruleset.rules_version,
         template_id=rules.template_id,
         template_version=rules.template_version,
-        facts_digest=facts_digest(facts),
+        facts_digest=listing_facts_digest(*family),  # SI2 D9: a family pins its children too
     )
     plan_base: dict[str, Any] = {
         "tenant_id": tenant,
@@ -257,7 +262,9 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         product_id=listing.product_id,
         marketplace=Marketplace(listing.marketplace),
         rules=rules,
+        critical_keys=critical,
         product=product,
+        facts=facts,
     )
     try:
         result = await run_listing_pipeline(gctx, deps)
@@ -315,6 +322,8 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         # CP15: the backend pins the version's images before the re-check, so the stored
         # re-check judged the images the version holds (a pipeline value is replaced)
         pinned = trusted.listing.model_copy(update={"images": order_for_listing(image_rows)})
+        # SI2 T16 (D5): the version stores, and the re-check judges, the seller's factual values
+        pinned = seller_overlay(pinned, facts, rules.template)
         trusted = dataclasses.replace(trusted, listing=pinned)
     attempts_used = len(deps.rules_calls)
     if attempts_used != trusted.result.attempts_used:
@@ -324,7 +333,18 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             seen=attempts_used,
             reported=trusted.result.attempts_used,
         )
-    report = None if trusted.listing is None else recheck(trusted.listing, rules, product)
+    report: ErrorReport | None = None
+    fixes: tuple[FixRecord, ...] = ()
+    if trusted.listing is not None:
+        # SI4 A9 (§2 fact 1, AC7): the same pure fix pass the correction loop ran, on the final
+        # listing; the fixed listing is what the version stores. A human edit never gets here (D6)
+        fixed = auto_fix(
+            trusted.listing,
+            lambda candidate: recheck(candidate, rules, product),
+            FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical),
+        )
+        trusted = dataclasses.replace(trusted, listing=fixed.listing)
+        report, fixes = fixed.report, fixed.records
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
@@ -345,7 +365,13 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             tasks=len(decision.tasks),
             dropped=[reason for _key, reason in decision.dropped],
         )
-        photo = {"photo": decision, "pre_facts": facts, "seen_set": seen_set, "sent_set": sent_set}
+        photo = {
+            "photo": decision,
+            "pre_facts": facts,
+            "pre_children": family[1],
+            "seen_set": seen_set,
+            "sent_set": sent_set,
+        }
     if not move.saves_version:
         failed_result: dict[str, Any] = {}
         plan = PersistPlan(
@@ -379,7 +405,9 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         records=trusted.records,
         listing=trusted.listing,
         image_reports=trusted.result.image_reports,
+        image_reports_stored=deps.stored_image_reports,
         recheck=report,
+        fixes=fixes,
         attempts_used=attempts_used,
         version_id=version_id,
         result=outcome_result,

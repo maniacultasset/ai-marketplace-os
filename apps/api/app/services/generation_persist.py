@@ -15,17 +15,23 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
 3. one `rules_engine` run per recorded `validate_rules` call (attempt k, version NULL) and, with a
    version, the backend's re-check (attempt n+1, linked to it), each with the pins and the
    `facts_digest`;
-4. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
+4. SI4 A10: the fix pass's trail (`record_auto_fixes`: each fixed item's row closed
+   `auto_fixed` with its `action_taken`, one `listing.auto_fixed` audit row per fix), then the
+   re-check's issue sync; then A13's questions: tasks whose issues all closed are cancelled, and
+   the open error rows only the seller can fix open or reuse one task each (the move becomes
+   `blocked/human_task_open`);
+5. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
    one was saved;
-5. the move, with the job as actor.
+6. the move, with the job as actor.
 
 SI3: when the plan carries a photo decision, `apply_photo_decision` runs first, right after the
 listing lock (`services/photo_facts_store.py`: the product lock, the superseded check, the guarded
 photo writes and questions, their audit rows, the re-read). The version-linked re-check then
-stamps `recheck_digest(pre, reread, pinned)`, so a listing generated with photo facts stays
-approvable, while a seller change made during the run still voids it. The applied photo set is
-written into the job's result dict as `photo_set` (the skip rule's record). Photo questions never
-block the listing (SI3 shared blocking rule).
+stamps `recheck_digest(pre, reread, pinned, children)` (a family's children as read with `pre`,
+SI2 D9), so a listing generated with photo facts stays approvable, while a seller change made
+during the run still voids it. The applied photo set is written into the job's result dict as
+`photo_set` (the skip rule's record). Photo questions never block the listing (SI3 shared
+blocking rule).
 
 Every insert is idempotent or fenced, so a replayed terminal write writes nothing twice.
 """
@@ -49,8 +55,11 @@ from app.core.logging import get_logger
 from app.core.resolved_facts import ProductFacts, recheck_digest
 from app.repositories.listings import JobActor, NewVersion
 from app.repositories.uow import TenantUnitOfWork
+from app.services.auto_fix.fixers import FixRecord
 from app.services.generation_result import Move
-from app.services.issues import sync_issues
+from app.services.image_gate import image_issue_report
+from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcile_tasks
+from app.services.issues import record_auto_fixes, sync_issues
 from app.services.photo_facts import PhotoDecision, PhotoSet
 from app.services.photo_facts_store import apply_photo_decision
 from app.services.pipeline_deps import RulesCall
@@ -82,6 +91,8 @@ class PersistPlan:
     listing: CanonicalListing | None = None
     image_reports: Sequence[ImageReport] = ()
     recheck: ErrorReport | None = None
+    image_reports_stored: Sequence[ImageReport] = ()  # SI4 A14: the deps' preloaded reports
+    fixes: tuple[FixRecord, ...] = ()  # SI4 A9/A10: the fix pass's records, for the trail
     attempts_used: int = 0
     version_id: uuid.UUID = field(default_factory=uuid.uuid4)
     # the Outcome's result dict: a persist that finds the listing taken empties its version id
@@ -90,6 +101,8 @@ class PersistPlan:
     # set the job saw at read time and the one it sent
     photo: PhotoDecision | None = None
     pre_facts: ProductFacts | None = None
+    # SI2 D9: a family's children as read with `pre_facts` (empty for a standalone)
+    pre_children: Sequence[ProductFacts] = ()
     seen_set: PhotoSet | None = None
     sent_set: PhotoSet = ()
 
@@ -169,6 +182,27 @@ def _discard(plan: PersistPlan) -> None:
         plan.result.update({"listing_version_id": None, "discarded": True})
 
 
+async def _ask(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    plan: PersistPlan,
+    move: Move,
+    canonical: CanonicalListing,
+    critical: frozenset[str],
+) -> Move:
+    """SI4 A13 (CP-D6, CP-D14; the shared blocking rule): after the syncs, cancel the questions
+    whose issues all closed, then open the questions behind the open error rows whatever the
+    rules verdict. Any question means an open blocking issue stands behind it, so the move is
+    the seeded `generating → blocked/human_task_open`."""
+    await reconcile_tasks(uow, listing)
+    asked = await open_questions(uow, listing, critical_keys=critical, images=canonical.images)
+    if not asked:
+        return move
+    if plan.result is not None:
+        plan.result["status"] = QUESTION_MOVE.to
+    return QUESTION_MOVE
+
+
 async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -> bytes | None:
     """SI3: the photo decision (module docstring); the re-check digest, or None without one."""
     if plan.photo is None or plan.pre_facts is None:
@@ -192,7 +226,7 @@ async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -
         tasks=applied.tasks,
         recorded=applied.record_set is not None,
     )
-    return recheck_digest(plan.pre_facts, applied.reread, plan.pins.facts_digest)
+    return recheck_digest(plan.pre_facts, applied.reread, plan.pins.facts_digest, plan.pre_children)
 
 
 def make_persist(plan: PersistPlan) -> Any:
@@ -241,6 +275,22 @@ def make_persist(plan: PersistPlan) -> Any:
             )
         )
         recheck = await _insert_runs(uow, plan, version.id, digest)
+        critical = await uow.product_facts.critical_keys()
+        if plan.fixes:
+            # SI4 A10 (CP-D2): the trail first, so a same-key row an older version left open is
+            # the one closed `auto_fixed`, not closed by the sync and then reopened
+            await record_auto_fixes(
+                uow,
+                listing,
+                plan.fixes,
+                run_id=None if recheck is None else recheck.id,
+                version_id=version.id,
+                version=number,
+                status=plan.move.to,
+                job_id=plan.job_id,
+                critical_keys=critical,
+                cause="regenerate" if regeneration else "generate",
+            )
         if recheck is not None and plan.recheck is not None:
             # S19 T18 (CP-D2): only the version-linked re-check feeds the issue inbox
             await sync_issues(
@@ -252,13 +302,29 @@ def make_persist(plan: PersistPlan) -> Any:
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,
                 job_id=plan.job_id,
+                critical_keys=critical,
             )
+        if recheck is not None:
+            # SI4 A14 (CP-D1): the stored image findings, full scope on `vision_model`
+            stored = {r.image_id: r for r in plan.image_reports_stored}
+            await sync_issues(
+                uow,
+                listing,
+                "vision_model",
+                image_issue_report(content, stored, plan.image_reports),
+                run_id=None,
+                cause="regenerate" if regeneration else "generate",
+                version_id=version.id,
+                job_id=plan.job_id,
+                critical_keys=critical,
+            )
+        move = await _ask(uow, listing, plan, plan.move, plan.listing, critical)
         await _insert_records(uow, plan, version.id)
         await uow.listings.move(
             listing,
-            to=plan.move.to,
-            event=plan.move.event,
-            reason=plan.move.reason,
+            to=move.to,
+            event=move.event,
+            reason=move.reason,
             actor=JobActor(plan.job_id),
             current_version_id=version.id,
         )
@@ -267,7 +333,7 @@ def make_persist(plan: PersistPlan) -> Any:
             job_id=str(plan.job_id),
             listing_id=str(listing.id),
             version_id=str(version.id),
-            status=plan.move.to,
+            status=move.to,
         )
 
     return persist

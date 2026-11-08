@@ -151,8 +151,15 @@ IGNORED_WITH_WARNING: Final[frozenset[str]] = frozenset(
     }
 )
 
-EXTENSION_COLUMNS: Final = ("style_number",)
-"""SI1 decision 14: columns beyond A.6 the import reads (the FE family CSV and the client form)."""
+IDENTIFIER_ALIASES: Final[Mapping[str, str | None]] = MappingProxyType(
+    {"ean": "ean", "upc": "upc", "gtin": "gtin", "barcode": None}
+)
+"""SI5 (PLAN D15): one barcode column instead of the A.6 type and value pair. The header names the
+type; `barcode` takes it from the length (12 upc, 8 or 13 ean, 14 gtin)."""
+
+EXTENSION_COLUMNS: Final = ("style_number", "identifier_exemption", *IDENTIFIER_ALIASES)
+"""SI1 decision 14: columns beyond A.6 the import reads (the FE family CSV and the client form);
+SI5 adds the barcode aliases and `identifier_exemption` (yes or no)."""
 
 _KNOWN: Final = frozenset(A6_COLUMNS) | frozenset(EXTENSION_COLUMNS)
 

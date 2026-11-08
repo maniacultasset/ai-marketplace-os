@@ -34,6 +34,7 @@ def _deps() -> Any:
         image_reports={},
         embedder=None,
         models=_ModelConfig.from_settings(cfg),
+        critical_keys=frozenset(),
     )
 
 
