@@ -348,3 +348,43 @@ async def test_a_replayed_key_never_leaves_the_check_pending(prev: PubWorld) -> 
         assert replay is None  # the same version, repairs and facts: a replay
     assert len(preview_jobs(prev, made.listing_id)) == 1
     assert _check(prev, made.listing_id)[:2] == (made.version_id, "issues")
+
+
+# ---- fix round 1 (R1-6): `remote_check` on the list rows and the detail ----
+
+
+async def test_list_and_detail_carry_the_remote_check(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    from .review_support import OPERATOR
+
+    prev.fake.preview_errors = [_title_error()]
+    made = await generated(prev.world)
+    headers = prev.world.headers(OPERATOR)
+
+    async def shown() -> tuple[Any, Any]:
+        detail = await api.get(f"/api/v1/listings/{made.listing_id}", headers=headers)
+        page = await api.get("/api/v1/listings", headers=headers)
+        assert detail.status_code == 200 and page.status_code == 200, page.text
+        (row,) = [r for r in page.json()["data"] if r["id"] == str(made.listing_id)]
+        return detail.json()["remote_check"], row["remote_check"]
+
+    pending, listed = await shown()
+    assert (
+        pending == listed == {"version_id": str(made.version_id), "status": "pending", "at": None}
+    )
+    await _run_previews(prev, made.listing_id)
+    found, listed = await shown()
+    assert found == listed
+    assert (found["version_id"], found["status"]) == (str(made.version_id), "issues")
+    assert found["at"] is not None
+
+
+async def test_no_remote_check_is_null(api: httpx.AsyncClient, pub: PubWorld) -> None:
+    from .review_support import OPERATOR
+
+    made = await generated(pub.world)  # the setting is off: no dry run
+    detail = await api.get(
+        f"/api/v1/listings/{made.listing_id}", headers=pub.world.headers(OPERATOR)
+    )
+    assert detail.status_code == 200 and detail.json()["remote_check"] is None
