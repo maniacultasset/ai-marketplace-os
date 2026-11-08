@@ -110,6 +110,11 @@ AMAZON_THEMES: Final[Mapping[frozenset[str], str]] = MappingProxyType(
         frozenset({"size", "color"}): "SIZE/COLOR",
     }
 )
+# SI13 (CP-D11): the Amazon attributes a theme axis may be asked under (a child missing one is
+# filled from its own variant value, `fill_variant_axis`)
+AXIS_ATTRIBUTES: Final[Mapping[str, tuple[str, ...]]] = MappingProxyType(
+    {"size": ("size", "size_name"), "color": ("color", "color_name")}
+)
 THEME_ATTRIBUTE: Final = "variation_theme"
 PARENTAGE_ATTRIBUTE: Final = "parentage_level"
 RELATIONSHIP_ATTRIBUTE: Final = "child_parent_sku_relationship"

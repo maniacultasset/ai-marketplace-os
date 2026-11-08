@@ -38,6 +38,7 @@ REPAIR_RULES = (
     "fill_from_facts",
     "drop_locked",
     "image_slot",
+    "fill_variant_axis",  # SI13 (0024)
 )
 RETIRED_REASONS = ("source_changed", "superseded", "regenerated")
 
