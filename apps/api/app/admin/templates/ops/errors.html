@@ -4,13 +4,26 @@
 <h2>Marketplace errors (most issues first, at most 200)</h2>
 <p class="text-muted">Add a reviewed row to <code>app/db/seed_data/error_map.amazon.json</code> in a PR, with the public page that confirms it; <code>errors load</code> loads it on deploy.</p>
 <table class="table table-vcenter card-table" data-ops="errors">
-  <thead><tr><th>Marketplace</th><th>Code</th><th>Mapped</th><th>Error code</th><th>Class</th><th>Lane</th><th>Issues</th><th>Tenants</th><th>First seen</th><th>Last seen</th><th>Recurrence</th><th>Resolutions</th><th>Suggested row</th></tr></thead>
+  <thead><tr><th>Marketplace</th><th>Code</th><th>Mapped</th><th>Error code</th><th>Class</th><th>Lane</th><th>Issues</th><th>Tenants</th><th>First seen</th><th>Last seen</th><th>Recurrence</th><th>Resolutions</th><th>Suggested row</th><th>AI proposal</th></tr></thead>
   <tbody>
   {% for row in rows %}
-    <tr><td>{{ row.marketplace }}</td><td>{{ row.marketplace_code or "-" }}</td><td>{{ "yes" if row.mapped else "no" }}</td><td>{{ row.error_code }}</td><td>{{ row.error_class }}</td><td>{{ row.lane }}</td><td>{{ row.issues }}</td><td>{{ row.tenants }}</td><td>{{ row.first_seen }}</td><td>{{ row.last_seen }}</td><td>{{ row.recurrence_rate }}</td><td>{% for name, n in row.resolutions.items() %}{{ name }}: {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</td><td>{% if row.suggested %}<pre>{{ row.suggested }}</pre>{% else %}-{% endif %}</td></tr>
+    <tr><td>{{ row.marketplace }}</td><td>{{ row.marketplace_code or "-" }}</td><td>{{ "yes" if row.mapped else "no" }}</td><td>{{ row.error_code }}</td><td>{{ row.error_class }}</td><td>{{ row.lane }}</td><td>{{ row.issues }}</td><td>{{ row.tenants }}</td><td>{{ row.first_seen }}</td><td>{{ row.last_seen }}</td><td>{{ row.recurrence_rate }}</td><td>{% for name, n in row.resolutions.items() %}{{ name }}: {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</td><td>{% if row.suggested %}<pre>{{ row.suggested }}</pre>{% else %}-{% endif %}</td><td>{% if row.proposal %}{{ row.proposal.status }} (tries {{ row.proposal.tries }}){% if row.proposal.plain_cause %}<br>{{ row.proposal.plain_cause }}<br>Fix: {{ row.proposal.suggested_fix }}<br>{{ row.proposal.error_class or "-" }} / {{ row.proposal.lane_class }}{% endif %}{% else %}-{% endif %}</td></tr>
   {% else %}
-    <tr><td colspan="13">No marketplace errors yet.</td></tr>
+    <tr><td colspan="14">No marketplace errors yet.</td></tr>
   {% endfor %}
   </tbody>
 </table>
+<h2>Value maps (proposals from refused-then-live values)</h2>
+<p class="text-muted">Approve one as a reviewed PR to <code>app/adapters/amazon/aliases.py</code> that bumps <code>ALIASES_VERSION</code>. Nothing here writes.</p>
+<table class="table table-vcenter card-table" data-ops="value-maps">
+  <thead><tr><th>Marketplace</th><th>Product type</th><th>Key</th><th>Sent</th><th>Went live as</th><th>Listings</th><th>Tenants</th><th>Alias line</th></tr></thead>
+  <tbody>
+  {% for p in value_maps %}
+    <tr><td>{{ p.marketplace }}</td><td>{{ p.product_type or "-" }}</td><td>{{ p.key }}</td><td>{{ p.v }}</td><td>{{ p.w }}</td><td>{{ p.listings }}</td><td>{{ p.tenants }}</td><td><code>{{ p.alias_line() }}</code></td></tr>
+  {% else %}
+    <tr><td colspan="8">No value-map proposal yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% if unpaired %}<p class="text-muted">Child refusals with no live value: {% for u in unpaired %}{{ u.key }} {{ u.v }} ({{ u.listings }}){% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
 {% endblock %}

@@ -84,3 +84,33 @@ def test_the_catalog_limit_is_bounded() -> None:
     for bad in ("0", "501", "x"):
         with pytest.raises(SystemExit):
             parser.parse_args(["errors", "catalog", "--limit", bad])
+
+
+# ---- SI13 T17 (AC17): the proposal next to the code, and the value-map section ----
+
+
+async def test_the_ops_page_shows_the_escaped_proposal_and_value_maps(
+    gen_world: GenWorld, admin_client: AdminClient
+) -> None:
+    await _unknown_on_two_tenants(gen_world)
+    gen_world.conn.execute("DELETE FROM marketplace_error_proposals")
+    gen_world.conn.execute("SET SESSION AUTHORIZATION migrator")
+    try:
+        gen_world.conn.execute(
+            "INSERT INTO marketplace_error_proposals (marketplace, match_on, raw_value, status, "
+            "tries, plain_cause, suggested_fix, lane_class, error_class) VALUES ('amazon', "
+            "'code', '77777', 'proposed', 1, '<b>x</b> Amazon wants another value', "
+            "'Check the value and send again', 'seller', 'invalid_value')"
+        )
+    finally:
+        gen_world.conn.execute("RESET SESSION AUTHORIZATION")
+    async with admin_client() as client:
+        response = await client.get(f"{ADMIN}/ops/errors")
+    assert response.status_code == 200, response.text
+    html = response.text
+    assert "&lt;b&gt;x&lt;/b&gt; Amazon wants another value" in html and "<b>x</b>" not in html
+    assert "proposed (tries 1)" in html
+    assert 'data-ops="value-maps"' in html and "No value-map proposal yet." in html
+    assert "<form" not in html.split('data-ops="errors"', 1)[1]
+    for slug in ("acme", "bharat"):
+        assert str(gen_world.tenant(slug)) not in html
