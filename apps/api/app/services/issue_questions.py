@@ -190,12 +190,17 @@ async def ask_after_check(
     asked = await open_questions(
         uow, listing, critical_keys=critical, template=template, images=images
     )
-    if not asked or not can_question_move(listing.status, listing.status_reason):
-        return listing
-    return await uow.listings.move(
-        listing,
-        to=QUESTION_MOVE.to,
-        event=QUESTION_MOVE.event,
-        reason=QUESTION_MOVE.reason,
-        actor=actor,
-    )
+    if asked and can_question_move(listing.status, listing.status_reason):
+        listing = await uow.listings.move(
+            listing,
+            to=QUESTION_MOVE.to,
+            event=QUESTION_MOVE.event,
+            reason=QUESTION_MOVE.reason,
+            actor=actor,
+        )
+    # SI11 T7: an edit or a validate asks the marketplace's dry run about the current version
+    # (only from a pre-approval status; it never fails the request)
+    from app.services.remote_preview import request_preview
+
+    await request_preview(uow, listing, listing.current_version_id, trigger="system")
+    return listing

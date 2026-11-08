@@ -487,6 +487,33 @@ class ListingRepository(TenantScopedRepository[Listing]):
             raise
         return row is not None
 
+    async def set_remote_check(
+        self,
+        listing_id: uuid.UUID,
+        version_id: uuid.UUID,
+        status: str,
+        *,
+        only_version: uuid.UUID | None = None,
+    ) -> bool:
+        """SI11: the marketplace dry run's state on one version (`ck_listings_remote_check`):
+        `pending` clears the time, a verdict stamps it. `only_version` writes only while the
+        stored check still names that version (a late verdict never overwrites a newer one)."""
+        self._own_session()
+        if status not in ("pending", "clean", "issues", "failed"):
+            raise ValueError("unknown remote check status")
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = update(Listing).where(Listing.id == listing_id, criterion)
+        if only_version is not None:
+            stmt = stmt.where(Listing.remote_check_version_id == only_version)
+        stmt = self._scoped_write(
+            stmt.values(
+                remote_check_version_id=version_id,
+                remote_check_status=status,
+                remote_check_at=None if status == "pending" else func.now(),
+            )
+        ).returning(Listing.id)
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
     async def repoint_account(
         self, marketplace: str, from_ids: Sequence[uuid.UUID], to_id: uuid.UUID
     ) -> builtins.list[uuid.UUID]:

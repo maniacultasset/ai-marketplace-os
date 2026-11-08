@@ -29,7 +29,13 @@ from typing import Any
 
 from mkos_schemas.listing import CanonicalListing
 
-from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate, ProductTypeSchema
+from app.adapters.base import (
+    AdapterItem,
+    AdapterListing,
+    AdapterRepair,
+    AdapterTemplate,
+    ProductTypeSchema,
+)
 from app.adapters.registry import family_has_parent
 from app.core.resolved_facts import ProductFacts
 from app.repositories.listings import PreviewSource
@@ -114,6 +120,7 @@ def build_adapter_listing(
     product_type_schema: ProductTypeSchema | None = None,
     parent_type_schema: ProductTypeSchema | None = None,
     allow_http_images: bool = False,
+    repairs: tuple[AdapterRepair, ...] = (),
 ) -> AdapterListing:
     pinned = source.template
     template = (
@@ -145,4 +152,5 @@ def build_adapter_listing(
         parent_type_schema=parent_type_schema,
         allow_http_images=allow_http_images,
         live=source.live,
+        repairs=repairs,
     )

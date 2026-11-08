@@ -41,6 +41,8 @@ from app.repositories.parties import BrandProfileRepository, BusinessPartyReposi
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.product_type_definitions import ProductTypeDefinitionRepository
 from app.repositories.products import ProductRepository
+from app.repositories.repairs import RepairRepository
+from app.repositories.resolution import ResolutionRepository
 from app.repositories.review_decisions import ReviewDecisionRepository
 from app.repositories.rules import RuleRepository
 from app.repositories.submissions import (
@@ -105,6 +107,9 @@ class TenantUnitOfWork:
     colourways: ColourwayRepository
     # SI7: the proposed images
     image_candidates: ImageCandidateRepository
+    # SI11: the adapter-side repairs
+    listing_repairs: RepairRepository
+    resolution: ResolutionRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -148,6 +153,8 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         brand_profiles=BrandProfileRepository(session, tenant_id),
         colourways=ColourwayRepository(session, tenant_id),
         image_candidates=ImageCandidateRepository(session, tenant_id),
+        listing_repairs=RepairRepository(session, tenant_id),
+        resolution=ResolutionRepository(session, tenant_id),
     )
 
 

@@ -81,6 +81,9 @@ class EnqueueSpec:
     # S17b (PLAN D15(b)): a procrastinate lock; jobs sharing one never run at the same time,
     # and a waiting one stays unfetched (`todo`), holding no worker slot
     lock: str | None = None
+    # SI11: a system job's own key (64 hex), for a job no HTTP key names (the dry run, an
+    # automatic resend); a second enqueue with the same key returns the first job
+    job_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -440,12 +443,14 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         payload = dict(spec.payload or {})
         if _payload_bytes(payload) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
+        if spec.job_key is not None and spec.http_key is not None:
+            raise ValueError("a job is keyed by an HTTP key or its own key, not both")
         key = (
             job_idempotency_key(
                 spec.http_key, kind.value, spec.listing_id, await self._key_began(spec.http_key)
             )
             if spec.http_key is not None
-            else None
+            else spec.job_key
         )
         values: dict[str, Any] = {
             "tenant_id": self.tenant_id,

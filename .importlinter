@@ -373,6 +373,23 @@ forbidden_modules =
     app.adapters.fake
 allow_indirect_imports = True
 
+# SI11 T5/T7 (ADR-0028): the marketplace dry run reaches Amazon only through
+# `app.workers.previewers`, whose view exposes `preview_remote` alone; it never holds a mutating
+# adapter, so a preview can never publish (invariant 1).
+[importlinter:contract:remote-preview-preview-only]
+name = the remote preview reaches the marketplace only through the preview view
+type = forbidden
+source_modules =
+    app.workers.remote_preview
+    app.services.remote_preview
+forbidden_modules =
+    app.workers.adapters
+    app.workers.publish
+    app.adapters.amazon.adapter
+    app.adapters.amazon.client
+    app.adapters.fake
+allow_indirect_imports = True
+
 # The preview path and the error mapper are pure (S20 T20): no HTTP client, socket or database,
 # directly or indirectly, so a preview can never send anything.
 [importlinter:contract:pure-mapping-no-io]

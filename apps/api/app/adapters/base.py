@@ -164,6 +164,23 @@ class AdapterPreview:
 
 
 @dataclass(frozen=True)
+class AdapterRepair:
+    """SI11 (ADR-0028): one stored adapter-side repair of one marketplace attribute. The adapter
+    applies it to a unit only while `sha256` of that unit's source value at `field_path` still
+    equals `source_digest` (the seller has not changed it since); `value` None drops the
+    attribute (`drop_locked`). `seller_sku` None means every unit of the listing."""
+
+    id: UUID
+    field_path: str
+    attribute: str
+    rule: str
+    source_digest: bytes
+    to_digest: bytes
+    value: tuple[Mapping[str, Any], ...] | None
+    seller_sku: str | None = None
+
+
+@dataclass(frozen=True)
 class AdapterListing:
     listing_id: UUID
     seller_sku: str
@@ -190,6 +207,9 @@ class AdapterListing:
     """SI9 B4 with SI5 CP-D14: the listing has a published version, so its next full send is an
     update; a preview or check of it does not refuse an item with no barcode (an update never
     does), so the pre-approval check agrees with what publish will send."""
+    repairs: tuple[AdapterRepair, ...] = ()
+    """SI11: the listing's live adapter-side repairs (`listing_repairs`), applied while their
+    source value is unchanged; a stale one is reported, never applied."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt
@@ -205,6 +225,7 @@ class AdapterListing:
             MappingProxyType({k: tuple(v) for k, v in self.colour_image_refs.items()}),
         )
         object.__setattr__(self, "unit_facts", MappingProxyType(dict(self.unit_facts)))
+        object.__setattr__(self, "repairs", tuple(self.repairs))
         _check_items(self.seller_sku, self.items)
 
     def units(self) -> tuple[AdapterItem, ...]:
