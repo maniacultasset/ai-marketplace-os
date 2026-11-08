@@ -9,6 +9,9 @@ Pure: no I/O.
 SI1 T16: the server-only derived objects sit at `<tenant_id>/<product_id>/derived/<image_id>/<name>`
 with `name` one of `clean.jpg`, `clean.png`, `vision.jpg`. `parse_derived_key` is as exact, and
 neither parser ever matches the other's keys (the orphan sweep reads image keys only).
+
+SI7: a candidate's object sits at `<tenant_id>/<product_id>/candidates/<candidate_id>.jpg`
+(`candidate_key`, `parse_candidate_key`); neither the image nor the derived parser matches it.
 """
 
 from __future__ import annotations
@@ -26,6 +29,9 @@ DERIVED_KEY_RE: Final = re.compile(
     rf"\A({_UUID})/({_UUID})/derived/({_UUID})/(clean\.jpg|clean\.png|vision\.jpg)\Z", re.ASCII
 )
 CLEAN_NAMES: Final[dict[str, DerivedName]] = {"image/jpeg": "clean.jpg", "image/png": "clean.png"}
+CANDIDATE_KEY_RE: Final = re.compile(
+    rf"\A({_UUID})/({_UUID})/candidates/({_UUID})\.jpg\Z", re.ASCII
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,3 +97,31 @@ def public_names(public_id: str, mime: str | None) -> list[str]:
     if mime in PUBLIC_EXTENSIONS:
         return [f"{public_id}.{PUBLIC_EXTENSIONS[mime]}"]
     return [f"{public_id}.{suffix}" for suffix in PUBLIC_EXTENSIONS.values()]
+
+
+# ---- SI7: candidate objects ----
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateKey:
+    tenant_id: UUID
+    product_id: UUID
+    candidate_id: UUID
+
+
+def candidate_key(tenant_id: UUID, product_id: UUID, candidate_id: UUID) -> str:
+    for value in (tenant_id, product_id, candidate_id):
+        if not isinstance(value, UUID):
+            raise ValueError("tenant_id, product_id and candidate_id must be UUIDs")
+    return f"{tenant_id}/{product_id}/candidates/{candidate_id}.jpg"
+
+
+def parse_candidate_key(key: str) -> CandidateKey | None:
+    """The ids of a well-formed candidate key, else None."""
+    if not isinstance(key, str):
+        return None
+    found = CANDIDATE_KEY_RE.match(key)
+    if found is None:
+        return None
+    tenant, product, candidate = (UUID(part) for part in found.groups())
+    return CandidateKey(tenant_id=tenant, product_id=product, candidate_id=candidate)

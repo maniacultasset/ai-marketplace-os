@@ -10,7 +10,6 @@ from collections.abc import Awaitable, Callable
 import procrastinate
 from mkos_schemas.enums import JobKind
 
-from app.services.image_compliance import run_image_compliance
 from app.services.imports.runner import run_import
 from app.workers import registry
 from app.workers.policy import POLICIES
@@ -31,6 +30,7 @@ def register_bodies() -> None:
     first)."""
     from app.services.brand_embed import run_brand_embed
     from app.workers.generation import run_listing_generate
+    from app.workers.image_jobs import run_image_job
     from app.workers.publish import run_listing_publish
     from app.workers.status_sync import run_listing_status_sync
 
@@ -39,7 +39,8 @@ def register_bodies() -> None:
     if registry.body_for(JobKind.BRAND_EMBED) is None:
         registry.register(JobKind.BRAND_EMBED, run_brand_embed)
     if registry.body_for(JobKind.IMAGE_COMPLIANCE) is None:
-        registry.register(JobKind.IMAGE_COMPLIANCE, run_image_compliance)
+        # SI7 T11: the upload checks, or a candidate when the payload names one
+        registry.register(JobKind.IMAGE_COMPLIANCE, run_image_job)
     if registry.body_for(JobKind.LISTING_GENERATE) is None:
         registry.register(JobKind.LISTING_GENERATE, run_listing_generate)
     if registry.body_for(JobKind.LISTING_PUBLISH) is None:

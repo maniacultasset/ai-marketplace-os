@@ -51,9 +51,24 @@ IMAGE_JOB_LOCK: Final = "image_compliance"
 _LOCKS: Final[Mapping[JobKind, str]] = MappingProxyType({JobKind.IMAGE_COMPLIANCE: IMAGE_JOB_LOCK})
 
 
-def lock_for(kind: JobKind | str) -> str | None:
-    """The procrastinate lock every queue entry of `kind` carries, or None (unserialised)."""
-    return _LOCKS.get(JobKind(kind))
+# SI7 (design §2.2): a candidate job is an `image_compliance` job about an `image_candidate`. It
+# runs under its tenant's own lock, so a slow model call never holds up uploads, and one tenant
+# runs one candidate at a time (PLAN D19).
+CANDIDATE_ENTITY: Final = "image_candidate"
+CANDIDATE_LOCK_PREFIX: Final = "image_candidate:"
+
+
+def lock_for(
+    kind: JobKind | str, entity_type: str | None = None, tenant_id: object | None = None
+) -> str | None:
+    """The procrastinate lock every queue entry of `kind` carries, or None (unserialised). A
+    candidate job (`entity_type='image_candidate'`) takes `image_candidate:<tenant_id>`."""
+    known = JobKind(kind)
+    if known is JobKind.IMAGE_COMPLIANCE and entity_type == CANDIDATE_ENTITY:
+        if tenant_id is None:
+            raise ValueError("a candidate job's lock needs its tenant")
+        return f"{CANDIDATE_LOCK_PREFIX}{tenant_id}"
+    return _LOCKS.get(known)
 
 
 def lease_s(policy: JobPolicy) -> int:

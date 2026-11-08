@@ -317,6 +317,11 @@ def _image_colourway(db: Conn, a: UUID, b: UUID) -> None:
     f.image(db, a, f.product(db, a, "style"), colourway_id=f.colourway(db, b, style_b))
 
 
+def _image_parent(db: Conn, a: UUID, b: UUID) -> None:
+    # 0018 (SI7): the photo an image was made from is in the same tenant
+    f.image(db, a, f.product(db, a), parent_image_id=f.image(db, b, f.product(db, b)))
+
+
 def _batch_created_by(db: Conn, a: UUID, b: UUID) -> None:
     f.batch(db, a, created_by_user_id=f.member(db, b))
 
@@ -332,6 +337,7 @@ CROSS_TENANT: dict[str, tuple[Build, str]] = {
     ),
     "images.product_id": (_image_product, "fk_images_product_id"),
     "images.colourway_id": (_image_colourway, "fk_images_colourway_id"),
+    "images.parent_image_id": (_image_parent, "fk_images_parent_image_id"),
     "batches.created_by_user_id": (_batch_created_by, "fk_batches_created_by_user_id"),
 }
 CROSS_TENANT_FK_COLUMNS = frozenset(CROSS_TENANT)

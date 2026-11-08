@@ -179,6 +179,31 @@ class _ModelConfig:
         )
 
 
+def image_edit_credentials(settings: Settings) -> ModelCredentials:
+    """SI7: the credentials of the image-edit seam call. The edit goes only through OpenRouter
+    (`LLM_MODEL_IMAGE_EDIT` is a `vendor/model` id), with the gateway key and base. Locally under
+    `direct` (the stub pipeline) a placeholder key stands in; anywhere else there is no edit
+    model (`MODEL_UNAVAILABLE`). The `provider` and `purpose` Literals stay unchanged (C:67-68)."""
+    key: SecretStr | None
+    if settings.llm_gateway == "openrouter":
+        key, api_base = _secret(settings.openrouter_api_key), OPENROUTER_BASE_URL
+    elif settings.app_env == "local":
+        key, api_base = None, None
+    else:
+        raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "image_edit")
+    if key is None:
+        if settings.app_env != "local":
+            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "image_edit")
+        key = SecretStr(LOCAL_PLACEHOLDER_KEY)
+    return ModelCredentials(
+        provider="openai",
+        api_key=key,
+        api_base=api_base,
+        model=settings.llm_model_image_edit,
+        timeout_seconds=float(settings.llm_timeout_seconds),
+    )
+
+
 def _internal_report(listing: CanonicalListing) -> ErrorReport:
     """`INTERNAL_ERROR` on the whole listing, `source=system` (C2): the run fails, never passes."""
     meta = ERROR_CODE_META[ErrorCode.INTERNAL_ERROR]

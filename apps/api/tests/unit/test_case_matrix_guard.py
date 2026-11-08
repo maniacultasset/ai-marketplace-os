@@ -86,6 +86,11 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "issues_dismiss",
         "tasks_list",
         "tasks_answer",
+        # SI7
+        "image_candidates_create",
+        "image_candidates_list",
+        "image_candidates_accept",
+        "image_candidates_reject",
         # S21
         "listings_publish",
         "listings_retry_fields",

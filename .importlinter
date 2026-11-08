@@ -92,6 +92,30 @@ forbidden_modules =
     pgvector
     alembic
 
+# SI7: the candidate image work (fix-only framing, fidelity and composite, the size-chart render,
+# the `fixes` rule) is pure Pillow like the image checks, run in the killable child and in tests.
+[importlinter:contract:image-candidates-are-pure]
+name = image candidate pixels are pure
+type = forbidden
+source_modules =
+    app.services.image_fix
+    app.services.image_fidelity
+    app.services.image_fixes
+    app.services.size_chart_image
+forbidden_modules =
+    app.api
+    app.db
+    app.repositories
+    app.workers
+    app.adapters
+    app.core
+    sqlalchemy
+    psycopg
+    fastapi
+    starlette
+    pgvector
+    alembic
+
 # The SI3 photo-fact rules are pure: targets and the screen of observations import only
 # mkos_schemas and app.core, so the worker, the API and the tests share one deterministic copy.
 [importlinter:contract:photo-facts-are-pure]
@@ -403,6 +427,7 @@ source_modules =
     app.services.image_check_child
     app.services.image_derive_child
     app.services.image_derive
+    app.services.image_candidate_child
 forbidden_modules =
     app.core
     app.db

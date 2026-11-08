@@ -258,6 +258,11 @@ class ProductImageOut(WireModel):
     position: int
     status: str
     compliance_status: Literal["pending", "passed", "failed"]
+    # SI7 (MINOR, defaults keep older bodies valid): where the pixels came from, the image it was
+    # made from, and the candidate kinds the seller may ask for on this image.
+    origin: Literal["seller", "generated", "rendered"] = "seller"
+    parent_image_id: UUID | None = None
+    fixes: list[Literal["fix", "white_background"]] = Field(default_factory=list)
 
 
 class ColourwayOut(WireModel):

@@ -66,9 +66,13 @@ def test_pipeline_reexports() -> None:
         "AgentRunRecord",
         "BrandChunkDTO",
         "CategoryTemplate",
+        "EditImage",
+        "ImageEditRequest",
+        "ImageEditResult",
         "ModelCredentials",
         "Rule",
         "RuleSet",
+        "edit_image",
     }
     assert len(pipeline_mod.__all__) == len(expected_all)
     assert set(pipeline_mod.__all__) == expected_all
@@ -81,7 +85,7 @@ def test_pipeline_defines_only_protocol_and_signature() -> None:
         if inspect.isclass(obj) or inspect.isfunction(obj)
         if getattr(obj, "__module__", None) == pipeline_mod.__name__
     }
-    assert owned == {"PipelineDeps", "run_listing_pipeline"}
+    assert owned == {"PipelineDeps", "run_listing_pipeline", "EditImage", "edit_image"}
 
 
 def test_run_listing_pipeline_signature() -> None:

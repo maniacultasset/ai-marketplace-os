@@ -49,6 +49,8 @@ POLICIES: dict[str, frozenset[str]] = {
     ),
     # 0013 (ADR-0023): trusted browsers have no tenant_id; own rows through app.user_id
     "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
+    # 0018 (SI7): the plain template
+    "image_candidates": TEMPLATE,
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}

@@ -1,0 +1,198 @@
+"""SI7 T6: the fidelity judge and the composite (AC5). Scenes are drawn at 512 px, so the judge's
+256 px work size halves every length."""
+
+from __future__ import annotations
+
+import colorsys
+from collections.abc import Callable
+
+import pytest
+from app.services import image_fidelity as fid
+from app.services.image_fidelity import composite, decide, judge, pad_square
+from app.services.image_fix import BorderProfile, border_profile
+from PIL import Image, ImageDraw
+
+SIDE = 512
+WHITE = (255, 255, 255)
+OFF_WHITE = (240, 240, 240)
+RED = (200, 40, 40)
+STRIPES = ((60, 150, 80), (70, 90, 170))
+
+
+def _scene(
+    bg: tuple[int, int, int] | None,
+    draw_product: Callable[[ImageDraw.ImageDraw], None],
+    *,
+    side: int = SIDE,
+) -> Image.Image:
+    img = Image.new("RGB", (side, side), bg or WHITE)
+    draw = ImageDraw.Draw(img)
+    if bg is None:  # a busy two-colour striped background
+        for x in range(0, side, 16):
+            draw.rectangle((x, 0, x + 15, side), fill=STRIPES[(x // 16) % 2])
+    draw_product(draw)
+    return img
+
+
+def _box(draw: ImageDraw.ImageDraw, dx: int = 0, colour: tuple[int, int, int] = RED) -> None:
+    draw.rectangle((156 + dx, 156, 356 + dx, 356), fill=colour)
+
+
+def _hue(rgb: tuple[int, int, int], degrees: float) -> tuple[int, int, int]:
+    h, s, v = colorsys.rgb_to_hsv(*(c / 255 for c in rgb))
+    r, g, b = colorsys.hsv_to_rgb((h + degrees / 360) % 1, s, v)
+    return round(r * 255), round(g * 255), round(b * 255)
+
+
+def _profile(img: Image.Image) -> BorderProfile:
+    return border_profile(img)
+
+
+def test_background_swapped_to_white_passes() -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = _scene(WHITE, _box)
+    result = judge(original, edit, _profile(original))
+    assert result.passed and result.agreement >= 0.98
+    assert result.mask_iou is not None and result.mask_iou >= 0.95
+    assert result.hole_share == 0
+
+
+def test_shifted_product_fails() -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = _scene(WHITE, lambda d: _box(d, dx=int(0.10 * SIDE)))
+    assert not judge(original, edit, _profile(original)).passed
+
+
+def test_recoloured_product_fails_on_colour() -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = _scene(WHITE, lambda d: _box(d, colour=_hue(RED, 30)))
+    result = judge(original, edit, _profile(original))
+    assert not result.passed and result.colour_distance > fid.HIST_MAX
+
+
+def test_scaled_product_fails_on_iou() -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = _scene(WHITE, lambda d: d.rectangle((176, 176, 336, 336), fill=RED))  # 0.8 x
+    result = judge(original, edit, _profile(original))
+    assert result.mask_iou is not None and result.mask_iou < fid.IOU_MIN
+    assert not result.passed
+
+
+def test_busy_background_skips_iou() -> None:
+    original = _scene(None, _box)
+    edit = _scene(WHITE, _box)
+    prof = _profile(original)
+    assert not prof.uniform
+    result = judge(original, edit, prof)
+    assert result.mask_iou is None and result.passed
+
+
+def test_non_square_edit_fails_without_scoring() -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = Image.new("RGB", (512, 683), WHITE)
+    ImageDraw.Draw(edit).rectangle((156, 208, 356, 475), fill=RED)  # the product, stretched
+    result = judge(original, edit, _profile(original))
+    assert not result.passed and result.agreement == 0
+
+
+def test_all_white_edit_fails() -> None:
+    original = _scene(OFF_WHITE, _box)
+    assert not judge(original, Image.new("RGB", (SIDE, SIDE), WHITE), _profile(original)).passed
+
+
+def _bag(draw: ImageDraw.ImageDraw, *, strap_top: bool = True) -> None:
+    draw.rectangle((116, 340, 396, 460), fill=RED)  # body
+    draw.rectangle((116, 180, 140, 340), fill=RED)  # left handle
+    draw.rectangle((372, 180, 396, 340), fill=RED)  # right handle
+    if strap_top:
+        draw.rectangle((116, 154, 396, 180), fill=RED)  # the strap across the top
+
+
+def test_busy_background_erased_strap_fails_on_holes() -> None:
+    original = _scene(None, _bag)
+    prof = _profile(original)
+    erased = judge(original, _scene(WHITE, lambda d: _bag(d, strap_top=False)), prof)
+    assert erased.mask_iou is None
+    assert erased.agreement >= fid.AGREEMENT_MIN and erased.colour_distance <= fid.HIST_MAX
+    assert erased.hole_share > fid.HOLE_MAX and not erased.passed
+    kept = judge(original, _scene(WHITE, _bag), prof)
+    assert kept.passed
+
+
+def _shirt(draw: ImageDraw.ImageDraw, *, right_sleeve: bool = True) -> None:
+    draw.rectangle((192, 56, 320, 456), fill=RED)  # body
+    draw.rectangle((168, 56, 192, 456), fill=RED)  # left sleeve
+    if right_sleeve:
+        draw.rectangle((320, 56, 344, 456), fill=RED)
+
+
+def test_uniform_border_erased_sleeve_fails_on_holes_with_good_iou() -> None:
+    original = _scene((250, 250, 250), _shirt)
+    result = judge(
+        original, _scene(WHITE, lambda d: _shirt(d, right_sleeve=False)), _profile(original)
+    )
+    assert result.mask_iou is not None and result.mask_iou >= fid.IOU_MIN
+    assert result.hole_share > fid.HOLE_MAX and not result.passed
+
+
+@pytest.mark.parametrize(
+    ("scores", "passed"),
+    [
+        ({"agreement": fid.AGREEMENT_MIN}, True),
+        ({"agreement": fid.AGREEMENT_MIN - 0.001}, False),
+        ({"colour_distance": fid.HIST_MAX}, True),
+        ({"colour_distance": fid.HIST_MAX + 0.001}, False),
+        ({"mask_iou": fid.IOU_MIN}, True),
+        ({"mask_iou": fid.IOU_MIN - 0.001}, False),
+        ({"mask_iou": None}, True),
+        ({"hole_share": fid.HOLE_MAX}, True),
+        ({"hole_share": fid.HOLE_MAX + 0.001}, False),
+    ],
+)
+def test_decide_threshold_pairs(scores: dict[str, float | None], passed: bool) -> None:
+    base: dict[str, float | None] = {
+        "mask_iou": 0.99,
+        "colour_distance": 0.0,
+        "agreement": 1.0,
+        "hole_share": 0.0,
+    }
+    assert decide(**{**base, **scores}) is passed  # type: ignore[arg-type]
+
+
+def test_constants_are_pinned() -> None:
+    assert (fid.WORK_PX, fid.ASPECT_TOL, fid.BLUR, fid.CAND_WHITE) == (256, 0.02, 1, 245)
+    assert (fid.ORIG_DIST, fid.COLOUR_TOL, fid.HIST_BINS) == (24, 32, 8)
+    assert (fid.AGREEMENT_MIN, fid.HIST_MAX, fid.IOU_MIN) == (0.90, 0.15, 0.80)
+    assert (fid.HOLE_PAD, fid.PALETTE_MIN, fid.HOLE_MAX) == (0.05, 0.02, 0.10)
+
+
+def test_aspect_tolerance_pair() -> None:
+    original = _scene(OFF_WHITE, _box)
+    inside = Image.new("RGB", (512, 522), WHITE)  # 1.9 % off
+    ImageDraw.Draw(inside).rectangle((156, 156, 356, 361), fill=RED)
+    assert judge(original, inside, _profile(original)).agreement > 0
+    outside = Image.new("RGB", (512, 524), WHITE)  # 2.3 % off
+    ImageDraw.Draw(outside).rectangle((156, 156, 356, 362), fill=RED)
+    assert judge(original, outside, _profile(original)).agreement == 0
+
+
+def test_composite_keeps_the_sellers_pixels() -> None:
+    original = Image.new("RGB", (1200, 1200), OFF_WHITE)
+    draw = ImageDraw.Draw(original)
+    for i in range(500):
+        draw.line([(350 + i, 350), (350 + i, 849)], fill=(60 + i % 120, 30 + i % 50, 90))
+    edit = Image.new("RGB", (1024, 1024), WHITE)  # the model's size, the product drawn flat
+    ImageDraw.Draw(edit).rectangle((299, 299, 724, 724), fill=(80, 40, 90))
+    out = composite(original, edit)
+    assert out.size == (1200, 1200)
+    for xy in ((400, 400), (600, 600), (800, 800), (420, 780)):
+        assert out.getpixel(xy) == original.getpixel(xy)
+    assert out.getpixel((10, 10)) == WHITE
+
+
+def test_pad_square() -> None:
+    img = Image.new("RGB", (300, 400), (1, 2, 3))
+    out = pad_square(img, (250, 250, 250))
+    assert out.size == (400, 400)
+    assert out.getpixel((0, 0)) == (250, 250, 250) and out.getpixel((200, 200)) == (1, 2, 3)
+    assert pad_square(out, (0, 0, 0)) is out

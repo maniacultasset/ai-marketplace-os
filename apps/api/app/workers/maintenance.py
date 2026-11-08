@@ -10,8 +10,9 @@ in this order, each in its own transactions:
    `prune_login_flows` (ADR-0020): expired Google sign-in flows, and a warning when more than
    200 sign-up requests are pending.
 3. `retention_daily`: import rows, imports and job chains past their cutoffs, old refresh tokens,
-   closed invitations, inactive brand chunks, then the image orphan sweep. The queue's own entries
-   are the worker's (no queue app here).
+   closed invitations, inactive brand chunks, then the image orphan sweep, the deleted images'
+   objects and (SI7) the image candidates older than 30 days that were never accepted. The
+   queue's own entries are the worker's (no queue app here).
 4. `purge_disconnected_accounts`: every marketplace account revoked or disconnected for 20 days,
    as `migrator` (ALEMBIC_DATABASE_URL).
 

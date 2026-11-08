@@ -10,6 +10,8 @@ Pure: Pillow and the stdlib only, imported only by `image_derive_child` (import 
   a step (at most 4 steps); still over → None.
 - `vision`: RGB JPEG, long side at most 1024 (LANCZOS), quality 85 lowered by 10 down to 45 until
   its base64 fits `MAX_CONTEXT_IMAGE_B64_CHARS` (it goes to the model provider).
+- `border` (SI7): the upright image's border profile `{uniform, near_white, colour}`
+  (`image_fix.border_profile`), so the product read can offer `fixes` without reading the image.
 
 A decode failure, a decompression bomb, a `MemoryError` or any other failure is None.
 """
@@ -26,6 +28,7 @@ from mkos_schemas.jobs import MAX_CONTEXT_IMAGE_B64_CHARS, MAX_CONTEXT_IMAGE_PX
 from PIL import Image, ImageOps
 
 from app.services.image_checks import DECODE_FORMATS, MAX_PIXELS, MAX_SIDE
+from app.services.image_fix import border_profile
 
 __all__ = ["DERIVE_FORMATS", "MAX_IMAGE_BYTES", "Derived", "derive"]
 
@@ -45,6 +48,7 @@ class Derived:
     vision: bytes
     vision_w: int
     vision_h: int
+    border: dict[str, object] | None = None
 
 
 def _rgb_on_white(img: Image.Image) -> Image.Image:
@@ -128,12 +132,18 @@ def _derive(data: bytes) -> Derived | None:
     vision = _vision(pixels)
     if vision is None:
         return None
+    prof = border_profile(_rgb_on_white(pixels))
     return Derived(
         clean=clean[0],
         clean_mime=clean[1],
         vision=vision[0],
         vision_w=vision[1],
         vision_h=vision[2],
+        border={
+            "uniform": prof.uniform,
+            "near_white": prof.near_white,
+            "colour": list(prof.colour),
+        },
     )
 
 

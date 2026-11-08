@@ -75,6 +75,7 @@ class DerivedImages:
     vision: bytes
     vision_w: int
     vision_h: int
+    border: dict[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -262,7 +263,29 @@ def parse_derived(stdout: bytes) -> DerivedImages | None:
     if not (_px(w) and _px(h)):
         return None
     assert isinstance(w, int) and isinstance(h, int)  # noqa: S101 - narrowed by _px
-    return DerivedImages(clean=clean, clean_mime=mime, vision=vision, vision_w=w, vision_h=h)
+    return DerivedImages(
+        clean=clean,
+        clean_mime=mime,
+        vision=vision,
+        vision_w=w,
+        vision_h=h,
+        border=parse_border(body.get("border")),
+    )
+
+
+def parse_border(value: Any) -> dict[str, Any] | None:
+    """SI7: a child's border profile `{uniform, near_white, colour}`, or None (an older child, or a
+    malformed value: the product read then counts the border as not near-white)."""
+    if not isinstance(value, dict):
+        return None
+    uniform, near_white, colour = value.get("uniform"), value.get("near_white"), value.get("colour")
+    if not isinstance(uniform, bool) or not isinstance(near_white, bool):
+        return None
+    if not isinstance(colour, list) or len(colour) != 3:
+        return None
+    if not all(isinstance(c, int) and not isinstance(c, bool) and 0 <= c <= 255 for c in colour):
+        return None
+    return {"uniform": uniform, "near_white": near_white, "colour": list(colour)}
 
 
 async def run_derive_isolated(data: bytes, *, image_id: UUID) -> DerivedImages | None:
@@ -309,3 +332,144 @@ async def run_derive_isolated(data: bytes, *, image_id: UUID) -> DerivedImages |
             reason=reason if stdout is None else "unusable",
         )
     return found
+
+
+# ---- SI7 T8: the candidate child ----
+
+CANDIDATE_MODULE: Final = "app.services.image_candidate_child"
+CANDIDATE_TIMEOUT_S: Final = 90
+# one reply image (at most 10 MiB, base64) plus the JSON around it
+CANDIDATE_STDOUT_CAP: Final = MAX_IMAGE_BYTES * 4 // 3 + 1_048_576
+CANDIDATE_REASONS: Final = frozenset({"too_small", "source_unusable", "fidelity", "not_white"})
+CANDIDATE_MAX_SIDE: Final = 20_000
+_FIDELITY_KEYS: Final = ("mask_iou", "colour_distance", "agreement", "hole_share")
+
+
+class CandidateChildFailed(Exception):  # noqa: N818 - CODE-PLAN name
+    """The candidate child timed out, crashed, overflowed its stdout cap or replied badly: an
+    infrastructure failure, never a verdict (CP-D19). `reason` is a fixed word for the log."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True, slots=True)
+class CandidateReply:
+    ok: bool
+    image: bytes | None = None
+    width: int | None = None
+    height: int | None = None
+    fidelity: dict[str, float | None] | None = None
+    border: dict[str, Any] | None = None
+    reason: str | None = None
+
+
+def _side(value: Any) -> bool:
+    return (
+        isinstance(value, int) and not isinstance(value, bool) and 1 <= value <= CANDIDATE_MAX_SIDE
+    )
+
+
+def _fidelity(value: Any) -> dict[str, float | None] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict) or set(value) != set(_FIDELITY_KEYS):
+        raise CandidateChildFailed("bad_reply")
+    out: dict[str, float | None] = {}
+    for key in _FIDELITY_KEYS:
+        number = value[key]
+        if number is None and key == "mask_iou":
+            out[key] = None
+            continue
+        if isinstance(number, bool) or not isinstance(number, int | float):
+            raise CandidateChildFailed("bad_reply")
+        if not 0.0 <= float(number) <= 1.0:
+            raise CandidateChildFailed("bad_reply")
+        out[key] = float(number)
+    return out
+
+
+def parse_candidate(stdout: bytes) -> CandidateReply:
+    """The child's reply, or `CandidateChildFailed("bad_reply")`."""
+    try:
+        body = json.loads(stdout)
+    except ValueError:
+        raise CandidateChildFailed("bad_reply") from None
+    if not isinstance(body, dict) or not isinstance(body.get("ok"), bool):
+        raise CandidateChildFailed("bad_reply")
+    fidelity = _fidelity(body.get("fidelity"))
+    if body["ok"] is False:
+        reason = body.get("reason")
+        if reason not in CANDIDATE_REASONS:
+            raise CandidateChildFailed("bad_reply")
+        return CandidateReply(ok=False, reason=str(reason), fidelity=fidelity)
+    image = _b64(body.get("image_b64"))
+    width, height = body.get("width"), body.get("height")
+    if image is None or not image.startswith(_MAGIC["image/jpeg"]) or len(image) > MAX_IMAGE_BYTES:
+        raise CandidateChildFailed("bad_reply")
+    if not (_side(width) and _side(height)):
+        raise CandidateChildFailed("bad_reply")
+    assert isinstance(width, int) and isinstance(height, int)  # noqa: S101 - narrowed by _side
+    border = body.get("border")
+    parsed_border = None if border is None else parse_border(border)
+    if border is not None and parsed_border is None:
+        raise CandidateChildFailed("bad_reply")
+    return CandidateReply(
+        ok=True,
+        image=image,
+        width=width,
+        height=height,
+        fidelity=fidelity,
+        border=parsed_border,
+    )
+
+
+async def run_candidate_isolated(
+    op: str, inputs: Mapping[str, bytes], params: Mapping[str, Any]
+) -> CandidateReply:
+    """Run one candidate op in the killable child under the image semaphore. A verdict comes back
+    as `CandidateReply(ok=False, reason=...)`; every infrastructure failure raises
+    `CandidateChildFailed` (an `OSError` at spawn is `RetryableJobError`, as for the checks).
+    stdout and stderr never reach a log line."""
+    request = {
+        "op": op,
+        "inputs": {name: base64.b64encode(data).decode("ascii") for name, data in inputs.items()},
+        "params": dict(params),
+    }
+    payload = json.dumps(request, separators=(",", ":"), default=str).encode("ascii")
+    async with _semaphore():
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                sys.executable,
+                "-m",
+                CANDIDATE_MODULE,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.DEVNULL,
+                cwd=API_ROOT,
+                env=child_env(),
+            )
+        except OSError:
+            raise RetryableJobError(ErrorCode.INTERNAL_ERROR) from None
+        stdout: bytes | None = None
+        try:
+            async with asyncio.timeout(CANDIDATE_TIMEOUT_S):
+                assert proc.stdout is not None  # noqa: S101 - spawned with stdout=PIPE
+                feeder = asyncio.create_task(_feed(proc, payload))
+                stdout = await _read_capped(proc.stdout, CANDIDATE_STDOUT_CAP)
+                if stdout is None:
+                    proc.kill()
+                await feeder
+                await proc.wait()
+        except TimeoutError:
+            raise CandidateChildFailed("timeout") from None
+        finally:
+            if proc.returncode is None:  # timed out or cancelled: never leave the child running
+                proc.kill()
+                await proc.wait()
+    if stdout is None:
+        raise CandidateChildFailed("over_cap")
+    if proc.returncode != 0:
+        raise CandidateChildFailed(f"exit_{proc.returncode}")
+    return parse_candidate(stdout)

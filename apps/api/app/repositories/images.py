@@ -57,6 +57,10 @@ class NewImage:
     slot: ImageSlot
     bytes: int
     position: int
+    # SI7: write-once provenance (`seller` unless made from a candidate)
+    origin: str = "seller"
+    parent_image_id: UUID | None = None
+    candidate_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +71,13 @@ class ImageDetail:
     position: int
     status: str
     compliance_status: str
+    # SI7: provenance, and what the product read needs to offer `fixes` (the stored reports and
+    # border profile; neither is part of the wire model)
+    origin: str = "seller"
+    parent_image_id: UUID | None = None
+    fixes: tuple[str, ...] = ()
+    report: Mapping[str, Any] | None = None
+    border: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -92,6 +103,8 @@ class CleanMeta:
     mime_type: str
     vision_w: int
     vision_h: int
+    # SI7: the border profile `{uniform, near_white, colour}`; None from an older derive child
+    border: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,12 +222,32 @@ class ImageRepository(TenantScopedRepository[Image]):
                 compliance_status="pending",
                 bytes=new.bytes,
                 position=new.position,
+                origin=new.origin,
+                parent_image_id=new.parent_image_id,
+                candidate_id=new.candidate_id,
             )
             .on_conflict_do_nothing(index_elements=[Image.tenant_id, Image.storage_key])
             .returning(Image)
         )
         row: Image | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return row
+
+    async def demote_main(self, image_id: UUID, position: int) -> bool:
+        """SI7: the live main becomes a `secondary` image at `position` (an accepted candidate
+        takes the main slot; `images_one_main` holds). False when it is not the live main."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.slot == ImageSlot.MAIN.value,
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(slot=ImageSlot.SECONDARY.value, position=position)
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     async def soft_delete(self, image_id: UUID) -> bool:
         """Mark a live row deleted (its object stays); False when it is not live."""
@@ -263,17 +296,21 @@ class ImageRepository(TenantScopedRepository[Image]):
         }
         if clean is not None:
             vision = cast(literal(json.dumps({"w": clean.vision_w, "h": clean.vision_h})), JSONB)
+            border = cast(literal(json.dumps(clean.border)), JSONB)
             values["clean_content_hash"] = clean.content_hash
             values["clean_mime_type"] = clean.mime_type
-            values[Image.metadata_] = Image.metadata_.op("||")(
-                func.jsonb_build_object("vision", vision)
-            )
+            merged = Image.metadata_.op("||")(func.jsonb_build_object("vision", vision))
+            if clean.border is None:  # an older child: no stale profile is kept
+                values[Image.metadata_] = merged.op("-")("border")
+            else:
+                values[Image.metadata_] = merged.op("||")(func.jsonb_build_object("border", border))
         else:
             published = Image.public_id.is_not(None)
             values["clean_content_hash"] = case((published, Image.clean_content_hash), else_=None)
             values["clean_mime_type"] = case((published, Image.clean_mime_type), else_=None)
             values[Image.metadata_] = case(
-                (published, Image.metadata_), else_=Image.metadata_.op("-")("vision")
+                (published, Image.metadata_),
+                else_=Image.metadata_.op("-")("vision").op("-")("border"),
             )
         stmt = self._scoped_write(
             update(Image)
@@ -501,6 +538,10 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.position,
                 Image.status,
                 Image.compliance_status,
+                Image.origin,
+                Image.parent_image_id,
+                Image.image_report_json,
+                Image.metadata_["border"].label("border"),
             )
             .order_by(slot_rank, Image.position, Image.created_at, Image.id)
         )
@@ -512,6 +553,10 @@ class ImageRepository(TenantScopedRepository[Image]):
                 position=row.position,
                 status=row.status,
                 compliance_status=row.compliance_status,
+                origin=row.origin,
+                parent_image_id=row.parent_image_id,
+                report=row.image_report_json,
+                border=row.border if isinstance(row.border, Mapping) else None,
             )
             for row in (await self.db.execute(stmt)).all()
         ]

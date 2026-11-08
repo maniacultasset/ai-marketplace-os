@@ -169,3 +169,18 @@ def test_memory_error_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(Image, "open", boom)
     assert derive(fx.jpeg(16, 16)) is None
+
+
+# ---- SI7 T8: the border profile travels with the derivatives ----
+
+
+def test_border_profile_of_a_near_white_photo() -> None:
+    found = derive(fx.png(400, 400, border=(250, 250, 250)))
+    assert found is not None and found.border is not None
+    assert found.border == {"uniform": True, "near_white": True, "colour": [250, 250, 250]}
+
+
+def test_border_profile_of_a_grey_photo() -> None:
+    found = derive(fx.jpeg(400, 400, border=(200, 200, 200), quality=95))
+    assert found is not None and found.border is not None
+    assert found.border["uniform"] is True and found.border["near_white"] is False

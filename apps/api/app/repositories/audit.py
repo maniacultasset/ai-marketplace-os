@@ -15,6 +15,7 @@ AUDITED_ENTITIES: Final[frozenset[str]] = frozenset(
         "business_party",
         "category_template",
         "image",
+        "image_candidate",
         "invitation",
         "job_run",
         "listing",
