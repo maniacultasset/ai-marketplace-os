@@ -238,11 +238,16 @@ async def test_openrouter_embedder_request_shape() -> None:
 
 async def test_openrouter_embedder_denies_data_collection() -> None:
     """Brand text goes only to providers that neither keep nor train on it, as the generation
-    calls ask: every OpenRouter embedding request carries `provider.data_collection = deny`."""
+    calls ask: every OpenRouter embedding request carries `provider.data_collection = deny`,
+    and (V1 hardening #18) is pinned to OpenAI with no fallback, the vendor the policy names."""
     script = Script(lambda r: httpx2.Response(200, json=_ok(json.loads(r.content)["input"])))
     await _router_embedder(script).embed(["brand guide text"])
     (request,) = script.requests
-    assert json.loads(request.content)["provider"] == {"data_collection": "deny"}
+    assert json.loads(request.content)["provider"] == {
+        "only": ["openai"],
+        "allow_fallbacks": False,
+        "data_collection": "deny",
+    }
 
 
 async def test_direct_embedder_sends_no_provider_preference() -> None:

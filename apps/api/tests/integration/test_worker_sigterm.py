@@ -20,6 +20,7 @@ from app.db.session import unit_of_work
 from app.repositories.jobs import EnqueueSpec, JobRunRepository
 from app.workers import main
 from app.workers.registry import JobContext, Outcome
+from app.workers.settings import QUEUE_CONCURRENCY
 from mkos_schemas.enums import JobKind
 from tests.timing import budget
 
@@ -30,6 +31,9 @@ from .jobs_support import JobWorld, count, eventually, job_row, jobs_db, overrid
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["jobs_db", "override_body"]
 RUN_WORKER = Path(__file__).resolve().parents[1] / "support" / "run_worker.py"
+
+# one procrastinate worker row per queue (default, publish and, V1 hardening #7, periodic)
+WORKERS = len(QUEUE_CONCURRENCY)
 
 
 async def _enqueue(
@@ -136,7 +140,7 @@ async def test_worker_sigterm_unregisters_worker_row(jobs_db: JobWorld, tmp_path
     proc = spawn_worker(tmp_path)
     try:
         await eventually(
-            lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == 2, 30
+            lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == WORKERS, 30
         )
     finally:
         code, _, output = _stop(proc)
@@ -184,7 +188,8 @@ async def test_worker_binds_no_port(jobs_db: JobWorld, monkeypatch: pytest.Monke
 
     monkeypatch.setattr(socket.socket, "listen", listen)
     code = await _run_until(
-        jobs_db, lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == 2
+        jobs_db,
+        lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == WORKERS,
     )
     assert code == 0
     assert listened == []
@@ -202,7 +207,8 @@ async def test_worker_inits_sentry_with_s11_options(
     monkeypatch.setenv("SENTRY_DSN", "https://public@o0.ingest.example.invalid/0")
     get_settings.cache_clear()
     code = await _run_until(
-        jobs_db, lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == 2
+        jobs_db,
+        lambda: count(jobs_db.conn, "SELECT count(*) FROM procrastinate_workers") == WORKERS,
     )
     assert code == 0
     assert captured["include_local_variables"] is False

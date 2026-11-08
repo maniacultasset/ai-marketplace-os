@@ -88,7 +88,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
         "owner_name": "Asha Rao",
     },
     # SI5
-    "invites_create": {"email": "meera@fabrica.example", "role": "reviewer"},
+    # an operator: an admin may invite it (reviewer and owner are owner-only, V1 hardening #12)
+    "invites_create": {"email": "meera@fabrica.example", "role": "operator"},
     "invites_lookup": {"token": "T" * 43},
     "invites_accept": {"token": "T" * 43, "password": COMPLIANT_PASSWORD},
     "invites_join": {"token": "T" * 43},

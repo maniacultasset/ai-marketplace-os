@@ -21,6 +21,7 @@ from app.api.rate_limit import (
     enforce_google_limit,
     enforce_login_limit,
     enforce_signup_limit,
+    google_flow,
     request_ip,
 )
 from app.api.v1.deps import get_current_principal
@@ -109,7 +110,7 @@ async def auth_google_start(
     may start (`Sec-Fetch-Site: same-origin`, `Sec-Fetch-Mode: navigate` when the browser sends
     them): from another site it is a 302 to the app's `/auth/google?error=failed` and nothing
     is stored."""
-    await enforce_google_limit(request)
+    await enforce_google_limit(request, b)
     try:
         location = await google_signin.start(
             b,
@@ -135,7 +136,7 @@ async def auth_google_callback(
     """Google's return (registered as the OAuth client's redirect URI). Always a 303 to the app's
     `/auth/google` route: `?handle=` (60 seconds, bound to the browser that started) or
     `?error=cancelled|failed|unavailable`. Not for direct use."""
-    await enforce_google_limit(request)
+    await enforce_google_limit(request, state)
     location = await google_signin.callback(
         code=code, state=state, error=error, ip=request_ip(request)
     )
@@ -153,7 +154,7 @@ async def auth_google_complete(body: GoogleCompleteRequest, request: Request) ->
     that account (ADR-0023). Every refusal is the same 401 with a generic message."""
     handle = body.handle.get_secret_value()
     binding = body.binding.get_secret_value()
-    await enforce_google_limit(request)
+    await enforce_google_limit(request, google_flow(binding))
     try:
         email = await google_signin.peek_email(handle, binding, "handle")
         await enforce_login_limit(request, email)
@@ -214,7 +215,7 @@ async def auth_google_link(body: GoogleLinkRequest, request: Request) -> LoginRe
     401 as the login; retry with the same handle until it expires (15 minutes)."""
     handle = body.link_handle.get_secret_value()
     binding = body.binding.get_secret_value()
-    await enforce_google_limit(request)
+    await enforce_google_limit(request, google_flow(binding))
     try:
         email = await google_signin.peek_email(handle, binding, "link")
         await enforce_login_limit(request, email)
@@ -256,7 +257,7 @@ async def signup_google(body: GoogleSignupRequest, request: Request) -> SignupSt
     The generic 401 when the email or Google account got an account meanwhile."""
     handle = body.details_handle.get_secret_value()
     binding = body.binding.get_secret_value()
-    await enforce_google_limit(request)
+    await enforce_google_limit(request, google_flow(binding))
     await enforce_signup_limit(request)
     try:
         email = await google_signin.peek_email(handle, binding, "details")

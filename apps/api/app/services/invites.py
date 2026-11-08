@@ -1,7 +1,8 @@
 """Team invites by copied link (SI5, ADR-0029; DATABASE.md:287-297).
 
 - `create_invite`: an owner or admin invites an email with a role. Only an owner invites an owner
-  (the `members._owner_rule` mirror). An email with a membership here (active or not) is 422 at
+  or a reviewer, the roles that approve (V1 hardening #12: an admin is not an approver, T88, so it
+  never makes one). An email with a membership here (active or not) is 422 at
   `email`; an open invite for the email is revoked and replaced in the same transaction; at most
   `MAX_PENDING_INVITES` pending. The token is 32 random bytes (43 base64url characters), stored
   as its sha256 only and returned once inside the link's fragment.
@@ -14,6 +15,8 @@
   deactivated from every brand, or its only brands suspended or offboarded) is `own_password`
   when it has a password and accepts with it under the lockout gate
   (`signup.verify_existing_user`), never a new one; with no account, or a Google-only one, `new`.
+  An account `accept_password` creates is `email_unverified` (nothing proved the link's holder
+  owns the address): it cannot approve until a Google sign-in with that verified email clears it.
 
 Audit rows carry the role only (`audit_allowlist('invitation')`), never the email or the token.
 """
@@ -73,6 +76,8 @@ TOKEN_BYTES: Final = 32
 Account = Literal["new", "existing", "own_password"]
 LIVE_TENANT: Final = ("trial", "active")
 INVITERS: Final = ("owner", "admin")
+# V1 hardening #12: the roles that approve; only an owner invites them
+OWNER_ONLY_ROLES: Final = frozenset({"owner", "reviewer"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,8 +91,8 @@ def token_hash(raw: str) -> bytes:
 
 
 def _owner_rule(principal: Principal, role: str) -> None:
-    if role == "owner" and principal.role != "owner":
-        raise ForbiddenError("only an owner invites an owner")
+    if role in OWNER_ONLY_ROLES and principal.role != "owner":
+        raise ForbiddenError("only an owner invites an owner or a reviewer")
 
 
 def _role(role: str) -> str:
@@ -343,6 +348,7 @@ async def accept_password(
                 email=email,
                 password_hash=await off_loop(hash_password, password),
                 display_name=display_name,
+                email_unverified=True,  # V1 hardening #12: a copied link proves no address
             )
             if not created:  # a concurrent account for the email won `uq_users_email_lower`
                 raise _gone()

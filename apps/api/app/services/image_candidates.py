@@ -45,7 +45,6 @@ from app.services.budget import CreditPausedError, admit
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.image_keys import CLEAN_NAMES, derived_key, image_object_key
 from app.services.images import (
-    IMAGE_JOB_LOCK,
     MAX_LIVE_IMAGES_PER_PRODUCT,
     accepted_body,
     delete_candidate_objects,
@@ -571,7 +570,6 @@ async def accept_candidate(
                     entity_id=source.id,
                     created_by=principal.user_id,
                     payload={"image_id": str(source.id)},
-                    lock=IMAGE_JOB_LOCK,
                 )
             )
             slot, colourway = ImageSlot.MAIN, source.colourway_id

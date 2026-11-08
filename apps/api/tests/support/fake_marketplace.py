@@ -37,6 +37,10 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   {mode: expired|denied, times}` (expired -> 401, denied -> 403), `spapi_summary {sku:
   BUYABLE|DISCOVERABLE}`, `spapi_body redirect|oversize|html` (the next SP-API answer, once).
 - `GET /__calls`: every SP-API call (method, path, time, body sha256).
+- V1 hardening #11 (the seller check of a connect): a token from an LWA grant acts only for its
+  own seller, so an SP-API call under another `sellerId` is 403 `Unauthorized` (a callback whose
+  `selling_partner_id` was swapped, or `next_exchange_seller`, which grants another seller).
+  `/__control spapi_bad_seller [sellerId]` makes every call under those ids 400 `InvalidInput`.
 - S26 (failure injection): `spapi_body` also takes `malformed_json` (a truncated JSON reply) and
   `extra_field` (the real reply plus `"unexpected": 1`); `spapi_drop_after_write [sku]` stores the
   write, then drops the connection (`httpx.RemoteProtocolError` in process: no reply at all);
@@ -208,6 +212,7 @@ class FakeState:
     spapi_first_main: dict[str, Any] = field(default_factory=dict)
     # ---- S26 failure injection ----
     spapi_drop_after_write: set[str] = field(default_factory=set)
+    spapi_bad_seller: set[str] = field(default_factory=set)  # V1 hardening #11
     refresh_canary: str = "CANARYzq9-0000000000000000"
     calls: list[dict[str, Any]] = field(default_factory=list)
     submissions: int = 0
@@ -502,6 +507,8 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
             "no_asin",
         )
         state.spapi_get.update({k: v for k, v in gets.items() if v in states})
+    if isinstance(body.get("spapi_bad_seller"), list):
+        state.spapi_bad_seller.update(str(x) for x in body["spapi_bad_seller"])
     scenarios = body.get("spapi_scenario")
     if isinstance(scenarios, dict):
         state.spapi_scenario.update({k: v for k, v in scenarios.items() if v in SCENARIOS})
@@ -759,6 +766,11 @@ async def _spapi(state: FakeState, request: Request) -> Response:
         return _errors("Unauthorized", "Access to requested resource is denied.", 403)
     if token not in state.access_tokens:
         return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    granted = state.access_sellers.get(token)
+    if granted is not None and granted != seller:  # V1 hardening #11
+        return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    if seller in state.spapi_bad_seller:
+        return _errors("InvalidInput", "Invalid sellerId.", 400)
     if state.spapi_429 > 0:
         state.spapi_429 -= 1
         return _errors("QuotaExceeded", "You exceeded your quota for the requested resource.", 429)

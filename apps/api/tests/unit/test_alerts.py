@@ -227,7 +227,9 @@ async def test_alert_slack_only_for_routed_kinds(sentry: Any) -> None:
     for kind in sorted(FIELDS):
         await _emit(kind, Claims(), slack=slack)
     assert sorted(kind for kind, _ in slack.posts) == [
+        "job_dead_lettered",  # V1 hardening #2
         "llm_budget",
+        "llm_credit",  # V1 hardening #2
         "llm_provider_refused",
         "queue_latency",
         "token_refresh_failed",

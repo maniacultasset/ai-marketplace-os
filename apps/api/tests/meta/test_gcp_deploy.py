@@ -870,7 +870,13 @@ def test_deploy_refuses_when_the_mfa_key_is_missing(toolkit: Path, tmp_path: Pat
 
 # ---- DPP 1.7: the daily maintenance job and its scheduler ----
 
-MAINT_SECRET_NAMES = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"}
+MAINT_SECRET_NAMES = {
+    "DATABASE_URL",
+    "ALEMBIC_DATABASE_URL",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY",
+    "SENTRY_DSN",
+}
 
 
 def _secret_grants(out: str, account: str) -> set[str]:
@@ -2270,3 +2276,32 @@ def test_bad_image_edit_switch_refused(toolkit: Path, tmp_path: Path) -> None:
     _set_env(toolkit, "staging", IMAGE_EDIT_ENABLED="yes")
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0 and "IMAGE_EDIT_ENABLED must be true or false" in result.stderr
+
+
+# ---- V1 hardening #2: the optional Slack webhook ----
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_setup_prepares_the_optional_slack_webhook(
+    toolkit: Path, tmp_path: Path, env_name: str
+) -> None:
+    """`setup` creates ALERT_SLACK_WEBHOOK and grants it to the worker, never sets a value and
+    never stops for it; the api and the jobs never get it."""
+    out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    assert "secrets create ALERT_SLACK_WEBHOOK " in out
+    assert "ALERT_SLACK_WEBHOOK" in _secret_grants(out, "aimos-worker")
+    assert "ALERT_SLACK_WEBHOOK" not in _secret_grants(out, "aimos-api")
+    assert "ALERT_SLACK_WEBHOOK" not in _secret_grants(out, "aimos-maint")
+    assert "ALERT_SLACK_WEBHOOK has no value (optional" in out
+    assert "versions add ALERT_SLACK_WEBHOOK --data-file=- --project" in out  # the hint only
+
+
+def test_worker_binds_the_slack_webhook_only_with_a_value(toolkit: Path, tmp_path: Path) -> None:
+    """A dry run reads the webhook as empty: the worker deploys without it (an empty secret
+    would fail the deploy) and says so."""
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode == 0, result.stderr
+    assert "ALERT_SLACK_WEBHOOK has no value: not bound (optional)" in result.stderr
+    assert "ALERT_SLACK_WEBHOOK" not in "\n".join(
+        x for x in result.stdout.splitlines() if "worker-pools" in x or "secretKeyRef" in x
+    )

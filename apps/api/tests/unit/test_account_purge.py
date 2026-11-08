@@ -233,6 +233,31 @@ async def test_run_goes_on_after_a_failed_step(monkeypatch: pytest.MonkeyPatch) 
     assert await maintenance.run((("a", step("a")),)) == 0
 
 
+async def test_an_incomplete_purge_fails_the_run_at_error_level(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """V1 hardening #3: a purge that could not finish an account exits 1 with an ERROR line (the
+    Sentry event), so a DPP 20-day miss never passes as a green run."""
+
+    async def dispose() -> None:
+        return None
+
+    async def purge() -> dict[str, int]:
+        return {"purged": 2, "failed": 1, "objects": 3}
+
+    async def clean() -> dict[str, int]:
+        return {"purged": 2, "failed": 0, "objects": 3}
+
+    monkeypatch.setattr(maintenance, "dispose_engine", dispose)
+    from structlog.testing import capture_logs
+
+    with capture_logs() as logs:
+        assert await maintenance.run((("account_purge", purge),)) == 1
+    (line,) = [x for x in logs if x["event"] == "maintenance.step_incomplete"]
+    assert line["log_level"] == "error" and line["failed"] == 1
+    assert await maintenance.run((("account_purge", clean),)) == 0
+
+
 def test_run_order_ends_with_the_purge() -> None:
     assert [name for name, _ in maintenance.STEPS] == [
         "oauth_states",

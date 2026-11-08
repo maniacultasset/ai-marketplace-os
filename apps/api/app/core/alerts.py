@@ -72,8 +72,19 @@ ALERT_FIELDS: Final = frozenset(
         "remaining_usd",
     }
 )
+# V1 hardening #2: `llm_credit` (the OpenRouter credit at 50/80/95 %) and `job_dead_lettered`
+# (each dead letter or failed publish, deduped per job per day and capped at 20 per kind per
+# 15 minutes, then one summary) reach Slack too, so an empty AI balance or a failing publish is
+# never only a Sentry event nobody watches.
 SLACK_KINDS: Final[frozenset[str]] = frozenset(
-    {"llm_budget", "llm_provider_refused", "queue_latency", "token_refresh_failed"}
+    {
+        "job_dead_lettered",
+        "llm_budget",
+        "llm_credit",
+        "llm_provider_refused",
+        "queue_latency",
+        "token_refresh_failed",
+    }
 )
 # kinds whose Sentry fingerprint groups by these fields instead of the dedupe key
 FINGERPRINT: Final[Mapping[str, tuple[str, ...]]] = {

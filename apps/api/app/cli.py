@@ -714,7 +714,6 @@ async def run_images_derive(tenant_id: uuid.UUID) -> int:
     from app.repositories.jobs import EnqueueSpec
     from app.repositories.uow import tenant_uow
     from app.services.images import LIVE_IMAGE_JOB_CAP
-    from app.workers.policy import IMAGE_JOB_LOCK
 
     try:
         async with tenant_uow(tenant_id) as uow:
@@ -729,7 +728,6 @@ async def run_images_derive(tenant_id: uuid.UUID) -> int:
                         entity_id=image_id,
                         created_by=None,
                         payload={"image_id": str(image_id)},
-                        lock=IMAGE_JOB_LOCK,
                     )
                 )
     except Exception as exc:  # class and SQLSTATE only, never the message

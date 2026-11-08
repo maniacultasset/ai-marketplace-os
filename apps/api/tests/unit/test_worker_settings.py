@@ -23,7 +23,7 @@ def test_worker_settings_literal() -> None:
         settings.APP_POOL_MAX,
         settings.QUEUE_POOL_MAX,
     ) == (4, 2, 8, 10, 2, 30, 10, 5)
-    assert settings.QUEUE_CONCURRENCY == (("default", 4), ("publish", 2))
+    assert settings.QUEUE_CONCURRENCY == (("default", 4), ("publish", 2), ("periodic", 2))
     assert settings.GRACE_S < 10  # inside Cloud Run's 10 s SIGTERM window
     assert settings.WORKER_SERVICE_NAME == "marketplace-os-worker"
 

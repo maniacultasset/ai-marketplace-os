@@ -64,6 +64,17 @@ def test_db_maker_checker_inactive(db: Conn) -> None:
     _refused(db, version, reviewer)
 
 
+def test_db_maker_checker_unverified_email(db: Conn) -> None:
+    """0026 (V1 hardening #12): an approver made from a copied invite link (email unverified)
+    is refused by the backstop too; the same reviewer, verified, approves."""
+    tenant, _, version, _ = _setup(db)
+    reviewer = f.member(db, tenant, role="reviewer")
+    db.execute("UPDATE users SET email_unverified = true WHERE id = %s", [reviewer])
+    _refused(db, version, reviewer)
+    db.execute("UPDATE users SET email_unverified = false WHERE id = %s", [reviewer])
+    approve(db, version, reviewer)
+
+
 def test_db_maker_checker_admin(db: Conn) -> None:
     tenant, _, version, _ = _setup(db)
     _refused(db, version, f.member(db, tenant, role="admin"))
