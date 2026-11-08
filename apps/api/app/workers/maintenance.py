@@ -18,13 +18,17 @@ in this order, each in its own transactions:
 
 Every step is idempotent, so a second run the same day, or a run beside a worker, deletes nothing
 twice. A failing step is logged and the next one still runs; the exit code is 1 when any step
-failed (Cloud Run then marks the execution failed), else 0. Logs carry counts and ids only.
+failed (Cloud Run then marks the execution failed), else 0. A step that returns counts with
+`failed > 0` (an account the purge could not finish, so its data may outlive the DPP 20-day
+deadline) is a failed step too: it logs `maintenance.step_incomplete` at ERROR, which Sentry's
+logging integration turns into an error event (the job carries SENTRY_DSN), and the run exits 1.
+Logs carry counts and ids only.
 """
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Final
 
 from app.core.config import get_settings
@@ -46,6 +50,15 @@ STEPS: Final[tuple[tuple[str, Step], ...]] = (
 )
 
 
+def _failed_count(result: Any) -> int:
+    """The `failed` count a step reported (the account purge), else 0."""
+    if isinstance(result, Mapping):
+        value = result.get("failed", 0)
+        if isinstance(value, int) and value > 0:
+            return value
+    return 0
+
+
 async def run(steps: tuple[tuple[str, Step], ...] = STEPS) -> int:
     """Every step in order; 0 when all succeeded, else 1."""
     failed: list[str] = []
@@ -53,9 +66,14 @@ async def run(steps: tuple[tuple[str, Step], ...] = STEPS) -> int:
         for name, step in steps:
             try:
                 with request_context(new_request_id()):
-                    await step()
+                    result = await step()
             except Exception as exc:
                 log.exception("maintenance.step_failed", step=name, error_class=type(exc).__name__)
+                failed.append(name)
+                continue
+            incomplete = _failed_count(result)
+            if incomplete:
+                log.error("maintenance.step_incomplete", step=name, failed=incomplete)
                 failed.append(name)
     finally:
         await dispose_engine()

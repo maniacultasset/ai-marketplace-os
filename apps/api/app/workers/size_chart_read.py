@@ -9,7 +9,8 @@ listing: the only write is `images.metadata.size_chart_read` (fenced on the clea
    style or standalone) with a clean copy and its vision size, else `skipped` with no call.
 2. Reserve the read (`SIZE_CHART_READ_RESERVATION_USD`); a refusal stores `failed`.
 3. GET `vision.jpg`; one seam call under a hard deadline. No `read_size_chart` in the installed
-   pipeline, or no vision model configured, stores `unavailable` (no call, nothing spent).
+   pipeline, no vision model configured, or `SIZE_CHART_READ_ENABLED` off, stores `unavailable`
+   (no call, nothing spent).
 4. Every returned `AgentRunRecord` is checked and restamped from the job (SI7's `trust_records`)
    and stored in its own short unit first (invariant 7). An untrusted answer stores nothing and
    fails the job (the terminal hook stores `failed`).
@@ -236,8 +237,11 @@ async def run_size_chart_read(ctx: JobContext) -> Outcome:
     if inputs is None:
         log.info("size_chart_read.skipped", image_id=str(image_id), job_run_id=str(ctx.job_run_id))
         return _done(image_id, "skipped")
+    settings = get_settings()
+    if not settings.size_chart_read_enabled:  # switched off after the ask: no reservation, no call
+        return await _settle(ctx, inputs, {"status": "unavailable"})
     try:
-        credentials = size_chart_read_credentials(get_settings())
+        credentials = size_chart_read_credentials(settings)
     except SeamPortError:
         return await _settle(ctx, inputs, {"status": "unavailable"})
     try:

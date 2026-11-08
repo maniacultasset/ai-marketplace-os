@@ -110,6 +110,10 @@ async def marketplaces_callback(
         raise ApiError(503, ErrorCode.MARKETPLACE_UNAVAILABLE) from None
     except service.MarketplaceUnknownError:
         raise ApiError(502, ErrorCode.MARKETPLACE_UNKNOWN_ERROR) from None
+    except service.SellerUnverifiedError:  # V1 hardening #11: the declared 409, its own message
+        raise ApiError(
+            409, ErrorCode.OAUTH_STATE_INVALID, message=service.SELLER_UNVERIFIED_MESSAGE
+        ) from None
     location = get_settings().dashboard_base_url + CALLBACK_LOCATION_TEMPLATE.format(pending=handle)
     return Response(
         status_code=303,

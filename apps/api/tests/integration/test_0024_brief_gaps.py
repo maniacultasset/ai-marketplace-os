@@ -25,7 +25,10 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
-PREVIOUS = "0023_image_role"
+# Chain 0023 -> 0025 -> 0026 -> 0024: re-chained onto main's head 0026 at the 2026-11-09 merge
+# (0023_image_role at build); the CHECK lists and the allowlist body 0024 restores are 0023's and
+# 0022's, which 0025 and 0026 leave alone.
+PREVIOUS = "0026_invitee_email_unverified"
 REVISION = "0024_brief_gaps"
 EDGES_SQL = (
     "SELECT from_status, to_status, event, actor, requires_current_approval, voids_approval, "
@@ -61,7 +64,7 @@ def _check_def(conn: Conn, name: str) -> str:
 # ---- the chain ----
 
 
-def test_single_head_on_0023() -> None:
+def test_single_head_on_0026() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

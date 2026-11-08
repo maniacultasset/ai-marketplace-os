@@ -36,7 +36,9 @@ async def size_chart_read_create(
     read (`read` or `unreadable`) with no new job. Nothing is saved as a fact: save the edited
     chart with `PATCH /products/{product_id}` and `size_chart_image_id`. A variant is 422
     `FACT_LEVEL_INVALID`, no size-chart photo 422, a photo still being checked 409. While AI is
-    paused for every brand it is 503 with the pause's code (SI10); past the daily cap 429."""
+    paused for every brand it is 503 with the pause's code (SI10); past the daily cap 429. While
+    the read is switched off (`size_chart_read_enabled: false` on the product) it is 200
+    `unavailable` with no job and nothing spent."""
     try:
         status, body = await size_chart_read.request_read(
             principal, product_id, idempotency_key, request.url.path

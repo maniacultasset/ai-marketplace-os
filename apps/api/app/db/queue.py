@@ -67,17 +67,26 @@ async def _driver_connection(session: AsyncSession) -> Any:
 
 
 async def defer_on_session(
-    session: AsyncSession, *, kind: str, queue: str, job_run_id: UUID, lock: str | None = None
+    session: AsyncSession,
+    *,
+    kind: str,
+    queue: str,
+    job_run_id: UUID,
+    lock: str | None = None,
+    priority: int = 0,
 ) -> str:
     """Defer task `kind` on `queue` with args `{"job_run_id": "<id>"}` inside the session's
     transaction; returns the queue job id (as text, for `job_runs.queue_job_id`). `lock` is the
-    procrastinate lock (S17b: one `image_compliance` job runs at a time)."""
+    procrastinate lock (S17b: one `image_compliance` job runs at a time); `priority` orders the
+    queue (higher first; V1 hardening #8: a publish before the status syncs)."""
     if queue not in QUEUES:
         raise ValueError(f"unknown queue {queue!r}")
     if not isinstance(job_run_id, UUID):
         raise ValueError("job_run_id must be a UUID")
     driver = await _driver_connection(session)
-    deferrer = get_queue_app().configure_task(name=kind, queue=queue, connection=driver, lock=lock)
+    deferrer = get_queue_app().configure_task(
+        name=kind, queue=queue, connection=driver, lock=lock, priority=priority
+    )
     queue_job_id = await deferrer.defer_async(job_run_id=str(job_run_id))
     return str(queue_job_id)
 

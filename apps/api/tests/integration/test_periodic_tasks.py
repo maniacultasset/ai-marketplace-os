@@ -135,9 +135,11 @@ async def test_periodic_args_only_timestamp(jobs_db: JobWorld) -> None:
         deferrer = PeriodicDeferrer(registry=app.periodic_registry)
         await deferrer.defer_jobs([(p, now) for p in app.periodic_registry.periodic_tasks.values()])
     rows = jobs_db.conn.execute(
-        "SELECT task_name, args, queueing_lock FROM procrastinate_jobs ORDER BY task_name"
+        "SELECT task_name, args, queueing_lock, queue_name FROM procrastinate_jobs ORDER BY task_name"
     ).fetchall()
     assert [r[0] for r in rows] == sorted(f"periodic_{k}" for k in PERIODIC)
-    for _name, args, lock in rows:
+    for _name, args, lock, queue in rows:
         assert args == {"timestamp": now}
         assert lock in PERIODIC
+        # V1 hardening #7: their own queue, never behind business jobs on `default`
+        assert queue == "periodic"

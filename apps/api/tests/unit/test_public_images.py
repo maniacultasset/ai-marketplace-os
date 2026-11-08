@@ -41,4 +41,14 @@ def test_url_shape() -> None:
 
 
 def test_cache_control_edge_window_one_day() -> None:
-    assert "s-maxage=86400" in PUBLIC_CACHE_CONTROL and "immutable" in PUBLIC_CACHE_CONTROL
+    """V1 hardening #17: a deleted image leaves every cache within a day (the privacy policy):
+    one day for browsers and the edge, never `immutable`, and the edge worker agrees."""
+    import re
+    from pathlib import Path
+
+    assert PUBLIC_CACHE_CONTROL == "public, max-age=86400"
+    worker = Path(__file__).resolve().parents[4] / "scripts/deploy/cloudflare/images-edge-worker.js"
+    text = worker.read_text(encoding="utf-8")
+    ttls = {int(v) for v in re.findall(r"cacheTtl: (\d+)", text)}
+    defaults = set(re.findall(r'"public, max-age=(\d+)"', text))
+    assert ttls == {86400} and defaults == {"86400"}

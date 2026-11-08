@@ -126,7 +126,7 @@ from app.workers.alerting import alert
 from app.workers.budget import pause_ai
 from app.workers.errors import system_report
 from app.workers.policy import LEASE_GRACE_S
-from app.workers.settings import STALLED_WORKER_S
+from app.workers.settings import PERIODIC_QUEUE, STALLED_WORKER_S
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
 from app.workers.wrapper import alert_dead_letter
 
@@ -643,26 +643,46 @@ async def sweep_image_candidates(*, now: datetime | None = None) -> dict[str, in
 
 async def retention_daily(job_manager: Any | None = None) -> dict[str, int]:
     """The daily retention pass; returns the rows deleted per table across tenants (and the
-    image orphans deleted)."""
+    image orphans deleted). V1 hardening #16: each tenant prunes in its own transaction under
+    its own try, so one tenant's error (counted in `tenants_failed`, logged by class) never
+    skips the tenants after it or the sweeps; the queue and trusted-browser prunes are isolated
+    the same way. The next daily run retries whatever failed."""
     async with platform_scope() as session:
         tenants = await retention.tenant_ids(session)
     totals: dict[str, int] = dict.fromkeys(retention.PRUNED_TABLES, 0)
+    totals["tenants_failed"] = 0
     for tenant_id in tenants:
-        async with unit_of_work(tenant_id) as session:
-            counts = await retention.prune_tenant(session, tenant_id)
+        try:
+            async with unit_of_work(tenant_id) as session:
+                counts = await retention.prune_tenant(session, tenant_id)
+        except Exception as exc:  # this tenant's prune rolled back alone
+            log.exception(
+                "periodic.retention_tenant_failed",
+                tenant_id=str(tenant_id),
+                error_class=type(exc).__name__,
+            )
+            totals["tenants_failed"] += 1
+            continue
         for table, (rows, _batches) in counts.items():
             totals[table] += rows
     if job_manager is not None:
-        await job_manager.delete_old_jobs(nb_hours=QUEUE_SUCCEEDED_HOURS)
-        await job_manager.delete_old_jobs(
-            nb_hours=QUEUE_OTHER_HOURS,
-            include_failed=True,
-            include_cancelled=True,
-            include_aborted=True,
-        )
+        try:
+            await job_manager.delete_old_jobs(nb_hours=QUEUE_SUCCEEDED_HOURS)
+            await job_manager.delete_old_jobs(
+                nb_hours=QUEUE_OTHER_HOURS,
+                include_failed=True,
+                include_cancelled=True,
+                include_aborted=True,
+            )
+        except Exception as exc:
+            log.exception("periodic.queue_prune_failed", error_class=type(exc).__name__)
     # ADR-0023: trusted browsers past their fixed expiry (a sign-in already refuses them)
-    async with identity_session() as session:
-        totals["trusted_devices"] = await TrustedDeviceRepository(session).prune()
+    try:
+        async with identity_session() as session:
+            totals["trusted_devices"] = await TrustedDeviceRepository(session).prune()
+    except Exception as exc:
+        log.exception("periodic.trusted_devices_failed", error_class=type(exc).__name__)
+        totals["trusted_devices"] = 0
     try:
         totals["image_orphans"] = await sweep_image_orphans()
     except Exception as exc:
@@ -919,14 +939,16 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
 
 
 def register_periodic(app: procrastinate.App) -> None:
-    """Register every periodic task on `app` (queue `default`, `queueing_lock` = its id, so a
-    slot never queues twice); a second call is a no-op."""
+    """Register every periodic task on `app` (queue `periodic`, its own worker slots, so business
+    jobs on `default` never delay the reaper or the token refresh; `queueing_lock` = its id, so
+    a slot never queues twice); a second call is a no-op."""
+
     for periodic_id, (cron, fn, pass_context) in PERIODIC.items():
         name = f"periodic_{periodic_id}"
         if name in app.tasks:
             continue
         if pass_context:
-            task: Any = app.task(name=name, queue="default", pass_context=True)(fn)
+            task: Any = app.task(name=name, queue=PERIODIC_QUEUE, pass_context=True)(fn)
         else:
-            task = app.task(name=name, queue="default", pass_context=False)(fn)
+            task = app.task(name=name, queue=PERIODIC_QUEUE, pass_context=False)(fn)
         app.periodic(cron=cron, periodic_id=periodic_id, queueing_lock=periodic_id)(task)

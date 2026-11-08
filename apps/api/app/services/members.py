@@ -49,6 +49,9 @@ async def list_members(
 def _owner_rule(principal: Principal, target: MemberRow, role: str | None) -> None:
     if principal.role != "owner" and (target.role == "owner" or role == "owner"):
         raise ForbiddenError("only an owner grants or removes owner")
+    # V1 hardening #12: the invite rule's mirror, an admin never makes a reviewer (an approver)
+    if principal.role != "owner" and role == "reviewer" and target.role != "reviewer":
+        raise ForbiddenError("only an owner grants reviewer")
 
 
 def _self_rule(principal: Principal, target: MemberRow, role: str | None) -> None:

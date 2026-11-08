@@ -65,7 +65,10 @@ __all__ = [
 
 log = get_logger(__name__)
 CLEAN_MAX_BYTES: Final = 10 * 1024 * 1024
-PUBLIC_CACHE_CONTROL: Final = "public, max-age=31536000, s-maxage=86400, immutable"
+# V1 hardening #17: one day everywhere (browser and edge), never `immutable`, so a deleted or
+# replaced image is gone from every cache within a day, as the privacy policy says; it matches
+# the images edge worker's `cacheTtl` (86400, scripts/deploy/cloudflare/images-edge-worker.js).
+PUBLIC_CACHE_CONTROL: Final = "public, max-age=86400"
 EXTENSIONS: Final = PUBLIC_EXTENSIONS
 PUBLIC_ID_UNIQUE: Final = "images_public_id_uq"
 

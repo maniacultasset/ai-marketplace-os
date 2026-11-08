@@ -802,8 +802,9 @@ def test_0021_is_the_single_head() -> None:
     # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
     # image candidates (SI7) on top of team access, status truth (SI9) on top of that, the `baby`
     # audience (SI8) on top of that, the AI credit state (SI10) on top of those, autonomous
-    # resolution (SI11) on top of the AI credit state, the photo role (SI12) on top of it, and
-    # the brief-gap proposals (SI13) on top of that
+    # resolution (SI11) on top of the AI credit state, the photo role (SI12) on top of it, then
+    # the budget indexes (V1 hardening #10), the invitee email flag (#12), and the brief-gap
+    # proposals (SI13) on top of that (re-chained from 0023 at the 2026-11-09 merge)
     assert revisions - parents == {"0024_brief_gaps"}
 
 

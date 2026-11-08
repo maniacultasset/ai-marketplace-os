@@ -89,11 +89,36 @@ class MembersRepository(TenantScopedRepository[TenantMembership]):
         found = (await self.db.execute(stmt)).one_or_none()
         return None if found is None else (found.role, found.is_active)
 
-    async def approver_ids(self, roles: frozenset[str]) -> frozenset[uuid.UUID]:
-        """SI10 T16: the tenant's active members holding one of `roles` (the approver roles)."""
+    async def approver_state(self, user_id: uuid.UUID) -> tuple[str, bool] | None:
+        """`role_for_share` for the approve checks (V1 hardening #12): the membership read `FOR
+        SHARE`, its `is_active` false while the account's email is unverified (an account made
+        from a copied invite link), so such an account is never an approver."""
+        found = await self.role_for_share(user_id)
+        if found is None:
+            return None
+        role, active = found
+        return role, active and not await self._email_unverified(user_id)
+
+    async def _email_unverified(self, user_id: uuid.UUID) -> bool:
         stmt = (
             self._select()
-            .where(TenantMembership.is_active.is_(True), TenantMembership.role.in_(sorted(roles)))
+            .join(User, User.id == TenantMembership.user_id)
+            .where(TenantMembership.user_id == user_id)
+            .with_only_columns(User.email_unverified)
+        )
+        return bool((await self.db.execute(stmt)).scalar_one_or_none())
+
+    async def approver_ids(self, roles: frozenset[str]) -> frozenset[uuid.UUID]:
+        """SI10 T16: the tenant's active members holding one of `roles` (the approver roles),
+        whose email is not unverified (V1 hardening #12)."""
+        stmt = (
+            self._select()
+            .join(User, User.id == TenantMembership.user_id)
+            .where(
+                TenantMembership.is_active.is_(True),
+                TenantMembership.role.in_(sorted(roles)),
+                User.email_unverified.is_(False),
+            )
             .with_only_columns(TenantMembership.user_id)
         )
         return frozenset((await self.db.execute(stmt)).scalars().all())

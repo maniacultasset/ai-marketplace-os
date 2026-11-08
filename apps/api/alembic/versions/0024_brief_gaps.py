@@ -16,7 +16,7 @@ Downgrade (local and CI only, RULES.md "No prod downgrade") refuses while a prop
 the 0022 allowlist body.
 
 Revision ID: 0024_brief_gaps
-Revises: 0023_image_role
+Revises: 0026_invitee_email_unverified
 Create Date: 2026-11-08
 
 """
@@ -30,7 +30,8 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0024_brief_gaps"
-down_revision: str | Sequence[str] | None = "0023_image_role"
+# The single head on main at the 2026-11-09 merge (0023_image_role at build).
+down_revision: str | Sequence[str] | None = "0026_invitee_email_unverified"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

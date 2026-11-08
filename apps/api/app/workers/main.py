@@ -1,10 +1,10 @@
 """The worker process (`APP_ROLE=worker`; `python -m app.workers.main`).
 
-One process, two procrastinate workers (queue `default` and queue `publish`, each with its own
-concurrency, ADR-0001:32) on one queue pool, LISTEN/NOTIFY on. No health server and no port
+One process, three procrastinate workers (queues `default`, `publish` and `periodic`, each with
+its own concurrency, ADR-0001:32) on one queue pool, LISTEN/NOTIFY on. No health server and no port
 (a Cloud Run worker pool needs none, CANON.md row 25; liveness is the heartbeat plus the
 reaper). Logging and Sentry start exactly as the API's do (S11: locals off, no PII, the
-redacting `before_send`). SIGTERM or SIGINT stops both workers: running jobs get `GRACE_S`, are
+redacting `before_send`). SIGTERM or SIGINT stops every worker: running jobs get `GRACE_S`, are
 then aborted and go back to `queued` uncounted, the worker rows unregister, and the process
 exits 0. Any other way out (a worker crashing) exits 1.
 """

@@ -62,6 +62,9 @@ class MktWorld:
         return self.fake.state.fake
 
 
+SELLER_PROBE: Final = "/kuinn-seller-check"
+
+
 def install_fake(monkeypatch: pytest.MonkeyPatch, fake: Any) -> None:
     monkeypatch.setattr(
         "app.adapters.oauth.http.make_transport", lambda: httpx.ASGITransport(app=fake)
@@ -156,7 +159,10 @@ async def connect_to_pending(
 ) -> str:
     url = await connect(api, mw, email, marketplace)
     query = await consent(mw, url, seller)
-    return pending_of(await callback(api, marketplace, query))
+    handle = pending_of(await callback(api, marketplace, query))
+    # the connect's own SP-API seller check (V1 hardening #11) is not a call the test made
+    mw.control.calls[:] = [c for c in mw.control.calls if not c["path"].endswith(SELLER_PROBE)]
+    return handle
 
 
 async def confirm(api: httpx.AsyncClient, mw: MktWorld, email: str, handle: str) -> httpx.Response:

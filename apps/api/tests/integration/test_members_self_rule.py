@@ -83,13 +83,14 @@ async def test_admin_self_role_change_with_forged_owner_claim_403(
 async def test_admin_changes_other_admin_role_ok(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:
-    """The self rule is about self only: an admin still manages another non-owner's role."""
+    """The self rule is about self only: an admin still manages another non-owner's role (to a
+    non-approver role: only an owner grants reviewer, V1 hardening #12)."""
     other = add_user(auth_db, "admin2@acme.test", display_name="Admin2")
     add_member(auth_db, world.tenant("acme"), other, "admin")
     token = tokens_for(world, "admin@acme.test", "acme")
-    response = await _patch(api, token, str(other), {"role": "reviewer"})
+    response = await _patch(api, token, str(other), {"role": "operator"})
     assert response.status_code == 200, response.text
-    assert _member(auth_db, other) == ("reviewer", True, False)
+    assert _member(auth_db, other) == ("operator", True, False)
     assert len(audit_rows(auth_db, "membership.role_changed")) == 1
 
 

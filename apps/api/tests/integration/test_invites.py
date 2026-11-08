@@ -758,3 +758,48 @@ async def test_join_missing_auth_401(api: httpx.AsyncClient) -> None:
 async def test_accept_long_display_name_is_422(api: httpx.AsyncClient, world: World) -> None:
     token = await _token_for(api, world, "long@acme.test")
     assert (await _accept(api, token, display_name="x" * 200)).status_code == 422
+
+
+# ---- V1 hardening #12: approvers come only from owners, and a copied link verifies nothing ----
+
+
+@pytest.mark.parametrize("role", ["reviewer", "owner"])
+async def test_admin_cannot_invite_an_approver(
+    api: httpx.AsyncClient, world: World, role: str
+) -> None:
+    response = await _invite(api, world, f"{role}-x@acme.test", role=role, caller="admin@acme.test")
+    assert response.status_code == 403, response.text
+    allowed = await _invite(api, world, "op-x@acme.test", role="operator", caller="admin@acme.test")
+    assert allowed.status_code == 201, allowed.text
+
+
+async def test_admin_cannot_promote_a_member_to_reviewer(
+    api: httpx.AsyncClient, world: World
+) -> None:
+    target = world.user("operator@acme.test")
+    url = f"{PREFIX}/members/{target}"
+    denied = await api.patch(url, json={"role": "reviewer"}, headers=_as(world, "admin@acme.test"))
+    assert denied.status_code == 403, denied.text
+    done = await api.patch(url, json={"role": "reviewer"}, headers=_as(world, "owner@acme.test"))
+    assert done.status_code == 200, done.text
+
+
+async def test_password_accept_account_is_unverified_and_not_an_approver(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    from app.repositories.uow import tenant_uow
+
+    token = await _token_for(api, world, "copied@acme.test")  # a reviewer invite, by the owner
+    assert (await _accept(api, token)).status_code == 200
+    (row,) = auth_db.execute(
+        "SELECT id, email_unverified FROM users WHERE email = 'copied@acme.test'"
+    ).fetchall()
+    user_id, unverified = row
+    assert unverified is True
+    acme = world.tenant("acme")
+    async with tenant_uow(acme) as uow:
+        assert await uow.members.approver_state(user_id) == ("reviewer", False)
+        reviewer = world.user("reviewer@acme.test")
+        assert await uow.members.approver_state(reviewer) == ("reviewer", True)
+        approvers = await uow.members.approver_ids(frozenset({"reviewer", "owner"}))
+    assert user_id not in approvers and reviewer in approvers

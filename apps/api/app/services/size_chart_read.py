@@ -8,6 +8,8 @@ Order (CODE-PLAN T18):
 2. The product (404, tenant-scoped; a foreign one answers as a missing one), a variant is 422
    `FACT_LEVEL_INVALID` (the chart is style-owned), no live size-chart image is 422 at
    `size_chart_image`, no clean derivative yet is 409 `INVALID_STATUS_TRANSITION`.
+   While `SIZE_CHART_READ_ENABLED` is off, a valid ask answers 200 `unavailable` here: no job, no
+   admission, no spend, nothing stored.
 3. Without a lock: a `read` or `unreadable` result for the current clean hash answers 200 with no
    job; a live job answers 202 with it. A stored `unavailable` or `failed` is not cached.
 4. The SI10 admission, outside any unit of work: AI paused is 503 with the pause's code, a daily
@@ -31,6 +33,7 @@ from typing import Any, Final
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 
+from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
@@ -136,6 +139,11 @@ async def request_read(
         return replay
     async with tenant_uow(tenant, user_id=principal.user_id) as uow:
         target = await _target(uow, product_id)
+        if not get_settings().size_chart_read_enabled:
+            log.info(
+                "size_chart_read.disabled", tenant_id=str(tenant), image_id=str(target.image_id)
+            )
+            return 200, _body(target.image_id, "unavailable")
         fast = await _answer(uow, target)
     if fast is not None:
         return fast

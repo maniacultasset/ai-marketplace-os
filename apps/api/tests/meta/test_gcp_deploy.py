@@ -870,7 +870,13 @@ def test_deploy_refuses_when_the_mfa_key_is_missing(toolkit: Path, tmp_path: Pat
 
 # ---- DPP 1.7: the daily maintenance job and its scheduler ----
 
-MAINT_SECRET_NAMES = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"}
+MAINT_SECRET_NAMES = {
+    "DATABASE_URL",
+    "ALEMBIC_DATABASE_URL",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY",
+    "SENTRY_DSN",
+}
 
 
 def _secret_grants(out: str, account: str) -> set[str]:
@@ -1406,7 +1412,41 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
     assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
     for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
         assert staging[name] == "", name
+    # SI12: the size-chart read keeps LLM_MODEL_VISION until the AI lead picks its own model, and
+    # stays off on both; prod's photo facts run on gpt-4o (pipeline v0.5.0 prices it)
+    assert prod["LLM_MODEL_VISION_SIZE_CHART"] == staging["LLM_MODEL_VISION_SIZE_CHART"] == ""
+    assert prod["SIZE_CHART_READ_ENABLED"] == staging["SIZE_CHART_READ_ENABLED"] == "false"
+    assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
+    assert prod["PIPELINE_REF"] == "f631923204f4ed9b4d617965c5c83e5cc347a75b"
     assert staging["WORKER_ENABLED"] == "true"
+
+
+def test_size_chart_model_goes_to_the_worker_only_when_set(toolkit: Path, tmp_path: Path) -> None:
+    """SI12: blank (as committed) sends nothing, so the worker keeps LLM_MODEL_VISION."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _worker_container(out)[0]
+    assert "LLM_MODEL_VISION" not in _worker_container(out)[0]
+    _set_env(toolkit, "staging", LLM_MODEL_VISION="gpt-4o", LLM_MODEL_VISION_SIZE_CHART="gpt-4o")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    worker = _worker_container(out)[0]
+    assert worker["LLM_MODEL_VISION"] == worker["LLM_MODEL_VISION_SIZE_CHART"] == "gpt-4o"
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _api_env(out)
+    assert "LLM_MODEL_VISION" not in _api_env(out)
+
+
+def test_size_chart_read_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """SI12: the api's ask and the worker's job read one switch; off as committed."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["SIZE_CHART_READ_ENABLED"] == "false"
+    assert _worker_container(out)[0]["SIZE_CHART_READ_ENABLED"] == "false"
+    _set_env(toolkit, "staging", SIZE_CHART_READ_ENABLED="true")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["SIZE_CHART_READ_ENABLED"] == "true"
+    assert _worker_container(out)[0]["SIZE_CHART_READ_ENABLED"] == "true"
+    _set_env(toolkit, "staging", SIZE_CHART_READ_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "SIZE_CHART_READ_ENABLED must be true or false" in result.stderr
 
 
 def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) -> None:
@@ -2270,3 +2310,32 @@ def test_bad_image_edit_switch_refused(toolkit: Path, tmp_path: Path) -> None:
     _set_env(toolkit, "staging", IMAGE_EDIT_ENABLED="yes")
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0 and "IMAGE_EDIT_ENABLED must be true or false" in result.stderr
+
+
+# ---- V1 hardening #2: the optional Slack webhook ----
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_setup_prepares_the_optional_slack_webhook(
+    toolkit: Path, tmp_path: Path, env_name: str
+) -> None:
+    """`setup` creates ALERT_SLACK_WEBHOOK and grants it to the worker, never sets a value and
+    never stops for it; the api and the jobs never get it."""
+    out = _run(toolkit, tmp_path, env_name, "setup", "--dry-run", "--sha", SHA).stdout
+    assert "secrets create ALERT_SLACK_WEBHOOK " in out
+    assert "ALERT_SLACK_WEBHOOK" in _secret_grants(out, "aimos-worker")
+    assert "ALERT_SLACK_WEBHOOK" not in _secret_grants(out, "aimos-api")
+    assert "ALERT_SLACK_WEBHOOK" not in _secret_grants(out, "aimos-maint")
+    assert "ALERT_SLACK_WEBHOOK has no value (optional" in out
+    assert "versions add ALERT_SLACK_WEBHOOK --data-file=- --project" in out  # the hint only
+
+
+def test_worker_binds_the_slack_webhook_only_with_a_value(toolkit: Path, tmp_path: Path) -> None:
+    """A dry run reads the webhook as empty: the worker deploys without it (an empty secret
+    would fail the deploy) and says so."""
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode == 0, result.stderr
+    assert "ALERT_SLACK_WEBHOOK has no value: not bound (optional)" in result.stderr
+    assert "ALERT_SLACK_WEBHOOK" not in "\n".join(
+        x for x in result.stdout.splitlines() if "worker-pools" in x or "secretKeyRef" in x
+    )

@@ -44,11 +44,35 @@ POLICIES: Final[Mapping[JobKind, JobPolicy]] = MappingProxyType(
 )
 
 
-# S17b: image_compliance jobs run one at a time (procrastinate queueing lock). S26: every defer
-# (enqueue, the lease reaper's requeue, the orphan re-defer, the staff requeue) derives the lock
-# from the kind here, so a re-deferred job never runs unlocked beside another one.
-IMAGE_JOB_LOCK: Final = "image_compliance"
-_LOCKS: Final[Mapping[JobKind, str]] = MappingProxyType({JobKind.IMAGE_COMPLIANCE: IMAGE_JOB_LOCK})
+# V1 hardening #8: procrastinate fetches the highest priority first within a queue. A publish
+# (always human-approved) shares the `publish` slots with the status syncs, so it jumps any
+# queued burst of daily syncs instead of waiting behind them. Every defer (enqueue, the reaper's
+# requeue, the orphan re-defer) derives the priority from the kind here.
+PUBLISH_PRIORITY: Final = 10
+_PRIORITIES: Final[Mapping[JobKind, int]] = MappingProxyType(
+    {JobKind.LISTING_PUBLISH: PUBLISH_PRIORITY}
+)
+
+
+def priority_for(kind: JobKind | str) -> int:
+    """The procrastinate priority of a queue entry of `kind` (0 unless listed above)."""
+    return _PRIORITIES.get(JobKind(kind), 0)
+
+
+# S17b: image_compliance jobs run under a procrastinate queueing lock. V1 hardening #9: the lock
+# is per tenant (`image_compliance:<tenant_id>`), so one brand's upload batch no longer holds up
+# every other brand's checks; the per-tenant cap of live image jobs (`LIVE_IMAGE_JOB_CAP`) and
+# the per-process child semaphore (`app.services.image_runner`) stay. S26: every defer (enqueue,
+# the lease reaper's requeue, the orphan re-defer, the staff requeue) derives the lock from the
+# kind and tenant here, so a re-deferred job never runs unlocked beside its tenant's other ones.
+IMAGE_LOCK_PREFIX: Final = "image_compliance:"
+
+
+def image_job_lock(tenant_id: object) -> str:
+    """The lock of a tenant's upload image job."""
+    if tenant_id is None:
+        raise ValueError("an image job's lock needs its tenant")
+    return f"{IMAGE_LOCK_PREFIX}{tenant_id}"
 
 
 # SI7 (design §2.2): a candidate job is an `image_compliance` job about an `image_candidate`. It
@@ -65,15 +89,18 @@ TENANT_LOCKED_ENTITIES: Final = frozenset({CANDIDATE_ENTITY, SIZE_CHART_READ_ENT
 def lock_for(
     kind: JobKind | str, entity_type: str | None = None, tenant_id: object | None = None
 ) -> str | None:
-    """The procrastinate lock every queue entry of `kind` carries, or None (unserialised). A
-    candidate job (`entity_type='image_candidate'`) and a size-chart read (`size_chart_read`,
-    SI12) take `image_candidate:<tenant_id>`."""
+    """The procrastinate lock every queue entry of `kind` carries, or None (unserialised). An
+    upload image job takes `image_compliance:<tenant_id>`; a candidate job
+    (`entity_type='image_candidate'`) and a size-chart read (`size_chart_read`, SI12) take
+    `image_candidate:<tenant_id>`."""
     known = JobKind(kind)
-    if known is JobKind.IMAGE_COMPLIANCE and entity_type in TENANT_LOCKED_ENTITIES:
+    if known is not JobKind.IMAGE_COMPLIANCE:
+        return None
+    if entity_type in TENANT_LOCKED_ENTITIES:
         if tenant_id is None:
             raise ValueError("a candidate or size-chart read job's lock needs its tenant")
         return f"{CANDIDATE_LOCK_PREFIX}{tenant_id}"
-    return _LOCKS.get(known)
+    return image_job_lock(tenant_id)
 
 
 def lease_s(policy: JobPolicy) -> int:

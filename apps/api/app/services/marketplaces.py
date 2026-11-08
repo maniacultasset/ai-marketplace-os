@@ -6,6 +6,10 @@ BACKEND-ARCHITECTURE.md §3.2; DATABASE.md §5.4-§5.5; invariant 6).
 - `complete_callback` (public, no JWT): the state row is consumed once by hash, the code is
   exchanged with no transaction open, the tokens are sealed for the state's tenant and stored as a
   *pending* row under a fresh opaque handle. The tenant and user come only from the consumed row.
+  V1 hardening #11: for Amazon the claimed `selling_partner_id` is checked first with one
+  read-only SP-API call under the new token (`app.adapters.amazon.seller_check`); a refusal is
+  `SellerUnverifiedError` (409 `OAUTH_STATE_INVALID` with its own message) and stores nothing, so an id the token cannot act for never takes
+  the global live slot. The staging sandbox (static replies) skips the check.
 - `confirm`: the user who started the flow, in its tenant, turns the pending row into the live
   account (or reconnects the same seller); a new account adopts the listings of the tenant's
   revoked accounts for that marketplace. Another seller live in the tenant, or the seller live
@@ -55,6 +59,7 @@ __all__ = [
     "MarketplaceNotConfiguredError",
     "MarketplaceUnavailableError",
     "MarketplaceUnknownError",
+    "SellerUnverifiedError",
     "complete_callback",
     "confirm",
     "list_accounts",
@@ -83,6 +88,42 @@ class MarketplaceUnavailableError(Exception):
 
 class MarketplaceUnknownError(Exception):
     """The marketplace's callback was not usable (Amazon without `selling_partner_id`)."""
+
+
+class SellerUnverifiedError(Exception):
+    """Amazon refused the new token for the claimed seller id: 409 OAUTH_STATE_INVALID, with
+    `SELLER_UNVERIFIED_MESSAGE` (the callback's declared conflict; no new error code)."""
+
+
+SELLER_UNVERIFIED_MESSAGE: Final = (
+    "Amazon did not confirm this seller account for the app. Connect again from Seller Central "
+    "with the account you want to link."
+)
+
+
+async def _check_amazon_seller(seller_id: str, access_token: Any) -> None:
+    """V1 hardening #11: the token must be able to read the claimed seller's listings."""
+    from app.adapters.amazon.seller_check import verify_seller
+    from app.adapters.base import AdapterError
+    from app.adapters.oauth import http as oauth_http
+
+    settings = get_settings()
+    if settings.amazon_use_sandbox and settings.app_env != "local":
+        log.info("marketplace.seller_check_skipped", reason="sandbox")
+        return
+    try:
+        check = await verify_seller(
+            endpoint=settings.amazon_spapi_endpoint,
+            marketplace_id=settings.amazon_marketplace_id,
+            seller_id=seller_id,
+            access_token=access_token,
+            transport=oauth_http.make_transport(),
+        )
+    except AdapterError:
+        raise MarketplaceUnavailableError from None
+    log.info("marketplace.seller_check", marketplace="amazon", outcome=check)
+    if check != "verified":
+        raise SellerUnverifiedError
 
 
 def bad_state() -> ConflictError:
@@ -161,6 +202,8 @@ async def complete_callback(
         outcome = MarketplaceUnavailableError()
     if outcome is not None:
         raise outcome
+    if client.marketplace == "amazon":
+        await _check_amazon_seller(str(grant.seller_id), grant.tokens.access_token)
     sealed = await seal(grant.tokens, tenant_id=row.tenant_id, wrapper=get_key_wrapper())
     handle = secrets.token_urlsafe(STATE_BYTES)
     async with tenant_uow(row.tenant_id, user_id=row.user_id) as uow:

@@ -528,6 +528,10 @@ async def complete(
             reason = result.kind if isinstance(result, auth.Refusal) else "no_active_membership"
             await _failed(session, user.id, reason, ip)
             return Failure(reason)
+        if identity.email.lower() == user.email.lower():
+            # V1 hardening #12: Google verified this address, so an invitee account made with
+            # a password from a copied link now counts as verified
+            await UserRepository(session).mark_email_verified(user.id)
         return Completed("sign_in", identity.email, login=result)
 
 

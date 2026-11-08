@@ -16,7 +16,6 @@ from app.core.errors import CAP_RETRY_AFTER_S
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import tenant_uow
 from app.services import image_runner
-from app.services import images as svc
 from app.services.image_keys import image_object_key
 from app.workers import wrapper
 from app.workers.policy import POLICIES
@@ -83,7 +82,7 @@ async def test_enqueue_passes_lock(
             "SELECT j.id, q.lock FROM job_runs j JOIN procrastinate_jobs q ON q.id = j.queue_job_id::bigint"
         ).fetchall()
     )
-    assert locks[uuid.UUID(body["job_id"])] == "image_compliance"
+    assert locks[uuid.UUID(body["job_id"])] == f"image_compliance:{acme}"  # V1 hardening #9
     assert locks[bulk.job.id] is None
 
 
@@ -164,10 +163,12 @@ async def test_image_cap_replay_and_reregister_not_counted(
     assert replay.json()["image_id"] == reregister.json()["image_id"] == first.json()["image_id"]
 
 
-async def _image_jobs(jw: JobWorld, store: FakeStorage, n: int) -> list[uuid.UUID]:
+async def _image_jobs(
+    jw: JobWorld, store: FakeStorage, n: int, slug: str = "acme"
+) -> list[uuid.UUID]:
     from .images_support import image_db_row, image_row
 
-    acme = jw.tenant("acme")
+    acme = jw.tenant(slug)
     out = []
     for _ in range(n):
         p = product(jw.conn, acme)
@@ -190,7 +191,6 @@ async def _enqueue_locked(tenant: uuid.UUID, image_id: uuid.UUID) -> uuid.UUID:
                 entity_id=image_id,
                 created_by=None,
                 payload={"image_id": str(image_id)},
-                lock=svc.IMAGE_JOB_LOCK,
             )
         )
     return enqueued.job.id
@@ -274,3 +274,32 @@ async def test_waiting_image_job_timeout_not_started(
         for j in jobs
     ]
     assert statuses == ["succeeded"] * 4
+
+
+async def test_two_tenants_image_jobs_do_not_wait_on_each_other(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1 hardening #9: the lock is per tenant, so one tenant's image job is fetched while the
+    other tenant's is still running; each tenant still runs one at a time."""
+    release = asyncio.Event()
+    real = image_runner.run_checks_isolated
+
+    async def blocked(*a: Any, **k: Any) -> Any:
+        await release.wait()
+        return await real(*a, **k)
+
+    monkeypatch.setattr(image_runner, "run_checks_isolated", blocked)
+    await _image_jobs(images_db, store, 2, "acme")
+    await _image_jobs(images_db, store, 2, "bharat")
+    async with running_worker(concurrency=4):
+        await eventually(lambda: _states(images_db).get("image_compliance", []).count("doing") == 2)
+        rows = images_db.conn.execute(
+            "SELECT lock FROM procrastinate_jobs WHERE status = 'doing'"
+        ).fetchall()
+        assert sorted(r[0] for r in rows) == sorted(
+            f"image_compliance:{images_db.tenant(s)}" for s in ("acme", "bharat")
+        )
+        release.set()
+        await eventually(
+            lambda: _states(images_db)["image_compliance"].count("succeeded") == 4, timeout_s=60
+        )

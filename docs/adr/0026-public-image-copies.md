@@ -33,9 +33,10 @@ private.
 3. **Names.** Each image gets one `public_id`: 26 lowercase base32 characters from 16 random bytes,
    unique across tenants (partial unique index), with no tenant, product or image id in it. The URL
    is `IMAGE_PUBLIC_BASE_URL/<public_id>.<jpg|png>`. A re-publish reuses the same name.
-4. **Caching.** Objects are written once with `Cache-Control: public, max-age=31536000,
-   s-maxage=86400, immutable`. A deleted image can stay at a CDN edge for up to one day and in a
-   browser cache longer. A purge-on-delete at the CDN is a later step.
+4. **Caching.** Objects are written once with `Cache-Control: public, max-age=86400` (V1
+   hardening #17, 2026-11-08; it was a 1-year `immutable` value). A deleted or replaced image can
+   stay at the CDN edge and in a browser cache for up to one day, as the privacy policy says. A
+   purge-on-delete at the CDN is a later step (it needs a Cloudflare API token).
 5. **Removal.** `DELETE /api/v1/images/{id}` and a main-image replacement remove the public copy and
    the derived objects after commit; a daily step retries failures. `public_id` stays on the deleted
    row as a tombstone, so the object name is never lost. A tenant purge first deletes every public

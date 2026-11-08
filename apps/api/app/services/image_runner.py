@@ -1,8 +1,9 @@
 """Run the image checks in a killable child process (S17b PLAN D6, CP6; S17a hand-off).
 
 `run_checks_isolated(data, image_id=, slot=, rules=, now=)` starts `app.services.image_check_child`
-with an environment allow-list, under a per-process semaphore of one (a backstop: the queue's
-`image_compliance` lock already keeps a second image job unfetched, PLAN D15(b)), and waits at
+with an environment allow-list, under a per-process semaphore of one (the memory bound: each
+child may map up to 1 GiB on a 2 GiB worker; the queue lock is per tenant since V1 hardening #9,
+so two tenants' image jobs can now be fetched together and the second waits here), and waits at
 most `CHILD_TIMEOUT_S`. It never raises for a hostile image:
 
 - a timeout (the child is killed and reaped), a non-zero exit, a signal, or stdout that does not

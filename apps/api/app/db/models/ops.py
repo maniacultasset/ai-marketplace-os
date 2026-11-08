@@ -47,6 +47,9 @@ from app.db.models.tenancy import (
     to_row,
 )
 
+# the job kinds that hold a budget reservation (`app.repositories.budget.RESERVING_KINDS`)
+_RESERVING_SQL = "'listing_generate', 'brand_embed', 'image_compliance'"
+
 
 class JobRun(TenantScoped, Base):
     __tablename__ = "job_runs"
@@ -100,6 +103,20 @@ class JobRun(TenantScoped, Base):
         ),
         Index(conv("ix_job_runs_recent"), "tenant_id", text("queued_at DESC"), text("id DESC")),
         Index(conv("ix_job_runs_entity"), "tenant_id", "entity_type", "entity_id"),
+        # 0025 (V1 hardening #10): the budget admission's sums over the reserving kinds
+        Index(
+            conv("ix_job_runs_budget_started_at"),
+            "started_at",
+            postgresql_include=["tenant_id", "cost_reserved_usd"],
+            postgresql_where=text(f"kind IN ({_RESERVING_SQL})"),
+        ),
+        Index(
+            conv("ix_job_runs_budget_tenant_started_at"),
+            "tenant_id",
+            "started_at",
+            postgresql_include=["cost_reserved_usd"],
+            postgresql_where=text(f"kind IN ({_RESERVING_SQL})"),
+        ),
         # `WITH (fillfactor = 80)` lives in the revision only: SQLAlchemy 2.0 has no Table
         # storage-parameter option, and Alembic does not compare reloptions.
     )
