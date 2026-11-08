@@ -71,7 +71,14 @@ from app.services.adapter_input import build_adapter_listing
 from app.services.auto_fix.text import seller_central_step, staff_step
 from app.services.issues import adapter_source
 from app.services.remote_preview import request_preview
-from app.services.resolution.plan import IssueView, PlanContext, Step, plan
+from app.services.resolution.plan import (
+    IssueView,
+    PlanContext,
+    Step,
+    plan,
+    seller_answers,
+    staff_action,
+)
 from app.workers.payloads import PublishJobPayload, dump
 
 log = get_logger(__name__)
@@ -483,6 +490,10 @@ async def _human_steps(
     from app.services.issue_questions import open_questions
 
     opened: dict[str, list[uuid.UUID]] = {}
+    # belt and braces (round 4): a seller step the inbox cannot take goes to staff before the
+    # inbox is asked, and so does any seller row the inbox left with no question behind it (no
+    # dictionary target, an image index outside the version): an open ERROR never stalls taskless
+    steps = [_to_staff(s, by_issue) if s.lane == "seller" else s for s in steps]
     seller = [by_issue[s.issue_id] for s in steps if s.lane == "seller"]
     if seller:
         source = await uow.listings.preview_source(listing.id)
@@ -499,7 +510,17 @@ async def _human_steps(
         # (`blocked/validation_errors` or `failed`), and a status that keeps the dry run and the
         # revalidate reachable lets a fact fixed outside the inbox clear it (the shared
         # blocking rule: a question never blocks by itself)
-        opened["seller"] = asked
+        if asked:
+            opened["seller"] = asked
+        left = set(await uow.listing_issues.unlinked([r.id for r in seller]))
+        steps = [
+            (
+                Step(s.issue_id, "staff", s.cause, staff_action(by_issue[s.issue_id].field_path))
+                if s.lane == "seller" and s.issue_id in left
+                else s
+            )
+            for s in steps
+        ]
     account_steps: dict[tuple[str, str], list[Step]] = {}
     for step in steps:
         if step.lane == "marketplace":
@@ -538,6 +559,13 @@ async def _human_steps(
         tasks=sum(len(v) for v in opened.values()),
     )
     return opened
+
+
+def _to_staff(step: Step, by_issue: Mapping[uuid.UUID, Any]) -> Step:
+    path = by_issue[step.issue_id].field_path
+    if seller_answers(path):
+        return step
+    return Step(step.issue_id, "staff", step.cause, staff_action(path))
 
 
 async def _images(uow: TenantUnitOfWork, listing: Any) -> Sequence[Any]:

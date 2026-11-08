@@ -17,9 +17,9 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    is built: fix round 3); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
    critical, else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
    marketplace error); RETRY -> `retry`; OPS -> `staff`.
-6. a `seller` step on a content or keyword path (the inbox asks only about facts and images)
-   -> `staff` (`content_review`); on a fact path the seller cannot answer (outside
-   `facts.attributes.*`, `facts.gender` and `facts.brand_name`, CP-D25) -> `staff`.
+6. a `seller` step only where the inbox can ask (`seller_answers`: one image, or a fact key it
+   answers, CP-D25); otherwise `staff`: `content_review` on a content or keyword path, `mapping`
+   on `listing`, else `unanswerable_fact`.
 
 `cause` says whose value was wrong (P:D16). `lane_for(code, class)` is the issue-free lane of the
 error catalogue (T19).
@@ -27,6 +27,7 @@ error catalogue (T19).
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -42,6 +43,7 @@ from app.services.auto_fix.policy import (
     MARKETPLACE_ERROR_REVIEW,
     MISSING_FACT,
     Route,
+    fact_key,
     route,
 )
 
@@ -54,6 +56,7 @@ ANSWERABLE_FACTS: Final = ("facts.gender", "facts.brand_name")
 ADAPTER_SOURCES: Final = frozenset({"amazon_adapter", "flipkart_adapter"})
 _CONTENT_ROOTS: Final = ("content.", "keywords.")
 _FACT_ROOTS: Final = ("facts.", "attributes.")
+_IMAGE_PATH: Final = re.compile(r"images\[\d+\]")
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,15 +159,37 @@ def cause_of(issue: IssueView, lane: Lane, provenance: Mapping[str, str]) -> Cau
     return "unknown"
 
 
+def seller_answers(path: str) -> bool:
+    """The seller inbox can take this path: one image (`images[<i>]`) or a fact whose key it
+    can answer (`attributes.<k>`, or a `facts.` path `answerable` accepts, also under
+    `variants[<sku>].`). Nothing else ever reaches the `seller` lane (round 4: a `listing`,
+    `brand.*` or `request` path would open no question and stall)."""
+    if _IMAGE_PATH.fullmatch(path):
+        return True
+    key = fact_key(path)
+    if key is None:
+        return False
+    if path.startswith("attributes."):
+        return True
+    return answerable(f"facts.{key}")
+
+
+def staff_action(path: str) -> str:
+    """The staff action for a path the seller cannot answer."""
+    if path == "listing":
+        return "mapping"  # no canonical path fed the attribute: our mapping, staff looks
+    if path.startswith(_CONTENT_ROOTS):
+        return "content_review"
+    return "unanswerable_fact"
+
+
 def _seller_or_staff(path: str) -> tuple[Lane, str]:
     """A question the seller can answer, else staff (CP-D25: never a question the inbox cannot
-    take). The inbox asks only about facts and images, so a content or keyword path goes to a
-    staff content review."""
-    if path.startswith(_CONTENT_ROOTS):
-        return "staff", "content_review"
-    if path.startswith("facts.") and not answerable(path):
-        return "staff", "unanswerable_fact"
-    return "seller", "ask"
+    take). The inbox asks only about facts and images (`seller_answers`), so a content or
+    keyword path is a staff content review and a `listing` path a staff mapping review."""
+    if seller_answers(path):
+        return "seller", "ask"
+    return "staff", staff_action(path)
 
 
 def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:

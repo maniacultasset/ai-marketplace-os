@@ -223,6 +223,22 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         total, still_open = (await self.db.execute(stmt)).one()
         return int(total), int(still_open)
 
+    async def unlinked(self, issue_ids: Sequence[uuid.UUID]) -> builtins.list[uuid.UUID]:
+        """SI11: of these rows, the open ones no human task stands behind, oldest first."""
+        if not issue_ids:
+            return []
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.id.in_(tuple(issue_ids)),
+                ListingIssue.status == OPEN,
+                ListingIssue.human_task_id.is_(None),
+            )
+            .with_only_columns(ListingIssue.id)
+            .order_by(ListingIssue.created_at, ListingIssue.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def link_ids(self, issue_ids: Sequence[uuid.UUID], task_id: uuid.UUID) -> int:
         """Link open issues, by id, to a human task."""
         self._own_session()

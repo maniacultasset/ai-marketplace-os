@@ -13,7 +13,10 @@ from app.services.resolution.plan import (
     answerable,
     lane_for,
     plan,
+    seller_answers,
 )
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass
 
@@ -172,3 +175,61 @@ def test_a_keyword_length_error_is_a_staff_content_review() -> None:
                    error_class="invalid_value")  # fmt: skip
     (step,) = plan([issue], PlanContext())
     assert (step.lane, step.action) == ("staff", "content_review")
+
+
+_PATHS = st.one_of(
+    st.sampled_from(
+        [
+            "listing",
+            "brand.name",
+            "request",
+            "variants[SKU-1]",
+            "variants[SKU-1].facts.gender",
+            "variants[SKU-1].facts.mrp",
+            "facts.gender",
+            "facts.brand_name",
+            "facts.mrp",
+            "facts.manufacturer",
+            "facts.attributes.color",
+            "attributes.color",
+            "images[0]",
+            "images[12]",
+            "images",
+            "content.title",
+            "keywords.search_terms",
+        ]
+    ),
+    st.from_regex(
+        r"(attributes|facts|facts\.attributes|brand|request)\.[a-z_]{1,12}", fullmatch=True
+    ),
+)
+
+
+@settings(max_examples=400, deadline=None)
+@given(
+    path=_PATHS,
+    code=st.sampled_from(sorted(ErrorCode, key=str)),
+    source=st.sampled_from(SOURCES),
+    klass=st.sampled_from(sorted(ErrorClass, key=str)),
+)
+def test_a_seller_step_is_always_one_the_inbox_can_ask(
+    path: str, code: ErrorCode, source: str, klass: ErrorClass
+) -> None:
+    """Round 4 (R4-1): `seller` only on an image or an answerable fact key; anything else is a
+    staff step (`mapping` on `listing`), never a question the inbox cannot open."""
+    issue = _issue(field_path=path, error_code=code.value, source=source, error_class=klass.value)
+    for step in plan([issue], PlanContext(ai_allowed=True)):
+        if step.lane == "seller":
+            assert seller_answers(path), (path, code)
+        if step.lane == "staff" and step.action in ("mapping", "unanswerable_fact"):
+            assert not seller_answers(path)
+
+
+@pytest.mark.parametrize(
+    ("path", "action"),
+    [("listing", "mapping"), ("brand.name", "unanswerable_fact"), ("request", "unanswerable_fact")],
+)
+def test_a_path_with_no_question_is_staff(path: str, action: str) -> None:
+    issue = _issue(field_path=path, error_code="MISSING_ATTRIBUTE", error_class="missing_data")
+    (step,) = plan([issue], PlanContext())
+    assert (step.lane, step.action) == ("staff", action)
