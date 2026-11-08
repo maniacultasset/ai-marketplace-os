@@ -633,8 +633,16 @@ class FlipkartAdapter(MarketplaceAdapter):
         entry = found[0]
         index = reverse_index(None)
         attributes = entry.get("attributes") or {}
+        # SI8 fix round 2: a colour child sends its images at version indexes (CP-D7) and a read
+        # has no version to rebuild them from, so it reports no image path and an image issue
+        # fails `listing`, never a wrong `images[k]` (as Amazon, R1-1)
+        colour_child = isinstance(attributes, dict) and c.COLOUR_GROUP_ATTRIBUTE in attributes
+        if colour_child:
+            index = {k: v for k, v in index.items() if k != c.IMAGE_ATTRIBUTE}
         paths: set[str] = set()
         for name, values in attributes.items() if isinstance(attributes, dict) else []:
+            if name == c.IMAGE_ATTRIBUTE and colour_child:
+                continue
             if name == c.IMAGE_ATTRIBUTE:
                 count = len(values) if isinstance(values, list) else 0
                 paths |= {f"images[{i}]" for i in range(min(count, c.MAX_IMAGES))}
