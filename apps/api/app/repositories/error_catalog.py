@@ -136,3 +136,28 @@ async def map_rows(session: Any, marketplace: str | None) -> list[Any]:
     if marketplace is not None:
         stmt = stmt.where(M.marketplace == marketplace)
     return list((await session.execute(stmt)).scalars())
+
+
+# ---- SI13 T15/T17: the value-map report's platform reads ----
+
+_TENANTS: Final = text("SELECT id FROM public.tenants ORDER BY id LIMIT :limit")
+_ENUM_SPECS: Final = text("SELECT attributes FROM public.category_templates WHERE is_current")
+
+
+async def value_map_inputs(
+    session: Any, *, tenants: int
+) -> tuple[list[Any], dict[str, set[str]], set[str]]:
+    """(tenant ids, enum values per attribute key, the enum keys) from the current templates."""
+    ids = list((await session.execute(_TENANTS, {"limit": tenants})).scalars())
+    enums: dict[str, set[str]] = {}
+    keys: set[str] = set()
+    for (attributes,) in await session.execute(_ENUM_SPECS):
+        for key, spec in ((attributes or {}).get("specs") or {}).items():
+            if not isinstance(spec, dict) or spec.get("value_type") != "enum":
+                continue
+            keys.add(str(key))
+            values = list(spec.get("allowed_values") or []) + list(
+                (spec.get("value_map") or {}).values()
+            )
+            enums.setdefault(str(key), set()).update(str(v) for v in values)
+    return ids, enums, keys

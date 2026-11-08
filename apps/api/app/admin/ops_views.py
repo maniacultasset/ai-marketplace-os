@@ -109,10 +109,10 @@ class OpsView(BaseView):
         code, the suggested map row to review (counts only: no tenant, no message text)."""
         import json
 
-        from app.db.proposal_review import list_rows
-        from app.db.value_map_report import value_map_report
         from app.repositories.error_catalog import catalog_rows
+        from app.repositories.error_proposals import list_rows
         from app.services.resolution.catalog import catalog_line
+        from app.services.resolution.value_map_report import value_map_report
 
         async with PlatformSessionMaker()() as session:
             stats = await catalog_rows(session, limit=200)
@@ -121,6 +121,7 @@ class OpsView(BaseView):
                 (p["marketplace"], p["raw_value"]): p
                 for p in await list_rows(session, status=None, limit=500)
             }
+            value_maps, unpaired = await value_map_report(session, 3)
         rows = []
         for stat in stats:
             line = catalog_line(stat)
@@ -128,7 +129,6 @@ class OpsView(BaseView):
             line["suggested"] = None if suggested is None else json.dumps(suggested, indent=2)
             line["proposal"] = drafts.get((stat.marketplace, stat.marketplace_code))
             rows.append(line)
-        value_maps, unpaired = await value_map_report(3)
         return await self._render(
             request, "ops/errors.html", rows=rows, value_maps=value_maps, unpaired=unpaired
         )

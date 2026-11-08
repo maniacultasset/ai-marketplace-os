@@ -538,12 +538,13 @@ async def run_value_maps(min_listings: int) -> int:
     lines; nothing is written."""
     from app.core.request_context import new_request_id
     from app.core.request_context import request_context as request_scope
-    from app.db.session import dispose_engine
-    from app.db.value_map_report import value_map_report
+    from app.db.session import dispose_engine, platform_scope
+    from app.services.resolution.value_map_report import value_map_report
 
     try:
         with request_scope(new_request_id()):
-            found, unpaired = await value_map_report(min_listings)
+            async with platform_scope() as platform:
+                found, unpaired = await value_map_report(platform, min_listings)
     except Exception as exc:  # class and SQLSTATE only, never the message
         sys.stderr.write(f"errors value-maps: failed ({_describe(exc)})\n")
         return EXIT_FAILED
@@ -604,8 +605,8 @@ async def run_proposals_list(*, status: str | None, limit: int) -> int:
     """The proposals as JSON lines (no tenant id, no sample issue, agent run or job id)."""
     from app.core.request_context import new_request_id
     from app.core.request_context import request_context as request_scope
-    from app.db.proposal_review import list_rows
     from app.db.session import dispose_engine, platform_scope
+    from app.repositories.error_proposals import list_rows
 
     try:
         with request_scope(new_request_id()):

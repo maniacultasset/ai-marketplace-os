@@ -214,24 +214,3 @@ async def _audit(connection: AsyncConnection, proposal_id: uuid.UUID, status: st
             "after": json.dumps({"status": status}),
         },
     )
-
-
-LIST_COLUMNS: Final = (
-    "id, marketplace, raw_value, status, tries, failure_reason, plain_cause, suggested_fix, "
-    "lane_class, error_code, error_class, field_hint, prompt_version, created_at, updated_at, "
-    "reviewed_at, error_map_version"
-)
-
-
-async def list_rows(session: Any, *, status: str | None, limit: int) -> list[dict[str, Any]]:
-    """The proposals as plain dicts, newest first; no sample issue, agent run or job id (they
-    point at tenant rows) and no tenant id."""
-    where = "WHERE status = :status " if status else ""
-    stmt = text(
-        f"SELECT {LIST_COLUMNS} FROM public.marketplace_error_proposals {where}"  # noqa: S608
-        "ORDER BY created_at DESC, id LIMIT :limit"
-    )
-    rows = (await session.execute(stmt, {"status": status, "limit": limit})).mappings().all()
-    return [
-        {k: (str(v) if v is not None and k != "tries" else v) for k, v in r.items()} for r in rows
-    ]
