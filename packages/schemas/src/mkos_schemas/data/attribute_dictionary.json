@@ -234,7 +234,8 @@
         "women",
         "unisex",
         "boys",
-        "girls"
+        "girls",
+        "baby"
       ],
       "input_aliases": [],
       "is_critical": false,

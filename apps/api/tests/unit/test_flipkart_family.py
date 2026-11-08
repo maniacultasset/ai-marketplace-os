@@ -5,6 +5,7 @@ T45): the children only, each with its style code, its colour group and its colo
 from __future__ import annotations
 
 import dataclasses
+import uuid
 from typing import Any
 
 import pytest
@@ -53,31 +54,49 @@ def test_flipkart_family_colour_key_fallback() -> None:
     assert groups == {"navy blue": ["KF01-NVY"], "maroon": ["maroon"]}
 
 
-def test_flipkart_colour_images_fanned_out() -> None:
-    refs = {
-        "navy blue": (
-            "https://images.example.test/navy-1.jpg",
-            "https://images.example.test/navy-2.jpg",
-        ),
-        "maroon": ("https://images.example.test/maroon-1.jpg",),
-    }
-    sent = fk_family(colour_image_refs=refs)
+def _colour_body() -> Any:
+    """Style S (main) and Z (size chart); navy N1 (main), N2; maroon M1 (main)."""
+    from mkos_schemas.enums import ImageSlot
+    from mkos_schemas.listing import ImageRef
+
+    slots = ["main", "size_chart", "main", "secondary", "main"]
+    images = [
+        ImageRef(image_id=uuid.uuid4(), slot=ImageSlot(slot), position=n)
+        for n, slot in enumerate(slots)
+    ]
+    return listing().model_copy(update={"images": images})
+
+
+def _urls(sent: Any, *indexes: int) -> list[str]:
+    return [sent.image_refs[sent.listing.images[i].image_id] for i in indexes]
+
+
+def test_flipkart_colour_images_then_style_images() -> None:
+    """SI8 T1 (AC5): a colour child sends its colourway's images, then the shared style
+    images without the style main; never another colour's. Paths are version indexes."""
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    colours = {"navy blue": (ids[2], ids[3]), "maroon": (ids[4],)}
+    sent = fk_family(body, colour_image_ids=colours)
+    want = {"navy blue": (2, 3, 1), "maroon": (4, 1)}
     for one in _payloads(sent):
-        expected = list(refs[one.unit.colour_key])
-        assert _value(one, "images") == expected
-        assert [p for p in one.submitted if p.startswith("images[")] == [
-            f"images[{i}]" for i in range(len(expected))
-        ]
+        order = want[one.unit.colour_key]
+        assert _value(one, "images") == _urls(sent, *order)
+        assert [p for p in one.submitted if p.startswith("images[")] == sorted(
+            f"images[{i}]" for i in order
+        )
+        assert {f"images[{i}]" for i in range(len(ids))} <= set(one.paths)
 
 
-def test_flipkart_colourway_without_images_uses_listing_images() -> None:
-    sent = fk_family(colour_image_refs={"navy blue": ("https://images.example.test/navy-1.jpg",)})
-    listing_refs = [sent.image_refs[i.image_id] for i in sent.listing.images]
+def test_flipkart_colourway_without_images_uses_style_images() -> None:
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    sent = fk_family(body, colour_image_ids={"navy blue": (ids[2], ids[3], ids[4])})
     for one in _payloads(sent):
         if one.unit.colour_key == "maroon":
-            assert _value(one, "images") == listing_refs
+            assert _value(one, "images") == _urls(sent, 0, 1)
         else:
-            assert _value(one, "images") == ["https://images.example.test/navy-1.jpg"]
+            assert _value(one, "images") == _urls(sent, 2, 4, 3, 1)  # mains first
 
 
 @pytest.mark.parametrize("axis", ["size", "color"])
@@ -144,3 +163,57 @@ def test_flipkart_family_listing_values_shared() -> None:
     sent = fk_family(listing(fabric_type="organic cotton"))
     for one in _payloads(sent):
         assert _value(one, "Fabric") == ["Cotton"]
+
+
+# ---- SI8 T7 (AC4): `style_code` is the style number, else the style SKU ----
+
+
+def _numbered(number: str | None) -> Any:
+    from tests.adapters.flipkart_support import SELLER_FACTS, with_facts
+
+    sent = fk_family(style="KF-STYLE")
+    return with_facts(sent, dataclasses.replace(SELLER_FACTS, style_number=number))
+
+
+def test_flipkart_style_code_is_the_style_number() -> None:
+    for one in _payloads(_numbered(" KS-24 ")):
+        assert _value(one, "style_code") == ["KS-24"]
+        assert "facts.style_number" in one.submitted
+
+
+@pytest.mark.parametrize("number", [None, "", "   "])
+def test_flipkart_style_code_falls_back_to_the_style_sku(number: str | None) -> None:
+    for one in _payloads(_numbered(number)):
+        assert _value(one, "style_code") == ["KF-STYLE"]
+        assert "facts.style_number" in one.submitted
+
+
+def test_flipkart_reverse_index_style_code_keeps_the_group_feed() -> None:
+    from app.adapters.flipkart.mapping import reverse_index
+    from tests.adapters.flipkart_support import template
+
+    index = reverse_index(template().template)
+    assert index["style_code"] == ("facts.style_number", "variants")
+    assert index["colour_group"] == ("variants",)
+
+
+async def test_flipkart_colour_child_read_never_reports_a_wrong_image() -> None:
+    """SI8 fix round 2: a colour child's images are sent at version indexes, which a read has no
+    version to rebuild, so the read reports no image path and an image issue fails `listing`."""
+    from tests.adapters.flipkart_support import flipkart_adapter
+    from tests.support.fake_marketplace import build_fake
+
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    sent = fk_family(body, colour_image_ids={"navy blue": (ids[2], ids[3]), "maroon": (ids[4],)})
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(sent)
+    child = next(u for u in sent.items if u.colour_key == "navy blue")
+    [key] = [k for k in app.state.fake.fk_items if k[1] == child.seller_sku]
+    app.state.fake.fk_items[key]["errors"] = [
+        {"code": "X1", "description": "bad", "severity": "ERROR", "attribute": "images"}
+    ]
+    got = await adapter.get_listing(child.seller_sku)
+    assert not [f for f in got.fields if f.field.startswith("images[")]
+    assert [e.field for e in got.errors] == ["listing"]

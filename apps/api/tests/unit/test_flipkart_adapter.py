@@ -623,3 +623,53 @@ async def test_flipkart_read_two_item_level_errors_are_two_items() -> None:
         ("listing", "E2", "error"),
         ("listing", "W1", "warning"),
     ]
+
+
+# ---- SI8 T7: `style_code` retries ----
+
+
+async def _update_names(fields: list[str]) -> list[str]:
+    import dataclasses
+
+    from tests.adapters.flipkart_support import SELLER_FACTS, with_facts
+
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    sent = with_facts(
+        fk_family(style="FKSC"), dataclasses.replace(SELLER_FACTS, style_number="KS-24")
+    )
+    await adapter.create_listing(sent)
+    seen: list[Any] = []
+    original = adapter._client.update
+
+    async def spy(entries: Any) -> Any:
+        seen.extend(entries)
+        return await original(entries)
+
+    adapter._client.update = spy
+    child = sent.items[0].seller_sku
+    result = await adapter.update_listing(sent, fields={child: fields})
+    assert result.status == "published", result.error
+    (entry,) = seen
+    return sorted(entry["attributes"])
+
+
+async def test_flipkart_variants_is_not_a_retry_path() -> None:
+    """No item carries `variants`, so a regroup retry cannot be asked (the reverse index keeps
+    `style_code`'s `variants` feed for the group attributes; test_flipkart_family pins it)."""
+    with pytest.raises(ValueError, match="does not carry"):
+        await _update_names(["variants"])
+
+
+async def test_flipkart_style_code_issue_fails_facts_style_number() -> None:
+    app = build_fake()
+    app.state.fake.fk_reject_attribute["style_code"] = ("FK-STYLE", "The style code is invalid.")
+    result = await flipkart_adapter(app).create_listing(fk_family(style="FKSI"))
+    for one in result.items:
+        statuses = {f.field: f.status for f in one.fields}
+        assert statuses["facts.style_number"] == "failed"
+        assert statuses["content.title"] == "succeeded"
+
+
+async def test_flipkart_style_number_retry_sends_style_code_only() -> None:
+    assert await _update_names(["facts.style_number"]) == ["style_code"]

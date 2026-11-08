@@ -102,7 +102,7 @@ def test_diff_from_file_without_a_database(
     capsys.readouterr()
     assert main(["templates", "diff", "--product-type", "KURTA", "--from-file", str(drift)]) == 1
     out = capsys.readouterr().out
-    assert "neck_style" in out and "brand" in out
+    assert "neck_style" in out and "item_type_keyword" in out
     bad = clean_env / "bad.json"
     bad.write_text("[1, 2]", encoding="utf-8")
     assert main(["templates", "diff", "--product-type", "KURTA", "--from-file", str(bad)]) == 3

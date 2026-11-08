@@ -95,3 +95,9 @@ def test_attribute_dictionary_ships_in_the_wheel(tmp_path: Path) -> None:
     (wheel,) = tmp_path.glob("mkos_schemas-*.whl")
     with zipfile.ZipFile(wheel) as archive:
         assert "mkos_schemas/data/attribute_dictionary.json" in archive.namelist()
+
+
+def test_gender_vocabulary_has_the_six_audiences(dictionary: dict[str, Any]) -> None:
+    """SI8 T8: `baby` joins the five (data, not a typed vocabulary)."""
+    (gender,) = [e for e in dictionary["attributes"] if e["key"] == "gender"]
+    assert gender["vocabulary"] == ["men", "women", "unisex", "boys", "girls", "baby"]

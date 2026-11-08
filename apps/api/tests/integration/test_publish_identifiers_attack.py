@@ -55,6 +55,7 @@ async def _standalone(
             attributes={"color": "blue", "fabric_type": "cotton"},
             mrp=Decimal("1499.00"),
             selling_price=Decimal("999.00"),
+            gender="women",  # SI8: Amazon Kurta sets need the audience
             product_identifier=identifier,
             identifier_exemption=exempt,
         ),

@@ -72,6 +72,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     assert not _has_column(scratch_db.libpq)
     command.upgrade(cfg, REVISION)
     assert _has_column(scratch_db.libpq)
+    command.upgrade(cfg, "head")  # 0019 sits on top (SI8): `check` compares at the head
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not _has_column(scratch_db.libpq)

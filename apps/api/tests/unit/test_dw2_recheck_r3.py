@@ -47,7 +47,7 @@ async def test_create_not_blocked_by_a_warning_only_schema_result() -> None:
     app = build_fake()
     adapter = amazon_adapter(app)
     schema = kurta()
-    schema["required"] = [*schema["required"], "brand"]
+    schema["required"] = [*schema["required"], "item_type_keyword"]  # SI8: brand is fed
     prepared = await ready(schema, enforced=False)
     sent = dataclasses.replace(_five(), product_type_schema=prepared)
     found = schema_errors(built(sent, prepared)[1])
@@ -62,7 +62,7 @@ async def test_update_with_warning_only_schema_result_is_sent() -> None:
     sent = _five()
     await adapter.create_listing(sent)
     schema = kurta()
-    schema["required"] = [*schema["required"], "brand"]
+    schema["required"] = [*schema["required"], "item_type_keyword"]  # SI8: brand is fed
     prepared = await ready(schema, enforced=False)
     body = sent.listing
     changed = body.model_copy(

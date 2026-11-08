@@ -20,7 +20,7 @@ GOOD: dict[str, str] = {
 
 
 def _run(**cells: str) -> tuple[list[ErrorCode], tuple[str | None, str | None, bool | None]]:
-    result = validate_row(normalize_row({**GOOD, **cells}))
+    result = validate_row(normalize_row({**GOOD, **cells}), brands=("Test Brand",))
     found = (
         (None, None, None)
         if result.row is None

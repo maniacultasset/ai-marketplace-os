@@ -664,6 +664,10 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         ),
         "products_get": {
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "brand_name": "Fabindia",
+            "brand_name_inherited": True,
+            "gender": "women",
+            "variant_attributes": {},
             "photo_facts": [_PHOTO_FACT],
             "photo_read": {"status": "read", "at": T1, "written": 1, "asked": 0},
         },
@@ -672,6 +676,10 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "products_update": {
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
             "style_number": "KS-24",
+            "brand_name": "Fabindia",
+            "brand_name_inherited": False,
+            "gender": "women",
+            "variant_attributes": {},
             "mrp": "1499.00",
             "selling_price": "1299.00",
             "currency": "INR",

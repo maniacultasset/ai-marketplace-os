@@ -22,6 +22,11 @@ owner): `GenerationContext.product` stays a `dict` and gets `for_prompt(facts)`.
   after writing photo facts; the re-check run may take the re-read digest only when the two
   differ by unconfirmed `ai` attributes alone (so the rule result on `pre` holds on `reread`).
   A family's re-read digest is its `listing_facts_digest` over the children read with `pre`.
+- SI8 (CP-D1, CP-D9): `brand_choices(brand_names, tenant_name)` are the brand names a tenant may
+  list under (its non-blank brand profile names, then its stripped tenant name; casefold
+  dedupe); `default_brand` is the first; `match_brand` finds an override among them, returned in
+  the choice's spelling. `Identity` gains no field (CP-D16): the effective brand fills
+  `identity.brand_name`, so the digest and the prompt keep their shape.
 """
 
 from __future__ import annotations
@@ -47,11 +52,14 @@ __all__ = [
     "PartyFacts",
     "ProductFacts",
     "ResolvedFact",
+    "brand_choices",
+    "default_brand",
     "facts_digest",
     "for_prompt",
     "for_rules",
     "is_unconfirmed_ai",
     "listing_facts_digest",
+    "match_brand",
     "recheck_digest",
     "stamp_reread",
 ]
@@ -212,6 +220,43 @@ class ProductFacts(_Model):
     provenance: dict[str, ResolvedFact] = Field(default_factory=dict)
     family: FamilySummary | None = None
     dictionary_version: int = 0
+
+
+# ---- brand (SI8) ----
+
+
+def brand_choices(brand_names: Sequence[str] | None, tenant_name: str | None) -> tuple[str, ...]:
+    """The brand names a tenant may list under, in order: its brand profile `brand_names` that are
+    not blank after strip, then its stripped tenant name; deduped by `casefold()` (the first
+    spelling is kept). Values are stripped, otherwise as stored."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for raw in (*(brand_names or ()), tenant_name):
+        if not isinstance(raw, str):
+            continue
+        value = raw.strip()
+        folded = value.casefold()
+        if value and folded not in seen:
+            seen.add(folded)
+            out.append(value)
+    return tuple(out)
+
+
+def default_brand(choices: Sequence[str]) -> str | None:
+    """The brand a product with no own or style brand lists under: the first choice."""
+    return choices[0] if choices else None
+
+
+def match_brand(value: str, choices: Sequence[str]) -> str | None:
+    """The choice equal to `value.strip()` under `casefold()`, in the choice's spelling; else
+    None (CP-D9: an override must be one of the tenant's own brand names)."""
+    wanted = value.strip().casefold()
+    if not wanted:
+        return None
+    for choice in choices:
+        if choice.casefold() == wanted:
+            return choice
+    return None
 
 
 # ---- projections ----

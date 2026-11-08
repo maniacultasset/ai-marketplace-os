@@ -8,6 +8,8 @@
   country, the manufacturer's name and address, the composition; decimals as strings), so a
   price-only change moves the sha256. The snapshot is a private object under the tenant prefix,
   and holds the manufacturer's address exactly as the marketplace payload does (DPDP note).
+  SI8: `facts` also carry the brand, gender and style number, and `colour_images` maps each
+  colour key to its image ids, so a brand, audience or child image change moves the sha256.
 - `write_snapshot` / `write_raw`: one object each under the tenant prefix of the submissions
   bucket, `<tenant_id>/submissions/<submission_id>/{payload.json,raw.jsonl}`. The raw file is one
   JSON line per marketplace answer `{seller_sku, operation, body}` in call order; its sha256 is
@@ -61,6 +63,9 @@ def _facts(item: AdapterListing) -> dict[str, Any]:
             "manufacturer_name": f.manufacturer_name,
             "manufacturer_address": f.manufacturer_address,
             "fiber_composition": _composition(f),
+            "brand_name": f.brand_name,
+            "gender": f.gender,
+            "style_number": f.style_number,
         }
         for product_id, f in sorted(item.unit_facts.items(), key=lambda kv: str(kv[0]))
     }
@@ -97,6 +102,9 @@ def snapshot_bytes(
         "listing": listing,
         "images": [image_tags[i] for i in sorted(image_tags, key=str)],
         "facts": _facts(item),
+        "colour_images": {
+            key: [str(i) for i in ids] for key, ids in sorted(item.colour_image_ids.items())
+        },
     }
     return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
