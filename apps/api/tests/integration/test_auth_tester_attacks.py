@@ -125,10 +125,10 @@ async def test_attack_role_change_on_dual_member_stays_in_tenant(
 ) -> None:
     dual = world.user(DUAL)
     response = await api.patch(
-        f"{MEMBERS}/{dual}", json={"role": "reviewer"}, headers=_as(world, "admin@bharat.test")
+        f"{MEMBERS}/{dual}", json={"role": "admin"}, headers=_as(world, "admin@bharat.test")
     )
     assert response.status_code == 200, response.text
-    assert _membership(auth_db, world.tenant("bharat"), dual) == ("reviewer", True)
+    assert _membership(auth_db, world.tenant("bharat"), dual) == ("admin", True)
     assert _membership(auth_db, world.tenant("acme"), dual) == ("operator", True)
     rows = audit_rows(auth_db, "membership.role_changed")
     assert [r[0] for r in rows] == [world.tenant("bharat")]

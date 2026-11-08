@@ -19,7 +19,8 @@
    `VALIDATION_FAILED` with its items, so a stale verdict never approves what the adapter would
    refuse; no passed `rules_engine` run
    with the currently resolved pins → 409 `STALE_VERSION` (G9); the approver in the contributor
-   chain, or not an active reviewer or owner (read `FOR SHARE`) → audit
+   chain, or not an active reviewer or owner (read `FOR SHARE`; an account whose email is
+   unverified, made from a copied invite link, counts as not active: V1 hardening #12) → audit
    `listing.approve_denied`, item 403 `MAKER_CHECKER_VIOLATION`. Then the version's approval
    (`lv_guard` checks it again: MKC01 → the savepoint rolls back, the denial is audited, 403),
    the `approve` decision with the run's `facts_digest`, the move to `approved`, and the audit
@@ -328,7 +329,7 @@ async def _maker_checker(ctx: _Ctx, listing: Any, version: Any) -> bool:
     """True when the approver may approve: outside the chain, an active reviewer or owner."""
     approver = ctx.principal.user_id
     chain = await version_chain(ctx.uow, listing.id, version.id)
-    member = await ctx.uow.members.role_for_share(approver)
+    member = await ctx.uow.members.approver_state(approver)
     block = approve_block(
         approver,
         role=None if member is None else member[0],

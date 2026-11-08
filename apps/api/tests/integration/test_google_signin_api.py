@@ -969,3 +969,28 @@ async def test_mfa_enrolled_suspended_member_403_before_any_challenge(
     assert response.status_code == 403, response.text
     assert response.json()["error"]["type"] == "TENANT_SUSPENDED"
     assert "challenge_token" not in response.text
+
+
+async def test_google_sign_in_with_the_same_email_verifies_an_invitee(
+    gapi: httpx.AsyncClient, gw: GoogleWorld
+) -> None:
+    """V1 hardening #12: an account flagged `email_unverified` (made from a copied invite link)
+    is cleared once Google signs it in with that same verified address."""
+    gw.conn.execute("UPDATE users SET email_unverified = true WHERE email = %s", [OWNER])
+    browser = GoogleBrowser(gapi, gw)
+    done = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert done["outcome"] == "link_required"
+    linked = await gapi.post(
+        LINK,
+        json={
+            "link_handle": done["link"]["link_handle"],
+            "binding": browser.secret,
+            "password": PASSWORD,
+        },
+    )
+    assert linked.status_code == 200, linked.text
+    flag = "SELECT email_unverified FROM users WHERE email = %s"
+    assert gw.conn.execute(flag, [OWNER]).fetchone() == (True,)  # a password proves no address
+    again = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert again["outcome"] == "sign_in"
+    assert gw.conn.execute(flag, [OWNER]).fetchone() == (False,)
