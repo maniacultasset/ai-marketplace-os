@@ -14,6 +14,10 @@ Scenarios, chosen by a `user_instructions` prefix `stub:<name>` (anything else i
   word boundary within 200 characters removes under 15%, so the backend's fix pass fixes it on the
   first `validate_rules` call (SI4 A7, AC5).
 - `failed`: no listing, `GENERATION_FAILED`, every agent block `failed`.
+- `credit`, `credit_legacy`, `key_refused` (SI10): the provider refused the account. No listing,
+  a `failed` terminal state and one failed `content` record (USD 0) whose error code is
+  `AI_CREDIT_EXHAUSTED`, `BUDGET_EXCEEDED` (pipeline 0.3.1's 402 mapping) or
+  `AI_PROVIDER_KEY_INVALID` (0.3.2's unconfirmed 401/403), as a real pipeline stops the run.
 - `vision_warn`: the `ok` listing carrying `ctx.previous_version.images`, with one vision warning
   report per image (`pass=true`, one failed `text_overlay` vision check). It never changes the
   terminal state.
@@ -87,7 +91,16 @@ Scenario = Literal[
     "photo_hostile",
     "photo_timeout",
     "photo_inject",
+    "credit",
+    "credit_legacy",
+    "key_refused",
 ]
+# SI10: the account refusals and the code each one's record carries
+REFUSAL_SCENARIOS: Final[dict[str, ErrorCode]] = {
+    "credit": ErrorCode.AI_CREDIT_EXHAUSTED,
+    "credit_legacy": ErrorCode.BUDGET_EXCEEDED,
+    "key_refused": ErrorCode.AI_PROVIDER_KEY_INVALID,
+}
 PHOTO_SCENARIOS: Final[frozenset[str]] = frozenset(
     {
         "photo_ok",
@@ -105,6 +118,7 @@ SCENARIOS: Final[frozenset[str]] = (
         {"ok", "blocked", "long_title", "failed", "vision_warn", "warnings", "timeout", "malformed"}
     )
     | PHOTO_SCENARIOS
+    | frozenset(REFUSAL_SCENARIOS)
 )
 PHOTO_PROMPT: Final = "photo_facts/v1"
 PHOTO_COST: Final = Decimal("0.004000")
@@ -286,6 +300,31 @@ def _blocks(
         )
         for agent in AGENTS
     ]
+
+
+def _refused(ctx: GenerationContext, code: ErrorCode) -> ErrorReport:
+    meta = ERROR_CODE_META[code]
+    retryable = meta.retry_class in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT)
+    return ErrorReport(
+        status="failed",
+        error_code=code,
+        retryable=retryable,
+        attempts_used=1,
+        max_attempts=ctx.max_attempts,
+        errors=[
+            ErrorItem(
+                field="listing",
+                error_code=code,
+                severity=Severity.ERROR,
+                message="The stub's provider refused the account.",
+                source=ErrorSource.AI_MODEL,
+                retryable=retryable,
+                retry_class=meta.retry_class,
+            )
+        ],
+        request_id=ctx.request_id,
+        listing_id=ctx.listing_id,
+    )
 
 
 def _generation_failed(ctx: GenerationContext) -> ErrorReport:
@@ -521,6 +560,29 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
             attempts_used=1,
             terminal_state="failed",
             error=failure,
+        )
+
+    if chosen in REFUSAL_SCENARIOS:
+        await deps.emit_node_event(S.CONTENT_AGENT, "started")
+        await deps.emit_node_event(S.CONTENT_AGENT, "failed", {"scenario": chosen})
+        refusal = _refused(ctx, REFUSAL_SCENARIOS[chosen])
+        refused_runs = [_record(ctx, "content", "generate", 1, failed=refusal)]
+        return GenerationResult(
+            request_id=ctx.request_id,
+            job_id=ctx.job_id,
+            listing=None,
+            agent_runs=refused_runs,
+            blocks=[
+                AgentBlockStatus(
+                    agent="content",
+                    status="failed",
+                    agent_run_id=refused_runs[0].id,
+                    error=refusal,
+                )
+            ],
+            attempts_used=1,
+            terminal_state="failed",
+            error=refusal,
         )
 
     for node in (S.CONTENT_AGENT, S.KEYWORD_AGENT, S.ATTRIBUTE_AGENT, S.IMAGE_AGENT):

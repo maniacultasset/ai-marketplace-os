@@ -160,3 +160,42 @@ def test_chain_error_messages() -> None:
     with pytest.raises(ChainError) as missing:
         contributor_chain(uuid.uuid4(), {})
     assert str(missing.value) == "the version chain names a missing version"
+
+
+# ---- SI10 T16 (AC14): the approve block the review read explains ----
+
+from app.services.maker_checker import APPROVER_ROLES, approve_block  # noqa: E402
+from hypothesis import given  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
+
+ROLES = ("owner", "operator", "reviewer", "admin")
+
+
+def test_approve_block_role_first() -> None:
+    caller = uuid.uuid4()
+    assert approve_block(caller, role="operator", active=True, chain=frozenset({caller})) == (
+        "not_approver"
+    )
+    assert approve_block(caller, role="reviewer", active=False, chain=frozenset()) == (
+        "not_approver"
+    )
+    assert approve_block(caller, role=None, active=False, chain=frozenset()) == "not_approver"
+    assert approve_block(caller, role="owner", active=True, chain=frozenset({caller})) == (
+        "own_work"
+    )
+    assert approve_block(caller, role="reviewer", active=True, chain=frozenset()) is None
+
+
+@given(
+    in_chain=st.booleans(),
+    others=st.sets(st.uuids(), max_size=3),
+    role=st.sampled_from(ROLES),
+    active=st.booleans(),
+)
+def test_approve_block_matches_the_approve_path(
+    in_chain: bool, others: set[uuid.UUID], role: str, active: bool
+) -> None:
+    caller = uuid.uuid4()
+    chain = frozenset(others | ({caller} if in_chain else set()))
+    today = approver_refusal(caller, chain) is None and active and role in APPROVER_ROLES
+    assert (approve_block(caller, role=role, active=active, chain=chain) is None) is today

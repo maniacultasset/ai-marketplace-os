@@ -41,6 +41,7 @@ from app.repositories.image_candidates import NewCandidate
 from app.repositories.images import NewImage
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.budget import CreditPausedError, admit
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.image_keys import CLEAN_NAMES, derived_key, image_object_key
 from app.services.images import (
@@ -59,6 +60,7 @@ from app.workers.budget import (
     ImageEditLimits,
     image_edit_refusal,
     lock_budget,
+    platform_image_spend,
 )
 from app.workers.policy import CANDIDATE_ENTITY, lock_for
 
@@ -228,11 +230,22 @@ async def create_candidate(
 ) -> dict[str, Any]:
     """`POST /products/{product_id}/image-candidates` under the Idempotency-Key: one candidate
     per cache key, a job only for this call's own new row (CP-D17), the D21 limits before an AI
-    job (a refusal is a `failed/budget` row and no job)."""
+    job (a refusal is a `failed/budget` row and no job).
+
+    An AI edit also passes the one admission rule (SI10 D4), read before the transaction so it
+    holds no pooled connection: with AI paused (or a fresh key check below the floor) a new AI
+    job is 503 with the pause's code and nothing is written; a daily cap refusal is a
+    `failed/budget` row like D21's. A cached candidate still answers while AI is paused."""
     settings = get_settings()
     if body.kind == "white_background" and not settings.image_edit_enabled:
         raise InputError(ErrorCode.VALIDATION_FAILED, "kind")
     tenant = principal.tenant_id
+    now = datetime.now(UTC)
+    # an AI edit's two platform reads, before the transaction (no connection held)
+    admission, image_spent = None, None
+    if body.kind == "white_background":
+        admission = await admit(tenant, now, amount=IMAGE_EDIT_RESERVATION_USD)
+        image_spent = await platform_image_spend(now.date())
     payload = json.dumps(
         {"kind": body.kind, "source_image_id": str(body.source_image_id or "")}, sort_keys=True
     ).encode()
@@ -266,13 +279,16 @@ async def create_candidate(
             created_by=principal.user_id,
         )
         if body.kind == "white_background":
+            if admission == "credit_exhausted" or admission == "key_invalid":
+                raise CreditPausedError(admission)
             await lock_budget(session, tenant)
-            refused = await image_edit_refusal(
+            refused = admission or await image_edit_refusal(
                 session,
                 tenant,
-                datetime.now(UTC).date(),
+                now.date(),
                 ImageEditLimits.from_settings(settings),
                 IMAGE_EDIT_RESERVATION_USD,
+                platform_spent=image_spent,
             )
             if refused is not None:
                 again = await uow.image_candidates.find_refused_today(

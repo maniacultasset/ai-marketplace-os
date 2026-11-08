@@ -159,6 +159,7 @@ import sys
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, TextIO
 
@@ -480,6 +481,52 @@ async def run_dead_letter_list(tenant: str | None, limit: int) -> int:
             f"attempt {row.attempt}\t{row.error_code or '-'}\t{finished}\n"
         )
     sys.stdout.write(f"jobs dead-letter list: {len(rows)} job(s)\n")
+    return EXIT_OK
+
+
+PHOTO_DAYS_MAX = 365
+
+
+def _days(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--days must be an integer") from None
+    if not 1 <= number <= PHOTO_DAYS_MAX:
+        raise argparse.ArgumentTypeError(f"--days must be in 1..{PHOTO_DAYS_MAX}")
+    return number
+
+
+async def run_photo_accuracy(days: int, *, now: datetime | None = None) -> int:
+    """SI10 T18: how sellers reviewed photo-read values, per key, over the last `days` days,
+    every tenant summed. Prints keys, counts and rates only: no tenant, product or value."""
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.photo_accuracy import fact_updates_since
+    from app.services.photo_accuracy import summarise
+
+    since = (now or datetime.now(UTC)) - timedelta(days=days)
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                rows = await fact_updates_since(session, since)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"ops photo-accuracy: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    found = summarise(rows)
+    sys.stdout.write(
+        f"{'key':<32} {'confirmed':>9} {'rejected':>8} {'changed':>7} {'accept':>6} {'conf':>5}\n"
+    )
+    for row in found:
+        mean = "-" if row.mean_confidence is None else str(row.mean_confidence)
+        sys.stdout.write(
+            f"{row.key[:32]:<32} {row.confirmed:>9} {row.rejected:>8} {row.changed:>7} "
+            f"{row.accept_rate!s:>6} {mean:>5}\n"
+        )
+    sys.stdout.write(f"ops photo-accuracy: {len(found)} key(s) over {days} day(s)\n")
     return EXIT_OK
 
 
@@ -1409,6 +1456,12 @@ def build_parser() -> argparse.ArgumentParser:
     platform_commands = platform.add_subparsers(dest="command", required=True)
     platform_load = platform_commands.add_parser("load", help="templates, rules, error map")
     platform_load.add_argument("--error-map", type=Path, default=ERROR_MAP_FAKE_PATH)
+    ops = groups.add_parser("ops", help="staff read-only reports (SI10)")
+    ops_commands = ops.add_subparsers(dest="command", required=True)
+    accuracy = ops_commands.add_parser(
+        "photo-accuracy", help="how sellers confirmed, rejected or changed photo-read values"
+    )
+    accuracy.add_argument("--days", type=_days, default=30)
     _add_onboarding(groups)
     return parser
 
@@ -1467,6 +1520,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_dead_letter_list(args.tenant, args.limit))
     if args.group == "seed":
         return asyncio.run(run_seed(args.profile, reset=args.reset))
+    if args.group == "ops":
+        return asyncio.run(run_photo_accuracy(args.days))
     return run_migrate(alembic_config())
 
 

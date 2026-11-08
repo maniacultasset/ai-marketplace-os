@@ -115,7 +115,7 @@ def make_csv(run: str, rows: int = IMPORT_ROWS) -> bytes:
             (
                 f"LOAD-{run}-{n:04d}",
                 f"Cotton Kurta Set {n}",
-                "Acme Apparel",
+                "",  # no brand cell: the tenant's brand default applies (SI8 CP-D9)
                 CATEGORY,
                 "women",
                 COLOURS[n % len(COLOURS)],

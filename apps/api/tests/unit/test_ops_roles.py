@@ -117,6 +117,8 @@ Q7: dict[str, str] = {
     "admin_tenants_list": PLATFORM_ADMIN,
     "admin_tenants_activate": PLATFORM_ADMIN,
     "admin_tenants_extend_trial": PLATFORM_ADMIN,
+    "admin_ai_credit_get": PLATFORM_ADMIN,  # SI10
+    "admin_ai_credit_resume": PLATFORM_ADMIN,
 }
 NARROWED_BY_S10 = (
     "images_upload_url",
@@ -144,7 +146,8 @@ def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
     # + SI9 two
-    assert len(OPS) == 97
+    # + SI10 two
+    assert len(OPS) == 99
     assert set(OPS) == set(Q7)
 
 

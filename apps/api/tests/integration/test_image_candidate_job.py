@@ -627,3 +627,81 @@ async def test_an_untrusted_paid_edit_still_counts_toward_the_daily_limit(
     assert (row["status"], row["agent_run_id"]) == ("failed", None)
     async with tenant_uow(images_db.tenant("acme")) as uow:
         assert await uow.image_candidates.count_ai_today(datetime.now(UTC).date()) == 1
+
+
+# ---- SI10 D4/D5 (joint test, SI10 merged after SI7): the edit job and the AI pause ----
+
+
+def _pause_row(conn: Any) -> tuple[Any, ...]:
+    row = conn.execute("SELECT paused_reason FROM ai_credit_state WHERE id = 1").fetchone()
+    assert row is not None
+    return tuple(row)
+
+
+@pytest.mark.parametrize(
+    ("reason", "failure"), [("credit_exhausted", "credit_used_up"), ("key_invalid", "model_failed")]
+)
+async def test_paused_ai_refuses_the_edit_without_a_seam_call(
+    images_db: JobWorld,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+    reason: str,
+    failure: str,
+) -> None:
+    candidate, job, _ = await _edit(images_db, store)
+    images_db.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = %s, paused_at = now() WHERE id = 1", [reason]
+    )
+    seen = _stub_with(edit_on, lambda r, q: r)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", failure)
+    assert seen == [] and _runs(images_db.conn, job) == []
+    assert _reserved(images_db.conn, job) == 0
+
+
+async def test_credit_refusal_of_an_edit_pauses_ai(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch, credit_reset: None
+) -> None:
+    from mkos_pipeline import edit_image as stub
+
+    async def credit(request: ImageEditRequest, credentials: ModelCredentials) -> Any:
+        return await stub(request.model_copy(update={"category": "stub:credit"}), credentials)
+
+    candidate, job, _ = await _edit(images_db, store)
+    edit_on.setattr(image_edit_seam, "call_edit_image", credit)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "credit_used_up")
+    assert _pause_row(images_db.conn) == ("credit_exhausted",)
+
+
+@pytest.mark.parametrize(("confirmed", "paused"), [(True, "key_invalid"), (False, None)])
+async def test_key_refusal_of_an_edit_pauses_only_once_confirmed(
+    images_db: JobWorld,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+    confirmed: bool,
+    paused: str | None,
+) -> None:
+    from app.workers import budget
+    from mkos_pipeline.image_edit import _report
+
+    async def confirm(**_: Any) -> bool:
+        return confirmed
+
+    def refused(result: ImageEditResult, request: ImageEditRequest) -> ImageEditResult:
+        from mkos_schemas.codes import ErrorCode
+
+        error = _report(request, ErrorCode.AI_PROVIDER_KEY_INVALID, "The key was refused.")
+        return ImageEditResult(status="failed", error=error)
+
+    candidate, job, _ = await _edit(images_db, store)
+    edit_on.setattr(budget, "confirm_key_refusal", confirm)
+    _stub_with(edit_on, refused)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "model_failed")
+    assert _pause_row(images_db.conn) == (paused,)

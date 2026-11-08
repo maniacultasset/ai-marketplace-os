@@ -52,6 +52,12 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   `FOR UPDATE SKIP LOCKED`, enqueue a `listing_status_sync` job (no user) and set `next_sync_at`
   NULL in the same transaction, so a slow job is never enqueued twice and two workers never
   enqueue one slot twice. A listing that already has a live sync job is skipped.
+- `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
+  `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
+  auto-clear against the stored previous check (`app_ai_credit_auto_clear`), then records the
+  numbers; then `llm_credit` (50/80/95 % of the key's limit used, once a day each) and an
+  error-level `llm_provider_refused` below the USD 0.50 floor (once a day). A 401/403 pauses AI
+  `key_invalid` (`budget.pause_ai`, one alert an hour); anything else leaves the row stale.
 """
 
 from __future__ import annotations
@@ -65,9 +71,11 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+import httpx
 import procrastinate
 from mkos_schemas.codes import ErrorCode
 
+from app.adapters.openrouter.key import KeyRefused, KeyUnavailable, fetch_key
 from app.adapters.storage import get_storage, images_bucket, submissions_bucket
 from app.core.alerts import (
     DEAD_LETTER_CAP,
@@ -79,9 +87,11 @@ from app.core.alerts import (
 from app.core.config import get_settings
 from app.core.flags import enabled_marketplaces
 from app.core.logging import get_logger
+from app.core.model_prices import is_usable_openai_key
 from app.core.request_context import new_request_id, request_context
 from app.db.session import platform_scope, unit_of_work
 from app.repositories import account_purge, rate_limits, retention
+from app.repositories.ai_credit import AiCreditRepository
 from app.repositories.idempotency import IdempotencyKeyRepository
 from app.repositories.identity import pending_signup_count
 from app.repositories.images import ImageRepository
@@ -100,10 +110,12 @@ from app.repositories.marketplace_accounts import due_accounts
 from app.repositories.oauth_states import OAuthStateRepository, tenants_with_expired
 from app.repositories.transactions import identity_session
 from app.repositories.trusted_devices import TrustedDeviceRepository
+from app.services.ai_credit import CREDIT_ALERT_PCTS, CREDIT_FLOOR_USD
 from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
 from app.workers import rollup
 from app.workers.alerting import alert
+from app.workers.budget import pause_ai
 from app.workers.errors import system_report
 from app.workers.policy import LEASE_GRACE_S
 from app.workers.settings import STALLED_WORKER_S
@@ -750,6 +762,58 @@ async def _reaper(context: procrastinate.JobContext, timestamp: int) -> None:
     await reap_once(context.app.job_manager)
 
 
+async def refresh_ai_credit(
+    now: datetime | None = None, *, transport: httpx.AsyncBaseTransport | None = None
+) -> str:
+    """The OpenRouter key check (module docstring). Returns what it did."""
+    settings = get_settings()
+    key = settings.openrouter_api_key
+    if settings.llm_gateway != "openrouter" or key is None or not is_usable_openai_key(key):
+        return "skipped"
+    at = now or datetime.now(UTC)
+    try:
+        info = await fetch_key(key, transport=transport)
+    except KeyRefused:
+        await pause_ai("key_invalid", now=at)
+        return "refused"
+    except KeyUnavailable as exc:
+        log.warning("ai_credit.check_failed", error_class=type(exc).__name__)
+        return "unavailable"
+    async with identity_session() as session:
+        credit = AiCreditRepository(session)
+        # the clear compares against the stored previous check, so it runs before the record
+        cleared = await credit.auto_clear(info.remaining)
+        await credit.record_check(
+            limit=info.limit, usage=info.usage, remaining=info.remaining, at=at
+        )
+    if cleared:
+        log.info("ai_credit.cleared")
+    day = day_window(at)
+    if info.limit is not None and info.limit > 0 and info.remaining is not None:
+        used_pct = (info.limit - info.remaining) * 100 / info.limit
+        for pct in CREDIT_ALERT_PCTS:
+            if used_pct >= pct:
+                await alert(
+                    "llm_credit",
+                    key=str(pct),
+                    window_start=day,
+                    now=at,
+                    threshold_pct=pct,
+                    spend_usd=info.usage,
+                    limit_usd=info.limit,
+                )
+    if info.remaining is not None and info.remaining < CREDIT_FLOOR_USD:
+        await alert(
+            "llm_provider_refused",
+            key="low",
+            window_start=day,
+            now=at,
+            level="error",
+            remaining_usd=info.remaining,
+        )
+    return "cleared" if cleared else "recorded"
+
+
 def _plain(fn: Callable[[], Awaitable[Any]]) -> Callable[[int], Awaitable[None]]:
     async def task(timestamp: int) -> None:
         with request_context(new_request_id()):
@@ -769,6 +833,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "oauth_states_prune": ("30 * * * *", _plain(prune_oauth_states), False),
     "schedule_status_sync": ("* * * * *", _plain(schedule_status_sync), False),
     "check_alerts": ("*/5 * * * *", _plain(check_alerts), False),
+    "refresh_ai_credit": ("*/5 * * * *", _plain(refresh_ai_credit), False),  # SI10
 }
 
 

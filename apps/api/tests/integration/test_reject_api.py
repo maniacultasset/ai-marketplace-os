@@ -143,18 +143,39 @@ async def test_reject_regenerate_budget_429_nothing_enqueued(
     api: httpx.AsyncClient, gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import app.services.review as review
-    from app.services.budget import BudgetExceededError
 
-    async def spent(*_a: Any) -> None:
-        raise BudgetExceededError(60)
+    async def spent(*_a: Any) -> str:
+        return "tenant"  # the admission read's refusal: the brand's daily cap
 
     made = await generated(gen_world)
     jobs = gen_world.count("job_runs", "listing_id = %s", [made.listing_id])
-    monkeypatch.setattr(review, "precheck", spent)
+    monkeypatch.setattr(review, "admit", spent)
     result = only_item(
         await post_approve(api, gen_world, REVIEWER, [_reject(made, regenerate=True)])
     )
     assert (result["http_status"], result["error"]["error_code"]) == (429, "BUDGET_EXCEEDED")
+    assert gen_world.count("job_runs", "listing_id = %s", [made.listing_id]) == jobs
+    assert decisions(gen_world, made.listing_id, "reject") == 0
+    assert gen_world.listing(made.listing_id)["status"] == "validated"
+
+
+async def test_reject_regenerate_while_ai_paused_503_nothing_applied(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """SI10 CP-D8: the batch item fails with the credit code; the reject is not applied."""
+    made = await generated(gen_world)
+    jobs = gen_world.count("job_runs", "listing_id = %s", [made.listing_id])
+    gen_world.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = 'credit_exhausted', paused_at = now() "
+        "WHERE id = 1"
+    )
+    result = only_item(
+        await post_approve(api, gen_world, REVIEWER, [_reject(made, regenerate=True)])
+    )
+    assert (result["http_status"], result["error"]["error_code"]) == (503, "AI_CREDIT_EXHAUSTED")
+    assert result["error"]["errors"][0]["message"] == (
+        "AI credit is used up. Our team has been told; nothing was changed."
+    )
     assert gen_world.count("job_runs", "listing_id = %s", [made.listing_id]) == jobs
     assert decisions(gen_world, made.listing_id, "reject") == 0
     assert gen_world.listing(made.listing_id)["status"] == "validated"

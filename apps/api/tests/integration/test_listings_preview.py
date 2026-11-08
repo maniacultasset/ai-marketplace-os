@@ -453,7 +453,12 @@ async def test_listings_preview_checks_the_stored_definition(
     schema_check.clear_cache()
     store(
         auth_db,
-        _ptd_kurta(title_max=10, neck_enum=["Boat Neck"], keyword_bytes=5, required=["brand"]),
+        _ptd_kurta(
+            title_max=10,
+            neck_enum=["Boat Neck"],
+            keyword_bytes=5,
+            required=["item_type_keyword"],  # SI8: brand is sent now (and the fixture needs it)
+        ),
     )
     image_id = uuid.uuid4()
     body = _body(image_id, neckline="round")

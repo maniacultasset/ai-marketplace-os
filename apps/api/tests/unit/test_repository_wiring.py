@@ -73,6 +73,8 @@ def test_every_repository_subclasses_tenant_base() -> None:
         "app.repositories.login_flows": {"LoginFlowRepository"},
         # ADR-0023 (0013): trusted browsers, a per-user platform table under its own RLS
         "app.repositories.trusted_devices": {"TrustedDeviceRepository"},
+        # SI10 (0021): the one AI credit row, a platform table with no tenant data
+        "app.repositories.ai_credit": {"AiCreditRepository"},
     }
     found = []
     for module_info in pkgutil.iter_modules(app.repositories.__path__):

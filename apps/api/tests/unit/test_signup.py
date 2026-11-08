@@ -788,7 +788,7 @@ def test_0010_chain_and_shape() -> None:
     assert "phone" not in readable and "owner_name" not in readable
 
 
-def test_0020_is_the_single_head() -> None:
+def test_0021_is_the_single_head() -> None:
     parents = set()
     revisions = set()
     for path in VERSIONS.glob("0*.py"):
@@ -800,8 +800,9 @@ def test_0020_is_the_single_head() -> None:
     # DPP-1 sits on top of 0010, the account purge on top of DPP-1, Google sign-in on top of it,
     # the trusted browsers (ADR-0023) on top of Google sign-in, the PTD table (DW2) on top of them,
     # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
-    # image candidates (SI7) on top of team access, status truth (SI9) on top of that, and
-    # autonomous resolution (SI11) on top of status truth
+    # image candidates (SI7) on top of team access, status truth (SI9) on top of that, the `baby`
+    # audience (SI8) on top of that, the AI credit state (SI10) on top of those, and autonomous
+    # resolution (SI11) on top of the AI credit state
     assert revisions - parents == {"0022_autonomous_resolution"}
 
 

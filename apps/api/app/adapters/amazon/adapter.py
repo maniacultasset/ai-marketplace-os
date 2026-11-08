@@ -57,10 +57,12 @@ from app.adapters.amazon import constants as c
 from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
+    IMAGE_NAMES,
     MappedItem,
     build,
     error,
     is_mapped,
+    item_index,
     preview,
     reverse_index,
 )
@@ -479,7 +481,12 @@ class AmazonAdapter(MarketplaceAdapter):
             self._sink.put(one.unit.seller_sku, "put", response.raw)
             try:
                 outcome = self._outcome(
-                    response, one, index, one.paths, one.submitted, party_secrets(item)
+                    response,
+                    one,
+                    item_index(index, one),
+                    one.paths,
+                    one.submitted,
+                    party_secrets(item),
                 )
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
@@ -518,7 +525,8 @@ class AmazonAdapter(MarketplaceAdapter):
         applied = 0
         ordered = [m for m in mapped if m.unit.seller_sku in per_sku]
         for position, one in enumerate(ordered):
-            scope = _expand(per_sku[one.unit.seller_sku], index, one.paths)
+            own = item_index(index, one)  # SI8 CP-D4: this item's own image slots
+            scope = _expand(per_sku[one.unit.seller_sku], own, one.paths)
             blocked = {e.field: e for e in errors if e.field in scope}
             # SI11 (T10): a repaired attribute rides with its field path; a dropped one
             # (`drop_locked`) is simply not in the payload, so no `delete` op is sent
@@ -531,7 +539,7 @@ class AmazonAdapter(MarketplaceAdapter):
             names = sorted(
                 {
                     name
-                    for name, feeds in index.items()
+                    for name, feeds in own.items()
                     if name in one.payload["attributes"]
                     and any(p in scope and p not in blocked for p in feeds)
                 }
@@ -555,7 +563,9 @@ class AmazonAdapter(MarketplaceAdapter):
                     raise type(exc)(exc.report, completed=()) from None
                 results.append(self._failed_item(one.unit, sent, exc.report))
                 results += [
-                    self._skipped_item(m.unit, _expand(per_sku[m.unit.seller_sku], index, m.paths))
+                    self._skipped_item(
+                        m.unit, _expand(per_sku[m.unit.seller_sku], item_index(index, m), m.paths)
+                    )
                     for m in ordered[position + 1 :]
                 ]
                 return self._result(
@@ -566,7 +576,7 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
             try:
-                outcome = self._outcome(response, one, index, scope, sent, party_secrets(item))
+                outcome = self._outcome(response, one, own, scope, sent, party_secrets(item))
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}
@@ -593,7 +603,7 @@ class AmazonAdapter(MarketplaceAdapter):
             summaries, summary, states, attributes, issues = _read_listing(response.json)
         except _UnreadableReplyError:
             raise _unavailable("Amazon returned a listing it could not read.") from None
-        index = reverse_index(None)
+        index = _read_index(attributes)
         paths = sorted({p for name in attributes for p in index.get(name, ()) if p != "variants"})
         open_errors = [
             i
@@ -725,6 +735,42 @@ def _unavailable(message: str) -> MarketplaceUnavailable:
             None,
         )
     )
+
+
+def _is_child(attributes: Mapping[str, Any]) -> bool:
+    """The read item is a variation child: its `parentage_level` says `child`, or it names a
+    parent SKU (a child always sends both; mapping `family_payloads`)."""
+    if c.RELATIONSHIP_ATTRIBUTE in attributes:
+        return True
+    levels = attributes.get(c.PARENTAGE_ATTRIBUTE)
+    return isinstance(levels, list) and any(
+        isinstance(one, dict) and str(one.get("value", "")).casefold() == "child" for one in levels
+    )
+
+
+def _theme_has_colour(attributes: Mapping[str, Any]) -> bool:
+    """True unless the read's `variation_theme` names a theme with no COLOR axis."""
+    themes = attributes.get(c.THEME_ATTRIBUTE)
+    names = [
+        str(one.get("name", "")).upper()
+        for one in (themes if isinstance(themes, list) else [])
+        if isinstance(one, dict)
+    ]
+    return not names or any("COLOR" in name.split("/") for name in names)
+
+
+def _read_index(attributes: Mapping[str, Any]) -> Mapping[str, tuple[str, ...]]:
+    """The read-back index. `reverse_index(None)` reads image slot k as `images[k]`, which holds
+    for a standalone (every image, version order). A colour child's slots carry its own
+    colourway's images first (SI8 T4, CP-D4), and a read has no version to rebuild them from, so
+    a child's read drops the image rows: an image issue fails `listing` and no image path reads
+    as succeeded, never a wrong `images[k]` (SI8 fix round 1, R1-1). A child whose theme has no
+    COLOR axis (e.g. `SIZE`) sends every image in version order, so it keeps the image rows; a
+    child with no readable theme drops them."""
+    index = reverse_index(None)
+    if not _is_child(attributes) or not _theme_has_colour(attributes):
+        return index
+    return {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
 
 
 def _read_listing(

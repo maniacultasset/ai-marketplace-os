@@ -234,7 +234,7 @@ def test_diff_stored_and_missing(
     fake.control(schema="KURTA.drift.schema.json")
     assert refresh(capsys)[0] == 0
     code, out, err = run(capsys, *diff)
-    assert code == 1 and "neck_style" in out and "brand" in out
+    assert code == 1 and "neck_style" in out and "item_type_keyword" in out
     clean(out, err)
     fake.control(schema="KURTA.schema.json")
     refresh(capsys)

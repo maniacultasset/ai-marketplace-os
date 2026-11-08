@@ -11,6 +11,10 @@ as "nobody contributed").
 
 `approver_refusal(approver, chain)` is `MAKER_CHECKER_VIOLATION` when the approver is in the
 chain. The database's `lv_guard` (MKC01) checks the same chain again as the backstop.
+
+`approve_block(caller, role=, active=, chain=)` (SI10 T16) is the one predicate behind both the
+approve path and the review read's `can_approve`: `not_approver` (not an active reviewer or owner;
+checked first, CP-D7), `own_work` (in the chain), else None. Maker-checker itself is unchanged.
 """
 
 from __future__ import annotations
@@ -18,11 +22,14 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
 CHAIN_ROOTS: Final = frozenset({"generation"})
+APPROVER_ROLES: Final = frozenset({"reviewer", "owner"})
+ApproveHint = Literal["own_work", "no_other_approver", "not_approver"]
+ApproveBlock = Literal["own_work", "not_approver"]
 
 
 class ChainError(ValueError):
@@ -69,3 +76,13 @@ def contributor_chain(
 
 def approver_refusal(approver: uuid.UUID, chain: frozenset[uuid.UUID]) -> ErrorCode | None:
     return ErrorCode.MAKER_CHECKER_VIOLATION if approver in chain else None
+
+
+def approve_block(
+    caller: uuid.UUID, *, role: str | None, active: bool, chain: frozenset[uuid.UUID]
+) -> ApproveBlock | None:
+    if not active or role not in APPROVER_ROLES:
+        return "not_approver"
+    if approver_refusal(caller, chain) is not None:
+        return "own_work"
+    return None

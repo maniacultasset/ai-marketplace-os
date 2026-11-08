@@ -23,6 +23,7 @@ from app.repositories.listings import QUEUE_STATUSES, ListingFilter
 from app.repositories.uow import tenant_uow
 from app.services.generation_context import previous_listing
 from app.services.listings import listing_fields, to_detail
+from app.services.maker_checker import APPROVER_ROLES, ApproveHint, approve_block
 
 QUEUE_TAG: Final = "queue"
 RECENT_TAG: Final = "recent"
@@ -83,7 +84,35 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
         summary = None if version is None else await uow.validation_runs.summary_for(version.id)
         content = previous_listing(listing, version)
         body = to_detail(listing, content, summary)
+        body["can_approve"], body["approve_hint"] = await _approve_hint(
+            uow, principal, listing, version
+        )
     return body, etag_of(body.get("current_version_id"))
+
+
+async def _approve_hint(
+    uow: Any, principal: Principal, listing: Any, version: Any
+) -> tuple[bool | None, ApproveHint | None]:
+    """SI10 T16 (CP-D16): whether role eligibility and maker-checker let the caller approve the
+    current version, and why not. Null unless the listing is reviewable with a version; the
+    approve route's other gates (permission, stale pins, images) still answer on the click."""
+    from app.services.review import REVIEWABLE, version_chain
+
+    if version is None or listing.status not in REVIEWABLE:
+        return None, None
+    chain = await version_chain(uow, listing.id, version.id)
+    member = await uow.members.role_for_share(principal.user_id)
+    block = approve_block(
+        principal.user_id,
+        role=None if member is None else member[0],
+        active=member is not None and member[1],
+        chain=chain,
+    )
+    if block is None:
+        return True, None
+    if block == "own_work" and not (await uow.members.approver_ids(APPROVER_ROLES)) - chain:
+        return False, "no_other_approver"
+    return False, block
 
 
 def etag_of(version_id: object) -> str | None:

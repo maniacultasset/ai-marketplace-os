@@ -24,6 +24,7 @@ from tests.adapters.amazon_support import (
     amazon_item,
     seed_error_rows,
     spapi_client,
+    template,
 )
 from tests.support.fake_marketplace import build_fake
 
@@ -127,7 +128,10 @@ async def test_family_sends_parent_then_children_and_maps_a_child_issue(fake: An
 
 async def test_missing_attribute_maps_through_the_code_row(fake: Any) -> None:
     adapter = _adapter(fake)
-    sent = _no_images(amazon_item())
+    # SI8 sends `department` for an apparel type; a lamp sends none, so Amazon asks for it
+    from tests.unit.test_seed_templates import _decor_001  # the seeded lamp listing
+
+    sent = _no_images(amazon_item(_decor_001("amazon"), template=template("home_decor_lamps")))
     fake.state.fake.spapi_scenario[sent.seller_sku] = "missing_derivable"
     result = await adapter.preview_remote(sent)
     assert result.status == "issues"

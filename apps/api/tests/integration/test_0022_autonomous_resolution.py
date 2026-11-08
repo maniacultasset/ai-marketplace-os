@@ -36,7 +36,7 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
-PREVIOUS = "0020_status_truth"
+PREVIOUS = "0021_ai_credit_state"
 REVISION = "0022_autonomous_resolution"
 EDGE_SQL = (
     "SELECT from_status, to_status, event, actor, requires_current_approval, voids_approval, "

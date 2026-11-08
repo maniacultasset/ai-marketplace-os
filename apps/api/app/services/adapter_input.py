@@ -9,11 +9,12 @@ with S21's publish job). Pure: it reads only the `PreviewSource` the repository 
   live children in SKU order with their `variant_attributes`. Anything else is standalone.
   A marketplace whose families have no parent row (`registry.family_has_parent`: Flipkart, S22
   C9) gets the children only, so preview, publish and the item ledger see no parent item.
-- Each child carries its colourway key and colour SKU, and `colour_image_refs` maps each colour
-  key to the locators of that colourway's images (`image_refs` must hold them; S22 C1). Only
-  colourway images the approved version's `images` holds count (S22 fix round 2, F2): the
-  image gate and the reviewer judged those, so a colourway image uploaded later, or never in
-  the version, is never sent; a colourway left with none falls back to the listing's images.
+- Each child carries its colourway key and colour SKU, and `colour_image_ids` maps each colour
+  key to the ids of that colourway's images (S22 C1; SI8 CP-D6). Only colourway images the
+  approved version's `images` holds count (S22 fix round 2, F2): the image gate and the
+  reviewer judged those, so a colourway image uploaded later, or never in the version, is never
+  sent. `base.unit_images` then gives each child its own colour's images plus the style-level
+  ones; a colourway left with none sends the style-level images.
 - The seller SKU is the product's `sku`; the template is the one the version pinned.
 - SI2: the canonical listing goes through `seller_overlay` (every factual attribute is the
   seller's, or absent), and each unit carries its `SellerFacts` (`unit_facts`, keyed by product
@@ -142,11 +143,7 @@ def build_adapter_listing(
         template=template,
         attempt=attempt,
         image_refs=image_refs,
-        colour_image_refs={
-            key: refs
-            for key, ids in approved_colour_images(source).items()
-            if (refs := tuple(image_refs[i] for i in ids if i in image_refs))
-        },
+        colour_image_ids=approved_colour_images(source),
         product_type_schema=product_type_schema,
         unit_facts={f.product_id: seller_facts(f) for f in (main, *children)},
         parent_type_schema=parent_type_schema,

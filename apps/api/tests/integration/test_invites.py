@@ -551,7 +551,8 @@ async def test_an_account_with_no_live_brand_joins_with_its_password(
     api: httpx.AsyncClient, world: World, auth_db: Conn, lost: str
 ) -> None:
     """CR1: deactivated from every brand, or the only brand suspended or offboarded: the login
-    is 401, so lookup says `own_password` and accept with the account's own password joins."""
+    is refused (401; 403 `TENANT_SUSPENDED` for a suspended brand since SI10), so lookup says
+    `own_password` and accept with the account's own password joins."""
     from .auth_support import PASSWORD, add_member, add_user
     from .mfa_support import login
 
@@ -564,7 +565,7 @@ async def test_an_account_with_no_live_brand_joins_with_its_password(
             "THEN now() END WHERE id = %s",
             [lost, lost, bharat],
         )
-    assert (await login(api, email, PASSWORD)).status_code == 401
+    assert (await login(api, email, PASSWORD)).status_code == (403 if lost == "suspended" else 401)
     token = await _token_for(api, world, email)
     preview = await api.post(f"{INVITES}/lookup", json={"token": token})
     assert preview.json()["account"] == "own_password", preview.text

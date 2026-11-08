@@ -26,6 +26,7 @@ def _out(view: tenants.TenantView) -> TenantOut:
             "guidelines": view.guidelines,
             "glossary": view.glossary,
             "status": view.status,
+            "trial_ends_at": view.trial_ends_at,
         }
     )
 

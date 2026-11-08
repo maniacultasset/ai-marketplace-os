@@ -18,6 +18,11 @@ class ErrorCode(StrEnum):
 
     API_REJECTED_PARTIAL = "API_REJECTED_PARTIAL"
 
+    # --- ai (SI10) ---
+    AI_CREDIT_EXHAUSTED = "AI_CREDIT_EXHAUSTED"
+
+    AI_PROVIDER_KEY_INVALID = "AI_PROVIDER_KEY_INVALID"
+
     AUTH_EXPIRED = "AUTH_EXPIRED"
 
     # --- rules ---
@@ -193,6 +198,9 @@ class ErrorCode(StrEnum):
     SUBMISSION_NOT_APPLIED = "SUBMISSION_NOT_APPLIED"
 
     # --- ai ---
+    # --- api (SI10) ---
+    TENANT_SUSPENDED = "TENANT_SUSPENDED"
+
     TIMEOUT = "TIMEOUT"
 
     TOKEN_LIMIT = "TOKEN_LIMIT"  # noqa: S105 - an error code name, not a credential
@@ -248,6 +256,8 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
             ErrorClass.ACCOUNT_PERMISSION, RetryClass.USER_ACTION
         ),
         ErrorCode.API_REJECTED_PARTIAL: CodeMeta(ErrorClass.UNKNOWN, RetryClass.USER_ACTION),
+        ErrorCode.AI_CREDIT_EXHAUSTED: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
+        ErrorCode.AI_PROVIDER_KEY_INVALID: CodeMeta(None, RetryClass.SYSTEM_FAILURE),
         ErrorCode.AUTH_EXPIRED: CodeMeta(ErrorClass.ACCOUNT_PERMISSION, RetryClass.USER_ACTION),
         ErrorCode.BANNED_TERM: CodeMeta(ErrorClass.CONTENT_ERROR, RetryClass.AI_CORRECT),
         ErrorCode.BATCH_TOO_LARGE: CodeMeta(None, RetryClass.USER_ACTION),
@@ -337,6 +347,7 @@ def _meta() -> dict[ErrorCode, CodeMeta]:
         ErrorCode.SUBMISSION_NOT_APPLIED: CodeMeta(
             ErrorClass.MARKETPLACE_TECHNICAL, RetryClass.AUTO_RETRY
         ),
+        ErrorCode.TENANT_SUSPENDED: CodeMeta(None, RetryClass.USER_ACTION),
         ErrorCode.TIMEOUT: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.TOKEN_LIMIT: CodeMeta(None, RetryClass.AUTO_RETRY),
         ErrorCode.UNAUTHENTICATED: CodeMeta(None, RetryClass.USER_ACTION),

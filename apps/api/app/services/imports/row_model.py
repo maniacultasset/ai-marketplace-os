@@ -2,7 +2,7 @@
 
 `normalize_row(raw)` runs once per row, before any rule: every cell is trimmed, inner whitespace
 runs collapse to one space, a blank cell becomes None (absent, never an error by itself), and an
-alias header becomes its A.6 name. `validate_row(norm)` then applies every rule in one pass and
+alias header becomes its A.6 name. `validate_row(norm, brands=...)` then applies every rule in one pass and
 returns a `RowResult`: the typed `ProductImportRow` when no rule failed, every error, and the
 warnings (content, marketplace and workflow cells are export-only in v1 and never stored).
 
@@ -20,7 +20,7 @@ column from this module's own text, never the cell (no `value_submitted`, Q7).
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Final
@@ -31,6 +31,7 @@ from mkos_schemas.enums import ErrorSource, Severity
 from mkos_schemas.errors import ErrorItem
 
 from app.core.identifiers import IDENTIFIER_TYPES, check, gtin_valid, type_from_length
+from app.core.resolved_facts import match_brand
 from app.services.composition import CompositionError, normalized, parse_composition
 from app.services.imports.headers import (
     GRAMS_COLUMN,
@@ -70,7 +71,7 @@ PHONE_PATTERN: Final = re.compile(r"[+]?[0-9][0-9 -]{5,19}")
 _WHITESPACE: Final = re.compile(r"\s+")
 _URL_SPLIT: Final = re.compile(r"[|,;\s]+")
 
-GENDERS: Final = frozenset({"men", "women", "unisex", "boys", "girls"})
+GENDERS: Final = frozenset({"men", "women", "unisex", "boys", "girls", "baby"})
 MAX_TITLE: Final = 500
 MAX_BRAND: Final = 100
 MAX_PARTY_TEXT: Final = 300
@@ -329,7 +330,10 @@ class _Checker:
         return ok
 
 
-def validate_row(norm: Mapping[str, str | None]) -> RowResult:
+def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> RowResult:
+    """Every rule over one normalized row. `brands` (SI8 CP-D9) are the tenant's own brand names
+    (`BrandPromptRepository.brand_choices()`): a `brand_name` cell must be one of them (casefold
+    after strip) and is stored in that name's spelling."""
     c = _Checker(norm)
     sku = c.required("seller_sku")
     if sku is not None and not SKU_PATTERN.fullmatch(sku):
@@ -348,13 +352,21 @@ def validate_row(norm: Mapping[str, str | None]) -> RowResult:
     title = c.text("product_name", MAX_TITLE) if title is not None else None
     category = c.slug("category", c.required("category"))
     brand = c.text("brand_name", MAX_BRAND)
+    if brand is not None:
+        matched = match_brand(brand, brands)
+        if matched is None:
+            c.fail(ErrorCode.VALUE_NOT_ALLOWED, "brand_name must be one of your brand names")
+        brand = matched
     sub_category = c.slug("sub_category", c.get("sub_category"))
     product_type = c.slug("product_type", c.get("product_type"))
     gender = c.get("gender")
     if gender is not None:
         gender = gender.lower()
         if gender not in GENDERS:
-            c.fail(ErrorCode.VALUE_NOT_ALLOWED, "gender must be men, women, unisex, boys or girls")
+            c.fail(
+                ErrorCode.VALUE_NOT_ALLOWED,
+                "gender must be men, women, unisex, boys, girls or baby",
+            )
             gender = None
 
     manufacturer = c.text("manufacturer_name", MAX_PARTY_TEXT)

@@ -37,7 +37,7 @@ def _job(jw: JobWorld, **columns: Any) -> uuid.UUID:
         entity_id=listing,
         listing_id=listing,
         max_attempts=1,
-        cost_reserved_usd=Decimal("0.10"),
+        cost_reserved_usd=Decimal("0.02"),
         **columns,
     )
 
@@ -116,7 +116,7 @@ async def test_persist_error_fails_job_internal_error(
         "INTERNAL_ERROR",
         None,
     )
-    assert row["cost_reserved_usd"] == Decimal("0.10")  # the reservation is kept
+    assert row["cost_reserved_usd"] == Decimal("0.02")  # the reservation is kept
     report = ErrorReport.model_validate(row["error_report_json"])
     assert report.errors[0].message == "generation failed"
     assert (report.errors[0].field, report.errors[0].source) == ("listing", ErrorSource.SYSTEM)
@@ -166,7 +166,7 @@ async def test_persist_skipped_when_fenced_out(jobs_db: JobWorld, override_body:
     await wrapper.run_job(str(job))
     assert called == []
     row = job_row(jobs_db.conn, job)
-    assert (row["status"], row["cost_reserved_usd"]) == ("queued", Decimal("0.10"))
+    assert (row["status"], row["cost_reserved_usd"]) == ("queued", Decimal("0.02"))
 
 
 async def test_zero_reservation_on_outcome(jobs_db: JobWorld, override_body: Any) -> None:
@@ -189,10 +189,10 @@ async def test_no_zero_keeps_reservation(jobs_db: JobWorld, override_body: Any) 
 
     override_body(KIND, body)
     await wrapper.run_job(str(job))
-    assert job_row(jobs_db.conn, job)["cost_reserved_usd"] == Decimal("0.10")
+    assert job_row(jobs_db.conn, job)["cost_reserved_usd"] == Decimal("0.02")
 
 
-async def test_timeout_keeps_reservation(
+async def test_timeout_releases_reservation(
     jobs_db: JobWorld, override_body: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import asyncio
@@ -213,7 +213,21 @@ async def test_timeout_keeps_reservation(
     await wrapper.run_job(str(job))
     row = job_row(jobs_db.conn, job)
     assert (row["status"], row["error_code"]) == ("failed", "JOB_TIMEOUT")
-    assert row["cost_reserved_usd"] == Decimal("0.10")
+    assert row["cost_reserved_usd"] == Decimal("0")  # SI10 CP-D19: the deadline releases it
+
+
+async def test_body_exception_releases_reservation(jobs_db: JobWorld, override_body: Any) -> None:
+    """SI10 CP-D19: a body exception that escapes the job body is a terminal path too."""
+    job = _job(jobs_db)
+
+    async def body(ctx: JobContext) -> Outcome:
+        raise BoomError("escaped")
+
+    override_body(KIND, body)
+    await wrapper.run_job(str(job))
+    row = job_row(jobs_db.conn, job)
+    assert (row["status"], row["error_code"]) == ("failed", "INTERNAL_ERROR")
+    assert row["cost_reserved_usd"] == Decimal("0")
 
 
 async def test_outcome_error_sets_envelope_error_on_succeeded(

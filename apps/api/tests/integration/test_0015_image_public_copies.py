@@ -56,7 +56,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     assert not set(NEW_COLUMNS) & _columns(scratch_db)
     command.upgrade(cfg, REVISION)
     assert set(NEW_COLUMNS) <= _columns(scratch_db)
-    command.upgrade(cfg, "head")  # 0017 sits on top (SI5): `check` compares at the head
+    command.upgrade(cfg, "head")  # 0017 to 0021 sit on top: `check` runs at the head
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not set(NEW_COLUMNS) & _columns(scratch_db)

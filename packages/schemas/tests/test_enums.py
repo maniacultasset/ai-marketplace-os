@@ -201,7 +201,9 @@ def test_gate_is_the_nine_quality_gates_in_spec_order() -> None:
 
 
 # SI7 (AC1): the image-edit work adds no member to a closed vocabulary. A failure here means a MAJOR
-# change slipped in; it waits for a contract window (docs/RULES.md §11).
+# change slipped in; it waits for a contract window (docs/RULES.md §11). SI10's three codes are the
+# recorded one-time MAJOR exception (CHANGELOG 2.1.0), pinned apart so nothing else slips in.
+_SI10_CODES = frozenset({"AI_CREDIT_EXHAUSTED", "AI_PROVIDER_KEY_INVALID", "TENANT_SUSPENDED"})
 _ERROR_CODES_SHA256 = "d1ae0d6934372d9ffc006378cfb1a7ee2583a1c4e8073d6a3ffc6b7c067071a0"
 
 
@@ -242,6 +244,8 @@ def test_si7_closed_vocabularies_are_unchanged() -> None:
         "WATERMARK",
         "WRONG_ASPECT",
     }
-    codes = sorted(member.value for member in ErrorCode)
+    every = {member.value for member in ErrorCode}
+    assert every >= _SI10_CODES and len(every) == 81
+    codes = sorted(every - _SI10_CODES)
     assert len(codes) == 78
     assert hashlib.sha256("\n".join(codes).encode()).hexdigest() == _ERROR_CODES_SHA256

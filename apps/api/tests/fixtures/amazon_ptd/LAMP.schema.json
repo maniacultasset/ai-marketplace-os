@@ -19,6 +19,35 @@
     }
   },
   "properties": {
+    "brand": {
+      "title": "Brand Name",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
     "bullet_point": {
       "title": "Bullet Point",
       "type": "array",
@@ -390,6 +419,31 @@
         "language_tag"
       ]
     },
+    "model_number": {
+      "title": "Model Number",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
     "other_product_image_locator_1": {
       "title": "Other Image Location 1",
       "type": "array",
@@ -590,6 +644,31 @@
               "child",
               "parent"
             ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
+    "part_number": {
+      "title": "Part Number",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 40
           },
           "marketplace_id": {
             "$ref": "#/$defs/marketplace_id"

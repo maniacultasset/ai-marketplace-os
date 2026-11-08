@@ -175,7 +175,11 @@ async def test_import_variant_family_parent_other_tenant_not_linked(
 
     bharat = imports_db.tenant("bharat")
     _, job = await upload_as(
-        imports_db, api, csv_bytes([child(1, "TEE", "M", None)]), "operator@bharat.test"
+        imports_db,
+        api,
+        # SI8 CP-D9: bharat lists under its own brand name, never acme's
+        csv_bytes([child(1, "TEE", "M", None, brand_name="Bharat")]),
+        "operator@bharat.test",
     )
     await run_job(job)
     theirs = one(

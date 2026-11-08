@@ -13,6 +13,7 @@ from .conftest import LOCAL_HOSTS
 from .products_support import (
     PRODUCTS,
     Conn,
+    as_listed,
     bad_bearer,
     bearer_for,
     insert_products,
@@ -62,7 +63,8 @@ async def test_products_list_success(api: httpx.AsyncClient, products_world: Wor
     response = await api.get(PRODUCTS, headers=_acme(products_world, "reviewer"))
     assert response.status_code == 200, response.text
     body = response.json()
-    assert body["data"] == [created.json()]
+    assert body["data"] == [as_listed(created.json())]
+    assert created.json()["brand_name_inherited"] is True  # SI8: the tenant name, on single reads
     assert body["page"] == {"next_cursor": None, "has_more": False, "limit": 50}
 
 

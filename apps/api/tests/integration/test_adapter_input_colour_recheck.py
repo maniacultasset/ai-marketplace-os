@@ -51,8 +51,8 @@ async def test_colour_images_stable_across_post_approval_uploads(
         image_refs=_refs(style_image, navy, late, late_maroon),
         idempotency_key="k",
     )
-    assert dict(replay.colour_image_refs) == dict(first.colour_image_refs)
-    assert dict(replay.colour_image_refs) == {"navy blue": (f"image:{navy}",)}
+    assert dict(replay.colour_image_ids) == dict(first.colour_image_ids)
+    assert dict(replay.colour_image_ids) == {"navy blue": (navy,)}
 
 
 async def test_colour_image_deleted_after_approval_not_sent(
@@ -72,7 +72,7 @@ async def test_colour_image_deleted_after_approval_not_sent(
     built = build_adapter_listing(
         source, facts=facts_of(source), image_refs=_refs(style_image), idempotency_key="k"
     )
-    assert dict(built.colour_image_refs) == {}
+    assert dict(built.colour_image_ids) == {}
 
 
 async def test_legacy_version_body_sends_no_colour_images(
@@ -91,7 +91,7 @@ async def test_legacy_version_body_sends_no_colour_images(
     built = build_adapter_listing(
         source, facts=facts_of(source), image_refs=_refs(navy), idempotency_key="k"
     )
-    assert dict(built.colour_image_refs) == {}
+    assert dict(built.colour_image_ids) == {}
 
 
 async def test_other_tenant_colour_image_in_version_never_sent(

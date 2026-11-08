@@ -35,6 +35,9 @@ FIELDS: dict[str, dict[str, Any]] = {
         "limit_usd": Decimal("2.50"),
     },
     "queue_latency": {"queue": "default", "oldest_s": 600},
+    # SI10: the OpenRouter key's credit (warning) and a provider refusal or low credit (error)
+    "llm_credit": {"threshold_pct": 80, "spend_usd": Decimal("8.0"), "limit_usd": Decimal("10")},
+    "llm_provider_refused": {"error_code": "AI_CREDIT_EXHAUSTED", "remaining_usd": Decimal("0.4")},
 }
 
 
@@ -225,9 +228,52 @@ async def test_alert_slack_only_for_routed_kinds(sentry: Any) -> None:
         await _emit(kind, Claims(), slack=slack)
     assert sorted(kind for kind, _ in slack.posts) == [
         "llm_budget",
+        "llm_provider_refused",
         "queue_latency",
         "token_refresh_failed",
     ]
+
+
+# ---- SI10 T5: the error level ----
+
+
+async def test_alert_error_level_logs_error_and_one_sentry_error(
+    sentry: Any, log_lines: Any
+) -> None:
+    capture = log_lines()
+    assert await _emit("llm_provider_refused", Claims(), level="error")
+    _flush()
+    lines = [line for line in capture.lines() if line["message"] == "alert.llm_provider_refused"]
+    assert len(lines) == 1 and lines[0]["severity"] == "ERROR"
+    assert lines[0]["remaining_usd"] == "0.4"
+    events = sentry.events()
+    assert len(events) == 1, "the ERROR log line must not raise a second Sentry event"
+    assert events[0]["message"] == "alert.llm_provider_refused"
+    assert events[0]["level"] == "error"
+
+
+async def test_alert_level_defaults_to_warning(sentry: Any, log_lines: Any) -> None:
+    capture = log_lines()
+    assert await _emit("llm_credit", Claims())
+    _flush()
+    lines = [line for line in capture.lines() if line["message"] == "alert.llm_credit"]
+    assert lines[0]["severity"] == "WARNING"
+    [event] = _alerts(sentry.events())
+    assert event["level"] == "warning"
+
+
+async def test_alert_unknown_level_refused(sentry: Any) -> None:
+    with pytest.raises(TypeError, match="level"):
+        await _emit("llm_credit", Claims(), level="critical")
+
+
+async def test_alert_remaining_usd_url_refused(sentry: Any) -> None:
+    with pytest.raises(TypeError):
+        await _emit(
+            "llm_provider_refused",
+            Claims(),
+            fields={"remaining_usd": "https://x.test/" + "a" * 130},
+        )
 
 
 async def test_alert_sink_failure_never_raises(sentry: Any, log_lines: Any) -> None:

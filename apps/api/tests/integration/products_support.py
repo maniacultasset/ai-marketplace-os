@@ -128,6 +128,11 @@ PRODUCT_FIELDS = frozenset(
         "colourways",
         # SI3: photo-sourced facts the seller can confirm
         "photo_facts",
+        # SI8: the brand, the audience and a variant's axes
+        "brand_name",
+        "brand_name_inherited",
+        "gender",
+        "variant_attributes",
         # SI9: the newest photo read (detail only; null on lists)
         "photo_read",
         # SI5: the barcode and the GTIN exemption
@@ -210,3 +215,10 @@ def site_body(sku: str = "S12-KURTA-1", **overrides: Any) -> dict[str, Any]:
     }
     body.update(overrides)
     return body
+
+
+def as_listed(single: dict[str, Any]) -> dict[str, Any]:
+    """SI8 (CP-D8): a single read as a list page shows it. A single read carries the effective
+    brand (the brand default with `brand_name_inherited`); a list shows the row's own value."""
+    own = None if single.get("brand_name_inherited") else single.get("brand_name")
+    return {**single, "brand_name": own, "brand_name_inherited": False}

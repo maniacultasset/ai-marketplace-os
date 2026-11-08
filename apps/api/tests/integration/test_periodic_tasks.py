@@ -38,6 +38,7 @@ def test_periodic_table_literal() -> None:
         "oauth_states_prune": "30 * * * *",  # S15
         "schedule_status_sync": "* * * * *",  # S21
         "check_alerts": "*/5 * * * *",  # S23
+        "refresh_ai_credit": "*/5 * * * *",  # SI10
     }
 
 

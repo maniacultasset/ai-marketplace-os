@@ -1,9 +1,11 @@
-"""The platform admin's sign-up queue (ADR-0019): list, approve and reject; and (SI5, ADR-0029)
-the tenant list with trial recovery: activate and extend-trial. Platform admins
-only (`users.is_platform_admin`, checked on every request); everyone else is 403."""
+"""The platform admin's sign-up queue (ADR-0019): list, approve and reject; (SI5, ADR-0029) the
+tenant list with trial recovery: activate and extend-trial; and the AI credit card (SI10): read
+and Resume. Platform admins only (`users.is_platform_admin`, checked on every request); everyone
+else is 403."""
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Annotated, Literal
 from uuid import UUID
 
@@ -13,6 +15,7 @@ from mkos_schemas.codes import ErrorCode
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
+from app.api.v1.schemas.ai_credit import AiCreditOut
 from app.api.v1.schemas.signup import (
     SignupApprove,
     SignupReject,
@@ -28,7 +31,7 @@ from app.api.v1.schemas.tenants import (
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
-from app.services import signup, tenant_admin
+from app.services import ai_credit_admin, signup, tenant_admin
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -170,3 +173,36 @@ async def admin_tenants_extend_trial(
     a tenant suspended by staff included, is 409. Audited with the reason."""
     row = await tenant_admin.extend(principal, target_tenant_id, days=body.days, reason=body.reason)
     return _tenant_out(row)
+
+
+def _usd(value: Decimal | None) -> str | None:
+    return None if value is None else f"{value:.6f}"
+
+
+def _credit_out(found: ai_credit_admin.AiCreditView) -> AiCreditOut:
+    row = found.credit
+    return AiCreditOut(
+        state=found.state,
+        paused_reason=row.paused_reason,
+        paused_at=row.paused_at,
+        limit_usd=_usd(row.limit_usd),
+        usage_usd=_usd(row.usage_usd),
+        remaining_usd=_usd(row.remaining_usd),
+        floor_usd=f"{found.floor_usd:.6f}",
+        checked_at=row.checked_at,
+        today_spend_usd=f"{found.today_spend_usd:.6f}",
+        daily_cap_usd=f"{found.daily_cap_usd:.6f}",
+    )
+
+
+@route(router, OPS["admin_ai_credit_get"])
+async def admin_ai_credit_get(principal: CurrentPrincipal) -> AiCreditOut:
+    """The AI credit: the pause, the last key check, the floor and today's platform spend."""
+    return _credit_out(await ai_credit_admin.view())
+
+
+@route(router, OPS["admin_ai_credit_resume"])
+async def admin_ai_credit_resume(principal: CurrentPrincipal) -> AiCreditOut:
+    """Clear the AI pause now (after a top-up or a key fix). Repeatable; the credit floor still
+    applies at the next check."""
+    return _credit_out(await ai_credit_admin.resume(principal))

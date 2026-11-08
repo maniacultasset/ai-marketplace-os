@@ -116,6 +116,29 @@ async def test_openai_embedder_4xx_not_retryable(status: int) -> None:
         await _embedder(_status(status)).embed(["a"])
     assert info.value.code is ErrorCode.MODEL_UNAVAILABLE
     assert not info.value.retryable and info.value.status == status
+    # SI10 CP-D15: a wire 401/403 is a key suspicion, never a key code by itself
+    assert info.value.key_suspect is (status in (401, 403))
+
+
+async def test_wire_402_is_credit_exhausted() -> None:
+    """SI10 T8 (AC9): OpenRouter's 402 means the credit is used up; never retried."""
+    with pytest.raises(EmbeddingFailed) as info:
+        await _router_embedder(_status(402)).embed(["a"])
+    assert info.value.code is ErrorCode.AI_CREDIT_EXHAUSTED
+    assert not info.value.retryable and info.value.status == 402
+    assert info.value.key_suspect is False
+    assert CANARY_KEY not in str(info.value) and "nope" not in str(info.value)
+
+
+@pytest.mark.parametrize("code", [402, 401, 403])
+async def test_error_body_never_a_credit_or_key_code(code: int) -> None:
+    """A 200 error body carries the upstream provider's status (P:§2 D5): never credit, never a
+    key suspicion."""
+    script = Script(lambda _: httpx2.Response(200, json={"error": {"code": code, "message": "x"}}))
+    with pytest.raises(EmbeddingFailed) as info:
+        await _router_embedder(script).embed(["a"])
+    assert info.value.code is ErrorCode.MODEL_UNAVAILABLE
+    assert info.value.key_suspect is False
 
 
 async def test_openai_embedder_timeout_marked() -> None:

@@ -183,6 +183,20 @@ class BrandChunkRepository(TenantScopedRepository[BrandChunk]):
         )
         return int((await self.db.execute(stmt)).scalar_one())
 
+    async def has_active(self) -> bool:
+        """SI10 (CP-D12): whether `search` could find anything at all (an active chunk of the
+        current embedding model), so a brand with no documents spends no query embed."""
+        stmt = (
+            self._select()
+            .where(
+                BrandChunk.is_active.is_(True),
+                BrandChunk.embedding_model == get_settings().embedding_model,
+            )
+            .with_only_columns(BrandChunk.id)
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).first() is not None
+
     async def active_profile_set(self, model: str) -> list[tuple[uuid.UUID, int, str]]:
         """CP11: every active `brand_profile` row of the tenant, whatever its `source_id`
         (the seed's rows included), `source_id = tenant_id` first, then by index."""

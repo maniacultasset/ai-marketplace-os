@@ -501,3 +501,67 @@ def test_rules_seed_claims_spare_ordinary_text(marketplace: str, path: str) -> N
     base = _listing("kurta_002", marketplace)
     for text in CLAIM_CLEAN:
         assert _claim_errors(_with_text(base, path, text)) == [], text
+
+
+# ---- SI8 T11 (AC12): bullet and description limits from the stored LISTING definitions ----
+
+TEXT_RULES = {
+    "ethnic_wear_kurta_sets": ("000100010012", "000100010013", "000100010014"),
+    "tshirts": ("000100030012", "000100030013", "000100030014"),
+}
+
+
+def _with_content(item: CanonicalListing, **content: Any) -> CanonicalListing:
+    return item.model_copy(update={"content": item.content.model_copy(update=content)})
+
+
+def _items_at(rep: Any, prefix: str) -> list[tuple[str, str]]:
+    return [
+        (e.field, e.error_code.value)
+        for e in rep.errors
+        if e.field.startswith(prefix) and e.severity.value == "error"
+    ]
+
+
+@pytest.mark.parametrize("category", list(TEXT_RULES))
+def test_si8_amazon_sets_hold_the_text_rules(category: str) -> None:
+    ids = {str(r.id) for r in _seed()[("amazon", category)].rules}
+    for tail in TEXT_RULES[category]:
+        assert f"5eed0000-0000-4000-8000-{tail}" in ids
+
+
+@pytest.mark.parametrize("category", list(TEXT_RULES))
+def test_si8_bullet_count(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    five = _run(_with_content(item, bullets=[f"Soft cotton point {n}" for n in range(5)]))
+    assert _items_at(five, "content.bullets") == []
+    six = _run(_with_content(item, bullets=[f"Soft cotton point {n}" for n in range(6)]))
+    assert _items_at(six, "content.bullets") == [("content.bullets", "FIELD_TOO_LONG")]
+
+
+@pytest.mark.parametrize("category", list(TEXT_RULES))
+def test_si8_bullet_length_in_characters(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    ok = ["a" * 500, "सूती कुर्ता " * 41 + "सूती कुर"]  # the second is 500 characters, ~1300 bytes
+    assert len(ok[1]) == 500
+    assert _items_at(_run(_with_content(item, bullets=ok)), "content.bullets") == []
+    long = _run(_with_content(item, bullets=["fine bullet", "a" * 501]))
+    assert _items_at(long, "content.bullets") == [("content.bullets[1]", "FIELD_TOO_LONG")]
+
+
+@pytest.mark.parametrize("category", list(TEXT_RULES))
+def test_si8_description_length(category: str) -> None:
+    item = _listing(CATEGORY_PRODUCT[category], "amazon")
+    fits = _run(_with_content(item, description="d" * 2000))
+    assert _items_at(fits, "content.description") == []
+    over = _run(_with_content(item, description="d" * 2001))
+    assert _items_at(over, "content.description") == [("content.description", "FIELD_TOO_LONG")]
+
+
+def test_si8_lamp_and_flipkart_sets_unchanged() -> None:
+    seed = _seed()
+    new = {f"5eed0000-0000-4000-8000-{t}" for tails in TEXT_RULES.values() for t in tails}
+    for key, ruleset in seed.items():
+        if key in {("amazon", c) for c in TEXT_RULES}:
+            continue
+        assert not new & {str(r.id) for r in ruleset.rules}, key

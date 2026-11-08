@@ -52,6 +52,7 @@ from app.db.models.ops import JobRun
 from app.repositories.brand_chunks import BrandChunkRepository, NewChunk
 from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.uow import tenant_uow
+from app.services.ai_credit import REASON_CODE
 from app.services.brand_chunking import (
     MAX_DOCUMENT_CHUNKS,
     MAX_PROFILE_CHUNKS,
@@ -62,6 +63,7 @@ from app.services.brand_chunking import (
     chunk_profile,
 )
 from app.services.brand_storage import StorageNotFound, brand_bucket, get_document_store
+from app.services.budget import CREDIT_MESSAGES
 from app.services.embeddings import (
     MAX_INPUTS_PER_CALL,
     Embedder,
@@ -107,6 +109,23 @@ def _failed(code: ErrorCode, message: str, ctx: JobContext, source: ErrorSource)
     return JobFailed(_report(code, message, ctx, source))
 
 
+async def _refused(exc: EmbeddingFailed, ctx: JobContext) -> JobFailed:
+    """SI10 (D5, CP-D15): a 402 pauses AI for everyone; a wire 401/403 pauses only when
+    OpenRouter's `/key` confirms the key is refused (document text can draw a moderation 403)."""
+    if exc.code is ErrorCode.AI_CREDIT_EXHAUSTED:
+        await budget.pause_ai("credit_exhausted", job_id=ctx.job_run_id)
+        return _failed(exc.code, CREDIT_MESSAGES["credit_exhausted"], ctx, ErrorSource.SYSTEM)
+    if exc.key_suspect and await budget.confirm_key_refusal():
+        await budget.pause_ai("key_invalid", job_id=ctx.job_run_id)
+        return _failed(
+            ErrorCode.AI_PROVIDER_KEY_INVALID,
+            CREDIT_MESSAGES["key_invalid"],
+            ctx,
+            ErrorSource.SYSTEM,
+        )
+    return _failed(exc.code, "the embedding call failed", ctx, ErrorSource.AI_MODEL)
+
+
 def reservation_usd(model: str, texts: Sequence[str]) -> Decimal:
     """The upper-bound cost of embedding `texts`: a byte-level BPE gives at most one token per
     UTF-8 byte, priced at the model's list price; never zero, so a tenant at its cap is refused."""
@@ -129,7 +148,14 @@ async def _embed(
         reserved = await budget.reserve(
             tenant, job, attempt, amount=reservation_usd(model.model, texts)
         )
-    except budget.BudgetRefused:
+    except budget.BudgetRefused as refused:
+        if refused.scope == "credit" and refused.reason is not None:  # SI10: AI is paused
+            raise _failed(
+                REASON_CODE[refused.reason],
+                CREDIT_MESSAGES[refused.reason],
+                ctx,
+                ErrorSource.SYSTEM,
+            ) from None
         raise _failed(
             ErrorCode.BUDGET_EXCEEDED, "The daily AI budget is used up.", ctx, ErrorSource.SYSTEM
         ) from None
@@ -142,7 +168,7 @@ async def _embed(
     except EmbeddingFailed as exc:
         if exc.retryable:
             raise RetryableJobError(exc.code) from None
-        raise _failed(exc.code, "the embedding call failed", ctx, ErrorSource.AI_MODEL) from None
+        raise await _refused(exc, ctx) from None
     finally:
         await budget.release(tenant, job, attempt)
     return [vector for batch in batches for vector in batch.vectors]

@@ -6,12 +6,17 @@ Exactly: `tone`, `guidelines`, `glossary` (the tenant row) and `brand_names`, `b
 characters). Never `website_url`, `logo_storage_key` or a party id. A tenant with no
 `brand_profiles` row gets the tenant fields plus `content_locale` `en-IN` and an empty
 `brand_names`. Another tenant reads as an empty profile.
+
+SI8 (CP-D1, CP-D9): `brand_choices()` are the tenant's own brand names (its non-blank
+`brand_profiles.brand_names`, then `tenants.name`), read through this repository's tenant scope;
+`default_brand_name()` is the first. No tenant id is ever passed in.
 """
 
 from __future__ import annotations
 
 from typing import Any, Final
 
+from app.core.resolved_facts import brand_choices, default_brand
 from app.db.models.facts import BrandProfile
 from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
@@ -64,3 +69,22 @@ class BrandPromptRepository(TenantScopedRepository[Tenant]):
             "content_locale": DEFAULT_LOCALE if brand is None else brand.content_locale,
             "brand_description": None if description is None else description[:DESCRIPTION_MAX],
         }
+
+    async def brand_choices(self) -> tuple[str, ...]:
+        """The brand names this tenant may list under (`core.resolved_facts.brand_choices`): two
+        tenant-scoped reads, its brand profile `brand_names` and its `tenants.name`."""
+        names = (
+            await self.db.execute(
+                _Brand(self.db, self.tenant_id)
+                ._select()
+                .with_only_columns(BrandProfile.brand_names)
+            )
+        ).scalar_one_or_none()
+        tenant = (
+            await self.db.execute(self._select().with_only_columns(Tenant.name))
+        ).scalar_one_or_none()
+        return brand_choices(names, tenant)
+
+    async def default_brand_name(self) -> str | None:
+        """The brand a product without its own (or its style's) brand lists under."""
+        return default_brand(await self.brand_choices())

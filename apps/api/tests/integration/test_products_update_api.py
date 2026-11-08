@@ -617,3 +617,142 @@ async def test_si3_confirm_role_and_tenant(
     )
     assert response.status_code == 404
     assert "confirmed_at" not in _stored(auth_db, created["id"])["neckline"]
+
+
+# ---- SI8 T9 (AC10; CP-D8, CP-D9, CP-D16): brand, audience and the variant axes ----
+
+
+def _profile(conn: Conn, tenant: Any, names: list[str]) -> None:
+    conn.execute(
+        "INSERT INTO brand_profiles (tenant_id, brand_names, provenance) VALUES (%s, %s, '{}') "
+        "ON CONFLICT (tenant_id) DO UPDATE SET brand_names = EXCLUDED.brand_names",
+        [tenant, names],
+    )
+
+
+async def test_si8_patch_gender_baby_and_brand(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    _profile(products_world.conn, products_world.tenant("acme"), ["Kuinn"])
+    created = await _create(api, products_world, "SI8-P-1")
+    assert (created["brand_name"], created["brand_name_inherited"]) == ("Kuinn", True)
+    response = await _patch(
+        api, products_world, created["id"], {"gender": "baby", "brand_name": "kuinn"}
+    )
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert (out["gender"], out["brand_name"], out["brand_name_inherited"]) == (
+        "baby",
+        "Kuinn",
+        False,
+    )
+
+
+async def test_si8_patch_null_brand_back_to_the_default(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    created = await _create(api, products_world, "SI8-P-2", brand_name="Acme")
+    assert (created["brand_name"], created["brand_name_inherited"]) == ("Acme", False)
+    response = await _patch(api, products_world, created["id"], {"brand_name": None})
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert (out["brand_name"], out["brand_name_inherited"]) == ("Acme", True)  # the tenant name
+    row = products_world.conn.execute(
+        "SELECT brand_name, provenance ? 'brand_name' FROM products WHERE id = %s", [created["id"]]
+    ).fetchone()
+    assert row == (None, False)
+
+
+@pytest.mark.parametrize("brand", ["Nike", "Bharat"])
+async def test_si8_patch_brand_not_yours_is_422_and_writes_nothing(
+    api: httpx.AsyncClient, products_world: World, brand: str
+) -> None:
+    created = await _create(api, products_world, "SI8-P-3")
+    before = _updated_at(products_world.conn, created["id"])
+    response = await _patch(api, products_world, created["id"], {"brand_name": brand})
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["type"] == "VALUE_NOT_ALLOWED"
+    assert error["details"][0]["loc"] == ["body", "brand_name"]
+    assert _updated_at(products_world.conn, created["id"]) == before
+
+
+@pytest.mark.parametrize(
+    "body",
+    [{"gender": "kids"}, {"brand_name": ""}, {"brand_name": "x" * 101}, {"brand_name": "A\x00B"}],
+)
+async def test_si8_patch_bad_values_are_422(
+    api: httpx.AsyncClient, products_world: World, body: dict[str, Any]
+) -> None:
+    created = await _create(api, products_world, "SI8-P-4")
+    response = await _patch(api, products_world, created["id"], body)
+    assert response.status_code == 422
+    assert response.json()["error"]["type"] == "VALIDATION_FAILED"
+
+
+@pytest.mark.parametrize("body", [{"gender": "women"}, {"brand_name": "Acme"}])
+async def test_si8_brand_or_gender_on_a_variant_is_fact_level_invalid(
+    api: httpx.AsyncClient, products_world: World, body: dict[str, Any]
+) -> None:
+    _, child = await _family(products_world)
+    response = await _patch(api, products_world, child, body)
+    assert response.status_code == 422
+    assert response.json()["error"]["type"] == "FACT_LEVEL_INVALID"
+
+
+async def test_si8_stale_tag_wrong_tenant_and_role(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    created = await _create(api, products_world, "SI8-P-5")
+    stale = await _patch(
+        api, products_world, created["id"], {"gender": "men"}, etag='"' + "0" * 36 + '"'
+    )
+    assert stale.status_code == 409 and stale.json()["error"]["type"] == "STALE_VERSION"
+    other = await _patch(
+        api, products_world, created["id"], {"gender": "men"}, email="operator@bharat.test"
+    )
+    assert other.status_code == 404
+    reviewer = await _patch(
+        api,
+        products_world,
+        created["id"],
+        {"gender": "men"},
+        etag=created["_etag"],
+        email="reviewer@acme.test",
+    )
+    assert reviewer.status_code == 403
+
+
+async def test_si8_reads_variant_axes_and_the_styles_brand_and_gender(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    _profile(products_world.conn, products_world.tenant("acme"), ["Kuinn"])
+    style, child = await _family(products_world, brand_name="Acme", gender="women")
+    got = (await api.get(f"{PRODUCTS}/{child}", headers=_op(products_world))).json()
+    assert got["variant_attributes"] == {"size": "m"}
+    assert (got["brand_name"], got["brand_name_inherited"], got["gender"]) == (
+        "Acme",
+        False,
+        "women",
+    )
+    styled = (await api.get(f"{PRODUCTS}/{style}", headers=_op(products_world))).json()
+    assert styled["variant_attributes"] == {}
+    page = (await api.get(PRODUCTS, headers=_op(products_world))).json()["data"]
+    by_id = {p["id"]: p for p in page}
+    listed = by_id[str(child)]
+    assert listed["variant_attributes"] == {"size": "m"}
+    assert (listed["brand_name"], listed["brand_name_inherited"], listed["gender"]) == (
+        None,
+        False,
+        None,
+    )  # lists show own values only (CP-D8)
+    assert by_id[str(style)]["brand_name"] == "Acme"
+
+
+async def test_si8_variant_without_a_style_brand_inherits_the_default(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    _profile(products_world.conn, products_world.tenant("acme"), ["", "Kuinn"])
+    _, child = await _family(products_world)
+    got = (await api.get(f"{PRODUCTS}/{child}", headers=_op(products_world))).json()
+    assert (got["brand_name"], got["brand_name_inherited"]) == ("Kuinn", True)

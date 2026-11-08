@@ -79,3 +79,28 @@ async def test_tenants_me_invalid_token_401(
 ) -> None:
     response = await api.get(URL, headers=bad_token(jobs_db, variant))
     assert response.status_code == 401 and response.json()["error"]["type"] == "UNAUTHENTICATED"
+
+
+# ---- SI10 T14 (AC12): the trial end ----
+
+
+async def test_tenants_me_trial_ends_at(jobs_db: JobWorld, api: httpx.AsyncClient) -> None:
+    acme = jobs_db.tenant("acme")
+    jobs_db.conn.execute(
+        "UPDATE tenants SET status = 'trial', trial_ends_at = '2026-11-21T00:00:00Z' WHERE id = %s",
+        [acme],
+    )
+    body = (await api.get(URL, headers=as_member(jobs_db, "owner@acme.test"))).json()
+    assert body["trial_ends_at"] == "2026-11-21T00:00:00Z"
+
+
+async def test_tenants_me_active_tenant_hides_a_stale_trial_date(
+    jobs_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    jobs_db.conn.execute(
+        "UPDATE tenants SET status = 'active', trial_ends_at = '2026-10-01T00:00:00Z' "
+        "WHERE id = %s",
+        [jobs_db.tenant("acme")],
+    )
+    body = (await api.get(URL, headers=as_member(jobs_db, "owner@acme.test"))).json()
+    assert body["trial_ends_at"] is None

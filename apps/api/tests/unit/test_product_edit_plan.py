@@ -27,6 +27,8 @@ def _row(**over: Any) -> SimpleNamespace:
         "title": "Tee",
         "category": "t_shirts",
         "style_number": None,
+        "brand_name": None,
+        "gender": None,
         "mrp": None,
         "selling_price": None,
         "manufacturer_party_id": None,
@@ -280,3 +282,23 @@ def test_confirm_refuses_other_evidence() -> None:
 def test_reject_is_a_clear_of_the_photo_value() -> None:
     change = _confirm({"attributes": {"neckline": None}}, _photo_row())
     assert change.attrs_clear == ("neckline",)
+
+
+# ---- SI8 T9: brand and audience are style-owned typed fields ----
+
+
+@pytest.mark.parametrize("level", ["style", "standalone"])
+def test_brand_and_gender_planned_at_style_level(level: str) -> None:
+    change = _plan({"brand_name": "Kuinn", "gender": "baby"}, level=level)
+    assert change.typed_set == {"brand_name": "Kuinn", "gender": "baby"}
+
+
+@pytest.mark.parametrize("name", ["brand_name", "gender"])
+def test_brand_or_gender_on_a_variant_is_fact_level_invalid(name: str) -> None:
+    error = _refused({name: "women"}, level="variant")
+    assert (error.code, error.field) == (ErrorCode.FACT_LEVEL_INVALID, name)
+
+
+def test_null_brand_and_gender_clear() -> None:
+    change = _plan({"brand_name": None, "gender": None}, row=_row(brand_name="K", gender="men"))
+    assert set(change.typed_clear) == {"brand_name", "gender"}

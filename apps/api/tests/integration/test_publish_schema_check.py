@@ -25,8 +25,9 @@ PERMISSIVE: dict[str, Any] = {"type": "object", "title": "permissive DW2 test sc
 STRICT: dict[str, Any] = {
     "type": "object",
     "title": "strict DW2 test schema",
-    "required": ["brand"],
-    "properties": {"brand": {"title": "Brand", "type": "array"}},
+    # SI8: brand is sent now; `item_type_keyword` is a required name nothing sends
+    "required": ["item_type_keyword"],
+    "properties": {"item_type_keyword": {"title": "Item Type Keyword", "type": "array"}},
 }
 
 

@@ -86,3 +86,70 @@ def test_amazon_theme_without_parent_invalid() -> None:
     from tests.adapters.amazon_support import amazon_item
 
     assert _codes(amazon_item(variation_theme="size")) == [("variants", "VARIATION_INVALID")]
+
+
+# ---- SI8 T4 (AC5; CP-D4): each child sends its own colour's images, then the style's ----
+
+
+def _child(items: list, colour: str, size: str = "M") -> object:  # type: ignore[type-arg]
+    (one,) = [
+        i
+        for i in items
+        if i.unit.item_role == "child"
+        and i.unit.variant_attributes == {"size": size, "color": colour}
+    ]
+    return one
+
+
+def _slots(item: object) -> dict[str, str]:
+    attrs = item.payload["attributes"]  # type: ignore[attr-defined]
+    return {
+        name: attrs[name][0]["media_location"].rsplit("/", 1)[-1].removesuffix(".jpg")
+        for name in attrs
+        if name.endswith("_image_locator") or "_image_locator_" in name
+    }
+
+
+def test_colour_children_send_their_own_images_then_the_style() -> None:
+    from app.adapters.amazon.mapping import check, family_payloads
+    from tests.adapters.amazon_support import colour_family
+
+    sent, at = colour_family(green=True)
+    assert check(sent) == []
+    items = family_payloads(sent)
+    red, black, green = _child(items, "red"), _child(items, "black", "L"), _child(items, "green")
+    assert _slots(red) == {
+        "main_product_image_locator": "R1",
+        "other_product_image_locator_1": "R2",
+        "other_product_image_locator_2": "Z",
+    }
+    assert _slots(black) == {
+        "main_product_image_locator": "B1",
+        "other_product_image_locator_1": "Z",
+    }
+    assert _slots(green) == {
+        "main_product_image_locator": "S",
+        "other_product_image_locator_1": "Z",
+    }
+    assert red.image_names == {  # type: ignore[attr-defined]
+        "main_product_image_locator": f"images[{at['R1']}]",
+        "other_product_image_locator_1": f"images[{at['R2']}]",
+        "other_product_image_locator_2": f"images[{at['Z']}]",
+    }
+    assert _slots(items[0]) == {}  # the parent sends no image
+    every = {f"images[{i}]" for i in at.values()}
+    for child in items[1:]:
+        assert every <= set(child.paths)
+
+
+def test_colour_with_many_images_pushes_the_size_chart_past_the_cut() -> None:
+    """P:§6 "Image cut": 9 red images (R1, R2 and 7 more) plus Z -> Z is position 9 (0-based),
+    past Amazon's 9 slots, and skipped (accepted)."""
+    from app.adapters.amazon.mapping import family_payloads
+    from tests.adapters.amazon_support import colour_family
+
+    sent, at = colour_family(extra_red=7)
+    red = _child(family_payloads(sent), "red")
+    assert len(_slots(red)) == 9
+    assert "Z" not in _slots(red).values()
+    assert f"images[{at['Z']}]" in red.skipped  # type: ignore[attr-defined]

@@ -9,7 +9,7 @@ from uuid import UUID
 
 from mkos_schemas.auth import Role
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import AfterValidator, Field, SecretStr, StrictBool, model_validator
+from pydantic import AfterValidator, AwareDatetime, Field, SecretStr, StrictBool, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
@@ -321,6 +321,17 @@ class MeOut(WireModel):
     is_platform_admin: bool = Field(
         default=False,
         description="True for a platform admin (ADR-0019): show the sign-up request queue.",
+    )
+    trial_ends_at: AwareDatetime | None = Field(
+        default=None,
+        description="When the active brand's trial ends, while it is on trial; else null.",
+    )
+    ai_paused: bool = Field(
+        default=False,
+        description=(
+            "True while AI generation is refused for every brand (the AI credit is used up or "
+            "paused): show one calm banner, no retry."
+        ),
     )
 
 

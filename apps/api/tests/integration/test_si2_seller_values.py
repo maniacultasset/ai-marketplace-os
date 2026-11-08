@@ -36,6 +36,7 @@ async def _product(world: GenWorld, attributes: dict[str, Any]) -> str:
             selling_price=Decimal("999.00"),
             # SI5 B2 + SI9 B4: the pre-approval check needs a barcode for an Amazon create
             product_identifier=("ean", f.ean()),
+            gender="women",  # SI8 + SI9 B4: and a Kurta set needs the audience
         ),
     )
     return sku

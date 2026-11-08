@@ -22,7 +22,7 @@ Downgrade (local and CI only, RULES.md "No prod downgrade") refuses while a list
 is `auto_fix` or a `listing_repairs` row exists, then restores the previous bodies and CHECKs.
 
 Revision ID: 0022_autonomous_resolution
-Revises: 0020_status_truth
+Revises: 0021_ai_credit_state
 Create Date: 2026-11-08
 
 """
@@ -36,7 +36,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0022_autonomous_resolution"
-down_revision: str | Sequence[str] | None = "0020_status_truth"
+down_revision: str | Sequence[str] | None = "0021_ai_credit_state"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -309,8 +309,28 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
             "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map, "
             "login_flows, product_type_definitions RESTART IDENTITY CASCADE"
         )
+        # SI10: ai_credit_state references users, so the cascade empties it; put row 1 back.
+        superuser_conn.execute(AI_CREDIT_RESEED)
     finally:
         superuser_conn.execute("RESET session_replication_role")
+
+
+AI_CREDIT_RESEED = "INSERT INTO ai_credit_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING"
+AI_CREDIT_RESET = (
+    "UPDATE ai_credit_state SET paused_reason = NULL, paused_at = NULL, limit_usd = NULL, "
+    "usage_usd = NULL, remaining_usd = NULL, checked_at = NULL, resumed_at = NULL, "
+    "resumed_by_user_id = NULL WHERE id = 1"
+)
+
+
+@pytest.fixture
+def credit_reset(superuser_conn: Conn) -> Iterator[None]:
+    """SI10: `ai_credit_state` row 1 back to never-checked and unpaused before and after the test
+    (as the superuser: the guard refuses app_rw a clear; the row is never truncated away)."""
+    superuser_conn.execute(AI_CREDIT_RESEED)
+    superuser_conn.execute(AI_CREDIT_RESET)
+    yield
+    superuser_conn.execute(AI_CREDIT_RESET)
 
 
 # ---- S10c: the app under test as app_rw, against a world the admin login builds ----

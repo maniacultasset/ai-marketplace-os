@@ -142,8 +142,11 @@ def get_embedder(settings: Settings) -> Embedder:
 
 
 class EmbeddingFailed(Exception):  # noqa: N818 - the S16 CODE-PLAN name
-    """One failed embedding call. `code` is `TIMEOUT` or `MODEL_UNAVAILABLE`; the message holds
-    only the exception class and the HTTP status, never the key, the input or provider text."""
+    """One failed embedding call. `code` is `TIMEOUT`, `MODEL_UNAVAILABLE` or (SI10) a wire 402's
+    `AI_CREDIT_EXHAUSTED`; `key_suspect` marks a wire 401/403, which only OpenRouter's `/key` can
+    turn into `AI_PROVIDER_KEY_INVALID` (CP-D15; a 200 error body never sets it). The message
+    holds only the exception class and the HTTP status, never the key, the input or provider
+    text."""
 
     def __init__(
         self,
@@ -153,6 +156,7 @@ class EmbeddingFailed(Exception):  # noqa: N818 - the S16 CODE-PLAN name
         timed_out: bool = False,
         cause: str = "",
         status: int | None = None,
+        key_suspect: bool = False,
     ) -> None:
         detail = f"{cause} {status}".strip() if status is not None else cause
         super().__init__(f"{code.value}: {detail}" if detail else code.value)
@@ -160,6 +164,7 @@ class EmbeddingFailed(Exception):  # noqa: N818 - the S16 CODE-PLAN name
         self.retryable = retryable
         self.timed_out = timed_out
         self.status = status
+        self.key_suspect = key_suspect
 
 
 OPENAI_BASE_URL: Final = "https://api.openai.com/v1"
@@ -226,11 +231,19 @@ class OpenAIEmbedder:
             ) from None
         except openai.APIStatusError as exc:
             status = int(exc.status_code)
+            if status == 402:  # SI10: the gateway's "out of credit"
+                raise EmbeddingFailed(
+                    ErrorCode.AI_CREDIT_EXHAUSTED,
+                    retryable=False,
+                    cause=type(exc).__name__,
+                    status=status,
+                ) from None
             raise EmbeddingFailed(
                 ErrorCode.MODEL_UNAVAILABLE,
                 retryable=status == 429 or status >= 500,
                 cause=type(exc).__name__,
                 status=status,
+                key_suspect=status in (401, 403),
             ) from None
         except openai.OpenAIError as exc:  # a malformed response body, never retried
             raise EmbeddingFailed(

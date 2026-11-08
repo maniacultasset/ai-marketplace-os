@@ -72,7 +72,10 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     assert not _has_column(scratch_db.libpq)
     command.upgrade(cfg, REVISION)
     assert _has_column(scratch_db.libpq)
-    # the ORM is the head's (0022 since SI11): `alembic check` runs at head below
+    command.upgrade(
+        cfg, "head"
+    )  # 0019 (SI8), 0021 (SI10), 0022 (SI11) sit on top: `check` at the head
+    command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not _has_column(scratch_db.libpq)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:

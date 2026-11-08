@@ -19,6 +19,68 @@
     }
   },
   "properties": {
+    "age_range_description": {
+      "title": "Age Range Description",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "Adult",
+              "Kid",
+              "Baby"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "brand": {
+      "title": "Brand Name",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
     "bullet_point": {
       "title": "Bullet Point",
       "type": "array",
@@ -186,6 +248,42 @@
               "TR",
               "US",
               "VN"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "department": {
+      "title": "Department",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "Women",
+              "Men",
+              "Unisex",
+              "Girls",
+              "Boys",
+              "Baby"
             ]
           },
           "marketplace_id": {
@@ -450,6 +548,31 @@
       "selectors": [
         "marketplace_id",
         "language_tag"
+      ]
+    },
+    "model_number": {
+      "title": "Model Number",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
       ]
     },
     "neck_style": {
@@ -723,6 +846,31 @@
         "marketplace_id"
       ]
     },
+    "part_number": {
+      "title": "Part Number",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
     "pattern": {
       "title": "Pattern",
       "type": "array",
@@ -966,6 +1114,35 @@
         "language_tag"
       ]
     },
+    "target_gender": {
+      "title": "Target Gender",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "female",
+              "male",
+              "unisex"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id"
+      ]
+    },
     "variation_theme": {
       "title": "Variation Theme",
       "type": "array",
@@ -1048,10 +1225,12 @@
     }
   },
   "required": [
+    "brand",
     "fit_type",
     "item_name",
     "material",
-    "purchasable_offer"
+    "purchasable_offer",
+    "target_gender"
   ],
   "allOf": [
     {

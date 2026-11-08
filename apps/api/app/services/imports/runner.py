@@ -54,6 +54,7 @@ from app.adapters.storage import (
 from app.core.errors import InputError, RowCountError
 from app.core.logging import get_logger
 from app.db.models.ops import Import
+from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.facts import FactWriter
 from app.repositories.imports import (
     ImportRepository,
@@ -139,13 +140,13 @@ class Unit:
         return sum(1 for p in self.rows if not p.skip)
 
 
-def _prepare(csv_row: CsvRow) -> Prepared:
+def _prepare(csv_row: CsvRow, brands: Sequence[str]) -> Prepared:
     if csv_row.error is not None:
         code, message = csv_row.error
         item = row_error(code, message)
         return Prepared(csv_row.row_number, {}, None, None, RowResult(None, [item]), [item])
     norm = normalize_row(csv_row.cells)
-    result = validate_row(norm)
+    result = validate_row(norm, brands=brands)
     return Prepared(
         csv_row.row_number,
         dict(csv_row.cells),
@@ -156,10 +157,13 @@ def _prepare(csv_row: CsvRow) -> Prepared:
     )
 
 
-def build_units(rows: Iterable[CsvRow], skip: Collection[int] = ()) -> list[Unit]:
+def build_units(
+    rows: Iterable[CsvRow], skip: Collection[int] = (), *, brands: Sequence[str]
+) -> list[Unit]:
     """Units in file order; the rows numbered in `skip` (a rows retry's imported family
-    members) join their family for its checks only."""
-    prepared = [_prepare(r) for r in sorted(rows, key=lambda r: r.row_number)]
+    members) join their family for its checks only. `brands` (SI8): the tenant's own brand
+    names, read once per job."""
+    prepared = [_prepare(r, brands) for r in sorted(rows, key=lambda r: r.row_number)]
     for p in prepared:
         p.skip = p.row_number in skip
     families = {p.parent_sku for p in prepared if p.parent_sku}
@@ -343,7 +347,9 @@ async def run_import(ctx: JobContext) -> Outcome:
             ) from None
     else:
         csv_rows = retry_rows
-    units = build_units(csv_rows, loaded.context_rows)
+    async with unit_of_work(ctx.tenant_id) as session:  # SI8: one read per job
+        brands = await BrandPromptRepository(session, ctx.tenant_id).brand_choices()
+    units = build_units(csv_rows, loaded.context_rows, brands=brands)
     mark_duplicates(units, loaded.imported_skus)
     todo = [u for u in units if u.size and not u.row_numbers <= finished]
     run = Run(ctx, imp, Facts(fact_stamp(datetime.now(UTC))), total=sum(u.size for u in units))
