@@ -37,6 +37,7 @@ CREATE TABLE public.listing_repairs (
     REFERENCES public.listings (id, marketplace) ON DELETE CASCADE,
   CONSTRAINT fk_listing_repairs_listing_item_id_listing_id FOREIGN KEY (listing_item_id, listing_id)
     REFERENCES public.listing_items (id, listing_id) ON DELETE CASCADE,
+  CONSTRAINT ck_listing_repairs_marketplace CHECK (marketplace IN ('amazon', 'flipkart')),
   CONSTRAINT ck_listing_repairs_field_path CHECK (char_length(field_path) BETWEEN 1 AND 192),
   CONSTRAINT ck_listing_repairs_attribute CHECK (attribute ~ '^[a-z0-9_]{1,128}$'),
   CONSTRAINT ck_listing_repairs_rule CHECK (rule IN (
