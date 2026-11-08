@@ -43,8 +43,10 @@ log = get_logger(__name__)
 GENERATION_RESERVATION_USD: Final = Decimal("0.10")
 
 
-# SI7 (CP-D6): 1536 output tokens x USD 30/M held by the gateway, plus about USD 0.0005 input.
-IMAGE_EDIT_RESERVATION_USD: Final = Decimal("0.05")
+# SI7 (CP-D6; live check D17, 2026-11-07): image output tokens are not bounded by `max_tokens`
+# (1290 to 2582 seen with google/gemini-2.5-flash-image), so one edit cost USD 0.039 to 0.078;
+# the reservation covers the top of that range.
+IMAGE_EDIT_RESERVATION_USD: Final = Decimal("0.10")
 RefusalScope = Literal["tenant", "global", "image_tenant", "image_global"]
 
 

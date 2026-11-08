@@ -38,7 +38,8 @@ platform and USD 1 per brand. The backend never imports a model SDK, and the AI 
 5. Cost control:
    - one model call per (product, source `clean_content_hash`, model and prompt version), cached;
    - `max_attempts=1` and no automatic retry;
-   - USD 0.05 reserved per call (about USD 0.039 real);
+   - USD 0.10 reserved per call (USD 0.039 to 0.078 real in the live check, 2026-11-07: image output tokens are not
+     bounded by `max_tokens`);
    - one `agent_runs` row per call (invariant 7);
    - the feature is off by default (`IMAGE_EDIT_ENABLED`) and turned on in prod only after one live call by the user
      confirms the deny route, the response shape and the token count.

@@ -24,7 +24,7 @@ def test_upload_jobs_add_nothing() -> None:
 def test_reservation_and_limits() -> None:
     from app.core.config import Settings
 
-    assert Decimal("0.05") == IMAGE_EDIT_RESERVATION_USD
+    assert Decimal("0.10") == IMAGE_EDIT_RESERVATION_USD
     limits = ImageEditLimits.from_settings(Settings(_env_file=None, app_env="local"))
     assert (limits.tenant_daily_limit, limits.platform_share) == (10, Decimal("0.5"))
     assert BudgetRefused("image_tenant").scope == "image_tenant"

@@ -13,7 +13,7 @@ from typing import Any
 
 import pytest
 from app.workers import image_edit_seam
-from app.workers.budget import BudgetRefused, ImageEditLimits, reserve
+from app.workers.budget import IMAGE_EDIT_RESERVATION_USD, BudgetRefused, ImageEditLimits, reserve
 
 from . import factories as f
 from .candidates_support import (
@@ -72,11 +72,14 @@ async def test_nine_others_still_allow_the_tenth(images_db: JobWorld) -> None:
     async with unit_of_work(tenant) as session:
         await lock_budget(session, tenant)
         day = datetime.now(UTC).date()
-        assert await image_edit_refusal(session, tenant, day, limits, Decimal("0.05")) is None
+        assert (
+            await image_edit_refusal(session, tenant, day, limits, IMAGE_EDIT_RESERVATION_USD)
+            is None
+        )
     _queued_ai(images_db, tenant, 1)
     async with unit_of_work(tenant) as session:
         await lock_budget(session, tenant)
-        got = await image_edit_refusal(session, tenant, day, limits, Decimal("0.05"))
+        got = await image_edit_refusal(session, tenant, day, limits, IMAGE_EDIT_RESERVATION_USD)
     assert got == "image_tenant"
 
 
@@ -100,7 +103,7 @@ async def test_the_platform_share_refuses_another_tenant_but_not_generation(
     )
     limits = ImageEditLimits(tenant_daily_limit=10, platform_share=Decimal("0.5"))
     with pytest.raises(BudgetRefused) as refused:
-        await reserve(bharat, uuid.uuid4(), 1, amount=Decimal("0.05"), image_edit=limits)
+        await reserve(bharat, uuid.uuid4(), 1, amount=IMAGE_EDIT_RESERVATION_USD, image_edit=limits)
     assert refused.value.scope == "image_global"
     # listing generation keeps the rest of both caps: no refusal (the job row is absent, so
     # the fenced write reports False instead)
@@ -130,7 +133,10 @@ async def test_fix_and_yesterdays_edits_are_not_counted(images_db: JobWorld) -> 
     async with unit_of_work(tenant) as session:
         await lock_budget(session, tenant)
         day = datetime.now(UTC).date()
-        assert await image_edit_refusal(session, tenant, day, limits, Decimal("0.05")) is None
+        assert (
+            await image_edit_refusal(session, tenant, day, limits, IMAGE_EDIT_RESERVATION_USD)
+            is None
+        )
 
 
 # ---- create side (T13): a refused create is a `failed/budget` row with no job ----

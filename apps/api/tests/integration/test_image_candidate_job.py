@@ -312,7 +312,7 @@ async def test_stub_echo_on_off_white_is_ready_with_one_run(
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
     assert row["status"] == "ready", row["failure_reason"]
-    assert during == [Decimal("0.05")] and _reserved(images_db.conn, job) == 0
+    assert during == [Decimal("0.10")] and _reserved(images_db.conn, job) == 0
     (run,) = _runs(images_db.conn, job)
     assert (run["agent_name"], run["trigger"], run["prompt_version"]) == (
         "image",
@@ -407,15 +407,15 @@ async def test_tenant_cap_refuses_without_a_seam_call(
 async def test_caps_see_edits(
     images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
 ) -> None:
-    """A tenant cap of 0.06 with one stub edit done today: the next edit is refused before the
+    """A tenant cap of 0.12 with one stub edit (0.039) done today: the next edit is refused before the
     seam. The stub's STUB_EPOCH record is stored at today's `started_at` (clamped), and a running
-    candidate job's 0.05 reservation counts in `tenant_state`."""
+    candidate job's 0.10 reservation counts in `tenant_state`."""
     from datetime import UTC, datetime
 
     from app.repositories.uow import tenant_uow
 
     tenant = images_db.tenant("acme")
-    images_db.conn.execute("UPDATE tenants SET llm_daily_budget_usd = 0.06 WHERE id = %s", [tenant])
+    images_db.conn.execute("UPDATE tenants SET llm_daily_budget_usd = 0.12 WHERE id = %s", [tenant])
     first, job1, _ = await _edit(images_db, store)
     states: list[Decimal] = []
     from mkos_pipeline import edit_image as stub
@@ -429,7 +429,7 @@ async def test_caps_see_edits(
     edit_on.setattr(image_edit_seam, "call_edit_image", spy)
     await run_image_job(job1)
     assert candidate_row(images_db.conn, first)["status"] == "ready"
-    assert states == [Decimal("0.05")]
+    assert states == [Decimal("0.10")]
     (run,) = _runs(images_db.conn, job1)
     assert run["started_at"].date() == datetime.now(UTC).date()
     second, job2, _ = await _edit(images_db, store)
@@ -474,7 +474,7 @@ async def test_foreign_record_is_untrusted(
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
     assert (row["status"], row["failure_reason"]) == ("failed", "model_failed")
-    assert _runs(images_db.conn, job) == [] and _reserved(images_db.conn, job) == Decimal("0.05")
+    assert _runs(images_db.conn, job) == [] and _reserved(images_db.conn, job) == Decimal("0.10")
 
 
 async def test_record_ids_are_restamped_from_the_job(
