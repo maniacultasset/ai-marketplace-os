@@ -68,8 +68,7 @@ async def test_a_content_fix_on_a_stale_base_hands_the_refusal_to_staff(
     row = prev.listing(made.listing_id)
     assert (row["status"], row["status_reason"]) == ("failed", "generation_failed")
     assert _kinds(prev, made.listing_id) == {"marketplace_error_review"}
-    # the read is left to the repro (docs/plans/si11-autonomous-resolution/repro/
-    # test_r6_stale_pending_check_hides_stopped.py): it reads `checking` here
+    # the read of this listing: test_si11b_stale_pending_check.py
 
 
 async def test_a_reaped_ai_field_job_hands_the_refusal_to_staff(

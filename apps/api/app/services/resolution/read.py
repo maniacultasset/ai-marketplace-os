@@ -173,6 +173,9 @@ class ReadFacts:
     status_reason: str | None = None
     remote_check_status: str | None = None
     live_preview: bool = False
+    live_status_sync: bool = False
+    """A `listing_status_sync` job of any op is live: only then is a `pending` stamp a wait (a
+    stamp left behind with no job, fix round 2, is not)."""
     live_fix_job: bool = False
     latest_submission: tuple[str, str] | None = None
     """(actor_type, outcome) of the newest submission."""
@@ -191,7 +194,7 @@ def state_of(f: ReadFacts) -> str:
         return "live"
     if f.live_fix_job:
         return "fixing"
-    if f.remote_check_status == "pending" or f.live_preview:
+    if f.live_preview or (f.remote_check_status == "pending" and f.live_status_sync):
         return "checking"
     if (
         f.latest_submission is not None
@@ -478,6 +481,9 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
             and j.kind == "listing_status_sync"
             and (j.payload_json or {}).get("op") == "preview"
             for j in jobs
+        ),
+        live_status_sync=any(
+            j.status in LIVE_JOB and j.kind == "listing_status_sync" for j in jobs
         ),
         live_fix_job=any(j.status in LIVE_JOB for j in jobs if j.id in fix_job_ids),
         latest_submission=None if latest is None else (latest.actor_type, latest.outcome),

@@ -26,7 +26,7 @@ NOW = datetime(2026, 11, 8, 9, 0, tzinfo=UTC)
 STATES: dict[str, ReadFacts] = {
     "live": ReadFacts(status="published"),
     "fixing": ReadFacts(status="generating", live_fix_job=True),
-    "checking": ReadFacts(status="validated", remote_check_status="pending"),
+    "checking": ReadFacts(status="validated", remote_check_status="pending", live_status_sync=True),
     "resubmitted": ReadFacts(status="publishing", latest_submission=("system", "pending")),
     "stopped": ReadFacts(status="blocked", status_reason="corrections_exhausted"),
     "needs_marketplace": ReadFacts(
@@ -61,6 +61,21 @@ def _merge(a: ReadFacts, b: ReadFacts) -> ReadFacts:
 )
 def test_the_higher_state_wins_every_pair(high: str, low: str) -> None:
     assert state_of(_merge(STATES[high], STATES[low])) == high
+
+
+def test_a_pending_stamp_with_no_live_status_sync_job_is_not_checking() -> None:
+    """Fix round 2 (B2-1): a `pending` stamp left behind with no job never reads `checking`."""
+    orphan = ReadFacts(
+        status="failed",
+        status_reason="generation_failed",
+        remote_check_status="pending",
+        open_blocking=True,
+    )
+    assert state_of(orphan) == "stopped"
+    assert next_step("stopped", orphan)["kind"] == "regenerate"
+    assert state_of(ReadFacts(status="validated", remote_check_status="pending")) == "idle"
+    assert state_of(replace(orphan, live_status_sync=True)) == "checking"
+    assert state_of(ReadFacts(status="validated", live_preview=True)) == "checking"
 
 
 def test_an_empty_listing_is_idle() -> None:
