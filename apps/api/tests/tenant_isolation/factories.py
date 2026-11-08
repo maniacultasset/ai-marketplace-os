@@ -112,6 +112,7 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     put("performance", f.performance(conn, t, side.listing_id))
     put("human_tasks", f.human_task(conn, t, product_id=side.product_id))
     put("listing_issues", f.listing_issue(conn, t, side.listing_id))
+    put("listing_repairs", f.listing_repair(conn, t, side.listing_id, listing_item_id=side.item_id))
     put("job_runs", ops.job_run(conn, t))
     import_id = ops.import_run(conn, side)
     put("imports", import_id)

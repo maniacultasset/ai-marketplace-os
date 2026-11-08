@@ -20,6 +20,8 @@ concurrent validates with equal pins write one run):
    Rules block does. With equal pins, a check whose blocking set equals the open `schema` error
    rows writes nothing; a different one syncs `schema`, takes the `revalidate` move and opens
    the questions, and writes no validation run;
+4c. SI11 fix round 2: with equal pins and an open pre-check ERROR on the current version (the
+   facts were changed and changed back), the marketplace's dry run is asked again;
 5. always 200: a failed check is `passed: false`, never an error.
 """
 
@@ -99,6 +101,15 @@ async def validate_listing(
                 canonical.images,
                 template=check.template,
             )
+        elif current:
+            # fix rounds 2-3: facts restored to ones already judged (A -> B -> A -> B) bring
+            # back equal pins, yet the newest pre-check judged other facts. request_preview
+            # replays only a verdict on these very inputs, else asks the marketplace again
+            # (from `blocked/validation_errors` too while a pre-check ERROR is open)
+            from app.services.remote_preview import request_preview
+
+            recheck = await uow.resolution.has_open_preview_error(listing.id, version.id)
+            await request_preview(uow, listing, version.id, recheck=recheck)
         return summary_of([same])
     # only the current version's issues are the listing's inbox (a past version's run is history)
     run = await insert_run(uow, listing, version.id, check, cause="revalidate" if current else None)

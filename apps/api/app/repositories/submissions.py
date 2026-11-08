@@ -21,7 +21,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from sqlalchemy import func, literal, null, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -60,6 +60,10 @@ class NewSubmission:
     field_paths: Sequence[str] | None = None
     retry_justification: str | None = None
     previous_submission_id: uuid.UUID | None = None
+    # SI11 (T13, T41): an automatic resend is `system` (with `changed_input`) and lists what the
+    # adapter changed (`corrections_json`, DATABASE.md:966-975)
+    actor_type: Literal["user", "system"] = "user"
+    corrections: Sequence[Mapping[str, Any]] | None = None
 
 
 async def _run(db: Any, stmt: Any) -> Any:
@@ -130,7 +134,8 @@ class ListingSubmissionRepository(TenantScopedRepository[ListingSubmission]):
                 retry_justification=new.retry_justification,
                 previous_submission_id=new.previous_submission_id,
                 requested_by_user_id=new.requested_by_user_id,
-                actor_type="user",
+                actor_type=new.actor_type,
+                corrections_json=None if new.corrections is None else list(new.corrections),
             )
             .returning(ListingSubmission)
         )

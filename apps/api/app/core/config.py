@@ -263,6 +263,10 @@ class Settings(BaseSettings):
     amazon_platform_refresh_token: SecretStr | None = Field(default=None, repr=False)
     # DW2 (C7): the hosts a PTD schema link may name, comma separated; ".x.y" is a suffix match.
     amazon_ptd_link_hosts: str = ".amazonaws.com"
+    # SI11 (ADR-0028): ask Amazon's dry run (VALIDATION_PREVIEW) about a listing before approval.
+    # Off unless set: production turns it on only after the deliberate-error runbook passes on
+    # Amazon India (its preview support is unconfirmed, F:61).
+    amazon_validation_preview_enabled: bool = False
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None

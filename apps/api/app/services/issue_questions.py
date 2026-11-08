@@ -88,14 +88,24 @@ async def open_questions(
     critical_keys: frozenset[str],
     template: CategoryTemplate | None,
     images: Sequence[Any] = (),
+    rows: Sequence[Any] | None = None,
 ) -> list[uuid.UUID]:
     """Open (or reuse) the questions behind this listing's open error rows and link the rows;
-    returns the task ids. `images` are the version's `ImageRef`s (`images[<i>]` → image id)."""
-    rows = await uow.listing_issues.open_errors(listing.id, QUESTION_SOURCES)
+    returns the task ids. `images` are the version's `ImageRef`s (`images[<i>]` → image id).
+
+    SI11 T17: `rows` are the marketplace's rows the resolution planner gave the `seller` lane
+    (never every adapter row, so a staff or marketplace row never asks the seller); a fact path
+    then asks `missing_fact` and an image path `image_replacement` when the fix policy names no
+    question."""
+    chosen = rows is not None
+    if rows is None:
+        rows = await uow.listing_issues.open_errors(listing.id, QUESTION_SOURCES)
     facts: dict[str, list[Any]] = {}
     pictures: dict[uuid.UUID, list[Any]] = {}
     for row in rows:
         kind = ask_kind(route(_item(row), source=row.source, critical_keys=critical_keys))
+        if kind is None and chosen:
+            kind = IMAGE_REPLACEMENT if _image_index(row.field_path) is not None else MISSING_FACT
         if kind == MISSING_FACT:
             key = fact_key(row.field_path)
             if key is not None:
@@ -190,12 +200,17 @@ async def ask_after_check(
     asked = await open_questions(
         uow, listing, critical_keys=critical, template=template, images=images
     )
-    if not asked or not can_question_move(listing.status, listing.status_reason):
-        return listing
-    return await uow.listings.move(
-        listing,
-        to=QUESTION_MOVE.to,
-        event=QUESTION_MOVE.event,
-        reason=QUESTION_MOVE.reason,
-        actor=actor,
-    )
+    if asked and can_question_move(listing.status, listing.status_reason):
+        listing = await uow.listings.move(
+            listing,
+            to=QUESTION_MOVE.to,
+            event=QUESTION_MOVE.event,
+            reason=QUESTION_MOVE.reason,
+            actor=actor,
+        )
+    # SI11 T7: an edit or a validate asks the marketplace's dry run about the current version
+    # (only from a pre-approval status; it never fails the request)
+    from app.services.remote_preview import request_preview
+
+    await request_preview(uow, listing, listing.current_version_id, trigger="system")
+    return listing

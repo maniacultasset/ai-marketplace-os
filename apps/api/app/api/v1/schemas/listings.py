@@ -14,6 +14,7 @@ from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.batches import Instructions
+from app.api.v1.schemas.resolution import RemoteCheckOut
 from app.core.text import CONTROL_CHAR_MESSAGE, has_control_char
 
 
@@ -35,6 +36,13 @@ class ListingOut(WireModel):
             "The marketplace's id for the product (the Amazon ASIN), set once the marketplace "
             "reads it. With status published and marketplace_state inactive the product is on "
             "the marketplace but not buyable yet."
+        ),
+    )
+    remote_check: RemoteCheckOut | None = Field(
+        default=None,
+        description=(
+            "SI11: the marketplace's dry-run check of a version before approval (Amazon "
+            "VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran."
         ),
     )
     status_changed_at: AwareDatetime

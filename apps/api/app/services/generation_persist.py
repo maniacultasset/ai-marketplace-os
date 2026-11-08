@@ -45,7 +45,7 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from mkos_schemas.agent import AgentRunRecord
 from mkos_schemas.enums import ErrorSource, ListingStatus, Marketplace
@@ -68,6 +68,7 @@ from app.services.issues import record_auto_fixes, sync_issues
 from app.services.photo_facts import PhotoDecision, PhotoSet
 from app.services.photo_facts_store import apply_photo_decision
 from app.services.pipeline_deps import RulesCall
+from app.services.remote_preview import request_preview
 
 log = get_logger(__name__)
 GENERATING: Final = "generating"
@@ -112,6 +113,8 @@ class PersistPlan:
     sent_set: PhotoSet = ()
     # SI9 CP-D23: the template the questions offer their answers from
     template: CategoryTemplate | None = None
+    # SI11: the dry run the saved version asks for (`resolution` after an automatic fix)
+    preview_trigger: Literal["system", "resolution"] = "system"
 
 
 def _run(
@@ -368,7 +371,7 @@ def make_persist(plan: PersistPlan) -> Any:
             )
         move = await _ask(uow, listing, plan, move, plan.listing, critical)
         await _insert_records(uow, plan, version.id)
-        await uow.listings.move(
+        moved = await uow.listings.move(
             listing,
             to=move.to,
             event=move.event,
@@ -376,6 +379,8 @@ def make_persist(plan: PersistPlan) -> Any:
             actor=JobActor(plan.job_id),
             current_version_id=version.id,
         )
+        # SI11 T7: ask the marketplace's dry run about the new version (it never fails the save)
+        await request_preview(uow, moved, version.id, trigger=plan.preview_trigger)
         log.info(
             "generation.persisted",
             job_id=str(plan.job_id),

@@ -45,8 +45,8 @@ from datetime import UTC, datetime
 from typing import Any, Final
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, RetryClass
-from mkos_schemas.errors import ErrorItem, ErrorReport
+from mkos_schemas.enums import ErrorSource, RetryClass, Severity
+from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.images import ImageReport
 
 from app.core.errors import ConflictError, DomainError, NotFoundError
@@ -258,6 +258,42 @@ async def _adapter_gate(ctx: _Ctx, listing: Any) -> None:
     raise Refused(ErrorCode.VALIDATION_FAILED, report)
 
 
+async def _preview_gate(ctx: _Ctx, listing: Any) -> None:
+    """SI11 T8 (P:A3, D6): an open ERROR of the marketplace's dry run on the current version
+    refuses the item 422 `VALIDATION_FAILED` with those rows as items. A check that is pending or
+    failed, a WARNING, or a row of an older version never refuses."""
+    rows = [
+        row
+        for row in await ctx.uow.listing_issues.open_errors(
+            listing.id, ["amazon_adapter"], channel="preview"
+        )
+        if row.listing_version_id == listing.current_version_id
+    ]
+    if not rows:
+        return
+    items = [
+        ErrorItem(
+            field=row.field_path,
+            error_code=ErrorCode(row.error_code),
+            severity=Severity.ERROR,
+            message=row.plain_message or row.message,
+            source=ErrorSource.AMAZON_ADAPTER,
+            retryable=False,
+            raw_code=row.marketplace_code,
+        )
+        for row in rows[:MAX_ERROR_ITEMS]
+    ]
+    report = ErrorReport(
+        status="failed",
+        error_code=ErrorCode.VALIDATION_FAILED,
+        retryable=False,
+        errors=items,
+        request_id=current_request_id(),
+        listing_id=listing.id,
+    )
+    raise Refused(ErrorCode.VALIDATION_FAILED, report)
+
+
 async def _pins_digest(ctx: _Ctx, listing: Any, version: Any) -> bytes:
     """The passed run's `facts_digest` when a run with the current pins passed, else 409."""
     pins = await current_pins(ctx.uow, listing)
@@ -339,6 +375,7 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
     bulk_check(ctx.multi, listing.status)
     _image_gate(ctx, listing, version)
     await _adapter_gate(ctx, listing)
+    await _preview_gate(ctx, listing)
     digest = await _pins_digest(ctx, listing, version)
     if not await _maker_checker(ctx, listing, version):
         return await _deny(ctx, listing.id, listing.status)

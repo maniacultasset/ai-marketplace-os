@@ -15,6 +15,10 @@ connect 5 s / read 10 s, and each reply read through a 1 MiB cap.
   GET is `MarketplaceUnavailable`. Any other answer (2xx, 400, 404) goes back to the adapter.
 - C16: a SKU of `.` or `..` is refused, and every built request's raw path must equal the
   template with exactly the encoded seller and SKU segments, before anything is sent.
+- SI11: `put_preview` is the dry run (`mode=VALIDATION_PREVIEW`, which saves nothing). It has its
+  own operation name and limiter bucket, and builds its own route: the mode is set by that route
+  alone, no caller passes it, and `put` never carries one. A preview is not a write, so a reply
+  it never got is `MarketplaceUnavailable` (retry the job), never ambiguous.
 - DW2: one more route, `getDefinitionsProductType` (`get_json("ptd_get", ...)`, GET only, used by
   `app.adapters.amazon.definitions`). The product type must match `PRODUCT_TYPE_PATTERN` before
   the limiter or the token is touched, and the raw-path check holds for it too. A client built
@@ -70,6 +74,7 @@ ITEM_DENIED: Final = "The Amazon account did not grant the Listings role to this
 PTD_DENIED: Final = "The Amazon app may not read product type definitions for this marketplace."
 UNSAFE_SKUS: Final = frozenset({".", ".."})
 GET_INCLUDED: Final = "summaries,attributes,issues"
+PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
 _BEFORE_SEND: Final = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
 
@@ -198,6 +203,10 @@ class SpApiClient:
     async def get(self, sku: str) -> SpApiResponse:
         return await self._call(self._item_route("get", "GET", sku), None)
 
+    async def put_preview(self, sku: str, body: Mapping[str, Any]) -> SpApiResponse:
+        """SI11: the dry run of a PUT. Amazon answers VALID or INVALID and stores nothing."""
+        return await self._call(self._item_route("put_preview", "PUT", sku, preview=True), body)
+
     async def get_json(
         self,
         operation: Literal["ptd_get"],
@@ -210,7 +219,9 @@ class SpApiClient:
 
     # ---- internals ----
 
-    def _item_route(self, operation: str, method: str, sku: str) -> _Route:
+    def _item_route(
+        self, operation: str, method: str, sku: str, *, preview: bool = False
+    ) -> _Route:
         if self._seller is None:
             raise ValueError("seller_id is required")
         if not isinstance(sku, str) or not sku or sku.strip() in UNSAFE_SKUS:
@@ -219,6 +230,8 @@ class SpApiClient:
         query: dict[str, str] = {"marketplaceIds": self._marketplace_id}
         if method == "GET":
             query["includedData"] = GET_INCLUDED
+        if preview:
+            query["mode"] = PREVIEW_MODE
         raw = f"{path}?{urlencode(query, safe='')}"
         return _Route(
             operation,
@@ -226,7 +239,7 @@ class SpApiClient:
             PATH_TEMPLATE,
             self._endpoint + raw,
             raw.encode("ascii"),
-            method != "GET",
+            method != "GET" and not preview,
             ITEM_DENIED,
         )
 

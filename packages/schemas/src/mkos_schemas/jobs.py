@@ -239,6 +239,7 @@ def _unique_images(images: list[ContextImage]) -> list[ContextImage]:
 # photos and the values each may take; the pipeline answers with observations, which are suggestions
 # only. The backend is the only writer, and it re-screens every observation.
 MAX_PHOTO_TARGETS: Final = 16
+MAX_TARGET_FIELDS: Final = 10
 MAX_PHOTO_OBSERVATIONS: Final = 16
 MAX_PHOTO_VALUES: Final = 40
 PhotoValue = Annotated[NonBlankStr, Field(max_length=40)]
@@ -315,6 +316,21 @@ class GenerationContext(WireModel):
     photo_targets: Annotated[list[PhotoTarget], Field(max_length=MAX_PHOTO_TARGETS)] = Field(
         default_factory=list
     )
+    # 2.1.0 (SI11): a field-scoped fix. Only these canonical paths may change; empty means the
+    # whole listing. The backend keeps only these paths of the result either way.
+    target_fields: Annotated[list[str], Field(max_length=MAX_TARGET_FIELDS)] = Field(
+        default_factory=list
+    )
+
+    @field_validator("target_fields")
+    @classmethod
+    def _target_fields(cls, paths: list[str]) -> list[str]:
+        for path in paths:
+            if not is_valid_field_path(path):
+                raise ValueError(f"{path[:64]!r} is not a field path")
+        if len(set(paths)) != len(paths):
+            raise ValueError("a target field appears more than once")
+        return paths
 
     @field_validator("photo_targets")
     @classmethod

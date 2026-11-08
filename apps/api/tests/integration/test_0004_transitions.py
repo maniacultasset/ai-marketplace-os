@@ -1,5 +1,5 @@
 """0004/01_transitions (DATABASE.md §6.1, :1376-1400): `listing_status_transitions` and its 63-row
-seed, plus `ck_listings_last_event`. Every expected value here is written from DATABASE.md, never
+seed, plus `ck_listings_last_event`; 0022 (SI11) adds the `auto_fix` event and 9 worker edges. Every expected value here is written from DATABASE.md, never
 read back from the SQL file."""
 
 from __future__ import annotations
@@ -94,7 +94,20 @@ SEED: tuple[tuple[str, str, str, str], ...] = (
     ("failed", "publishing", "auto_resubmit", "worker"),
     ("blocked", "publishing", "resume_publish", "user"),
 )
-TRANSITION_EVENTS = frozenset(event for _, _, event, _ in SEED)
+# 0022 (SI11, ADR-0028): the resolution engine's content fix and its 3-cycle cap
+SI11_EDGES = (
+    ("validated", "generating", "auto_fix", "worker"),
+    ("needs_review", "generating", "auto_fix", "worker"),
+    ("approved", "generating", "auto_fix", "worker"),
+    ("published", "generating", "auto_fix", "worker"),
+    ("failed", "generating", "auto_fix", "worker"),
+    ("blocked", "generating", "auto_fix", "worker"),
+    ("validated", "blocked", "corrections_exhausted", "worker"),
+    ("needs_review", "blocked", "corrections_exhausted", "worker"),
+    ("failed", "blocked", "corrections_exhausted", "worker"),
+)
+EDGES = SEED + SI11_EDGES
+TRANSITION_EVENTS = frozenset(event for _, _, event, _ in EDGES)
 NO_CHANGE_EVENTS = frozenset(
     {"create", "sync", "refresh_requested", "pause", "unpause", "archive", "unarchive"}
 )
@@ -110,8 +123,9 @@ def _rows(db: Conn) -> list[tuple[Any, ...]]:
 
 def test_transitions_seed_exact(db: Conn) -> None:
     assert len(SEED) == 63
-    assert len(TRANSITION_EVENTS) == 23
-    assert sorted(r[:4] for r in _rows(db)) == sorted(SEED)
+    assert len(SI11_EDGES) == 9
+    assert len(TRANSITION_EVENTS) == 24
+    assert sorted(r[:4] for r in _rows(db)) == sorted(EDGES)
 
 
 def test_transitions_flags(db: Conn) -> None:
@@ -132,6 +146,8 @@ def test_transitions_flags(db: Conn) -> None:
         ("approved", "blocked", "revalidate"),
         ("publishing", "needs_review", "revalidate"),
         ("publishing", "blocked", "revalidate"),
+        ("approved", "generating", "auto_fix"),
+        ("published", "generating", "auto_fix"),
     }
     assert voids == expected_voids
 
@@ -156,8 +172,16 @@ def test_transitions_reason_columns(db: Conn) -> None:
     assert rows[("blocked", "publishing", "resume_publish")][1] == ["marketplace_action_required"]
     for to in ("generating", "validated", "needs_review"):
         assert rows[("blocked", to, "task_answered")][1] == ["human_task_open"]
+    assert rows[("failed", "generating", "auto_fix")][1] == [
+        "publish_failed",
+        "publish_partial",
+        "marketplace_rejected",
+    ]
+    assert rows[("blocked", "generating", "auto_fix")][1] == ["validation_errors"]
+    for src in ("generating", "validated", "needs_review", "failed"):
+        assert rows[(src, "blocked", "corrections_exhausted")][0] == ["corrections_exhausted"]
     with_from = {k for k, (_, need) in rows.items() if need is not None}
-    assert len(with_from) == 6
+    assert len(with_from) == 8
     for wanted in ("edit", "revalidate"):
         for (src, to, event), (allowed, _) in rows.items():
             if event == wanted and to == "blocked":
@@ -214,8 +238,9 @@ def test_transitions_event_vocab_exact(db: Conn) -> None:
         "unpause",
         "archive",
         "unarchive",
+        "auto_fix",
     }
-    assert len(expected) == 30
+    assert len(expected) == 31
     assert expected == VOCABULARY
     for event in expected:
         assert f"'{event}'::text" in str(definition[0]), event
@@ -269,7 +294,7 @@ def test_last_event_vocab_matches_transitions(db: Conn) -> None:
 )
 def test_transitions_app_rw_select_only(db: Conn, statement: str) -> None:
     with as_app_rw(db):
-        assert db.execute("SELECT count(*) FROM listing_status_transitions").fetchone() == (63,)
+        assert db.execute("SELECT count(*) FROM listing_status_transitions").fetchone() == (72,)
         expect_sqlstate(db, "42501", statement)
 
 

@@ -11,7 +11,10 @@ invariant 9). No I/O.
 - `sync_decision(...)`: what one sync writes. A SKU the marketplace no longer knows is `removed`
   if it was live, else still `processing`. On a `published` listing: live or partially live →
   `live_*` stamped, the open submission `accepted → live`, the daily poll; rejected →
-  `failed/marketplace_rejected` (submission `rejected`); inactive or removed →
+  `failed/marketplace_rejected` (submission `rejected`), except SI11 T18 (CP-D13): a blocking
+  read error of class `account_permission` (only the marketplace can approve the brand or
+  category) → `blocked/marketplace_action_required` (the resolution engine then opens the Seller
+  Central step and never retries); inactive or removed →
   `blocked/marketplace_action_required` (an open submission `error MARKETPLACE_UNCONFIRMED`),
   except SI9 B3: every non-parent item `inactive` and read `not_buyable` (on the marketplace, no
   offer or stock) stays `published/inactive` with the submission still `accepted`, polled on the
@@ -29,6 +32,7 @@ from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Final, Literal
 
+from mkos_schemas.enums import ErrorClass, Severity
 from mkos_schemas.errors import ErrorItem
 
 MAX_POLLS: Final = 9
@@ -140,6 +144,15 @@ def sync_decision(
             stamp_live=True,
             submission_to="live" if submission_open and agg == "live" else None,
         )
+    if agg == "rejected" and _needs_permission(reads):
+        return SyncDecision(
+            items,
+            "rejected",
+            event="marketplace_action_required",
+            listing_to="blocked",
+            reason="marketplace_action_required",
+            submission_to="rejected" if submission_open else None,
+        )
     if agg == "rejected":
         return SyncDecision(
             items,
@@ -186,6 +199,18 @@ def sync_decision(
         counted=True,
         poll_count=count,
         next_in=next_slot(count),
+    )
+
+
+def _needs_permission(reads: Sequence[ItemRead]) -> bool:
+    """T18: a blocking read error only the marketplace can clear (an account or category
+    permission)."""
+    from app.services.publish_ledger import item_class
+
+    return any(
+        e.severity is Severity.ERROR and item_class(e) is ErrorClass.ACCOUNT_PERMISSION
+        for r in reads
+        for e in r.errors
     )
 
 

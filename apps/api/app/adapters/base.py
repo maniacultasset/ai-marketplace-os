@@ -177,6 +177,23 @@ class AdapterPreview:
 
 
 @dataclass(frozen=True)
+class AdapterRepair:
+    """SI11 (ADR-0028): one stored adapter-side repair of one marketplace attribute. The adapter
+    applies it to a unit only while `sha256` of that unit's source value at `field_path` still
+    equals `source_digest` (the seller has not changed it since); `value` None drops the
+    attribute (`drop_locked`). `seller_sku` None means every unit of the listing."""
+
+    id: UUID
+    field_path: str
+    attribute: str
+    rule: str
+    source_digest: bytes
+    to_digest: bytes
+    value: tuple[Mapping[str, Any], ...] | None
+    seller_sku: str | None = None
+
+
+@dataclass(frozen=True)
 class AdapterListing:
     listing_id: UUID
     seller_sku: str
@@ -203,6 +220,9 @@ class AdapterListing:
     """SI9 B4 with SI5 CP-D14: the listing has a published version, so its next full send is an
     update; a preview or check of it does not refuse an item with no barcode (an update never
     does), so the pre-approval check agrees with what publish will send."""
+    repairs: tuple[AdapterRepair, ...] = ()
+    """SI11: the listing's live adapter-side repairs (`listing_repairs`), applied while their
+    source value is unchanged; a stale one is reported, never applied."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt
@@ -218,6 +238,7 @@ class AdapterListing:
             MappingProxyType({k: tuple(v) for k, v in self.colour_image_ids.items()}),
         )
         object.__setattr__(self, "unit_facts", MappingProxyType(dict(self.unit_facts)))
+        object.__setattr__(self, "repairs", tuple(self.repairs))
         _check_items(self.seller_sku, self.items)
 
     def units(self) -> tuple[AdapterItem, ...]:
@@ -643,6 +664,32 @@ def fields_by_sku(item: AdapterListing, fields: UpdateFields) -> dict[str, list[
             raise ValueError("fields must be a non-empty list of legal field paths")
         out[sku] = wanted
     return out
+
+
+RemoteStatus = Literal["clean", "issues", "failed"]
+
+
+@dataclass(frozen=True)
+class RemotePreview:
+    """The marketplace's dry-run verdict on what a create would send (SI11; Amazon
+    `VALIDATION_PREVIEW`, which saves nothing). `status`: `clean` (every item VALID), `issues`
+    (an item INVALID: `errors` holds the mapped, scrubbed items) or `failed` (nothing judged: a
+    local ERROR sent nothing, a 4xx, or a reply the adapter could not read). `applied` is True
+    only when the marketplace answered as if it stored the item (an invariant-1 alarm: the
+    caller opens the account breaker). `scope` holds every non-image path the items carried;
+    `per_sku` the raw verdict per seller SKU (`VALID`, `INVALID`, or what came back)."""
+
+    status: RemoteStatus
+    applied: bool = False
+    errors: tuple[ErrorItem, ...] = ()
+    per_sku: Mapping[str, str] = field(default_factory=lambda: _EMPTY)
+    scope: tuple[str, ...] = ()
+
+
+class RemotePreviewer(Protocol):
+    """The one call the dry-run job may make (SI11): a preview, never a write."""
+
+    async def preview_remote(self, item: AdapterListing) -> RemotePreview: ...
 
 
 class MarketplaceReader(Protocol):

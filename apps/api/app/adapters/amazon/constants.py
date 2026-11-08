@@ -106,8 +106,12 @@ VARIATION_ATTRIBUTES: Final = (THEME_ATTRIBUTE, PARENTAGE_ATTRIBUTE, RELATIONSHI
 
 # D3: the outbound limiter's default rates, calls per second per (account, operation). Believed
 # from the published Listings Items quotas (5 req/s burst 10); 1/s is the safe start. DW1.
-OPERATIONS: Final = ("put", "patch", "get")
-RATES: Final[Mapping[str, int]] = MappingProxyType({"put": 1, "patch": 1, "get": 1})
+# SI11: `put_preview` (VALIDATION_PREVIEW) has its own bucket: Amazon publishes a separate, larger
+# preview quota (20 req/s per app, F:60); 1/s per account is the safe start.
+OPERATIONS: Final = ("put", "patch", "get", "put_preview")
+RATES: Final[Mapping[str, int]] = MappingProxyType(
+    {"put": 1, "patch": 1, "get": 1, "put_preview": 1}
+)
 
 # The issue severities and the summary states SP-API answers with.
 ACCEPTED: Final = "ACCEPTED"

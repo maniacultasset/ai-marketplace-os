@@ -92,6 +92,8 @@ class AttemptCtx:
     listing_sku: bool = True
     """False for a family with no parent row on its marketplace (Flipkart, S22 C9): the listing
     keeps `marketplace_sku` NULL; its children carry their own SKUs (DATABASE.md:754-755)."""
+    stale_repairs: tuple[uuid.UUID, ...] = ()
+    """SI11 (T10): repairs whose seller value changed since; retired `source_changed` here."""
 
 
 def _aggregate(states: Sequence[str]) -> str:
@@ -208,6 +210,8 @@ async def apply_decision(uow: TenantUnitOfWork, ctx: AttemptCtx, decision: Decis
     listing = await uow.listings.get_for_update(ctx.listing_id)
     if listing is None:
         return False
+    if ctx.stale_repairs:  # SI11 T10: the seller changed what these stood on
+        await uow.listing_repairs.retire(ctx.stale_repairs, "source_changed")
     item_ids, states = await _items(uow, ctx, decision)
     await _field_rows(uow, ctx, decision, item_ids)
     # SI4 A15 (C:118): the marketplace's own adapter source, never `amazon_adapter` for all
@@ -342,6 +346,20 @@ def refusal_report(code: ErrorCode, field: str, message: str, attempt: int = 1) 
 
 
 async def on_publish_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
+    """The publish terminal hook: the S21 move of a job that ended without a verdict, then SI11's
+    resolution entry (T13) for a listing the attempt left `failed` (in its own savepoint)."""
+    await _publish_terminal(session, job, outcome)
+    if job.listing_id is None:
+        return
+    from app.services.resolution.run import resolve
+
+    uow = repositories_on(session, job.tenant_id)
+    listing = await uow.listings.get(job.listing_id)
+    if listing is not None and listing.status == "failed":
+        await resolve(uow, listing, entry="submission", job=job)
+
+
+async def _publish_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # S13 `Hook`: branch on the final status only
     if job.status not in ENDED or job.listing_id is None:
         return

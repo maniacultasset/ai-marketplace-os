@@ -137,6 +137,8 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
             "accepted_image_id = %s WHERE id = %s",
             (made, candidate),
         )
+        # 0022 (SI11): an adapter repair on the listing's item
+        f.listing_repair(db, side.tenant_id, side.listing_id, listing_item_id=side.item_id)
         party = f.party(db, side.tenant_id)
         f.brand_profile(db, side.tenant_id, default_manufacturer_party_id=party)
         f.insert(

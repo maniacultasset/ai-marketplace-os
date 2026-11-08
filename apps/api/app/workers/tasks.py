@@ -32,7 +32,7 @@ def register_bodies() -> None:
     from app.workers.generation import run_listing_generate
     from app.workers.image_jobs import run_image_job
     from app.workers.publish import run_listing_publish
-    from app.workers.status_sync import run_listing_status_sync
+    from app.workers.sync_jobs import run_sync_job
 
     if registry.body_for(JobKind.BULK_IMPORT) is None:
         registry.register(JobKind.BULK_IMPORT, run_import)
@@ -46,7 +46,8 @@ def register_bodies() -> None:
     if registry.body_for(JobKind.LISTING_PUBLISH) is None:
         registry.register(JobKind.LISTING_PUBLISH, run_listing_publish)
     if registry.body_for(JobKind.LISTING_STATUS_SYNC) is None:
-        registry.register(JobKind.LISTING_STATUS_SYNC, run_listing_status_sync)
+        # SI11 T7: the status read, or the marketplace dry run when the payload says `op: preview`
+        registry.register(JobKind.LISTING_STATUS_SYNC, run_sync_job)
 
 
 def register_tasks(app: procrastinate.App) -> None:

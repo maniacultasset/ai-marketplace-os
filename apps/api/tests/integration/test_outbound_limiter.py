@@ -217,3 +217,18 @@ async def test_outbound_limiter_flipkart(limiter_db: None, superuser_conn: Conn)
         await full.acquire("create")
     (item,) = caught.value.report.errors
     assert item.source == "flipkart_adapter" and item.marketplace == "flipkart"
+
+
+async def test_outbound_limiter_amazon_preview_bucket(limiter_db: None) -> None:
+    """SI11 T5: a limiter built from the Amazon RATES admits `put_preview` in its own bucket
+    (the per-name refusal of `acquire` would otherwise stop every dry run)."""
+    from app.adapters.amazon.constants import RATES
+    from app.workers.outbound_limiter import bucket_key
+
+    account = uuid.uuid4()
+    fake = FakeTime(_start())
+    limiter = _limiter(account, fake, rates=RATES)
+    await limiter.acquire("put_preview")
+    await limiter.acquire("put")  # the write bucket is not the preview's
+    assert fake.sleeps == []
+    assert bucket_key("amazon", account, "put_preview").endswith(":put_preview")

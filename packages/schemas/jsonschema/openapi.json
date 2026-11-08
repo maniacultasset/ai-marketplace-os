@@ -3195,6 +3195,25 @@
             "title": "Auto Fixable",
             "type": "boolean"
           },
+          "cause": {
+            "anyOf": [
+              {
+                "enum": [
+                  "seller_fact",
+                  "ai_content",
+                  "mapping",
+                  "image",
+                  "marketplace",
+                  "unknown"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cause"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3241,6 +3260,26 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto_repair",
+                  "auto_content",
+                  "ai_field",
+                  "seller",
+                  "marketplace",
+                  "retry",
+                  "staff"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lane"
           },
           "last_seen_at": {
             "format": "date-time",
@@ -3891,6 +3930,17 @@
             "title": "Product Id",
             "type": "string"
           },
+          "remote_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran."
+          },
           "status": {
             "$ref": "#/components/schemas/ListingStatus"
           },
@@ -4065,6 +4115,17 @@
             "format": "uuid",
             "title": "Product Id",
             "type": "string"
+          },
+          "remote_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran."
           },
           "status": {
             "$ref": "#/components/schemas/ListingStatus"
@@ -6446,6 +6507,44 @@
           }
         },
         "title": "RegenerateRequest",
+        "type": "object"
+      },
+      "RemoteCheckOut": {
+        "description": "The marketplace's dry-run verdict (Amazon VALIDATION_PREVIEW) on one version.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "clean",
+              "issues",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version_id": {
+            "format": "uuid",
+            "title": "Version Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version_id",
+          "status"
+        ],
+        "title": "RemoteCheckOut",
         "type": "object"
       },
       "ResetLinkOut": {
