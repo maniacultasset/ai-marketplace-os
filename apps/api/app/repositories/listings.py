@@ -185,6 +185,8 @@ class PreviewSource:
     """None when the version pinned no template, or a template with no `product_type`."""
     colour_images: Mapping[str, tuple[uuid.UUID, ...]] = field(default_factory=dict)
     """colour_key -> the live images of that colourway, main first, then by position (S22 C1)."""
+    live: bool = False
+    """SI9 B4: the listing has a published version (its next full send is an update)."""
 
 
 class _Versions(TenantScopedRepository[ListingVersion]):
@@ -555,6 +557,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
                     lst.status,
                     lst.product_id,
                     lst.current_version_id,
+                    lst.published_version_id,
                 )
             )
         ).one_or_none()
@@ -584,6 +587,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
             children=children,
             template=template,
             colour_images=colour_images,
+            live=row.published_version_id is not None,
         )
 
     async def _colours(

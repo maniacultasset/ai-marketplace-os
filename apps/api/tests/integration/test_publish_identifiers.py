@@ -2,7 +2,11 @@
 in-process fake SP-API. A first publish of a family with one child that has neither a barcode nor
 the GTIN exemption is refused before any write with IDENTIFIER_MISSING at the child's path; the
 same family, once the child has an EAN, is accepted; a listing Amazon already accepted (the
-`update` operation) is not refused when a child loses its barcode."""
+`update` operation) is not refused when a child loses its barcode.
+
+SI9 B4: the marketplace check before approval now catches the bare child, so the publish-time
+refusal is proven on a version approved before the identifier rule (`before_identifier_rule`);
+a live listing's check, like its update, does not refuse a missing barcode."""
 
 from __future__ import annotations
 
@@ -17,7 +21,7 @@ from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .failure_support import AmzWorld, amz
 from .family_support import family
-from .publish_support import PubWorld, approved, publish_one, run_job
+from .publish_support import PubWorld, approved, before_identifier_rule, publish_one, run_job
 from .review_support import OPERATOR, REVIEWER, Made
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -98,13 +102,31 @@ def _stored(amz: AmzWorld, sku: str) -> dict[str, Any]:
     return found[0]["attributes"]  # type: ignore[no-any-return]
 
 
+async def _check_codes(pw: PubWorld, listing_id: uuid.UUID) -> set[tuple[str, str]]:
+    """The blocking items of the real SI9 marketplace check on the current version."""
+    from app.repositories.uow import tenant_uow
+    from app.services.adapter_check import adapter_check
+
+    principal = pw.world.principal(OPERATOR)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        report = await adapter_check(uow, listing_id)
+    assert report is not None
+    return {(e.field, e.error_code.value) for e in report.blocking}
+
+
 async def test_first_publish_with_a_bare_child_is_refused_then_accepted_with_an_ean(
-    api: httpx.AsyncClient, amz: AmzWorld
+    api: httpx.AsyncClient, amz: AmzWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sku, kids = _family(amz.pub)
     bare = sorted(kids)[0]
     _set_barcode(amz.pub, kids[bare], None)
-    made = await approved(amz.pub, sku=sku)
+    with monkeypatch.context() as before:
+        before_identifier_rule(before)
+        made = await approved(amz.pub, sku=sku)  # approved before the identifier rule
+    # today's check before approval refuses it at the child's path
+    assert (f"variants[{bare}].facts.identifier", "IDENTIFIER_MISSING") in await _check_codes(
+        amz.pub, made.listing_id
+    )
 
     item = await publish_one(api, amz.pub, made)
     await _run(item["job_id"])
@@ -145,7 +167,10 @@ async def test_accepted_listing_is_not_refused_when_a_child_loses_its_barcode(
 
     child = sorted(kids)[0]
     _set_barcode(amz.pub, kids[child], None)
-    again = await _new_version(amz.pub, made)
+    again = await _new_version(amz.pub, made)  # SI9: the live listing's check lets it through
+    assert not {
+        c for c in await _check_codes(amz.pub, made.listing_id) if c[1] == "IDENTIFIER_MISSING"
+    }
     puts_before = sum(1 for call in amz.state.calls if call["method"] == "PUT")
     item = await publish_one(api, amz.pub, again)
     await _run(item["job_id"])

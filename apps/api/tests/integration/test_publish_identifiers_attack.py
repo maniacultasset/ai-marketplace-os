@@ -2,7 +2,12 @@
 through the products service as the seller does, reaches the fake SP-API on a standalone create;
 a standalone with neither is refused at `facts.identifier` before any write, the refusal is a
 terminal user-action failure (no retry loop), and a second publish of the same version is refused
-the same way and still sends nothing."""
+the same way and still sends nothing.
+
+SI9 B4: the marketplace check now runs at generation and approval too, so a bare standalone is
+caught before it can be approved (`blocked`, the item on the preview, the approve refused). The
+publish-time refusal stays as the backstop for a version approved before the identifier rule;
+that test approves with the pre-rule check (the same check minus IDENTIFIER_MISSING)."""
 
 from __future__ import annotations
 
@@ -17,8 +22,8 @@ import pytest
 from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .failure_support import AmzWorld, amz
-from .publish_support import approved, publish_one, run_job
-from .review_support import CATEGORY, OPERATOR
+from .publish_support import approved, before_identifier_rule, publish_one, run_job
+from .review_support import CATEGORY, OPERATOR, REVIEWER, generated
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["amz"]
@@ -55,6 +60,33 @@ async def _standalone(
         ),
     )
     return sku
+
+
+async def _caught_before_approval(amz: AmzWorld, sku: str) -> Any:
+    """A bare standalone's generation: `blocked` with the `facts.identifier` schema issue, and the
+    reviewer's approve is refused (SI9 B4), so nothing reaches publish."""
+    from app.repositories.uow import tenant_uow
+    from app.services.review import ReviewItem, approve_batch
+
+    made = await generated(amz.pub.world, OPERATOR, sku=sku)
+    assert amz.pub.listing(made.listing_id)["status"] == "blocked"
+    issues = amz.pub.rows(
+        "SELECT field_path FROM listing_issues WHERE listing_id = %s AND source = 'schema' "
+        "AND error_code = 'IDENTIFIER_MISSING' AND status = 'open'",
+        [made.listing_id],
+    )
+    assert issues == [("facts.identifier",)], issues
+    principal = amz.pub.world.principal(REVIEWER)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        outcome = await approve_batch(
+            uow,
+            principal,
+            [ReviewItem(made.listing_id, made.version_id, "approve")],
+            http_key=str(uuid.uuid4()),
+        )
+    assert outcome.items[0].http_status != 200, outcome.items[0]
+    assert amz.pub.listing(made.listing_id)["status"] == "blocked"
+    return made
 
 
 def _stored(amz: AmzWorld, sku: str) -> dict[str, Any]:
@@ -101,10 +133,12 @@ async def test_upc_standalone_sends_the_upc_with_its_leading_zero(
 
 
 async def test_bare_standalone_is_refused_terminally_and_a_replay_sends_nothing(
-    api: httpx.AsyncClient, amz: AmzWorld
+    api: httpx.AsyncClient, amz: AmzWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sku = await _standalone(amz)
-    made = await approved(amz.pub, sku=sku)
+    with monkeypatch.context() as before:
+        before_identifier_rule(before)
+        made = await approved(amz.pub, sku=sku)  # approved before the identifier rule
 
     first = await publish_one(api, amz.pub, made)
     await _run(first["job_id"])
@@ -142,7 +176,7 @@ async def test_preview_of_a_bare_standalone_shows_the_item_and_sends_nothing(
     api: httpx.AsyncClient, amz: AmzWorld
 ) -> None:
     sku = await _standalone(amz)
-    made = await approved(amz.pub, sku=sku)
+    made = await _caught_before_approval(amz, sku)
     preview = await api.get(
         f"/api/v1/listings/{made.listing_id}/preview", headers=amz.pub.world.headers(OPERATOR)
     )
@@ -158,7 +192,7 @@ async def test_another_tenant_cannot_preview_the_refusal(
     api: httpx.AsyncClient, amz: AmzWorld
 ) -> None:
     sku = await _standalone(amz)
-    made = await approved(amz.pub, sku=sku)
+    made = await _caught_before_approval(amz, sku)
     other = await api.get(
         f"/api/v1/listings/{made.listing_id}/preview",
         headers=amz.pub.world.headers("operator@bharat.test"),

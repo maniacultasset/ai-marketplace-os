@@ -183,6 +183,12 @@ def test_build_without_the_requirement_has_no_identifier_error() -> None:
     assert _identifier_errors(errors) == []
 
 
+def test_preview_of_a_live_listing_has_no_identifier_error() -> None:
+    """SI9 B4: the pre-approval check of a live listing agrees with its update (CP-D14)."""
+    live = dataclasses.replace(_family(BARE), live=True)
+    assert _identifier_errors(mapping.preview(live).report.errors) == []
+
+
 async def test_update_with_a_bare_child_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:
     app = build_fake()
     adapter = amazon_adapter(app)

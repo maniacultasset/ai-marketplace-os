@@ -14,6 +14,7 @@ from app.adapters.base import AdapterPreview
 from app.core.resolved_facts import (
     Commercial,
     Compliance,
+    Identifier,
     PartyFacts,
     ProductFacts,
     ResolvedFact,
@@ -60,7 +61,8 @@ def _source(body: CanonicalListing | None = None, *, marketplace: str = "amazon"
 
 def _family(source: PreviewSource) -> Any:
     """SI2: the family facts the check builds the payload from (a standalone, no children): the
-    seller gave the version's attributes, a price, the MRP, the origin and the manufacturer."""
+    seller gave the version's attributes, a price, the MRP, the origin, the manufacturer and (SI5
+    B2: an Amazon create needs it) a valid EAN-13 barcode."""
     assert source.version is not None
     attributes = CanonicalListing.model_validate(source.version.content).attributes
     main = ProductFacts(
@@ -68,6 +70,7 @@ def _family(source: PreviewSource) -> Any:
         sku=source.product.sku,
         level="standalone",
         commercial=Commercial(mrp="999.00", selling_price="499.00", currency="INR"),
+        identifier=Identifier(type="ean", value="4006381333931", status="provided"),
         compliance=Compliance(
             country_of_origin="IN",
             manufacturer=PartyFacts(

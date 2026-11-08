@@ -20,7 +20,8 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   - a bad family (C10) -> VARIATION_INVALID (`variants`);
   - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED;
   - SI5: a sellable item with no barcode and no GTIN exemption -> IDENTIFIER_MISSING (a create
-    only; the update path passes `require_identifier=False`, CP-D14).
+    only; the update path and the preview of a live listing, `AdapterListing.live`, pass
+    `require_identifier=False`, CP-D14).
 - `family_payloads(listing)`: the parent first (content, theme, `parentage_level parent`), then
   each child (content, attributes with its variant values, images, the parent link).
 - `preview(listing)`: what a create would send, per item, and the mapping report.
@@ -664,8 +665,8 @@ def build(
     """Every item's mapping and every blocking error (`check`), in item order. `schema=False`
     leaves out the stored-definition check: the update path (PATCH) is never blocked by it.
     `preview=True` (only from `preview()`) lets the opaque `image:<id>` tags through.
-    `require_identifier=False` (only the update path, CP-D14) does not refuse an item with no
-    barcode and no exemption."""
+    `require_identifier=False` (the update path, CP-D14, and the preview of a live listing, whose
+    next send is an update) does not refuse an item with no barcode and no exemption."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -796,7 +797,9 @@ def report_for(errors: Sequence[ErrorItem], listing: AdapterListing) -> ErrorRep
 def preview(
     listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID
 ) -> AdapterPreview:
-    items, errors = build(listing, marketplace_id=marketplace_id, preview=True)
+    items, errors = build(
+        listing, marketplace_id=marketplace_id, preview=True, require_identifier=not listing.live
+    )
     template = listing.template
     product_type = template.product_type if template is not None and is_mapped(template) else None
     return AdapterPreview(
