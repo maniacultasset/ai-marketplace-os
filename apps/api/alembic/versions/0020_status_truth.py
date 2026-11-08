@@ -15,7 +15,7 @@ inactive)` listing exists, then restores the 0004 bodies and the old CHECK, and 
 the constraint and the function.
 
 Revision ID: 0020_status_truth
-Revises: 0015_image_public_copies
+Revises: 0017_team_access
 Create Date: 2026-11-07
 
 """
@@ -29,7 +29,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0020_status_truth"
-down_revision: str | Sequence[str] | None = "0015_image_public_copies"
+down_revision: str | Sequence[str] | None = "0017_team_access"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

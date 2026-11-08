@@ -6,14 +6,17 @@ sends nothing (invariant 1) and the Rules Engine stays the arbiter of the Rules 
 (invariant 2): these items are synced as issues under source `schema` (full scope, D6), never
 under `<marketplace>_adapter`, whose rows belong to real marketplace answers.
 
-- `check_source(source, schema)` is pure: None for a marketplace with no previewer; otherwise a
+- `check_source(source, facts, schema, parent_schema)` is pure: None for a marketplace with no
+  previewer; otherwise a
   report whose items are re-stamped `source = schema`, capped at `MAX_ERROR_ITEMS`, `failed`
   when any item is an ERROR. A bug in the check fails closed (CP-D5): one `INTERNAL_ERROR` item
   on `listing`, logged as `adapter_check.failed` with ids only.
-- `adapter_check(uow, listing_id, version=...)` reads the source and the current definition,
-  then checks. None when there is no listing or no version. A database error is raised, never
-  turned into a report (the transaction is gone); any other failure of the definition read or
-  the check fails closed as above.
+- `adapter_check(uow, listing_id, version=...)` reads the source, the family's resolved facts
+  (SI2 `resolve_family`) and both current definitions (LISTING, and PRODUCT_ONLY for a parent),
+  then checks, so the check sees the payload the preview shows. None when there is no listing or
+  no version. A product that no longer resolves fails closed. A database error is raised, never
+  turned into a report (the transaction is gone); any other failure of the reads or the check
+  fails closed as above.
 """
 
 from __future__ import annotations
@@ -28,10 +31,16 @@ from sqlalchemy.exc import DBAPIError
 
 from app.adapters.base import AdapterListing, ProductTypeSchema
 from app.adapters.registry import previewer
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.repositories.listings import PreviewSource, SourceVersion
-from app.services.adapter_input import build_adapter_listing, canonical_listing, colour_image_ids
-from app.services.product_type_schema import current_schema
+from app.services.adapter_input import (
+    FamilyFacts,
+    build_adapter_listing,
+    canonical_listing,
+    colour_image_ids,
+)
+from app.services.product_type_schema import current_schemas
 
 log = get_logger(__name__)
 
@@ -39,16 +48,24 @@ CHECK_FAILED_MESSAGE: Final = "The marketplace check could not run."
 
 
 def adapter_listing_for(
-    source: PreviewSource, schema: ProductTypeSchema | None, *, idempotency_key: str
+    source: PreviewSource,
+    facts: FamilyFacts,
+    schema: ProductTypeSchema | None,
+    parent_schema: ProductTypeSchema | None,
+    *,
+    idempotency_key: str,
 ) -> AdapterListing:
     """The adapter input of a preview or a check: images as opaque `image:<id>` references."""
     body = canonical_listing(source)
     ids = {image.image_id for image in body.images} | colour_image_ids(source)
     return build_adapter_listing(
         source,
+        facts=facts,
         image_refs={image_id: f"image:{image_id}" for image_id in ids},
         idempotency_key=idempotency_key,
         product_type_schema=schema,
+        parent_type_schema=parent_schema,
+        allow_http_images=get_settings().app_env == "local",
     )
 
 
@@ -68,14 +85,25 @@ def _failed(listing_id: uuid.UUID) -> ErrorReport:
     )
 
 
-def check_source(source: PreviewSource, schema: ProductTypeSchema | None) -> ErrorReport | None:
+def check_source(
+    source: PreviewSource,
+    facts: FamilyFacts,
+    schema: ProductTypeSchema | None,
+    parent_schema: ProductTypeSchema | None = None,
+) -> ErrorReport | None:
     try:
         preview = previewer(source.marketplace)
     except NotImplementedError:
         return None
     try:
         result = preview(
-            adapter_listing_for(source, schema, idempotency_key=f"check:{source.listing_id}")
+            adapter_listing_for(
+                source,
+                facts,
+                schema,
+                parent_schema,
+                idempotency_key=f"check:{source.listing_id}",
+            )
         )
     except Exception as exc:
         log.warning(
@@ -104,10 +132,14 @@ async def adapter_check(
     if source is None or source.version is None:
         return None
     try:
-        schema = None
+        family = await uow.product_facts.resolve_family(source.product.id)
+        schema = parent_schema = None
         if source.template is not None:
-            schema = await current_schema(
-                uow, marketplace=source.marketplace, product_type=source.template.product_type
+            schema, parent_schema = await current_schemas(
+                uow,
+                marketplace=source.marketplace,
+                product_type=source.template.product_type,
+                with_parent=source.product.variation_theme is not None,
             )
     except DBAPIError:
         raise
@@ -116,4 +148,7 @@ async def adapter_check(
             "adapter_check.failed", listing_id=str(listing_id), error_class=type(exc).__name__
         )
         return _failed(listing_id)
-    return check_source(source, schema)
+    if family is None:
+        log.warning("adapter_check.failed", listing_id=str(listing_id), error_class="NoProduct")
+        return _failed(listing_id)
+    return check_source(source, family, schema, parent_schema)

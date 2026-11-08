@@ -86,15 +86,33 @@
           "value": {
             "type": "string",
             "enum": [
+              "Beige",
               "Black",
               "Blue",
+              "Brown",
+              "Charcoal",
+              "Coral",
+              "Cream",
+              "Gold",
               "Green",
               "Grey",
               "Indigo",
+              "Lavender",
               "Maroon",
+              "Mint",
+              "Multicolor",
+              "Mustard",
               "Navy",
+              "Off White",
+              "Olive",
+              "Orange",
+              "Peach",
               "Pink",
+              "Purple",
               "Red",
+              "Rust",
+              "Silver",
+              "Teal",
               "White",
               "Yellow"
             ]
@@ -115,7 +133,7 @@
       ]
     },
     "country_of_origin": {
-      "title": "Country Of Origin",
+      "title": "Country of Origin",
       "type": "array",
       "minItems": 1,
       "items": {
@@ -126,7 +144,21 @@
         "properties": {
           "value": {
             "type": "string",
-            "maxLength": 200
+            "enum": [
+              "BD",
+              "CN",
+              "GB",
+              "ID",
+              "IN",
+              "IT",
+              "LK",
+              "NP",
+              "PK",
+              "TH",
+              "TR",
+              "US",
+              "VN"
+            ]
           },
           "marketplace_id": {
             "$ref": "#/$defs/marketplace_id"
@@ -154,16 +186,7 @@
         ],
         "properties": {
           "value": {
-            "type": "string",
-            "enum": [
-              "Cotton",
-              "Linen",
-              "Organic Cotton",
-              "Polyester",
-              "Rayon",
-              "Silk",
-              "Viscose"
-            ]
+            "type": "string"
           },
           "marketplace_id": {
             "$ref": "#/$defs/marketplace_id"
@@ -317,6 +340,85 @@
         },
         "additionalProperties": false
       }
+    },
+    "manufacturer": {
+      "title": "Manufacturer",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string"
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
+    },
+    "material": {
+      "title": "Material",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "Chanderi",
+              "Chiffon",
+              "Cotton",
+              "Cotton Blend",
+              "Cotton Lycra",
+              "Crepe",
+              "Denim",
+              "Georgette",
+              "Khadi",
+              "Linen",
+              "Modal",
+              "Muslin",
+              "Net",
+              "Organic Cotton",
+              "Polyester",
+              "Rayon",
+              "Satin",
+              "Silk",
+              "Velvet",
+              "Viscose",
+              "Wool"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          },
+          "language_tag": {
+            "$ref": "#/$defs/language_tag"
+          }
+        },
+        "additionalProperties": false
+      },
+      "maxUniqueItems": 1,
+      "selectors": [
+        "marketplace_id",
+        "language_tag"
+      ]
     },
     "neck_style": {
       "title": "Neckline",
@@ -742,9 +844,9 @@
     }
   },
   "required": [
-    "fabric_type",
     "fit_type",
-    "item_name"
+    "item_name",
+    "material"
   ],
   "allOf": [
     {

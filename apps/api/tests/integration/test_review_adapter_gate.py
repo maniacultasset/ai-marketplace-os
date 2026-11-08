@@ -18,10 +18,12 @@ from .review_support import OWNER, REVIEWER, Made, decisions, generated, item, p
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["gen_world"]
-NEEDS_FABRIC: dict[str, Any] = {
+# SI2: Amazon `fabric_type` is now fed by the seller's `fiber_composition` fact, so the stale
+# verdict drops an AI-written attribute instead: `fit` feeds `fit_type`
+NEEDS_FIT: dict[str, Any] = {
     "type": "object",
-    "required": ["fabric_type"],
-    "properties": {"fabric_type": {"type": "array"}},
+    "required": ["fit_type"],
+    "properties": {"fit_type": {"type": "array"}},
 }
 UNFED: dict[str, Any] = {
     "type": "object",
@@ -37,13 +39,24 @@ def _cold_cache() -> Iterator[None]:
     schema_check.clear_cache()
 
 
-def _drop_fabric(world: GenWorld, made: Made) -> None:
-    """The version loses `fabric_type` after its passed run (a stale verdict; set-up only)."""
+def _with_fit(world: GenWorld, made: Made) -> None:
+    """The stub writes only the seller's facts, so set-up gives the version an AI-written `fit`."""
+    with world.conn.transaction():
+        world.conn.execute("SET LOCAL session_replication_role = replica")
+        world.conn.execute(
+            "UPDATE listing_versions SET content_json = jsonb_set(content_json, "
+            "'{attributes,fit}', '\"Regular\"') WHERE id = %s",
+            [made.version_id],
+        )
+
+
+def _drop_fit(world: GenWorld, made: Made) -> None:
+    """The version loses `fit` after its passed run (a stale verdict; set-up only)."""
     with world.conn.transaction():
         world.conn.execute("SET LOCAL session_replication_role = replica")
         world.conn.execute(
             "UPDATE listing_versions SET content_json = jsonb_set(content_json, '{attributes}', "
-            "(content_json->'attributes') - 'fabric_type') WHERE id = %s",
+            "(content_json->'attributes') - 'fit') WHERE id = %s",
             [made.version_id],
         )
 
@@ -78,8 +91,9 @@ async def test_batch_only_the_failing_item_is_refused(
 ) -> None:
     clean = await generated(gen_world)
     stale = await generated(gen_world)
-    store(gen_world.conn, NEEDS_FABRIC)
-    _drop_fabric(gen_world, stale)
+    store(gen_world.conn, NEEDS_FIT)
+    _with_fit(gen_world, clean)
+    _drop_fit(gen_world, stale)
     items = [item(clean), item(stale)]
     key = str(uuid.uuid4())
     first = await post_approve(api, gen_world, REVIEWER, items, key=key)
@@ -100,8 +114,9 @@ async def test_gate_order_adapter_before_maker_checker(
     """The owner generated both (the maker), so a clean check still ends in maker-checker."""
     clean = await generated(gen_world, OWNER)
     stale = await generated(gen_world, OWNER)
-    store(gen_world.conn, NEEDS_FABRIC)
-    _drop_fabric(gen_world, stale)
+    store(gen_world.conn, NEEDS_FIT)
+    _with_fit(gen_world, clean)
+    _drop_fit(gen_world, stale)
     got = _items(await post_approve(api, gen_world, OWNER, [item(clean)]))
     assert got[str(clean.listing_id)]["http_status"] == 403
     assert got[str(clean.listing_id)]["error"]["error_code"] == "MAKER_CHECKER_VIOLATION"

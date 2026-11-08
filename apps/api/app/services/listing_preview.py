@@ -11,6 +11,9 @@ Rules Engine decides, invariant 2). One `tenant_uow` read: another tenant's list
 - Images are opaque `image:<id>` references, never URLs.
 - DW2: an Amazon listing is also checked against the stored Product Type Definition of its
   product type, when one is current (read in the same unit of work; `product_type_schema`).
+- SI2: the family's resolved facts (`resolve_family`) and both stored definitions (LISTING for
+  sellable items, PRODUCT_ONLY for a parent) are read in the same unit of work; the payload
+  shows the seller's offer and facts. A product that no longer resolves is 404 `product_id`.
 """
 
 from __future__ import annotations
@@ -27,7 +30,7 @@ from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import tenant_uow
 from app.services.adapter_check import adapter_listing_for
-from app.services.product_type_schema import current_schema
+from app.services.product_type_schema import current_schemas
 
 LISTING_BUSY_REASON: Final = "listing_busy"
 
@@ -39,20 +42,31 @@ class MarketplaceNotSupported(Exception):  # noqa: N818 - a 501, not a failure o
 async def preview_listing(principal: Principal, listing_id: uuid.UUID) -> MarketplacePreview:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         source = await uow.listings.preview_source(listing_id)
-        schema = None
-        if source is not None and source.template is not None:
-            schema = await current_schema(
-                uow, marketplace=source.marketplace, product_type=source.template.product_type
-            )
+        schema = parent_schema = None
+        family = None
+        if source is not None:
+            family = await uow.product_facts.resolve_family(source.product.id)
+            if source.template is not None:
+                schema, parent_schema = await current_schemas(
+                    uow,
+                    marketplace=source.marketplace,
+                    product_type=source.template.product_type,
+                    with_parent=source.product.variation_theme is not None,
+                )
     if source is None:
         raise NotFoundError("listing_id")
+    if family is None:
+        raise NotFoundError("product_id")
     if source.version is None or source.status == ListingStatus.GENERATING.value:
         raise ConflictError(ErrorCode.LISTING_BUSY, LISTING_BUSY_REASON)
     try:
         preview = previewer(source.marketplace)
     except NotImplementedError:
         raise MarketplaceNotSupported(source.marketplace) from None
-    result = preview(adapter_listing_for(source, schema, idempotency_key=f"preview:{listing_id}"))
+    adapter_listing = adapter_listing_for(
+        source, family, schema, parent_schema, idempotency_key=f"preview:{listing_id}"
+    )
+    result = preview(adapter_listing)
     return MarketplacePreview(
         listing_id=source.listing_id,
         version=source.version.version,

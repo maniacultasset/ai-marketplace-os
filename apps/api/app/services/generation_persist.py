@@ -30,10 +30,11 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
 SI3: when the plan carries a photo decision, `apply_photo_decision` runs first, right after the
 listing lock (`services/photo_facts_store.py`: the product lock, the superseded check, the guarded
 photo writes and questions, their audit rows, the re-read). The version-linked re-check then
-stamps `recheck_digest(pre, reread, pinned)`, so a listing generated with photo facts stays
-approvable, while a seller change made during the run still voids it. The applied photo set is
-written into the job's result dict as `photo_set` (the skip rule's record). Photo questions never
-block the listing (SI3 shared blocking rule).
+stamps `recheck_digest(pre, reread, pinned, children)` (a family's children as read with `pre`,
+SI2 D9), so a listing generated with photo facts stays approvable, while a seller change made
+during the run still voids it. The applied photo set is written into the job's result dict as
+`photo_set` (the skip rule's record). Photo questions never block the listing (SI3 shared
+blocking rule).
 
 Every insert is idempotent or fenced, so a replayed terminal write writes nothing twice.
 """
@@ -105,6 +106,8 @@ class PersistPlan:
     # set the job saw at read time and the one it sent
     photo: PhotoDecision | None = None
     pre_facts: ProductFacts | None = None
+    # SI2 D9: a family's children as read with `pre_facts` (empty for a standalone)
+    pre_children: Sequence[ProductFacts] = ()
     seen_set: PhotoSet | None = None
     sent_set: PhotoSet = ()
     # SI9 CP-D23: the template the questions offer their answers from
@@ -243,7 +246,7 @@ async def _apply_photo(uow: TenantUnitOfWork, plan: PersistPlan, listing: Any) -
         tasks=applied.tasks,
         recorded=applied.record_set is not None,
     )
-    return recheck_digest(plan.pre_facts, applied.reread, plan.pins.facts_digest)
+    return recheck_digest(plan.pre_facts, applied.reread, plan.pins.facts_digest, plan.pre_children)
 
 
 def make_persist(plan: PersistPlan) -> Any:

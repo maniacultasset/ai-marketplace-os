@@ -218,6 +218,12 @@ LLM_PROVIDER="${LLM_PROVIDER:-openai}"
 LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
+# SI5: the per-tenant request rate on the api (blank: the Settings default, 120 a minute)
+RATE_LIMIT_PER_TENANT_PER_MIN="${RATE_LIMIT_PER_TENANT_PER_MIN-}"
+if [ -n "$RATE_LIMIT_PER_TENANT_PER_MIN" ] &&
+  ! printf '%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN" | grep -Eqx '[1-9][0-9]{0,5}'; then
+  die "RATE_LIMIT_PER_TENANT_PER_MIN must be a whole number of requests a minute (in $ENV_NAME.env)"
+fi
 if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
   die "PIPELINE_REF must be a full 40-character lowercase commit sha (in $ENV_NAME.env)"
 fi
@@ -953,6 +959,9 @@ app_env() {
   fi
   # ADR-0025: the origin guard's switch, on the api only
   [ "$role" != "api" ] || printf 'ORIGIN_AUTH\t%s\n' "$ORIGIN_AUTH"
+  # SI5: the per-tenant rate, on the api only (the worker serves no HTTP), when set
+  [ "$role" != "api" ] || [ -z "$RATE_LIMIT_PER_TENANT_PER_MIN" ] ||
+    printf 'RATE_LIMIT_PER_TENANT_PER_MIN\t%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN"
   # ADR-0024: the gateway, provider and model, on the worker only (the one role that calls a model)
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"

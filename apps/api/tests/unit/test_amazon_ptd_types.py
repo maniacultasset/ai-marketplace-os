@@ -61,12 +61,20 @@ def test_adapter_listing_default_has_no_schema() -> None:
     plain = AdapterListing(listing_id, "SKU-1", "key-1", body)
     assert plain.product_type_schema is None
     assert plain == AdapterListing(listing_id, "SKU-1", "key-1", body, product_type_schema=None)
-    assert dataclasses.fields(AdapterListing)[-1].name == "product_type_schema"
+    names = [f.name for f in dataclasses.fields(AdapterListing)]
+    # SI2 appends its keyword-defaulted fields after the DW2 schema
+    assert names[-4:] == [
+        "product_type_schema",
+        "unit_facts",
+        "parent_type_schema",
+        "allow_http_images",
+    ]
 
 
 def test_ptd_constants() -> None:
     assert c.PTD_PATH == "/definitions/2020-09-01/productTypes"
-    assert c.PTD_REQUIREMENTS == c.REQUIREMENTS == "LISTING_PRODUCT_ONLY"
+    assert c.PTD_REQUIREMENTS == c.REQUIREMENTS_SELLABLE == "LISTING"  # SI2 D3
+    assert c.PTD_PARENT_REQUIREMENTS == c.REQUIREMENTS_PARENT == "LISTING_PRODUCT_ONLY"
     assert c.PTD_LOCALE == "en_IN"
     assert set(c.PTD_RATES) == set(c.PTD_OPERATIONS) == {"ptd_get"}
     # item-call operations and rates are untouched

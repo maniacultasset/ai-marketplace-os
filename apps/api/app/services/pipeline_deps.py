@@ -61,6 +61,7 @@ from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
+from app.core.resolved_facts import ProductFacts
 from app.repositories.uow import tenant_uow
 from app.services.auto_fix.apply import auto_fix
 from app.services.auto_fix.fixers import FixContext
@@ -74,6 +75,7 @@ from app.services.embeddings import (
 from app.services.rejected_values import with_rejections
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
+from app.services.seller_facts import seller_overlay
 
 log = get_logger(__name__)
 
@@ -208,6 +210,7 @@ class BackendPipelineDeps:
         "_attempt",
         "_critical_keys",
         "_embedder",
+        "_facts",
         "_image_reports",
         "_job_id",
         "_marketplace",
@@ -238,8 +241,10 @@ class BackendPipelineDeps:
         critical_keys: frozenset[str],
         rejections: Mapping[str, str],
         attempt: int = 1,
+        facts: ProductFacts | None = None,
     ) -> None:
         self._tenant_id = tenant_id
+        self._facts = facts
         self._critical_keys = frozenset(critical_keys)
         self._job_id = job_id
         self._user_id = user_id
@@ -368,6 +373,10 @@ class BackendPipelineDeps:
                 or listing.category != ruleset.category
             ):
                 raise ValueError("the listing is outside the RuleSet's scope")
+            if self._facts is not None:
+                # SI2 T16 (D5): the engine judges the seller's factual values, so a correction
+                # round never chases an AI fact the seller already gave (invariant 9)
+                listing = seller_overlay(listing, self._facts, self._rules.template)
             template, product = self._rules.template, self._product
 
             rejections = self._rejections
@@ -380,7 +389,7 @@ class BackendPipelineDeps:
 
             # SI4 A8 (§2 fact 1): the fix pass runs on a copy and the fixed copy's verdict is
             # reported, so the pipeline spends no correction attempt on a fixable item; the
-            # worker runs the same pass on the final listing (AC7)
+            # worker runs the same pass on the final listing (AC7), after the same overlay
             fixes = FixContext(
                 ruleset=ruleset, template=template, critical_keys=self._critical_keys
             )
@@ -499,6 +508,7 @@ async def build_pipeline_deps(
     critical_keys: frozenset[str],
     rejections: Mapping[str, str],
     product: Mapping[str, object] | None = None,
+    facts: ProductFacts | None = None,
 ) -> BackendPipelineDeps:
     """One short unit of work preloads the product's stored image reports (D6)."""
     market = Marketplace(marketplace)
@@ -523,4 +533,5 @@ async def build_pipeline_deps(
         critical_keys=critical_keys,
         attempt=attempt,
         rejections=rejections,
+        facts=facts,
     )

@@ -142,6 +142,25 @@ async def enforce_signup_limit(request: Request) -> None:
     await _enforce(signup_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
 
 
+def invite_bucket(ip: str) -> str:
+    return f"invite:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_invite_limit(request: Request) -> None:
+    """SI5 (ADR-0029): the invite lookup, accept and join steps share one per-IP bucket, checked
+    before the token is read."""
+    await _enforce(invite_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
+
+
+def reset_bucket(ip: str) -> str:
+    return f"reset:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_reset_limit(request: Request) -> None:
+    """SI5 (ADR-0029): the reset-link redeem, per IP, checked before the token is read."""
+    await _enforce(reset_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
+
+
 async def enforce_tenant_limit(tenant_id: UUID) -> None:
     await _enforce(f"t:{tenant_id}", get_settings().rate_limit_per_tenant_per_min)
 

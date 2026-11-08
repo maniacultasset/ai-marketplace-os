@@ -17,6 +17,7 @@ Helpers:
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import uuid
 from collections.abc import Iterable
@@ -169,6 +170,17 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         reason=f"{canary} The photos suggest maroon, but not clearly enough to use it.",
         expected_answer={"kind": "enum", "allowed_values": ["black", "maroon", "navy blue"]},
     )
+    # SI5 (ADR-0029): a pending invite of the tenant (the revoke op's path id)
+    invite_id = f.insert(
+        conn,
+        "invitations",
+        tenant_id=t,
+        email=f"invitee-{slug}@x.test",
+        role="reviewer",
+        token_hash=hashlib.sha256(f"invite-{canary}".encode()).digest(),
+        invited_by_user_id=owner,
+        expires_at="2099-01-01T00:00:00Z",
+    )
     ids: dict[str, Any] = {
         "product_id": product_id,
         "account_id": account_id,
@@ -180,6 +192,7 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         "document_id": document_id,
         "issue_id": issue_id,
         "task_id": task_id,
+        "invite_id": invite_id,
         "user_id": operator,
         "target_tenant_id": t,
         "storage_prefix": f"{t}/images/",

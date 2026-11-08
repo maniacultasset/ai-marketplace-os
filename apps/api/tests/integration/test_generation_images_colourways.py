@@ -146,9 +146,11 @@ async def test_style_with_two_colourways_order_cap_and_colour_refs(
     assert listing_id is not None
     async with tenant_uow(gen_world.tenant("acme")) as uow:
         source = await uow.listings.preview_source(listing_id)
-    assert source is not None
+        assert source is not None
+        facts = await uow.product_facts.resolve_family(source.product.id)
+    assert facts is not None
     refs = {i: f"image:{i}" for i in expected}
-    built = build_adapter_listing(source, image_refs=refs, idempotency_key="k")
+    built = build_adapter_listing(source, facts=facts, image_refs=refs, idempotency_key="k")
     assert dict(built.colour_image_refs) == {
         "navy blue": tuple(f"image:{i}" for i in (navy_main, *navy_secs[:12])),
         "maroon": (f"image:{maroon_main}",),

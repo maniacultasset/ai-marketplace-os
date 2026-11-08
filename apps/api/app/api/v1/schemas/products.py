@@ -16,7 +16,15 @@ from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, Slug, StrictModel, WireModel
 from mkos_schemas.enums import ImageSlot
-from pydantic import AfterValidator, AwareDatetime, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    Field,
+    StrictBool,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
@@ -115,6 +123,37 @@ class ImageUploadIn(StrictModel):
     slot: ImageSlot
 
 
+IdentifierType = Literal["gtin", "ean", "upc"]
+
+
+class ProductIdentifierIn(StrictModel):
+    """SI5: the barcode of a variant or a standalone product (never a style). The value is digits
+    only with a valid GS1 check digit; `upc` is 12 digits, `ean` 8 or 13, `gtin` 8, 12, 13 or 14."""
+
+    type: IdentifierType
+    value: Annotated[str, Field(pattern=r"^[0-9]{8,14}$", examples=["4006381333931"])]
+
+
+class ProductIdentifierOut(WireModel):
+    type: IdentifierType
+    value: str
+
+
+def _identifier_or_exemption(value: bool | None, info: ValidationInfo) -> bool | None:
+    """Both a barcode and `identifier_exemption: true` in one body is 422 at the exemption."""
+    if value is True and info.data.get("product_identifier") is not None:
+        raise PydanticCustomError(
+            "mkos_invalid", "Send a product_identifier or identifier_exemption, not both."
+        )
+    return value
+
+
+IDENTIFIER_DOC: Final = (
+    "SI5: true marks the product GTIN-exempt (clears any barcode); false clears the exemption. "
+    "On a style it is set on every variant without a barcode."
+)
+
+
 class ProductCreate(StrictModel):
     sku: Sku
     title: ProductTitle
@@ -139,6 +178,10 @@ class ProductCreate(StrictModel):
     image_uploads: Annotated[list[ImageUploadIn], Field(max_length=MAX_IMAGE_UPLOADS)] = Field(
         default_factory=list
     )
+    product_identifier: ProductIdentifierIn | None = None
+    identifier_exemption: StrictBool | None = Field(default=None, description=IDENTIFIER_DOC)
+
+    _one_identifier = field_validator("identifier_exemption")(_identifier_or_exemption)
 
     @model_validator(mode="after")
     def _id_with_uploads(self) -> ProductCreate:
@@ -188,10 +231,16 @@ class ProductPatch(StrictModel):
         default=None,
         description="SI3: photo-derived attribute keys the seller confirms as they are.",
     )
+    product_identifier: ProductIdentifierIn | None = Field(
+        default=None, description="SI5: the barcode; `null` clears a stored one."
+    )
+    identifier_exemption: StrictBool | None = Field(default=None, description=IDENTIFIER_DOC)
+
+    _one_identifier = field_validator("identifier_exemption")(_identifier_or_exemption)
 
     @model_validator(mode="after")
     def _not_null(self) -> ProductPatch:
-        for name in (*_NOT_NULLABLE, "attributes", "confirm_attributes"):
+        for name in (*_NOT_NULLABLE, "attributes", "confirm_attributes", "identifier_exemption"):
             if name in self.model_fields_set and getattr(self, name) is None:
                 raise PydanticCustomError("mkos_invalid", f"`{name}` cannot be null.")
         return self
@@ -273,6 +322,13 @@ class ProductOut(WireModel):
     photo_facts: list[PhotoFactOut] = Field(default_factory=list)
     photo_read: PhotoReadOut | None = Field(
         default=None, description="The newest photo read; product detail only, null on lists."
+    )
+    product_identifier: ProductIdentifierOut | None = Field(
+        default=None, description="SI5: the barcode (always null on a style)."
+    )
+    identifier_exemption: bool = Field(
+        default=False,
+        description="SI5: GTIN-exempt. On a style, true only when every live variant is exempt.",
     )
 
 

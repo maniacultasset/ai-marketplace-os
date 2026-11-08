@@ -51,6 +51,21 @@ def invitation(conn: Conn, tenant_id: UUID, invited_by: UUID) -> UUID:
     )
 
 
+def reset_link(conn: Conn, tenant_id: UUID, issued_by: UUID) -> UUID:
+    """SI5 (0017): a live reset link for a fresh reviewer of the tenant."""
+    n = next(_counter)
+    target = f.member(conn, tenant_id, "reviewer")
+    return f.insert(  # type: ignore[no-any-return]
+        conn,
+        "password_reset_links",
+        tenant_id=tenant_id,
+        user_id=target,
+        issued_by_user_id=issued_by,
+        token_hash=hashlib.sha256(f"reset-{n}-{tenant_id}".encode()).digest(),
+        expires_at=conn.execute("SELECT now() + interval '1 hour'").fetchone()[0],  # type: ignore[index]
+    )
+
+
 def _tenant_rows(conn: Conn, world: World) -> None:
     side = ops.seed_tenant(conn)
     t = side.tenant_id
@@ -69,6 +84,7 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     assert membership is not None
     put("tenant_memberships", membership[0])
     put("invitations", invitation(conn, t, side.user_id))
+    put("password_reset_links", reset_link(conn, t, side.user_id))
     put("business_parties", f.party(conn, t))
     f.brand_profile(conn, t)
     put("brand_profiles", None)

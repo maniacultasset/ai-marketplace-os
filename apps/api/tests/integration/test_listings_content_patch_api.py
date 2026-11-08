@@ -26,7 +26,9 @@ CLEAN = {
     "bullets": ["Soft cotton fabric"],
     "description": "A cotton kurta set with a straight fit.",
 }
-ATTRS = {"color": "blue", "fabric_type": "cotton"}  # the template's required attributes
+# SI2 T17: the listing edit takes non-factual attributes only; the template's required colour
+# and fabric are the seller's own (KURTA-001's seeded facts), applied by the seller overlay
+ATTRS = {"pattern": "solid", "neckline": "round"}
 
 
 def _seeded(world: GenWorld, status: str = "validated") -> tuple[uuid.UUID, uuid.UUID]:

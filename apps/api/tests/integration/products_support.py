@@ -130,6 +130,9 @@ PRODUCT_FIELDS = frozenset(
         "photo_facts",
         # SI9: the newest photo read (detail only; null on lists)
         "photo_read",
+        # SI5: the barcode and the GTIN exemption
+        "product_identifier",
+        "identifier_exemption",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

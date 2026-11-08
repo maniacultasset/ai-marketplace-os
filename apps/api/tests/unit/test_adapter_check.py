@@ -11,6 +11,13 @@ from typing import Any
 import pytest
 from app.adapters.amazon import schema_check
 from app.adapters.base import AdapterPreview
+from app.core.resolved_facts import (
+    Commercial,
+    Compliance,
+    PartyFacts,
+    ProductFacts,
+    ResolvedFact,
+)
 from app.repositories.listings import PreviewSource, SourceProduct, SourceVersion
 from app.repositories.templates import PinnedTemplate
 from app.services import adapter_check as check
@@ -51,18 +58,46 @@ def _source(body: CanonicalListing | None = None, *, marketplace: str = "amazon"
     )
 
 
+def _family(source: PreviewSource) -> Any:
+    """SI2: the family facts the check builds the payload from (a standalone, no children): the
+    seller gave the version's attributes, a price, the MRP, the origin and the manufacturer."""
+    assert source.version is not None
+    attributes = CanonicalListing.model_validate(source.version.content).attributes
+    main = ProductFacts(
+        product_id=source.product.id,
+        sku=source.product.sku,
+        level="standalone",
+        commercial=Commercial(mrp="999.00", selling_price="499.00", currency="INR"),
+        compliance=Compliance(
+            country_of_origin="IN",
+            manufacturer=PartyFacts(
+                legal_name="Test Mills Pvt Ltd", address="1 Mill Road, Surat, GJ, 395003, IN"
+            ),
+        ),
+        attributes={
+            key: ResolvedFact(key=key, value=value, source="seller")
+            for key, value in attributes.items()
+        },
+    )
+    return main, ()
+
+
+def _check(source: PreviewSource, schema: Any) -> ErrorReport | None:
+    return check.check_source(source, _family(source), schema)
+
+
 def _kurta() -> dict[str, Any]:
     loaded: dict[str, Any] = json.loads(ptd_fixture("KURTA.schema.json"))
     return loaded
 
 
 async def test_clean_listing_passes() -> None:
-    report = check.check_source(_source(), await ready(_kurta()))
+    report = _check(_source(), await ready(_kurta()))
     assert report is not None and report.status == "passed" and report.errors == []
 
 
 async def test_missing_required_attribute_is_one_schema_error() -> None:
-    report = check.check_source(_source(listing(fit=None)), await ready(_kurta()))
+    report = _check(_source(listing(fit=None)), await ready(_kurta()))
     assert report is not None and report.status == "failed"
     (item,) = report.errors
     assert (item.field, item.error_code, item.source, item.severity) == (
@@ -75,20 +110,20 @@ async def test_missing_required_attribute_is_one_schema_error() -> None:
 
 
 def test_no_schema_runs_mapping_only() -> None:
-    report = check.check_source(_source(listing(fit=None)), None)
+    report = _check(_source(listing(fit=None)), None)
     assert report is not None and report.status == "passed"
 
 
 async def test_product_type_mismatch_is_a_warning_only() -> None:
     shirt = await ready(json.loads(ptd_fixture("SHIRT.schema.json")), product_type="SHIRT")
-    report = check.check_source(_source(), shirt)
+    report = _check(_source(), shirt)
     assert report is not None and report.status == "passed"
     (item,) = report.errors
     assert item.severity is Severity.WARNING and item.source is ErrorSource.SCHEMA
 
 
 def test_flipkart_items_are_schema_items() -> None:
-    report = check.check_source(_source(marketplace="flipkart"), None)
+    report = _check(_source(marketplace="flipkart"), None)
     assert report is not None
     assert all(item.source is ErrorSource.SCHEMA for item in report.errors)
 
@@ -98,7 +133,7 @@ def test_previewer_raising_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None
         raise RuntimeError("bug")
 
     monkeypatch.setattr(check, "previewer", lambda _m: boom)
-    report = check.check_source(_source(), None)
+    report = _check(_source(), None)
     assert report is not None and report.status == "failed"
     (item,) = report.errors
     assert (item.field, item.error_code, item.source, item.message) == (
@@ -122,7 +157,7 @@ def test_item_cap(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
     report = ErrorReport.model_construct(status="failed", errors=[*many, *many[:10]])
     monkeypatch.setattr(check, "previewer", lambda _m: lambda _l: AdapterPreview(None, (), report))
-    got = check.check_source(_source(), None)
+    got = _check(_source(), None)
     assert got is not None and got.status == "failed" and len(got.errors) == MAX_ERROR_ITEMS
 
 
@@ -131,14 +166,16 @@ def test_no_previewer_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
         raise NotImplementedError
 
     monkeypatch.setattr(check, "previewer", none)
-    assert check.check_source(_source(), None) is None
+    assert _check(_source(), None) is None
 
 
 class _Uow:
     def __init__(self, source: PreviewSource | None) -> None:
         self.listings = self
         self.ptd = self
+        self.product_facts = self
         self._source = source
+        self.resolves = True
         self.seen: dict[str, Any] = {}
 
     async def preview_source(
@@ -146,6 +183,11 @@ class _Uow:
     ) -> PreviewSource | None:
         self.seen["version"] = version
         return self._source
+
+    async def resolve_family(self, product_id: uuid.UUID) -> Any:
+        if not self.resolves or self._source is None:
+            return None
+        return _family(self._source)
 
     async def current(self, **_: Any) -> Any:
         raise ValueError("an unreadable stored definition")
@@ -171,3 +213,15 @@ async def test_version_is_passed_through() -> None:
     version = SourceVersion(uuid.uuid4(), 2, {}, None)
     await check.adapter_check(uow, uuid.uuid4(), version=version)
     assert uow.seen["version"] is version
+
+
+async def test_product_that_no_longer_resolves_fails_closed() -> None:
+    plain = _source()
+    plain = PreviewSource(
+        **{**{f: getattr(plain, f) for f in plain.__dataclass_fields__}, "template": None}
+    )
+    uow = _Uow(plain)
+    uow.resolves = False
+    report = await check.adapter_check(uow, uuid.uuid4())
+    assert report is not None and report.status == "failed"
+    assert report.errors[0].error_code is ErrorCode.INTERNAL_ERROR

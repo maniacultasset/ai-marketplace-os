@@ -98,6 +98,7 @@ async def build_gen_world(conn: Conn, monkeypatch: pytest.MonkeyPatch) -> GenWor
     from app.core.config import get_settings
     from app.db.seed_ops import seed_tenant_id
     from app.db.session import dispose_engine
+    from tests.integration.factories import brand_manufacturer
     from tests.support.rate_limits import reset_rate_limits
 
     reset_queue(conn)
@@ -111,6 +112,8 @@ async def build_gen_world(conn: Conn, monkeypatch: pytest.MonkeyPatch) -> GenWor
     world = GenWorld(conn)
     for slug in ("acme", "bharat"):
         world.tenants[slug] = seed_tenant_id(slug)
+        # SI2 T2: a brand-default manufacturer and country, which every publish needs
+        brand_manufacturer(conn, world.tenants[slug])
     for email, user_id in conn.execute("SELECT email, id FROM users").fetchall():
         world.users[email] = user_id
     return world

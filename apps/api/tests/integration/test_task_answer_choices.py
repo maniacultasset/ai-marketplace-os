@@ -4,6 +4,7 @@ values, in the template's own spelling, so a valid answer can never fail the Rul
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
 import httpx
@@ -13,7 +14,7 @@ from mkos_schemas.jobs import CategoryTemplate
 from tests.unit.test_photo_targets import KURTA
 
 from .conftest import LOCAL_HOSTS
-from .generation_support import GenWorld, gen_world, set_status
+from .generation_support import GenWorld, gen_world
 from .photo_support import PhotoWorld, generate, photo_world, regenerable
 from .review_support import OPERATOR, generated
 
@@ -47,9 +48,10 @@ async def _answer(api: httpx.AsyncClient, world: GenWorld, task_id: Any, value: 
 
 
 async def test_photo_question_offers_the_template_subset(
-    api: httpx.AsyncClient, photo_world: PhotoWorld
+    api: httpx.AsyncClient, photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     pw = photo_world
+    pw.drop_seller_colour(monkeypatch)
     plain = await generate(pw, None)
     regenerable(pw, plain.listing_id)
     await generate(pw, "photo_low")
@@ -60,7 +62,9 @@ async def test_photo_question_offers_the_template_subset(
     accepted = {v.strip().casefold() for v in [*(spec.get("allowed_values") or [])]}
     accepted |= {v.strip().casefold() for v in spec.get("value_map") or {}}
     assert all(v.strip().casefold() in accepted for v in allowed)
-    outside = await _answer(api, pw.world, task["id"], "Mustard Yellow")
+    outside = await _answer(
+        api, pw.world, task["id"], "Turquoise"
+    )  # outside the SI2 v3 colour enum
     assert outside.status_code == 422, outside.text
     inside = await _answer(api, pw.world, task["id"], allowed[0])
     assert inside.status_code == 200, inside.text
@@ -68,25 +72,34 @@ async def test_photo_question_offers_the_template_subset(
     assert str(pw.attributes()["color"]["value"]).strip().casefold() in accepted
 
 
+async def _no_colour_product(world: GenWorld) -> str:
+    """SI2: a listing edit can no longer drop a factual key (the seller's, edited on the
+    product), so the Rules question comes from a product with no seller colour; the stub gives
+    no confidence score, so the AI colour is not kept and the required colour is missing."""
+    from decimal import Decimal
+
+    from app.services.products import NewProduct, create_product
+
+    sku = f"SI9-{uuid.uuid4().hex[:10].upper()}"
+    await create_product(
+        world.principal(OPERATOR),
+        NewProduct(
+            sku=sku,
+            title="Cotton Kurta Set",
+            category="ethnic_wear_kurta_sets",
+            images=(),
+            attributes={"fabric_type": "cotton"},
+            mrp=Decimal("1499.00"),
+            selling_price=Decimal("999.00"),
+        ),
+    )
+    return sku
+
+
 async def test_rules_question_offers_the_template_subset(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:
-    made = await generated(gen_world)
-    set_status(gen_world, made.listing_id, "needs_review")
-    row = gen_world.listing(made.listing_id)
-    content = gen_world.scalar(
-        "SELECT content_json FROM listing_versions WHERE id = %s", [row["current_version_id"]]
-    )
-    attributes = {k: v for k, v in content["attributes"].items() if k != "color"}
-    headers = gen_world.headers(OPERATOR)
-    headers.pop("Idempotency-Key")
-    headers["If-Match"] = f'"{row["current_version_id"]}"'
-    response = await api.patch(
-        f"/api/v1/listings/{made.listing_id}/content",
-        headers=headers,
-        json={"content": content["content"], "attributes": attributes},
-    )
-    assert response.status_code == 200, response.text
+    made = await generated(gen_world, sku=await _no_colour_product(gen_world))
     task = gen_world.conn.execute(
         "SELECT t.expected_answer FROM human_tasks t JOIN listing_issues i "
         "ON i.human_task_id = t.id WHERE i.listing_id = %s AND i.field_path = 'attributes.color' "

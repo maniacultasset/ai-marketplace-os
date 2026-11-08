@@ -234,7 +234,9 @@ def test_allowed_for_narrows_to_the_marketplace_enum() -> None:
     assert set(colours) == {
         pf.canonical("color", v) for v in [*(spec.allowed_values or []), *spec.value_map]
     }
-    assert not {"mustard", "peach", "teal", "multicolour"} & set(colours)
+    assert len(colours) == 29  # the SI2 kurta v3 colour enum
+    assert not {"sky blue", "turquoise", "magenta"} & set(colours)
+    assert len(colours) < len(pf.VOCAB["color"])
     assert pf.allowed_for("fit", KURTA) == ("regular fit", "slim fit", "relaxed fit")
     assert "oversized" not in pf.allowed_for("fit", KURTA)
     assert pf.allowed_for("pattern", KURTA) == pf.VOCAB["pattern"]

@@ -101,6 +101,18 @@ Q7: dict[str, str] = {
     "admin_signup_requests_list": PLATFORM_ADMIN,
     "admin_signup_requests_approve": PLATFORM_ADMIN,
     "admin_signup_requests_reject": PLATFORM_ADMIN,
+    # SI5 (ADR-0029)
+    "invites_create": "team:manage",
+    "invites_list": "team:manage",
+    "invites_revoke": "team:manage",
+    "invites_lookup": PUBLIC,
+    "invites_accept": PUBLIC,
+    "invites_join": "tenant:read",
+    "members_password_reset": "team:manage",
+    "auth_password_reset": PUBLIC,
+    "admin_tenants_list": PLATFORM_ADMIN,
+    "admin_tenants_activate": PLATFORM_ADMIN,
+    "admin_tenants_extend_trial": PLATFORM_ADMIN,
 }
 NARROWED_BY_S10 = (
     "images_upload_url",
@@ -126,8 +138,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
-    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one
-    assert len(OPS) == 82
+    # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI9 two
+    assert len(OPS) == 93
     assert set(OPS) == set(Q7)
 
 

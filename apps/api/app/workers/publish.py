@@ -62,6 +62,7 @@ from app.adapters.base import (
     ProductTypeSchema,
     RateLimited,
     RawResponseSink,
+    fact_paths,
     submitted_fields,
 )
 from app.adapters.registry import family_has_parent
@@ -72,15 +73,16 @@ from app.adapters.storage import (
     images_bucket,
     submissions_bucket,
 )
+from app.core.config import get_settings
 from app.core.errors import ConflictError, DomainError
 from app.core.logging import get_logger
-from app.core.resolved_facts import facts_digest
+from app.core.resolved_facts import listing_facts_digest
 from app.repositories.listings import PreviewSource
 from app.repositories.submissions import NewItem, NewSubmission
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services import public_images
-from app.services.adapter_input import build_adapter_listing, canonical_listing
-from app.services.product_type_schema import current_schema
+from app.services.adapter_input import FamilyFacts, build_adapter_listing, canonical_listing
+from app.services.product_type_schema import current_schemas
 from app.services.publish import missing_mrp
 from app.services.publish_ledger import Decision, ErrorKind, route_error, route_result
 from app.services.publish_outcome import AttemptCtx, apply_decision, refusal_report, revalidate
@@ -163,8 +165,12 @@ class Prepared:
     justification: str | None = None
     applied_before: bool = False
     listing_applied: bool = False
-    # DW2: the current Amazon definition, read at job time (None: no check, AC10)
+    # DW2: the current Amazon definition, read at job time (None: no check, AC10). SI2 D3: the
+    # LISTING one for sellable items, the PRODUCT_ONLY one for a family's parent
     ptd: ProductTypeSchema | None = None
+    ptd_parent: ProductTypeSchema | None = None
+    # SI2 T14/T15: the style's and each child's resolved facts (the pins and the adapter input)
+    family_facts: FamilyFacts | None = None
 
 
 def _fail(
@@ -197,7 +203,7 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
         source = await uow.listings.preview_source(listing.id)
         if source is None or source.version is None:
             raise _fail(ErrorCode.INVALID_STATUS_TRANSITION, "the listing has no version")
-        resolved = await uow.product_facts.resolve(listing.product_id)
+        family = await uow.product_facts.resolve_family(listing.product_id)
         # SI1 D8: a unit without MRP is never sent (the request checked it; facts can change)
         missing = await missing_mrp(uow, listing.product_id)
         if missing is not None:
@@ -209,13 +215,16 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
             account_id=account,
             source=source,
             approve_digest=await uow.review_decisions.approve_digest(version),
-            facts=None if resolved is None else facts_digest(resolved),
+            # SI2 D9: a family's pin covers every child's facts (price included)
+            facts=None if family is None else listing_facts_digest(*family),
+            family_facts=family,
         )
         pinned = source.template
-        prep.ptd = await current_schema(
+        prep.ptd, prep.ptd_parent = await current_schemas(
             uow,
             marketplace=listing.marketplace,
             product_type=None if pinned is None else pinned.product_type,
+            with_parent=source.product.variation_theme is not None,
         )
         canonical = canonical_listing(source)
         for index, ref in enumerate(canonical.images):
@@ -438,7 +447,31 @@ def _db_refusal(exc: DomainError) -> JobFailed:
 
 def _fields_for(item: AdapterListing) -> dict[str, list[str]]:
     paths = submitted_fields(item.listing)
-    return {u.seller_sku: list(paths) for u in item.units()}
+    # SI2: each item also answers for its seller facts (`facts.*`; price on sellable items)
+    return {u.seller_sku: sorted({*paths, *fact_paths(u)}) for u in item.units()}
+
+
+def _adapter_listing(
+    prep: Prepared,
+    *,
+    image_refs: Mapping[uuid.UUID, str],
+    idempotency_key: str,
+    attempt: int,
+) -> AdapterListing:
+    """The adapter input for this job (SI2 T15): the family's facts, both stored definitions and
+    local `http://` images only under APP_ENV=local."""
+    if prep.family_facts is None:  # `_check_pins` refused it first; never sent without facts
+        raise _fail(ErrorCode.FACTS_CHANGED_SINCE_APPROVAL, "The product's facts are gone.")
+    return build_adapter_listing(
+        prep.source,
+        facts=prep.family_facts,
+        image_refs=image_refs,
+        idempotency_key=idempotency_key,
+        attempt=attempt,
+        product_type_schema=prep.ptd,
+        parent_type_schema=prep.ptd_parent,
+        allow_http_images=get_settings().app_env == "local",
+    )
 
 
 async def _image_urls(ctx: JobContext, prep: Prepared) -> dict[uuid.UUID, str]:
@@ -640,12 +673,8 @@ async def _publish(
             return resent
         prep = await _read(ctx, payload)  # the row is resolved: plan the next attempt afresh
     plan = _plan_new(ctx, prep, payload)
-    snapshot_item = build_adapter_listing(
-        prep.source,
-        image_refs={},
-        idempotency_key="pending",
-        attempt=plan.attempt,
-        product_type_schema=prep.ptd,
+    snapshot_item = _adapter_listing(
+        prep, image_refs={}, idempotency_key="pending", attempt=plan.attempt
     )
     snapshot = snapshot_bytes(
         snapshot_item,
@@ -672,13 +701,7 @@ async def _publish(
         plan.previous_id,
     )
     await _write_ahead(ctx, prep, plan, snapshot)
-    item = build_adapter_listing(
-        prep.source,
-        image_refs=urls,
-        idempotency_key=key,
-        attempt=plan.attempt,
-        product_type_schema=prep.ptd,
-    )
+    item = _adapter_listing(prep, image_refs=urls, idempotency_key=key, attempt=plan.attempt)
     return await _call(
         ctx,
         prep,
@@ -796,12 +819,8 @@ async def _resolve_open(
     if row.operation == "patch":
         async with tenant_uow(ctx.tenant_id) as uow:
             per_sku = await uow.field_results.retry_payload(prep.listing.id, prep.version_id)
-    item = build_adapter_listing(
-        prep.source,
-        image_refs=urls,
-        idempotency_key=row.idempotency_key,
-        attempt=row.attempt,
-        product_type_schema=prep.ptd,
+    item = _adapter_listing(
+        prep, image_refs=urls, idempotency_key=row.idempotency_key, attempt=row.attempt
     )
     own = row.job_id == ctx.job_run_id
     if row.sent_at is not None and row.operation == "create":
@@ -878,12 +897,8 @@ async def _resolve_foreign(
     SUBMISSION_NOT_APPLIED`. The 3-attempt count is per version, so no exhaustion here."""
     outcome = "error"
     if row.sent_at is not None and row.operation == "create":
-        item = build_adapter_listing(
-            prep.source,
-            image_refs=urls,
-            idempotency_key=row.idempotency_key,
-            attempt=row.attempt,
-            product_type_schema=prep.ptd,
+        item = _adapter_listing(
+            prep, image_refs=urls, idempotency_key=row.idempotency_key, attempt=row.attempt
         )
         try:
             found = await _read_all_found(adapter, item)

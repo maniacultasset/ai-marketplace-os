@@ -22,11 +22,12 @@ from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
 from app.core.errors import NotFoundError
-from app.core.resolved_facts import facts_digest, for_rules
+from app.core.resolved_facts import for_rules, listing_facts_digest
 from app.repositories.uow import TenantUnitOfWork
 from app.services.generation_persist import Pins
 from app.services.generation_result import recheck
 from app.services.rules_loader import load_rules
+from app.services.seller_facts import seller_overlay
 
 BLOCKED_REASON: Final = "validation_errors"
 
@@ -71,14 +72,14 @@ async def current_pins(uow: TenantUnitOfWork, listing: Any) -> Pins:
     rules = await load_rules(
         uow, tenant_id=listing.tenant_id, marketplace=listing.marketplace, category=listing.category
     )
-    facts = await uow.product_facts.resolve(listing.product_id)
-    if facts is None:
+    family = await uow.product_facts.resolve_family(listing.product_id)
+    if family is None:
         raise NotFoundError("product_id")
     return Pins(
         rules_version=rules.ruleset.rules_version,
         template_id=rules.template_id,
         template_version=rules.template_version,
-        facts_digest=facts_digest(facts),
+        facts_digest=listing_facts_digest(*family),  # SI2 D9: a family pins its children too
     )
 
 
@@ -87,11 +88,18 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     rules = await load_rules(
         uow, tenant_id=listing.tenant_id, marketplace=listing.marketplace, category=listing.category
     )
-    facts = await uow.product_facts.resolve(listing.product_id)
-    if facts is None:
+    family = await uow.product_facts.resolve_family(listing.product_id)
+    if family is None:
         raise NotFoundError("product_id")
+    facts = family[0]
     rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
-    report = recheck(canonical, rules, for_rules(facts), rejections=rejections)
+    # SI2 T16 (D5): the engine judges the seller's factual values, never the AI's
+    report = recheck(
+        seller_overlay(canonical, facts, rules.template),
+        rules,
+        for_rules(facts),
+        rejections=rejections,
+    )
     return Check(
         template=rules.template,
         report=report,
@@ -99,7 +107,7 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
             rules_version=rules.ruleset.rules_version,
             template_id=rules.template_id,
             template_version=rules.template_version,
-            facts_digest=facts_digest(facts),
+            facts_digest=listing_facts_digest(*family),
         ),
     )
 

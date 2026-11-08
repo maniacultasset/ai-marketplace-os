@@ -1,7 +1,7 @@
 """The audit registry (DATABASE.md §5.2 audit_log: "a CI test checks every audited entity has an
 allow-list entry"). `AUDITED_ENTITIES` is the one cross-step list of `audit_log.entity_type`
 values the code writes; each step that audits a new entity adds it here, and the database's
-`audit_allowlist(entity_type)` (revision 0004_integrity; 0014 adds `product_type_definition`) must
+`audit_allowlist(entity_type)` (revision 0004_integrity; 0014 adds `product_type_definition`, 0017 `invitation`) must
 answer for every member."""
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ AUDITED_ENTITIES: Final[frozenset[str]] = frozenset(
         "business_party",
         "category_template",
         "image",
+        "invitation",
         "job_run",
         "listing",
         "listing_issue",

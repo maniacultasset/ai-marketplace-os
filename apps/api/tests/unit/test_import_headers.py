@@ -230,3 +230,14 @@ def test_fabric_and_fiber_composition_together_is_a_duplicate() -> None:
         ["seller_sku", "product_name", "category", "fabric_composition", "fiber_composition"]
     )
     assert [code for code, _ in problems] == [ErrorCode.HEADER_DUPLICATE_COLUMN]
+
+
+def test_si5_identifier_columns_are_known() -> None:
+    """SI5 (PLAN D15): the barcode aliases and the exemption column are read, never unknown."""
+    from app.services.imports.headers import IDENTIFIER_ALIASES, check_header, row_key
+
+    assert dict(IDENTIFIER_ALIASES) == {"ean": "ean", "upc": "upc", "gtin": "gtin", "barcode": None}
+    for name in ("ean", "upc", "gtin", "barcode", "identifier_exemption"):
+        assert row_key(name) == name
+    header = ["seller_sku", "product_name", "category", "EAN", "Identifier_Exemption"]
+    assert check_header(header) == []
