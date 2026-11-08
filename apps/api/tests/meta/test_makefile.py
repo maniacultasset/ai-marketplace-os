@@ -67,7 +67,12 @@ def _dry_run(repo_root: Path, target: str) -> list[str]:
     import os
     import subprocess
 
-    env = {**os.environ, "CI": "true"}  # CI skips the compose port guard
+    # The dry run checks the Makefile's own defaults, so the caller's overrides stay out: a lane's
+    # exported TEST_DATABASE_URL, and the command-line variables an outer `make api-tests ...`
+    # passes down through MAKEFLAGS.
+    inherited = {"TEST_DATABASE_URL", "MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES", "MAKELEVEL"}
+    env = {key: value for key, value in os.environ.items() if key not in inherited}
+    env["CI"] = "true"  # CI skips the compose port guard
     result = subprocess.run(
         ["make", "-n", "-C", str(repo_root), target],
         capture_output=True,
@@ -97,6 +102,27 @@ def test_api_tests_runs_alembic_sequence_before_pytest(repo_root: Path) -> None:
     at = _first(lines, f"{alembic} upgrade head --sql", at + 1)
     at = _first(lines, "squawk_report.py", at)  # the same shell line, after the render
     _first(lines, "pytest", at + 1)
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        # a lane exports its own template database (Makefile "A lane sharing one Postgres server")
+        ("TEST_DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/mos_test_lzz"),
+        # `make api-tests TEST_DATABASE_URL=...` reaches the child make through MAKEFLAGS
+        ("MAKEFLAGS", " -- TEST_DATABASE_URL=postgresql+psycopg://p:p@localhost:5432/mos_test_lzz"),
+    ],
+)
+def test_dry_run_reads_the_makefile_defaults_not_the_callers_overrides(
+    repo_root: Path, monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    monkeypatch.setenv(name, value)
+    lines = _dry_run(repo_root, "api-tests")
+    alembic_lines = [line for line in lines if "alembic -c apps/api/alembic.ini" in line]
+    assert alembic_lines
+    for line in alembic_lines:
+        assert "mos_test_lzz" not in line, line
+        assert re.search(r"ALEMBIC_DATABASE_URL=\S+/mos_test\b", line), line
 
 
 def test_api_tests_sets_alembic_url_itself(repo_root: Path, load_yaml: Any) -> None:
