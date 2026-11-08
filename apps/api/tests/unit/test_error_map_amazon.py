@@ -5,6 +5,7 @@ Every row comes from Amazon's published SP-API material (`policy_ref.observed` f
 
 from __future__ import annotations
 
+import json
 from typing import Any, Final
 
 import pytest
@@ -43,19 +44,34 @@ def test_file_parses(rows: list[ErrorMapIn]) -> None:
     assert ERROR_MAP_AMAZON_PATH.name == "error_map.amazon.json"
 
 
+def assert_documented(row: ErrorMapIn) -> None:
+    """SI13 (CP-D20): a seed row comes from Amazon's published SP-API material (`sp-api-docs`, an
+    https `doc`, `user_action`) or from a staff-approved AI proposal (a UUID `proposal_id` and
+    `approved_by`, no email, the code's own retry class). Any other source fails."""
+    import uuid as _uuid
+
+    assert row.marketplace.value == "amazon", row.raw_value
+    assert row.error_code in ERROR_CODE_META, row.raw_value
+    assert row.seller_action, row.raw_value
+    assert row.fix_action is None and row.auto_fixable is False, row.raw_value
+    assert row.severity.value == "error", row.raw_value
+    assert not row.raw_value.startswith("FAKE"), row.raw_value
+    ref = row.policy_ref or {}
+    assert ref.get("observed") is False, row.raw_value
+    if ref.get("source") == "staff-approved-ai-proposal":
+        _uuid.UUID(str(ref.get("proposal_id")))
+        _uuid.UUID(str(ref.get("approved_by")))
+        assert "@" not in json.dumps(ref) and "doc" not in ref, row.raw_value
+        assert row.retry_class == ERROR_CODE_META[row.error_code].retry_class, row.raw_value
+        return
+    assert ref.get("source") == "sp-api-docs", row.raw_value
+    assert row.retry_class.value == "user_action", row.raw_value
+    assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
+
+
 def test_every_row_is_a_documented_amazon_row(rows: list[ErrorMapIn]) -> None:
     for row in rows:
-        assert row.marketplace.value == "amazon", row.raw_value
-        assert row.error_code in ERROR_CODE_META, row.raw_value
-        assert row.seller_action, row.raw_value
-        assert row.fix_action is None and row.auto_fixable is False, row.raw_value
-        assert row.retry_class.value == "user_action", row.raw_value
-        assert row.severity.value == "error", row.raw_value
-        ref = row.policy_ref or {}
-        assert ref.get("source") == "sp-api-docs", row.raw_value
-        assert ref.get("observed") is False, row.raw_value
-        assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
-        assert not row.raw_value.startswith("FAKE"), row.raw_value
+        assert_documented(row)
 
 
 def test_plain_text_is_plain_language(rows: list[ErrorMapIn]) -> None:

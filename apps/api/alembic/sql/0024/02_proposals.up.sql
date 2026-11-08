@@ -81,14 +81,15 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.marketplace_error_proposal
 
 -- The worker drafts, never approves: app_rw inserts `pending` rows and moves them through the
 -- drafting states (a pending row may take its job id); only the migrator (the staff CLI) moves `proposed` to approved or rejected.
--- Closed rows never change. Keyed on session_user as every other guard (0004/03).
+-- Closed rows never change. Keyed on current_user: the staff CLI logs in as the admin and takes
+-- the migrator role with SET ROLE (app.db.migrations.assume_migration_role); app_rw cannot.
 CREATE FUNCTION public.marketplace_error_proposals_guard() RETURNS trigger
   LANGUAGE plpgsql
   SET search_path = pg_catalog, public, pg_temp
 AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF session_user <> 'migrator' AND (NEW.status <> 'pending' OR NEW.tries <> 0) THEN
+    IF current_user <> 'migrator' AND (NEW.status <> 'pending' OR NEW.tries <> 0) THEN
       RAISE EXCEPTION 'a proposal starts pending with no tries' USING ERRCODE = 'GRD01';
     END IF;
     RETURN NEW;
@@ -96,7 +97,7 @@ BEGIN
   IF OLD.status IN ('approved', 'rejected') THEN
     RAISE EXCEPTION 'a reviewed proposal never changes' USING ERRCODE = 'GRD01';
   END IF;
-  IF session_user = 'migrator' THEN
+  IF current_user = 'migrator' THEN
     IF NOT (OLD.status = 'proposed' AND NEW.status IN ('approved', 'rejected')) THEN
       RAISE EXCEPTION 'staff review moves a proposed row to approved or rejected only'
         USING ERRCODE = 'GRD01';
