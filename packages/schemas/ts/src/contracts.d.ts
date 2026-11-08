@@ -633,6 +633,7 @@ export interface ContextImage {
   data_b64: string;
   height: number;
   image_id: string;
+  role?: ("back" | "close_up") | null;
   slot: ImageSlot;
   width: number;
   [k: string]: unknown;
@@ -2043,6 +2044,64 @@ export interface ModelCredentials {
   model: string;
   provider: "openai" | "deepseek";
   timeout_seconds?: number;
+  [k: string]: unknown;
+}
+/**
+ * The chart as read: one row per size, keyed by measure name (for example `chest`).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "SizeChartReadChart".
+ */
+export interface SizeChartReadChart {
+  basis: "garment" | "body";
+  /**
+   * @minItems 1
+   * @maxItems 40
+   */
+  rows: [
+    {
+      [k: string]: string | number;
+    },
+    ...{
+      [k: string]: string | number;
+    }[]
+  ];
+  unit: "cm" | "in";
+  [k: string]: unknown;
+}
+/**
+ * One read of one size-chart photo.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "SizeChartReadRequest".
+ */
+export interface SizeChartReadRequest {
+  attempt?: number;
+  category: string;
+  image: ContextImage;
+  job_id: string;
+  product_id: string;
+  request_id: string;
+  schema_version?: string;
+  tenant_id: string;
+  [k: string]: unknown;
+}
+/**
+ * The pipeline's answer: a chart, or `unreadable`, plus the records of its calls.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "SizeChartReadResult".
+ */
+export interface SizeChartReadResult {
+  /**
+   * @maxItems 2
+   */
+  agent_runs?: [] | [AgentRunRecord] | [AgentRunRecord, AgentRunRecord];
+  chart?: SizeChartReadChart | null;
+  confidence?: number | null;
+  error?: ErrorReport | null;
+  schema_version?: string;
+  unreadable?: boolean;
   [k: string]: unknown;
 }
 /**

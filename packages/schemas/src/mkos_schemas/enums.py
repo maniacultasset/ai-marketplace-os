@@ -75,6 +75,11 @@ class ImageSlot(StrEnum):
     PACKAGING_LABEL = "packaging_label"
 
 
+# SI12: the seller's Back and Close-up photos are `secondary` images with a role (Front is `main`).
+# A new closed type rather than new `ImageSlot` members, which would be a MAJOR change.
+ImageRole = Literal["back", "close_up"]
+
+
 PUBLISHABLE_SLOTS: Final[frozenset[ImageSlot]] = frozenset(
     s for s in ImageSlot if s is not ImageSlot.PACKAGING_LABEL
 )

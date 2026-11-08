@@ -681,6 +681,7 @@ def test_context_image_shape() -> None:
         "image_id",
         "slot",
         "colourway_id",
+        "role",
         "width",
         "height",
         "data_b64",

@@ -30,6 +30,7 @@ EXPECTED_MODULES = {
     "pipeline.py",
     "publish.py",
     "rules.py",
+    "size_chart_read.py",
     "validation.py",
 }
 

@@ -22,7 +22,7 @@ from .base import (
     WireModel,
     walk_seam_dicts_and_text,
 )
-from .enums import ImageSlot, JobKind, JobState, Locale, Marketplace, PipelineStage
+from .enums import ImageRole, ImageSlot, JobKind, JobState, Locale, Marketplace, PipelineStage
 from .errors import ErrorReport
 from .images import ImageReport
 from .listing import AttributeValue, CanonicalListing
@@ -206,6 +206,8 @@ class ContextImage(WireModel):
     image_id: UUID
     slot: ImageSlot
     colourway_id: UUID | None = None
+    # SI12 (2.1.0): Back or Close-up, only on a `secondary` image; null on every other image.
+    role: ImageRole | None = None
     width: Annotated[int, Field(ge=1, le=MAX_CONTEXT_IMAGE_PX)]
     height: Annotated[int, Field(ge=1, le=MAX_CONTEXT_IMAGE_PX)]
     # Kept out of repr and of validation errors: the bytes never reach a log line.
@@ -226,6 +228,12 @@ class ContextImage(WireModel):
         if not head.startswith(_JPEG_MAGIC):
             raise ValueError("data_b64 is not a JPEG")
         return value
+
+    @model_validator(mode="after")
+    def _role_on_secondary(self) -> ContextImage:
+        if self.role is not None and self.slot is not ImageSlot.SECONDARY:
+            raise ValueError("role is only set on a secondary image")
+        return self
 
 
 def _unique_images(images: list[ContextImage]) -> list[ContextImage]:
