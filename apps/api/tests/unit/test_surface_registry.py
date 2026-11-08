@@ -137,15 +137,16 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI10: the platform admin's AI credit card (95 + 2)
     ("admin_ai_credit_get", "GET", "/admin/ai-credit"),
     ("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume"),
-    # SI12: the size-chart read (99 + 1)
+    # SI12: the size-chart read and the marketplace needs (99 + 2)
     ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
+    ("catalog_requirements_get", "GET", "/catalog/requirements"),
 )
 
 E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 100
+    assert len(FROZEN) == 101
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -438,8 +439,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_100_operations() -> None:
-    assert len(OPS) == 100
+def test_101_operations() -> None:
+    assert len(OPS) == 101
 
 
 def test_error_codes_per_d2() -> None:

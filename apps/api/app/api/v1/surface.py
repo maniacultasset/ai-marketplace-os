@@ -71,6 +71,7 @@ from app.api.v1.schemas.auth import (
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
+from app.api.v1.schemas.catalog import RequirementsOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
@@ -867,6 +868,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="product_id", idempotency=True,
               conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
               extra_codes=_SIZE_CHART_READ, also_status=200),
+    # ---- SI12: what each marketplace needs ----
+    Operation("catalog_requirements_get", "GET", "/catalog/requirements", 200, RequirementsOut,
+              "catalog", "What each marketplace needs for a category", "SI12",
+              query=("category",), action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})
