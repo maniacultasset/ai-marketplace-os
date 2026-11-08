@@ -12,6 +12,7 @@ import psycopg
 import pytest
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 from . import factories as f
 from .conftest import ScratchDb, sync_dictionary_on
@@ -23,6 +24,14 @@ MakeConfig = Callable[[Path | None], Config]
 
 PREVIOUS = "0015_image_public_copies"
 REVISION = "0019_gender_baby"
+
+
+def test_previous_is_the_down_revision() -> None:
+    """The round trip isolates 0019 only when PREVIOUS is its direct parent."""
+    from app.db.migrations import alembic_config
+
+    revision = ScriptDirectory.from_config(alembic_config()).get_revision(REVISION)
+    assert revision is not None and revision.down_revision == PREVIOUS
 
 
 def _check(db: ScratchDb) -> str:
