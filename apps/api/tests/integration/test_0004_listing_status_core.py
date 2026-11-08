@@ -44,7 +44,7 @@ BEGIN
     'edit','revalidate','task_answered','publish','submission_accepted','submission_failed',
     'submission_attempts_exhausted','marketplace_action_required','marketplace_rejected',
     'sync_exhausted','retry_publish','auto_resubmit','resume_publish','create','sync',
-    'refresh_requested','pause','unpause','archive','unarchive']) AS x;
+    'refresh_requested','pause','unpause','archive','unarchive','auto_fix']) AS x;
   FOREACH fs IN ARRAY st LOOP
     FOREACH ts IN ARRAY st LOOP
       CONTINUE WHEN fs = ts AND fs NOT IN ('blocked', 'failed');

@@ -350,7 +350,7 @@ def prepare_edge(
         approved_flow(conn, fl)
     if event in ("reject", "reject_regenerate"):
         decision(conn, fl, "reject", fl.v1, fl.reviewer)
-    if event in ("generate", "regenerate", "reject_regenerate"):
+    if event in ("generate", "regenerate", "reject_regenerate", "auto_fix"):
         job = queued_job(conn, fl, "listing_generate")
         if event == "regenerate":
             decision(conn, fl, "regenerate_requested", fl.v1, fl.reviewer, regeneration_job_id=job)
