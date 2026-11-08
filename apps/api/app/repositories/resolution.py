@@ -15,7 +15,7 @@ criterion for every table it names (`_criterion_for` + `_scoped_read`, as the an
   jobs marked `trigger = "resolution"` queued after it, any status (invariant 9).
 - `recurrence_resolutions(ids)`: the resolution of each closed row a recurrence points at.
 - The resolution read (T20): `read_jobs`, `issues_for`, `repairs_for`, `linked_tasks`,
-  `versions_of`, `repaired_issue_ids`, `task_kinds` (newest first, bounded).
+  `versions_of`, `repaired_issue_ids`, `task_kinds`, `fix_jobs` (newest first, bounded).
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ from app.repositories.base import TenantScopedRepository
 BREAKER_KIND: Final = "marketplace_error_review"
 READ_JOB_KINDS: Final = ("listing_status_sync", "listing_generate", "listing_publish")
 BREAKER_TARGET: Final = "account.preview_applied"
+FIX_JOB_STATUSES: Final = ("queued", "running", "succeeded")
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +182,29 @@ class ResolutionRepository(TenantScopedRepository[ListingRepair]):
             select(j)
             .where(
                 self._criterion_for(JobRun), j.listing_id == listing_id, j.kind.in_(READ_JOB_KINDS)
+            )
+            .order_by(j.queued_at.desc(), j.id.desc())
+            .limit(limit)
+        )
+        return builtins.list((await self.db.execute(self._scoped_read(stmt))).scalars())
+
+    async def fix_jobs(
+        self, listing_ids: Sequence[uuid.UUID], limit: int = 500
+    ) -> builtins.list[JobRun]:
+        """The listings' resolution fix jobs (`listing_generate`, `trigger = "resolution"`)
+        that are live or succeeded, newest first: the issues they cover read `auto_content` or
+        `ai_field` (fix round 1)."""
+        if not listing_ids:
+            return []
+        j = JobRun
+        stmt = (
+            select(j)
+            .where(
+                self._criterion_for(JobRun),
+                j.listing_id.in_(builtins.list(listing_ids)),
+                j.kind == "listing_generate",
+                j.status.in_(FIX_JOB_STATUSES),
+                j.payload_json["trigger"].astext == "resolution",
             )
             .order_by(j.queued_at.desc(), j.id.desc())
             .limit(limit)

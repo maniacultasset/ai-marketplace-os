@@ -3,12 +3,17 @@ resolution`, what Kuinn checked, changed and still needs for one listing, and th
 of each issue row the inbox shows.
 
 - `labels(rows, ...)` (pure): an issue's lane and cause. A row a repair was written for, or one
-  closed by a repair, is `auto_repair`; a row linked to a task takes the task's lane (a
-  `permission_decision` is the marketplace's, a `marketplace_error_review` staff's, a fact or
-  image question the seller's); any other row the planner's own rules (`plan.label`). WARNINGs
-  carry no lane.
+  closed by a repair, is `auto_repair`; a row Kuinn's content fix closed (`deterministic_fix`) is
+  `auto_content` and one its AI rewrite closed (`ai_correction`) `ai_field`; a row linked to a
+  task takes the task's lane (a `permission_decision` is the marketplace's, a
+  `marketplace_error_review` staff's, a fact or image question the seller's); an open row a live
+  or succeeded fix job covers (`fix_lanes`: its payload's `issue_ids`, by `mode`) takes that
+  job's lane; any other row the planner's own rules (`plan.label`). WARNINGs carry no lane. The
+  read never re-runs the engine's content or AI checks: the lane is what Kuinn did.
 - `state_of(facts)` (pure): the precedence `live` > `fixing` > `checking` > `resubmitted` >
-  `stopped` > `needs_marketplace` > `needs_you` > `fix_ready` > `idle`.
+  `stopped` > `needs_marketplace` > `needs_you` > `fix_ready` > `idle`. A generation that failed
+  (`failed/generation_failed`) with blocking rows open is `stopped` too, after `needs_you` (its
+  next step `regenerate`), so a fix job that ended with no version never reads `idle`.
 - `attempts(...)` (pure): one `precheck` per dry-run job and one per submission, newest first,
   at most 10. An attempt's window runs from its start to the next attempt's start: its failures
   are the ERROR rows first seen in it (the dry run's channel and version for a pre-check, the
@@ -29,7 +34,7 @@ from typing import Any, Final
 
 from app.core.errors import NotFoundError
 from app.core.rbac import Principal
-from app.repositories.resolution import LinkedTask, VersionRow
+from app.repositories.resolution import FIX_JOB_STATUSES, LinkedTask, VersionRow
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.resolution.plan import (
     Cause,
@@ -46,6 +51,11 @@ MAX_ITEMS: Final = 50
 LIVE_TASK: Final = frozenset({"open", "answered"})
 LIVE_JOB: Final = frozenset({"queued", "running"})
 SELLER_TASKS: Final = frozenset({"missing_fact", "conflicting_facts", "image_replacement"})
+FIX_MODE_LANES: Final[Mapping[str, Lane]] = {"auto_fix": "auto_content", "ai_field": "ai_field"}
+CLOSED_LANES: Final[Mapping[str, Lane]] = {
+    "deterministic_fix": "auto_content",
+    "ai_correction": "ai_field",
+}
 TASK_LANES: Final[Mapping[str, Lane]] = {
     "permission_decision": "marketplace",
     "marketplace_error_review": "staff",
@@ -72,16 +82,41 @@ def _view(row: Any) -> IssueView:
     )
 
 
+def fix_lanes(jobs: Iterable[Any]) -> dict[uuid.UUID, Lane]:
+    """issue id -> the lane of the live or succeeded resolution fix job that covers it (the
+    newest job wins: `jobs` come newest first)."""
+    out: dict[uuid.UUID, Lane] = {}
+    for job in jobs:
+        payload = job.payload_json or {}
+        if (
+            job.kind != "listing_generate"
+            or payload.get("trigger") != "resolution"
+            or job.status not in FIX_JOB_STATUSES
+        ):
+            continue
+        lane = FIX_MODE_LANES.get(str(payload.get("mode", "")))
+        if lane is None:
+            continue
+        for raw in payload.get("issue_ids") or ():
+            try:
+                out.setdefault(uuid.UUID(str(raw)), lane)
+            except ValueError:
+                continue
+    return out
+
+
 def labels(
     rows: Iterable[Any],
     *,
     repaired: Iterable[uuid.UUID] = (),
     task_kinds: Mapping[uuid.UUID, str] | None = None,
     critical_keys: frozenset[str] = frozenset(),
+    fixing: Mapping[uuid.UUID, Lane] | None = None,
 ) -> dict[uuid.UUID, tuple[Lane, Cause]]:
-    """issue id -> (lane, cause); WARNING rows are left out."""
+    """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`."""
     repaired_ids = set(repaired)
     kinds = task_kinds or {}
+    covered = fixing or {}
     ctx = PlanContext(critical_keys=critical_keys)
     out: dict[uuid.UUID, tuple[Lane, Cause]] = {}
     for row in rows:
@@ -91,8 +126,12 @@ def labels(
         lane: Lane | None = None
         if row.id in repaired_ids or (row.action_taken or "").startswith("repair:"):
             lane = "auto_repair"
+        elif row.status != "open" and row.resolution in CLOSED_LANES:
+            lane = CLOSED_LANES[row.resolution]
         elif row.human_task_id is not None and kinds.get(row.human_task_id) in TASK_LANES:
             lane = TASK_LANES[kinds[row.human_task_id]]
+        elif row.status == "open" and row.id in covered:
+            lane = covered[row.id]
         if lane is not None:
             out[row.id] = (lane, cause_of(view, lane, {}))
             continue
@@ -113,11 +152,15 @@ async def labels_for(
     tasks = await uow.resolution.task_kinds(
         sorted({r.human_task_id for r in errors if r.human_task_id is not None})
     )
+    jobs = await uow.resolution.fix_jobs(
+        sorted({r.listing_id for r in errors if r.status == "open"})
+    )
     return labels(
         errors,
         repaired=repaired,
         task_kinds={k: v[0] for k, v in tasks.items()},
         critical_keys=await uow.product_facts.critical_keys(),
+        fixing=fix_lanes(jobs),
     )
 
 
@@ -166,6 +209,8 @@ def state_of(f: ReadFacts) -> str:
         return "needs_marketplace"
     if f.seller_tasks:
         return "needs_you"
+    if f.status == "failed" and f.status_reason == "generation_failed" and f.open_blocking:
+        return "stopped"  # a fix job ended with no version: never `idle` with nobody told
     if f.fix_ready:
         return "fix_ready"
     return "idle"
@@ -188,6 +233,12 @@ def next_step(state: str, f: ReadFacts) -> dict[str, Any]:
         return {
             "kind": "wait",
             "text": "Kuinn sent the fixed listing again; waiting for the marketplace.",
+        }
+    if state == "stopped" and f.status_reason == "generation_failed":
+        return {
+            "kind": "regenerate",
+            "task_ids": list(f.marketplace_tasks)[:20],
+            "text": "Kuinn could not fix the listing. Regenerate it or edit the field to try again.",
         }
     if state == "stopped":
         return {
@@ -411,6 +462,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         repaired={r.source_issue_id for r in repairs if r.source_issue_id is not None},
         task_kinds=kinds,
         critical_keys=await uow.product_facts.critical_keys(),
+        fixing=fix_lanes(jobs),
     )
     live_tasks = {t.task_id: t.kind for t in tasks if t.status in LIVE_TASK}
     open_errors = [i for i in issues if i.status == "open" and i.severity == "error"]

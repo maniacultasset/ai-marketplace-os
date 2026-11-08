@@ -808,6 +808,65 @@ async def _resolve(
     return ResolutionResult(steps=steps, repairs=tuple(ids.values()), job_id=next_job)
 
 
+HUMAN_LANES: Final = frozenset({"seller", "marketplace", "staff"})
+
+
+async def _hand_over(
+    uow: TenantUnitOfWork, listing: Any, issue_ids: Sequence[uuid.UUID]
+) -> dict[str, list[uuid.UUID]]:
+    rows = [
+        r
+        for r in await uow.listing_issues.open_by_ids(listing.id, issue_ids)
+        if r.human_task_id is None
+    ]
+    if not rows:
+        return {}
+    recurrence = await uow.resolution.recurrence_resolutions(
+        [r.recurrence_of_id for r in rows if r.recurrence_of_id is not None]
+    )
+    # no content fix and no AI: the lanes D-27 gives a content refusal nobody can fix by code
+    ctx = PlanContext(critical_keys=await uow.product_facts.critical_keys())
+    by_issue = {r.id: r for r in rows}
+    steps = [
+        (
+            s
+            if s.lane in HUMAN_LANES
+            else Step(s.issue_id, "staff", s.cause, staff_action(by_issue[s.issue_id].field_path))
+        )
+        for s in plan([_view(r, recurrence) for r in rows], ctx)
+    ]
+    return await _human_steps(uow, listing, steps, by_issue)
+
+
+async def hand_over(
+    uow: TenantUnitOfWork, listing: Any, issue_ids: Sequence[uuid.UUID], *, job: JobRun
+) -> dict[str, list[uuid.UUID]]:
+    """Fix round 1 (part B): a content or AI fix job (`auto_fix`, `ai_field`) that ended with no
+    version (the AI refused at claim, the base no longer current, a context it could not build)
+    leaves the refusals it was to fix open; each still-open row with no task goes to the human
+    lanes the way D-27 routes it (a staff content review, or a seller question for a fact), so
+    someone is always told to act. In its own SAVEPOINT; a failure is logged, never raised."""
+    try:
+        async with uow.session.begin_nested():
+            opened = await _hand_over(uow, listing, issue_ids)
+    except Exception as exc:  # the savepoint rolled back; the listing's move stays
+        log.error(
+            "resolution.hand_over_failed",
+            listing_id=str(listing.id),
+            job_run_id=str(job.id),
+            error_class=type(exc).__name__,
+        )
+        return {}
+    if opened:
+        log.info(
+            "resolution.handed_over",
+            listing_id=str(listing.id),
+            job_run_id=str(job.id),
+            lanes=",".join(sorted(opened)),
+        )
+    return opened
+
+
 async def resolve(
     uow: TenantUnitOfWork, listing: Any, *, entry: Entry, job: JobRun
 ) -> ResolutionResult | None:
