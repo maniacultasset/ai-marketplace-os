@@ -195,3 +195,25 @@ def test_flipkart_reverse_index_style_code_keeps_the_group_feed() -> None:
     index = reverse_index(template().template)
     assert index["style_code"] == ("facts.style_number", "variants")
     assert index["colour_group"] == ("variants",)
+
+
+async def test_flipkart_colour_child_read_never_reports_a_wrong_image() -> None:
+    """SI8 fix round 2: a colour child's images are sent at version indexes, which a read has no
+    version to rebuild, so the read reports no image path and an image issue fails `listing`."""
+    from tests.adapters.flipkart_support import flipkart_adapter
+    from tests.support.fake_marketplace import build_fake
+
+    body = _colour_body()
+    ids = [i.image_id for i in body.images]
+    sent = fk_family(body, colour_image_ids={"navy blue": (ids[2], ids[3]), "maroon": (ids[4],)})
+    app = build_fake()
+    adapter = flipkart_adapter(app)
+    await adapter.create_listing(sent)
+    child = next(u for u in sent.items if u.colour_key == "navy blue")
+    [key] = [k for k in app.state.fake.fk_items if k[1] == child.seller_sku]
+    app.state.fake.fk_items[key]["errors"] = [
+        {"code": "X1", "description": "bad", "severity": "ERROR", "attribute": "images"}
+    ]
+    got = await adapter.get_listing(child.seller_sku)
+    assert not [f for f in got.fields if f.field.startswith("images[")]
+    assert [e.field for e in got.errors] == ["listing"]
