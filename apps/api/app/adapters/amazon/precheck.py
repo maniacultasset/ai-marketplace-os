@@ -5,10 +5,11 @@ Inside the dry-run job the adapter searches Amazon's catalog by each sellable un
 (`getListingsRestrictions`). This module turns those replies into ordinary `ErrorItem`s; it does
 no I/O (`.importlinter` `pure-mapping-no-io`) and never adopts an ASIN or changes a listing.
 
-- `brand_relation(ours, theirs)`: both brands are folded (`repairs.fold`: NFKC, casefold, spaces)
-  and split into whole tokens. Equal -> `same`; one token list a prefix or a subset of the other
-  (`Zebra Co` vs `Zebra`) -> `similar`; else `other` (`Zeb` vs `Zebra` is `other`: tokens, never
-  characters).
+- `brand_relation(ours, theirs)`: the marks \u2122 \u2120 \u00ae and apostrophes are dropped, both
+  brands are folded (`repairs.fold`: NFKC, casefold, spaces) and split into whole tokens. Equal ->
+  `same`; one token list a prefix or a subset of the other (`Zebra Co` vs `Zebra`), or the same
+  letters spaced differently (`Mama Earth` vs `Mamaearth`) -> `similar`; else `other` (`Zeb` vs
+  `Zebra` is `other`: tokens, never characters).
 - `from_catalog`: a unit whose barcode Amazon files under an ASIN gives one `IDENTIFIER_DUPLICATE`
   item at the unit's `facts.identifier` (`variants[<sku>].facts.identifier` for a child, so the
   planner's fact key is `identifier`): `other` -> ERROR `catalog:other_brand`; `similar` -> WARNING
@@ -54,6 +55,9 @@ RESTRICTED: Final = frozenset({"APPROVAL_REQUIRED", "NOT_ELIGIBLE"})
 REASON_CODE_RE: Final = re.compile(r"[A-Z_]{1,64}", re.ASCII)
 ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
 _TOKEN_SPLIT: Final = re.compile(r"[^\w]+")
+# Marks dropped before folding: NFKC turns "\u2122" into "TM" (one token "zebratm"), and an
+# apostrophe would split "Haldiram's" into "haldiram" + "s".
+_BRAND_MARKS: Final = dict.fromkeys(map(ord, "\u2122\u2120\u00ae'\u2019"))
 OTHER_BRAND_MESSAGE: Final = (
     "This barcode belongs to another brand on Amazon. Check the barcode, or claim a GTIN exemption."
 )
@@ -66,7 +70,7 @@ RESTRICTED_MESSAGE: Final = (
 
 
 def _tokens(value: str) -> tuple[str, ...]:
-    return tuple(t for t in _TOKEN_SPLIT.split(fold(value)) if t)
+    return tuple(t for t in _TOKEN_SPLIT.split(fold(value.translate(_BRAND_MARKS))) if t)
 
 
 def brand_relation(ours: str, theirs: str) -> BrandRelation:
@@ -75,6 +79,8 @@ def brand_relation(ours: str, theirs: str) -> BrandRelation:
         return "other"
     if mine == other:
         return "same"
+    if "".join(mine) == "".join(other):  # spacing only ("Mama Earth" vs "Mamaearth")
+        return "similar"
     short, long_ = (mine, other) if len(mine) <= len(other) else (other, mine)
     if long_[: len(short)] == short or set(short) <= set(long_):
         return "similar"

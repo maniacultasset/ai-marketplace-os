@@ -68,6 +68,14 @@ def _with(sent: AdapterListing, **over: Any) -> AdapterListing:
         ("Zebra", "Zeb", "other"),  # whole tokens, never characters
         ("", "Zebra", "other"),
         ("Ｚｅｂｒａ", "Zebra", "same"),  # NFKC fold  # noqa: RUF001
+        # form-only differences are never the blocking `other` (round 1 fix)
+        ("Zebra", "ZEBRA\u2122", "same"),  # NFKC would turn the mark into "TM"
+        ("Zebra", "Zebra \u2122", "same"),
+        ("Zebra", "Zebra\u00ae", "same"),
+        ("Haldiram's", "Haldirams", "same"),  # the apostrophe never splits a token
+        ("Haldiram\u2019s", "Haldirams", "same"),
+        ("Mamaearth", "Mama Earth", "similar"),  # spacing only
+        ("Zeb", "Zebra", "other"),
     ],
 )
 def test_brand_relation(ours: str, theirs: str, want: str) -> None:
