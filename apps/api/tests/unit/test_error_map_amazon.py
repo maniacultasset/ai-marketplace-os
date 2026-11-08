@@ -249,3 +249,65 @@ def test_mapped_codes_reach_si4_routes(
     # the stored row's auto_fixable comes from the item and the code metadata (SI4 classify);
     # the rows set no fix_action (D5), so no Amazon row is shown as auto-fixable
     assert classify(item, critical_keys=frozenset(), source="amazon_adapter")[2] is None
+
+
+# ---- SI13 T10 (AC7): the v2 code rows from Amazon's public troubleshooting page ----
+
+SI13_CODES: Final = {
+    "4000003": ("CATEGORY_MISMATCH", "facts.category"),
+    "101158": ("CATEGORY_MISMATCH", "facts.category"),
+    "100980": ("IDENTIFIER_DUPLICATE", "facts.identifier"),
+    "4005015": ("IDENTIFIER_DUPLICATE", "facts.identifier"),
+    "4005007": ("ACCOUNT_PERMISSION_DENIED", None),
+    "4005008": ("ACCOUNT_PERMISSION_DENIED", None),
+    "4005006": ("IDENTIFIER_INVALID", "facts.identifier"),
+    "4005038": ("IDENTIFIER_INVALID", "facts.identifier"),
+    "4005013": ("SKU_CONFLICT", None),
+    "101168": ("SKU_CONFLICT", None),
+    "4005033": ("VALUE_NOT_ALLOWED", None),
+}
+LEFT_OUT: Final = ("8541", "8542", "8572")  # their help pages need a login (KNOWN-ISSUES)
+
+
+def test_si13_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+    for code, (error_code, hint) in SI13_CODES.items():
+        row = by_code[code]
+        assert row.error_code.value == error_code, code
+        assert ErrorCode(error_code) in ERROR_CODE_META
+        assert row.field_hint == hint, code
+        doc = str((row.policy_ref or {}).get("doc", ""))
+        assert doc.startswith("https://developer-docs.amazon.com/sp-api/"), code
+        assert "sellercentral" not in doc, code
+    for code in LEFT_OUT:
+        assert code not in by_code, code
+
+
+def test_si13_rows_route_to_their_lanes(rows: list[ErrorMapIn]) -> None:
+    import uuid
+
+    from app.services.resolution.plan import IssueView, PlanContext, plan
+
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+
+    def lane(code: str, **ctx: object) -> tuple[str, str]:
+        row = by_code[code]
+        view = IssueView(
+            uuid.uuid4(),
+            "amazon_adapter",
+            row.field_hint or "listing",
+            row.error_code.value,
+            row.error_class.value,
+            "error",
+            marketplace_code=code,
+        )
+        (step,) = plan([view], PlanContext(**ctx))  # type: ignore[arg-type]
+        return step.lane, step.action
+
+    assert lane("4000003", recategorizable=True) == ("seller", "recategorize")
+    assert lane("101158") == ("staff", "recategorize_review")
+    assert lane("100980") == ("seller", "edit_identifier")
+    assert lane("4005007")[0] == "marketplace"
+    assert lane("4005013") == ("staff", "sku_conflict")
+    assert lane("101168") == ("staff", "sku_conflict")
+    assert ErrorClass.ACCOUNT_PERMISSION.value == by_code["4005008"].error_class.value
