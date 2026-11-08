@@ -143,14 +143,13 @@ async def test_reject_regenerate_budget_429_nothing_enqueued(
     api: httpx.AsyncClient, gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     import app.services.review as review
-    from app.services.budget import BudgetExceededError
 
-    async def spent(*_a: Any) -> None:
-        raise BudgetExceededError(60)
+    async def spent(*_a: Any) -> str:
+        return "tenant"  # the admission read's refusal: the brand's daily cap
 
     made = await generated(gen_world)
     jobs = gen_world.count("job_runs", "listing_id = %s", [made.listing_id])
-    monkeypatch.setattr(review, "precheck", spent)
+    monkeypatch.setattr(review, "admit", spent)
     result = only_item(
         await post_approve(api, gen_world, REVIEWER, [_reject(made, regenerate=True)])
     )

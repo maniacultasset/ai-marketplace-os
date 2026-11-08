@@ -1,7 +1,10 @@
 """The AI admission pre-check at the API (DW8, AC 14; DATABASE.md:997; ENV.md:91; S18 T6; SI10 D4).
 
-`precheck(uow, now)` runs the worker claim's own rule (`app.workers.budget.admission`, one
-predicate in `app.services.ai_credit`) before a fresh generate or regenerate changes anything:
+`admit(tenant_id, now)` runs the worker claim's own rule (`app.workers.budget.admission`, one
+predicate in `app.services.ai_credit`) in short sessions of its own, so the caller runs it before
+it opens any transaction (holding no pooled connection), passes the answer into its idempotent
+handler, and the handler calls `refuse(refusal, now)` before a fresh generate or regenerate
+changes anything (a stored replay never reaches it):
 - the AI credit is paused, or a fresh `/key` check is below the floor: `CreditPausedError`, which
   the route renders as 503 `AI_CREDIT_EXHAUSTED` or `AI_PROVIDER_KEY_INVALID`, no `Retry-After`;
 - the tenant's or the platform's spend plus live reservations plus one generation's reservation
@@ -18,6 +21,7 @@ from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from types import MappingProxyType
 from typing import Final, Literal
+from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource
@@ -27,7 +31,7 @@ from app.core.config import get_settings
 from app.core.errors import DomainError
 from app.repositories.budget import BudgetState
 from app.repositories.uow import TenantUnitOfWork
-from app.services.ai_credit import REASON_CODE, PauseReason
+from app.services.ai_credit import REASON_CODE, PauseReason, Refusal
 
 BUDGET_MESSAGE: Final = (
     "The daily AI budget for this brand is used up. It resets at 5:30 am IST; try again then."
@@ -109,13 +113,26 @@ async def tenant_state(uow: TenantUnitOfWork, now: datetime) -> BudgetState:
     )
 
 
-async def precheck(uow: TenantUnitOfWork, now: datetime) -> None:
-    """The worker claim's admission rule for the uow's tenant (CP-D18); raises on a refusal."""
+async def admit(tenant_id: UUID, now: datetime, *, amount: Decimal | None = None) -> Refusal | None:
+    """The worker claim's admission rule for `tenant_id` (CP-D18): None admits. It opens its own
+    short sessions, so never call it inside a unit of work: one request would then hold two
+    pooled connections, and a burst of them exhausts the pool."""
     from app.workers.budget import admission
 
-    refusal = await admission(uow.budget.tenant_id, now)
+    if amount is None:
+        return await admission(tenant_id, now)
+    return await admission(tenant_id, now, amount=amount)
+
+
+def refuse(refusal: Refusal | None, now: datetime) -> None:
+    """Raise the API error for an admission refusal; nothing for None."""
     if refusal is None:
         return
     if refusal == "tenant" or refusal == "global":
         raise BudgetExceededError(seconds_to_utc_midnight(now), refusal)
     raise CreditPausedError(refusal)
+
+
+async def precheck(tenant_id: UUID, now: datetime) -> None:
+    """`admit` then `refuse`, for a caller that holds no connection."""
+    refuse(await admit(tenant_id, now), now)

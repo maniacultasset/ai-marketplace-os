@@ -52,7 +52,14 @@ from app.core.rbac import Principal
 from app.core.request_context import current_request_id
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
-from app.services.budget import CREDIT_MESSAGES, BudgetExceededError, CreditPausedError, precheck
+from app.services.ai_credit import Refusal
+from app.services.budget import (
+    CREDIT_MESSAGES,
+    BudgetExceededError,
+    CreditPausedError,
+    admit,
+    refuse,
+)
 from app.services.generation import enqueue_generate
 from app.services.generation_context import previous_listing
 from app.services.image_gate import evaluate_image_gate
@@ -172,6 +179,7 @@ class _Ctx:
     multi: bool
     versions: Mapping[uuid.UUID, Any]
     image_reports: Mapping[uuid.UUID, Mapping[Any, ImageReport]]
+    regenerate_refusal: Refusal | None = None
 
 
 def _gate(listing: Any | None, item: ReviewItem) -> Any:
@@ -349,7 +357,7 @@ async def _reject_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome:
     job_id: uuid.UUID | None = None
     if item.regenerate:
         try:
-            await precheck(uow, datetime.now(UTC))
+            refuse(ctx.regenerate_refusal, datetime.now(UTC))
         except BudgetExceededError:
             raise Refused(ErrorCode.BUDGET_EXCEEDED) from None
         except CreditPausedError as exc:
@@ -425,7 +433,10 @@ async def approve_batch(
     items: Sequence[ReviewItem],
     *,
     http_key: str,
+    regenerate_refusal: Refusal | None = None,
 ) -> BatchOutcome:
+    """`regenerate_refusal` is the admission answer the caller read before its transaction
+    (`services.budget.admit`); every reject-and-regenerate item refuses with it."""
     if not items:
         raise ValueError("an approve batch has at least one item")
     kind = "approve" if any(i.decision == "approve" for i in items) else "reject"
@@ -453,6 +464,7 @@ async def approve_batch(
         multi=len(items) > 1,
         versions=versions,
         image_reports=reports,
+        regenerate_refusal=regenerate_refusal,
     )
     return BatchOutcome(batch.id, [await _one(ctx, listings, item) for item in items])
 
@@ -480,9 +492,16 @@ async def accept_review(
     """The route's idempotent transaction: 200 with per-item results, stored under the key."""
     from app.services.idempotency import idempotent
 
+    # the admission read runs first, holding no connection, and only for a batch that may spend
+    regenerates = any(i.decision == "reject" and i.regenerate for i in items)
+    refusal = await admit(principal.tenant_id, datetime.now(UTC)) if regenerates else None
+
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        return 200, outcome_body(await approve_batch(uow, principal, items, http_key=key))
+        outcome = await approve_batch(
+            uow, principal, items, http_key=key, regenerate_refusal=refusal
+        )
+        return 200, outcome_body(outcome)
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
     return stored

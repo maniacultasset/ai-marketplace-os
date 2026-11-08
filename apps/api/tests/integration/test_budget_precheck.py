@@ -35,11 +35,9 @@ async def _state(tenant: uuid.UUID) -> Any:
 
 
 async def _precheck(tenant: uuid.UUID) -> None:
-    from app.repositories.uow import tenant_uow
     from app.services.budget import precheck
 
-    async with tenant_uow(tenant) as uow:
-        await precheck(uow, NOW)
+    await precheck(tenant, NOW)
 
 
 def _spend(conn: Any, tenant: uuid.UUID, cost: str, at: str = "2026-10-05T01:00:00Z") -> None:
@@ -250,8 +248,13 @@ async def test_generate_platform_cap_429(api: Any, gen_world: Any) -> None:
     assert body["error"]["type"] == "BUDGET_EXCEEDED"
     assert body["error"]["message"] == PLATFORM_BUDGET_MESSAGE
     assert 1 <= int(response.headers["retry-after"]) <= 86400
+    # no amount and no other tenant's figure (the ids are random, so only the texts are read)
+    texts = [
+        body["error"]["message"],
+        *(e["message"] for e in body["error"]["error_report"]["errors"]),
+    ]
     for figure in ("11.99", "12", "USD", "$"):
-        assert figure not in response.text  # no amount and no other tenant's figure
+        assert all(figure not in text for text in texts), figure
     assert _counts(gen_world, acme) == before
 
 
@@ -281,3 +284,84 @@ async def test_budget_message_names_the_ist_reset(world: Any) -> None:
     with pytest.raises(BudgetExceededError) as caught:
         await _precheck(acme)
     assert caught.value.retry_after_s == 12 * 3600  # the fixed clock is 12:00 UTC
+
+
+# ---- the precheck holds no pooled connection while it reads (one connection is enough) ----
+#
+# The admission read opens short sessions of its own. Run inside the idempotent transaction it
+# needed a second pooled connection while the first was held, so a burst of about pool-size
+# generate requests waited on each other until `pool_timeout` and answered 500. With one
+# connection in the pool, any nesting times out at once.
+
+
+async def _one_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    monkeypatch.setenv("DATABASE_POOL_SIZE", "1")
+    monkeypatch.setenv("DATABASE_MAX_OVERFLOW", "0")
+    monkeypatch.setenv("DATABASE_POOL_TIMEOUT", "1")
+    get_settings.cache_clear()
+    await dispose_engine()
+    settings = get_settings()
+    assert (settings.database_pool_size, settings.database_max_overflow) == (1, 0)
+
+
+async def test_generate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _one_connection(monkeypatch)
+    response = await _generate(api, gen_world)
+    assert response.status_code == 202, response.text
+    _pause(gen_world.conn, "credit_exhausted")
+    refused = await _generate(api, gen_world, sku="KURTA-001")
+    assert refused.status_code == 503, refused.text
+    assert refused.json()["error"]["type"] == "AI_CREDIT_EXHAUSTED"
+
+
+async def test_regenerate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _one_connection(monkeypatch)
+    response, _listing_id = await _regenerate(api, gen_world)
+    assert response.status_code == 202, response.text
+
+
+async def test_review_regenerate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from .review_support import REVIEWER, generated, item, only_item, post_approve
+
+    made = await generated(gen_world)  # the worker run needs its usual pool
+    await _one_connection(monkeypatch)
+    reject = item(
+        made,
+        "reject",
+        reason_code="poor_quality",
+        feedback="The title repeats the brand name; keep it short.",
+        regenerate=True,
+    )
+    result = only_item(await post_approve(api, gen_world, REVIEWER, [reject]))
+    assert (result["http_status"], result["listing_status"]) == (200, "generating"), result
+    assert result["job_id"] is not None
+
+
+async def test_burst_of_generates_never_times_out_the_pool(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ten concurrent requests on a two-connection pool: each finishes (202, or the live-job
+    cap's 429), none waits out `pool_timeout` into a 500."""
+    import asyncio
+
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    monkeypatch.setenv("DATABASE_POOL_SIZE", "2")
+    monkeypatch.setenv("DATABASE_MAX_OVERFLOW", "0")
+    monkeypatch.setenv("DATABASE_POOL_TIMEOUT", "5")
+    get_settings.cache_clear()
+    await dispose_engine()
+    responses = await asyncio.gather(*(_generate(api, gen_world) for _ in range(10)))
+    statuses = [r.status_code for r in responses]
+    assert 500 not in statuses, [r.text for r in responses if r.status_code == 500][:1]
+    assert set(statuses) <= {202, 409, 429}, statuses
