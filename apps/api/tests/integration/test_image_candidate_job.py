@@ -339,6 +339,36 @@ def _shifted(result: ImageEditResult, request: ImageEditRequest) -> ImageEditRes
     )
 
 
+def _halved(result: ImageEditResult, request: ImageEditRequest) -> ImageEditResult:
+    """The model drew the product at half its size: beyond the registration's scale range."""
+    data = __import__("base64").b64decode(request.image.data_b64)
+    img = PILImage.open(io.BytesIO(data)).convert("RGB")
+    small = PILImage.new("RGB", img.size, (255, 255, 255))
+    half = img.resize((img.width // 2, img.height // 2))
+    small.paste(half, (img.width // 4, img.height // 4))
+    out = io.BytesIO()
+    small.save(out, format="PNG")
+    return result.model_copy(
+        update={
+            "image_b64": __import__("base64").b64encode(out.getvalue()).decode(),
+            "mime": "image/png",
+        }
+    )
+
+
+async def test_shifted_edit_is_registered_and_ready(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """A model that moved the product a tenth of the frame: the candidate is registered back
+    onto the seller's photo and built from its pixels."""
+    candidate, job, _ = await _edit(images_db, store)
+    _stub_with(edit_on, _shifted)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert row["status"] == "ready", row["failure_reason"]
+    assert len(_runs(images_db.conn, job)) == 1
+
+
 def _recoloured(result: ImageEditResult, request: ImageEditRequest) -> ImageEditResult:
     img = PILImage.open(io.BytesIO(__import__("base64").b64decode(request.image.data_b64)))
     r, g, b = img.convert("RGB").split()
@@ -353,7 +383,7 @@ def _recoloured(result: ImageEditResult, request: ImageEditRequest) -> ImageEdit
     )
 
 
-@pytest.mark.parametrize("change", [_shifted, _recoloured], ids=["shifted", "recoloured"])
+@pytest.mark.parametrize("change", [_halved, _recoloured], ids=["halved", "recoloured"])
 async def test_unfaithful_edits_fail_fidelity_with_one_run(
     images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch, change: Any
 ) -> None:
