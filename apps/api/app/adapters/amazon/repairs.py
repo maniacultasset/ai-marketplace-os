@@ -163,6 +163,44 @@ def ptd_enum(schema: Mapping[str, Any], attribute: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(str(v) for v in found))
 
 
+def ptd_units(schema: Mapping[str, Any], attribute: str) -> tuple[str, ...]:
+    """The `unit` enum of an attribute in a Product Type Definition schema, or ()."""
+    node = schema.get("properties", {}).get(attribute, {})
+    unit = node.get("items", {}).get("properties", {}).get("unit", {})
+    found = list(unit.get("enum") or [])
+    for option in unit.get("anyOf") or []:
+        found += list(option.get("enum") or [])
+    return tuple(dict.fromkeys(str(v) for v in found))
+
+
+# The executor's way from an issue to the attributes a rule may repair, where `attributes_for`
+# (the mapping's reverse index) has none: the barcode fact feeds the identifier or the exemption
+# attribute; an issue on `listing` (Amazon named an attribute no field path feeds) names its
+# attribute in the marketplace's text.
+FIELD_ALIASES: Final[Mapping[str, tuple[str, ...]]] = {
+    "facts.identifier": (c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE),
+}
+_WORD: Final = re.compile(r"[a-z0-9_]{1,128}")
+
+
+def repair_names(
+    listing: AdapterListing, field_path: str, attributes: Mapping[str, Any], text: str
+) -> list[str]:
+    """The attributes `propose` may try for an issue on `field_path` of a unit sent with
+    `attributes`: the reverse index, else the aliases, else (on `listing`) each attribute of the
+    payload, of `FILL` or of the barcode that the issue's text names as a whole word."""
+    names = attributes_for(listing, field_path)
+    if names:
+        return names
+    if field_path in FIELD_ALIASES:
+        return list(FIELD_ALIASES[field_path])
+    if field_path != "listing":
+        return []
+    named = set(_WORD.findall(text.casefold()))
+    known = {*attributes, *FILL, c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE}
+    return sorted(n for n in known if n in named)
+
+
 def _sent(attributes: Mapping[str, Any], attribute: str, key: str = "value") -> Any:
     values = attributes.get(attribute)
     if isinstance(values, list) and values and isinstance(values[0], Mapping):

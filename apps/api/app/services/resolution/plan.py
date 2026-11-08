@@ -5,7 +5,9 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
 
 1. a WARNING never makes a step;
 2. a recurrence of a key Kuinn already fixed (`deterministic_fix`, `ai_correction`) -> `staff`
-   (spec L1356 "stop repeated retries and escalate"; one try per key);
+   (spec L1356 "stop repeated retries and escalate"; one try per key); likewise an issue on an
+   attribute whose live repair the marketplace refused under another code
+   (`ctx.repair_rejected`, action `repair_rejected`): one automatic guess per attribute;
 3. an account-permission class or a qualification code -> `marketplace` (only the marketplace can
    approve a brand or category);
 4. an issue the marketplace's repairer could fix (`ctx.repairable`) -> `auto_repair` (the
@@ -72,6 +74,7 @@ class PlanContext:
     critical_keys: frozenset[str] = frozenset()
     provenance: Mapping[str, str] = field(default_factory=dict)
     repairable: frozenset[uuid.UUID] = frozenset()
+    repair_rejected: frozenset[uuid.UUID] = frozenset()
     approved_current: bool = False
     cycles_used: int = 0
     ai_allowed: bool = False
@@ -164,6 +167,8 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         return None
     if issue.recurrence_resolution in FIXED_RESOLUTIONS:
         return "staff", "recurrence"
+    if issue.id in ctx.repair_rejected:
+        return "staff", "repair_rejected"
     klass = _klass(issue.error_class)
     if klass is ErrorClass.ACCOUNT_PERMISSION or issue.marketplace_code in QUALIFICATION_CODES:
         return "marketplace", "permission"

@@ -8,7 +8,13 @@ own result committed.
 1. loads the listing's open blocking issues of its marketplace's adapter (the dry run's channel
    for `preview`, the live channel otherwise) and the planner's context;
 2. asks the marketplace's pure repairer (`registry.repairer`) for at most one repair per issue,
-   on the payload as built without the stored repairs;
+   on the payload as built without the stored repairs. The rules read the stored Product Type
+   Definition's enum and unit of every attribute the payload carries (else the template's
+   allowed values), the repairer's `repair_names` (the reverse index, the barcode alias, or the
+   attribute a `listing` issue's text names) and, after a submission only, the version's
+   approved images that passed their check and have a public copy (`image_slot`, CP-D23). An
+   issue on an attribute whose live repair was written for another issue is the marketplace
+   refusing the repaired value: no candidate, the planner's `repair_rejected` (staff);
 3. plans (`resolution.plan`), writes the repairs (one try per issue key and rule), then enqueues
    the job that sends the repaired payload, only when every blocking step is `auto_repair` (or
    `retry`) and the cap allows it:
@@ -20,7 +26,9 @@ own result committed.
    - `published` (BUYABLE with ERROR issues, CP-D21): no resend; the repairs wait for the next
      submission of any version.
    Only once that job is enqueued are the repaired issues closed `auto_fixed` (CP-D3): a repair
-   whose resend is not enqueued leaves its issue open with lane `auto_repair`.
+   whose resend is not enqueued leaves its issue open with lane `auto_repair`. A planned repair
+   the store refuses (a live repair of the attribute, or the key and rule tried once) is
+   re-planned `staff` (`repair_rejected`), so no `auto_repair` step stands without a repair.
 4. The cap (invariant 9): `cycles_since_human` counts the listing's jobs marked
    `trigger = "resolution"` since the last human event. A 4th automatic job is never enqueued:
    from `validated`, `needs_review` or `failed` the listing moves to `blocked/corrections_exhausted`;
@@ -43,6 +51,7 @@ from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorItem
 
 from app.adapters.registry import repairer
+from app.core.config import get_settings
 from app.core.errors import DomainError
 from app.core.logging import get_logger
 from app.db.models.ops import JobRun
@@ -155,32 +164,152 @@ async def _on_marketplace(uow: TenantUnitOfWork, listing: Any) -> bool:
     return False
 
 
+async def _ptd_extra(
+    uow: TenantUnitOfWork, source: Any, module: Any, names: Sequence[str]
+) -> tuple[dict[str, tuple[str, ...]], dict[str, tuple[str, ...]]]:
+    """The stored Product Type Definition's enum and unit of every attribute the payload carries
+    (`_enums` reads only the attributes the template gives allowed values)."""
+    from app.services.product_type_schema import current_schemas
+
+    enums: dict[str, tuple[str, ...]] = {}
+    units: dict[str, tuple[str, ...]] = {}
+    pinned = source.template
+    if pinned is None or not names or not hasattr(module, "ptd_enum"):
+        return enums, units
+    schema, _parent = await current_schemas(
+        uow, marketplace=source.marketplace, product_type=pinned.product_type, with_parent=False
+    )
+    if schema is None:
+        return enums, units
+    stored = await uow.ptd.schema_json(schema.definition_id)
+    for name in sorted(set(names)):
+        if found := module.ptd_enum(stored, name):
+            enums[name] = found
+        if hasattr(module, "ptd_units") and (unit := module.ptd_units(stored, name)):
+            units[name] = unit
+    return enums, units
+
+
+async def _main_ok_images(
+    uow: TenantUnitOfWork, listing: Any, image_ids: Sequence[uuid.UUID]
+) -> tuple[dict[uuid.UUID, str], tuple[tuple[uuid.UUID, str], ...]]:
+    """(the public locator of each version image that already has a public copy, the approved
+    images among them whose stored check for this marketplace passed, in listing order). Only
+    after a submission: a preview sends no image (CP-D23), and the copies exist only once a
+    publish of the version wrote them."""
+    from mkos_schemas.enums import Marketplace
+
+    from app.services.public_images import public_url
+
+    base = get_settings().image_public_base_url
+    if base is None or not image_ids:
+        return {}, ()
+    reports = await uow.images.live_reports_for_images(list(image_ids))
+    refs: dict[uuid.UUID, str] = {}
+    passing: list[tuple[uuid.UUID, str]] = []
+    for image_id in image_ids:
+        image = await uow.images.get_live(image_id)
+        if (
+            image is None
+            or image.public_id is None
+            or image.public_written_at is None
+            or image.clean_mime_type is None
+        ):
+            continue
+        refs[image_id] = public_url(base, image.public_id, image.clean_mime_type)
+        report = reports.get(image_id, {}).get(Marketplace(listing.marketplace))
+        if report is not None and report.pass_:
+            passing.append((image_id, refs[image_id]))
+    return refs, tuple(passing)
+
+
+@dataclass(frozen=True)
+class _Found:
+    candidates: Mapping[uuid.UUID, Any] = field(default_factory=dict)
+    rejected: frozenset[uuid.UUID] = frozenset()
+    """Issues on an attribute that already carries a live repair: the marketplace refused the
+    repaired value (P:D10, one try: staff, never a second automatic guess)."""
+    waiting: frozenset[uuid.UUID] = frozenset()
+    """Issues whose own live repair is not sent yet (CP-D21: it goes out with the next
+    submission); they stay `auto_repair`."""
+
+
+def _live_key(item_id: uuid.UUID | None, attribute: str) -> tuple[uuid.UUID | None, str]:
+    return item_id, attribute
+
+
 async def _candidates(
-    uow: TenantUnitOfWork, listing: Any, rows: Sequence[Any], *, stored: bool
-) -> dict[uuid.UUID, Any]:
-    """issue id -> the repairer's `Repair` for it (pure rules on the payload as built)."""
+    uow: TenantUnitOfWork,
+    listing: Any,
+    rows: Sequence[Any],
+    *,
+    stored: bool,
+    entry: Entry = "preview",
+    live: Sequence[Any] = (),
+) -> _Found:
+    """issue id -> the repairer's `Repair` for it (pure rules on the payload as built), and the
+    issues whose attribute already has a live repair (left out of the candidates)."""
     module = repairer(listing.marketplace)
     if module is None or not rows:
-        return {}
+        return _Found()
     source = await uow.listings.preview_source(listing.id)
     family = await uow.product_facts.resolve_family(listing.product_id)
     if source is None or source.version is None or family is None or source.template is None:
-        return {}
-    item = build_adapter_listing(source, facts=family, image_refs={}, idempotency_key="resolve")
+        return _Found()
+    refs: dict[uuid.UUID, str] = {}
+    main_ok: tuple[tuple[uuid.UUID, str], ...] = ()
+    if entry != "preview":  # CP-D23: image repairs only after a submission
+        plain = build_adapter_listing(source, facts=family, image_refs={}, idempotency_key="x")
+        refs, main_ok = await _main_ok_images(
+            uow, listing, [ref.image_id for ref in plain.listing.images]
+        )
+    item = build_adapter_listing(source, facts=family, image_refs=refs, idempotency_key="resolve")
     built = module.units_as_built(item)
     enums, units = await _enums(uow, source, module)
-    ctx = module.RepairContext(enums=enums, units=units, stored=stored)
+    sent_names = sorted({n for _unit, attributes in built for n in attributes})
+    extra_enums, extra_units = await _ptd_extra(uow, source, module, sent_names)
+    ctx = module.RepairContext(
+        enums={**extra_enums, **enums},
+        units={**extra_units, **units},
+        stored=stored,
+        main_ok_images=main_ok,
+    )
     sku_by_item = {r.id: r.seller_sku for r in await uow.listing_items.for_listing(listing.id)}
+    # (item, attribute) -> the issue each live repair was written for: the same open row is a
+    # repair still waiting for its send (CP-D21), any other row is the marketplace's answer to it
+    repaired = {_live_key(r.listing_item_id, r.attribute): r.source_issue_id for r in live}
+    names_of = getattr(module, "repair_names", None)
     found: dict[uuid.UUID, Any] = {}
+    rejected: set[uuid.UUID] = set()
+    waiting: set[uuid.UUID] = set()
     for row in rows:
-        names = module.attributes_for(item, row.field_path)
         units_for = [
             (unit, attributes)
             for unit, attributes in built
             if row.listing_item_id is None
             or sku_by_item.get(row.listing_item_id) == unit.seller_sku
         ]
+        text = f"{row.raw_message or ''} {row.message or ''}"
         for unit, attributes in units_for:
+            names = (
+                names_of(item, row.field_path, attributes, text)
+                if names_of is not None
+                else module.attributes_for(item, row.field_path)
+            )
+            # a live repair of the attribute (for this item, or listing-wide) was sent and refused
+            if any(
+                key in repaired and repaired[key] != row.id
+                for n in names
+                for key in (_live_key(row.listing_item_id, n), _live_key(None, n))
+            ):
+                rejected.add(row.id)
+                break
+            if any(
+                repaired.get(_live_key(i, n)) == row.id
+                for n in names
+                for i in (row.listing_item_id, None)
+            ):
+                waiting.add(row.id)
             hit = next(
                 (
                     r
@@ -192,7 +321,7 @@ async def _candidates(
             if hit is not None:
                 found[row.id] = hit
                 break
-    return found
+    return _Found(found, frozenset(rejected), frozenset(waiting))
 
 
 async def _cap(uow: TenantUnitOfWork, listing: Any, job: JobRun) -> bool:
@@ -335,7 +464,9 @@ async def _resolve(
     if not rows:
         return ResolutionResult()
     stored = await _on_marketplace(uow, listing)
-    candidates = await _candidates(uow, listing, rows, stored=stored)
+    live = await uow.listing_repairs.live_for_listing(listing.id)
+    found = await _candidates(uow, listing, rows, stored=stored, entry=entry, live=live)
+    candidates = found.candidates
     recurrence = await uow.resolution.recurrence_resolutions(
         [r.recurrence_of_id for r in rows if r.recurrence_of_id is not None]
     )
@@ -343,6 +474,7 @@ async def _resolve(
     ctx = PlanContext(
         critical_keys=await uow.product_facts.critical_keys(),
         repairable=frozenset(candidates),
+        repair_rejected=found.rejected,
         approved_current=listing.approved_version_id == listing.current_version_id,
         cycles_used=cycles,
     )
@@ -372,6 +504,16 @@ async def _resolve(
         )
         if inserted is not None:
             ids[step.issue_id] = inserted
+    # a planned repair the store refused (a live repair of the attribute, or this key and rule
+    # tried once already) is no automatic step: staff looks (never `auto_repair` with no repair)
+    steps = tuple(
+        (
+            Step(s.issue_id, "staff", s.cause, "repair_rejected")
+            if s.lane == "auto_repair" and s.issue_id not in ids and s.issue_id not in found.waiting
+            else s
+        )
+        for s in steps
+    )
     written = {i: candidates[i] for i in ids}
     await _audit(uow, listing, job, written, ids)
     automatic = all(s.lane in ("auto_repair", "retry") for s in steps)

@@ -83,6 +83,15 @@ def test_recurrence_of_a_fixed_key_is_staff_even_if_repairable() -> None:
     assert _lane(answered, repairable=frozenset({answered.id})) == "auto_repair"
 
 
+def test_a_refused_live_repair_is_staff_even_if_repairable() -> None:
+    """Round 1 R1-2: the marketplace refused the value Kuinn already repaired (another code, so
+    no recurrence): one automatic guess per attribute, then staff."""
+    issue = _issue(marketplace_code="99301")
+    ctx = PlanContext(repairable=frozenset({issue.id}), repair_rejected=frozenset({issue.id}))
+    (step,) = plan([issue], ctx)
+    assert (step.lane, step.action) == ("staff", "repair_rejected")
+
+
 def test_marketplace_lane() -> None:
     gated = _issue(error_class=ErrorClass.ACCOUNT_PERMISSION.value, field_path="listing")
     assert _lane(gated) == "marketplace"

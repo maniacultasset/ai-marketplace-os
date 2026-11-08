@@ -4,7 +4,6 @@ template sends can still be refused by the marketplace and folded by the repaire
 
 from __future__ import annotations
 
-import json
 import uuid
 from typing import Any
 
@@ -201,44 +200,8 @@ async def test_no_resend_when_the_approval_is_not_current() -> None:
     assert await _auto_resubmit(object(), listing, object()) is None  # type: ignore[arg-type]
 
 
-# ---- AC14: three automatic cycles, then the cap ----
-
-
-async def test_the_fourth_automatic_job_is_never_enqueued(
-    api: httpx.AsyncClient, prev: PubWorld, marketplace_enum: None
-) -> None:
-    from app.repositories.uow import tenant_uow
-
-    made = await _failed_on_colour(api, prev)
-    resend = _publish_jobs(prev, made.listing_id)[1]
-    # three resolution jobs since the last human event: the cap holds the next one
-    for _ in range(2):
-        prev.conn.execute(
-            "INSERT INTO job_runs (tenant_id, kind, listing_id, entity_type, entity_id, "
-            "payload_json, correlation_id, status, finished_at, started_at) VALUES "
-            "(%s, 'listing_status_sync', %s, 'listing', %s, %s, gen_random_uuid(), "
-            "'succeeded', now(), now())",
-            [
-                prev.world.tenant("acme"),
-                made.listing_id,
-                made.listing_id,
-                json.dumps(
-                    {
-                        "v": 1,
-                        "listing_id": str(made.listing_id),
-                        "op": "preview",
-                        "trigger": "resolution",
-                    }
-                ),
-            ],
-        )
-    async with tenant_uow(prev.world.tenant("acme")) as uow:
-        assert await uow.resolution.cycles_since_human(made.listing_id) == 3
-    prev.fake.set_fail_fields(
-        {"attributes.size": ("99300", "Bad size.", ErrorCode.VALUE_NOT_ALLOWED)}
-    )
-    await run_job(resend["id"])
-    assert len(_publish_jobs(prev, made.listing_id)) == 2
+# ---- AC14: the cap itself is proven in test_resolution_loop.py (a repair written at three
+# cycles, no 4th job, `blocked/corrections_exhausted`) ----
 
 
 async def test_a_user_publish_resets_the_cycles(prev: PubWorld) -> None:
