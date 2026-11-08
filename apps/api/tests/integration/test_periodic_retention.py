@@ -85,8 +85,43 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
         "image_orphans": 0,
         "deleted_image_objects": 0,  # SI1 T22: runs at the end of retention
         "image_candidates": 0,  # SI7: after the deleted images' objects
+        "tenants_failed": 0,  # V1 hardening #16
     }
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)
+
+
+async def test_one_tenant_error_never_skips_the_others_or_the_sweeps(
+    jobs_db: JobWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1 hardening #16: the first tenant's prune raising leaves the second pruned and the
+    sweeps run; the failure is counted, not raised."""
+    from app.repositories import retention
+    from app.workers import periodic
+
+    acme, bharat = jobs_db.tenant("acme"), jobs_db.tenant("bharat")
+    job = _old_job(jobs_db, "bharat", days=100)
+    real = retention.prune_tenant
+
+    async def flaky(session: Any, tenant_id: Any) -> Any:
+        if tenant_id == acme:
+            raise RuntimeError("transient")
+        return await real(session, tenant_id)
+
+    async def ordered(session: Any) -> list[Any]:
+        return [acme, bharat]
+
+    swept: list[str] = []
+
+    async def sweep() -> int:
+        swept.append("orphans")
+        return 0
+
+    monkeypatch.setattr(retention, "prune_tenant", flaky)
+    monkeypatch.setattr(retention, "tenant_ids", ordered)
+    monkeypatch.setattr(periodic, "sweep_image_orphans", sweep)
+    totals = await retention_daily()
+    assert totals["tenants_failed"] == 1 and totals["job_runs"] == 1
+    assert not _exists(jobs_db, "job_runs", job) and swept == ["orphans"]
 
 
 async def test_retention_keeps_young_import_and_its_job(jobs_db: JobWorld) -> None:
