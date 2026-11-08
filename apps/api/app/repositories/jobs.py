@@ -48,7 +48,10 @@ _KEY_BEGAN: Final = text(
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
-ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document", "image_candidate"})
+# SI12: `size_chart_read` (0023 widened `ck_job_runs_entity_type`)
+ENTITY_TYPES: Final = frozenset(
+    {"listing", "import", "image", "brand_document", "image_candidate", "size_chart_read"}
+)
 
 
 def job_idempotency_key(
