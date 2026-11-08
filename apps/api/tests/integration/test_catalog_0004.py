@@ -90,6 +90,7 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef ORDER BY 1"
     ).fetchall()
     assert [r[0] for r in rows] == [
+        "app_ai_credit_auto_clear(numeric)",  # 0021 (SI10 D3)
         "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
         "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
         "app_create_google_applicant(text,text,text,text,text,text,text)",  # 0012 (ADR-0020)
