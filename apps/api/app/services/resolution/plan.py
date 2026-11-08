@@ -249,3 +249,12 @@ def lane_for(error_code: str, error_class: str, source: str = "amazon_adapter") 
     )
     found = _lane(view, PlanContext())
     return "staff" if found is None else found[0]
+
+
+def label(issue: IssueView, ctx: PlanContext) -> tuple[Lane, Cause] | None:
+    """The lane and cause the planner gives one issue (None for a WARNING): the resolution read
+    and the inbox label each row with the same rules the executor plans with (T20)."""
+    found = _lane(issue, ctx)
+    if found is None:
+        return None
+    return found[0], cause_of(issue, found[0], ctx.provenance)

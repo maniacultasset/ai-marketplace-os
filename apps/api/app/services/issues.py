@@ -332,8 +332,9 @@ async def record_auto_fixes(
 # ---- the inbox routes ----
 
 
-def issue_fields(row: Any) -> dict[str, Any]:
-    """The `IssueOut` fields of a row (the internal keys stay out)."""
+def issue_fields(row: Any, labelled: tuple[str, str] | None = None) -> dict[str, Any]:
+    """The `IssueOut` fields of a row (the internal keys stay out); `labelled` is the row's
+    (lane, cause) from `resolution.read.labels_for` (SI11 T20), None for a WARNING."""
     names = (
         "id", "listing_id", "marketplace", "listing_item_id", "listing_version_id", "source",
         "field_path", "error_code", "error_class", "retry_class", "severity", "auto_fixable",
@@ -342,16 +343,20 @@ def issue_fields(row: Any) -> dict[str, Any]:
         "resolution", "action_taken", "resolved_at", "resolved_by_user_id", "human_task_id",
         "recurrence_of_id", "created_at", "updated_at",
     )  # fmt: skip
-    return {name: getattr(row, name) for name in names}
+    lane, cause = labelled if labelled is not None else (None, None)
+    return {**{name: getattr(row, name) for name in names}, "lane": lane, "cause": cause}
 
 
 async def list_issues(
     principal: Principal, filters: IssueFilter, *, after: Keyset | None, limit: int
 ) -> tuple[list[dict[str, Any]], bool, Keyset | None]:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        from app.services.resolution.read import labels_for
+
         rows, more = await uow.listing_issues.page(filters, after=after, limit=limit)
+        found = await labels_for(uow, rows)
     next_key = (rows[-1].created_at, rows[-1].id) if more and rows else None
-    return [issue_fields(r) for r in rows], more, next_key
+    return [issue_fields(r, found.get(r.id)) for r in rows], more, next_key
 
 
 async def dismiss_issue(
