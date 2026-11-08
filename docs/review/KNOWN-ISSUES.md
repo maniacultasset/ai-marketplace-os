@@ -162,8 +162,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 - **Tenant purge and image objects (SI1, CP9).** The tenant purge deletes every public image copy first
   (`purge_public_images`: `seed --reset` runs it, and a by-hand `purge_tenant` needs `app.cli images unpublish
   --tenant <id>` before it; the 0015 delete guard refuses the purge otherwise). It does not delete the private
-  originals or the derived objects (`<tenant_id>/<product_id>/images/...` and `.../derived/...`): they keep their
-  tenant prefix and can be removed later by prefix. A crash between a public PUT and its `public_written_at` mark
+  originals, the derived objects or (SI7) the image candidate objects (`<tenant_id>/<product_id>/images/...`,
+  `.../derived/...` and `.../candidates/...`): they keep their tenant prefix and can be removed later by prefix. A crash between a public PUT and its `public_written_at` mark
   leaves an object only the purge step finds (the name stays as a tombstone). Copies a marketplace or a CDN edge
   already fetched stay there (edge cache one day, ADR-0026).
 - **Auto-fix and the issue inbox (SI4 phase A, 2026-11-07).** Fixed on `feat/si4-auto-fix`:
@@ -183,6 +183,16 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
     `blocked/human_task_open` (or `blocked/corrections_exhausted`) listing that is still blocking
     is refused by the status guard (LST01), as before SI4; a regenerate is the way out until a
     migration adds the edge.
+
+- **Amazon `VALIDATION_PREVIEW` before approval is deferred (SI9 D10, LOW).** The pre-approval check is the local
+  mapping plus the stored Product Type Definition (`services/adapter_check.py`); Amazon's own preview call needs the
+  marketplace token in a new job path, shares the publish rate limit and needs fake-server support. Trigger: after
+  the first real create shows what the local map and definition check miss.
+- **The Amazon error map is doc-sourced (SI9 D4, LOW).** `error_map.amazon.json` holds codes 90220 and 18027 and the
+  five `Issue.categories` rows from Amazon's public SP-API model (`policy_ref.observed false`); 99010, 8560, 8105,
+  8541, 8542, 8572, 18028, 5665 and 5461 were left out (their help pages need a login) and reach the seller through
+  the category rows or as `MARKETPLACE_UNKNOWN_ERROR`. Replace with observed version 2 rows once the prod issue codes
+  are pulled (checklist §6 item 8).
 
 ## S16 follow-ups
 

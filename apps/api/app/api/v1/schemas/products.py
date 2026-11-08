@@ -263,6 +263,12 @@ class ProductPatch(StrictModel):
         return self
 
 
+class RecategorizeIn(StrictModel):
+    """SI9: the new category of a product that already has listings (never a published one)."""
+
+    category: Slug
+
+
 class FibreOut(WireModel):
     fibre: str
     percent: float
@@ -275,6 +281,11 @@ class ProductImageOut(WireModel):
     position: int
     status: str
     compliance_status: Literal["pending", "passed", "failed"]
+    # SI7 (MINOR, defaults keep older bodies valid): where the pixels came from, the image it was
+    # made from, and the candidate kinds the seller may ask for on this image.
+    origin: Literal["seller", "generated", "rendered"] = "seller"
+    parent_image_id: UUID | None = None
+    fixes: list[Literal["fix", "white_background"]] = Field(default_factory=list)
 
 
 class ColourwayOut(WireModel):
@@ -293,6 +304,17 @@ class PhotoFactOut(WireModel):
     image_id: UUID
     confirmed: bool
     confirmed_at: AwareDatetime | None = None
+
+
+class PhotoReadOut(WireModel):
+    """SI9: the newest photo read of the product (the generation that saved a version).
+    `read` with counts, `unchanged` (same photos as last time), `failed` (the photo call failed,
+    the listing was still saved) or `not_read` (no photo, or nothing left to read)."""
+
+    status: Literal["read", "unchanged", "failed", "not_read"]
+    at: AwareDatetime
+    written: int = Field(ge=0, le=16)
+    asked: int = Field(ge=0, le=16)
 
 
 class ProductOut(WireModel):
@@ -342,6 +364,9 @@ class ProductOut(WireModel):
     image_details: list[ProductImageOut] = Field(default_factory=list)
     colourways: list[ColourwayOut] = Field(default_factory=list)
     photo_facts: list[PhotoFactOut] = Field(default_factory=list)
+    photo_read: PhotoReadOut | None = Field(
+        default=None, description="The newest photo read; product detail only, null on lists."
+    )
     product_identifier: ProductIdentifierOut | None = Field(
         default=None, description="SI5: the barcode (always null on a style)."
     )

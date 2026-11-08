@@ -14,22 +14,40 @@ from .test_amazon_adapter import _five
 
 
 @pytest.mark.parametrize(
-    ("mode", "state", "status"),
+    ("mode", "state", "status", "not_buyable"),
     [
-        ("buyable", "live", "published"),
-        ("discoverable", "processing", "published"),
-        ("inactive", "inactive", "published"),
-        ("rejected", "rejected", "failed"),
+        ("buyable", "live", "published", False),
+        # SI9 B3 (CP-D6): a summary with an ASIN, no BUYABLE and no ERROR is on Amazon, not buyable
+        ("discoverable", "inactive", "published", True),
+        ("inactive", "inactive", "published", True),
+        ("no_asin", "inactive", "published", False),
+        ("no_summary", "processing", "published", False),
+        ("rejected", "rejected", "failed", False),
     ],
 )
-async def test_amazon_get_states(mode: str, state: str, status: str) -> None:
+async def test_amazon_get_states(mode: str, state: str, status: str, not_buyable: bool) -> None:
     app = build_fake()
     adapter = amazon_adapter(app)
     sent = _five()
     await adapter.create_listing(sent)
     app.state.fake.spapi_get[sent.seller_sku] = mode
     got = await adapter.get_listing(sent.seller_sku, listing_id=sent.listing_id)
-    assert (got.marketplace_state, got.status) == (state, status)
+    assert (got.marketplace_state, got.status, got.not_buyable) == (state, status, not_buyable)
+    if mode in ("discoverable", "inactive"):
+        assert got.external_id and got.external_id.startswith("B0")
+    if mode in ("no_asin", "no_summary"):
+        assert got.external_id is None
+
+
+async def test_amazon_discoverable_with_attribute_error_is_partial_not_unbuyable() -> None:
+    issue = {
+        "code": "90220",
+        "message": "Bad title.",
+        "severity": "ERROR",
+        "attributeNames": ["item_name"],
+    }
+    got = await _read([issue])
+    assert (got.marketplace_state, got.not_buyable) == ("partially_live", False)
 
 
 async def test_amazon_get_gone_raises_not_found() -> None:
@@ -49,10 +67,22 @@ async def test_fake_get_control_and_reset_prefix() -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://fake") as client:
         response = await client.post(
-            "/__control", json={"spapi_get": {"E2E-A": "buyable", "X": "bad"}}
+            "/__control",
+            json={
+                "spapi_get": {
+                    "E2E-A": "buyable",
+                    "E2E-B": "no_summary",
+                    "E2E-C": "no_asin",
+                    "X": "bad",
+                }
+            },
         )
         assert response.status_code == 200
-        assert app.state.fake.spapi_get == {"E2E-A": "buyable"}
+        assert app.state.fake.spapi_get == {
+            "E2E-A": "buyable",
+            "E2E-B": "no_summary",
+            "E2E-C": "no_asin",
+        }
         app.state.fake.spapi_items[("S", "E2E-A")] = {
             "productType": "x",
             "attributes": {},

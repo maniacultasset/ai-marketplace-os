@@ -6,7 +6,7 @@ job's adapter (no network). Helpers make approved listings, call the publish rou
 from __future__ import annotations
 
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -124,6 +124,41 @@ async def approved(
         )
     assert outcome.items[0].http_status == 200, outcome.items[0]
     return made
+
+
+def _check_without(monkeypatch: pytest.MonkeyPatch, drop: Callable[[Any], bool]) -> None:
+    """Generation and approval with the SI9 marketplace check minus the items `drop` matches
+    (set-up only); publish keeps the real check."""
+    from app.services import adapter_check as check
+    from app.services import generation_persist, review
+
+    real = check.adapter_check
+
+    async def pre_rule(*args: Any, **kwargs: Any) -> Any:
+        report = await real(*args, **kwargs)
+        if report is None:
+            return None
+        kept = [e for e in report.errors if not drop(e)]
+        return report.model_copy(update={"errors": kept})
+
+    monkeypatch.setattr(generation_persist, "adapter_check", pre_rule)
+    monkeypatch.setattr(review, "adapter_check", pre_rule)
+
+
+def before_identifier_rule(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generation and approval as they ran before SI5's identifier rule (set-up only): the same
+    SI9 marketplace check with its IDENTIFIER_MISSING items left out, so a test can approve a
+    bare item and prove the publish-time refusal (the backstop); publish keeps the real check."""
+    from mkos_schemas.codes import ErrorCode
+
+    _check_without(monkeypatch, lambda e: e.error_code is ErrorCode.IDENTIFIER_MISSING)
+
+
+def before_audience_rule(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generation and approval as they ran before SI8's audience rule (set-up only): the SI9
+    marketplace check without its `facts.gender` items, so a test can approve an apparel item
+    with no audience and prove the publish-time refusal (the backstop)."""
+    _check_without(monkeypatch, lambda e: e.field == "facts.gender")
 
 
 async def post_publish(

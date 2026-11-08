@@ -17,6 +17,7 @@ from typing import Any, Final
 
 from mkos_schemas.enums import ErrorSource, Marketplace
 from mkos_schemas.errors import ErrorReport
+from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
 from mkos_schemas.validation import ValidationResult, ValidationSummary
 
@@ -35,6 +36,7 @@ BLOCKED_REASON: Final = "validation_errors"
 class Check:
     report: ErrorReport
     pins: Pins
+    template: CategoryTemplate | None = None  # SI9: the questions' template subset
 
 
 def to_detail(
@@ -57,6 +59,7 @@ def listing_fields(listing: Any) -> dict[str, Any]:
         "current_version_id": listing.current_version_id,
         "approved_version_id": listing.approved_version_id,
         "live_url": getattr(listing, "live_url", None),
+        "external_id": getattr(listing, "external_id", None),
         "status_changed_at": listing.status_changed_at,
         "created_at": listing.created_at,
         "updated_at": listing.updated_at,
@@ -89,9 +92,16 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     if family is None:
         raise NotFoundError("product_id")
     facts = family[0]
+    rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
     # SI2 T16 (D5): the engine judges the seller's factual values, never the AI's
-    report = recheck(seller_overlay(canonical, facts, rules.template), rules, for_rules(facts))
+    report = recheck(
+        seller_overlay(canonical, facts, rules.template),
+        rules,
+        for_rules(facts),
+        rejections=rejections,
+    )
     return Check(
+        template=rules.template,
         report=report,
         pins=Pins(
             rules_version=rules.ruleset.rules_version,
@@ -102,8 +112,10 @@ async def rules_check(uow: TenantUnitOfWork, listing: Any, canonical: CanonicalL
     )
 
 
-def human_move(report: ErrorReport) -> tuple[str, str | None]:
-    if report.blocking:
+def human_move(report: ErrorReport, adapter: ErrorReport | None = None) -> tuple[str, str | None]:
+    """The status a human check point moves to. SI9 B4: a blocking marketplace check blocks as
+    a Rules block does; its warnings change nothing (CP-D3)."""
+    if report.blocking or (adapter is not None and adapter.blocking):
         return "blocked", BLOCKED_REASON
     if report.errors:
         return "needs_review", None

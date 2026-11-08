@@ -161,6 +161,10 @@ class FakeStorage:
         self._call("presign_put")
         return f"http://127.0.0.1:1/{bucket}/{key}?X-Amz-Signature=fake"
 
+    async def presign_get(self, bucket: str, key: str, *, expires_s: int) -> str:
+        self._call("presign_get")
+        return f"http://127.0.0.1:1/{bucket}/{key}?X-Amz-Signature=fake-get-{expires_s}"
+
 
 def use_storage(monkeypatch: pytest.MonkeyPatch, store: Any) -> None:
     """Point every image module's `get_storage` at `store`."""

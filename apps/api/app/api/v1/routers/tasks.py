@@ -10,7 +10,7 @@ from fastapi import Path as PathParam
 
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, get_current_principal
-from app.api.v1.schemas.tasks import TaskAnswerIn, TaskOut, TaskPage
+from app.api.v1.schemas.tasks import TaskAnswerIn, TaskCloseIn, TaskOut, TaskPage
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import tasks
@@ -50,4 +50,19 @@ async def tasks_answer(
     again is 200; another answer to a closed task is 409 INVALID_STATUS_TRANSITION. Regenerate
     the listing to use the answer."""
     stored = await tasks.answer_task(principal, idempotency_key, request.url.path, task_id, body)
+    return TaskOut.model_validate(stored)
+
+
+@route(router, OPS["tasks_close"])
+async def tasks_close(
+    task_id: Annotated[UUID, PathParam()],
+    body: TaskCloseIn,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> TaskOut:
+    """Close an account task (`marketplace_error_review`, `permission_decision`) as `done` or
+    `dismissed`. The same close again is 200; another close of a closed task is 409
+    INVALID_STATUS_TRANSITION; any other task kind is 422."""
+    stored = await tasks.close_task(principal, idempotency_key, request.url.path, task_id, body)
     return TaskOut.model_validate(stored)

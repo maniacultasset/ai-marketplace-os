@@ -12,7 +12,8 @@ import pytest
 from app.core.resolved_facts import ProductFacts, ResolvedFact
 from app.services import photo_facts as pf
 from mkos_schemas.agent import AgentRunRecord
-from mkos_schemas.jobs import ContextImage, PhotoObservation, PhotoTarget
+from mkos_schemas.jobs import CategoryTemplate, ContextImage, PhotoObservation, PhotoTarget
+from tests.unit.test_photo_targets import KURTA
 
 _JPEG = b64encode(b"\xff\xd8\xff\xe0" + b"\x00" * 16 + b"\xff\xd9").decode("ascii")
 _TS = datetime(2026, 11, 7, tzinfo=UTC)
@@ -28,6 +29,8 @@ IMAGES = [
     ContextImage(image_id=CHART, slot="size_chart", width=8, height=8, data_b64=_JPEG),
 ]
 NECK = ["round neck", "v-neck", "mandarin collar"]
+# a template that lists every photo key with no enum spec: the whole vocabulary fits, as written
+OPEN = KURTA.model_copy(update={"specs": {}, "optional_attributes": list(pf.V1_KEYS)})
 COLOURS = ["black", "red", "maroon", "navy blue"]
 # The DB shapes of human_tasks (0002_listing_pipeline.py ck_human_tasks_*).
 TARGET_PATH = re.compile(r"^(facts|brand|account)(\.[a-z0-9_]{1,64}){1,2}$")
@@ -75,6 +78,8 @@ def run(
     stored: ProductFacts | None = None,
     records: list[AgentRunRecord] | None = None,
     required: frozenset[str] = frozenset({"color"}),
+    rejected: dict[str, str] | None = None,
+    template: CategoryTemplate | None = None,
 ) -> pf.PhotoDecision:
     return pf.screen(
         observations,
@@ -83,6 +88,8 @@ def run(
         images=IMAGES,
         facts=stored or facts(),
         required=required,
+        rejected=rejected or {},
+        template=template or OPEN,
     )
 
 
@@ -339,3 +346,155 @@ def test_every_task_passes_the_db_shapes() -> None:
         assert TARGET_PATH.match(task.target_path)
         assert task.target_path == f"facts.attributes.{task.key}"
         assert task.kind in ("missing_fact", "conflicting_facts")
+
+
+# ---- SI9 T10 (AC11): a value the seller rejected is never written or asked again ----
+
+
+def test_rejected_value_not_written_again() -> None:
+    decision = run(
+        [obs("neckline", "v-neck")], [target("neckline")], rejected={"neckline": "v-neck"}
+    )
+    assert decision.writes == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_value_not_asked_again() -> None:
+    decision = run(
+        [obs("neckline", "v-neck", confidence=0.5)],
+        [target("neckline")],
+        required=frozenset({"neckline"}),
+        rejected={"neckline": "v-neck"},
+    )
+    assert decision.tasks == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_value_no_conflict_question() -> None:
+    decision = run(
+        [obs("neckline", "v-neck", confidence=0.95)],
+        [target("neckline", mode="check")],
+        stored=facts(neckline=seller("neckline", "round neck")),
+        rejected={"neckline": "v-neck"},
+    )
+    assert decision.tasks == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_folds() -> None:
+    decision = run(
+        [obs("neckline", "V-Neck")], [target("neckline")], rejected={"neckline": "v neck"}
+    )
+    assert decision.writes == () and ("neckline", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_in_template_spelling_compares_canonically() -> None:
+    fits = ["regular fit", "slim fit", "relaxed fit"]
+    decision = run(
+        [obs("fit", "regular fit")], [target("fit", values=fits)], rejected={"fit": "Regular"}
+    )
+    assert decision.writes == () and ("fit", "rejected_before") in decision.dropped
+
+
+def test_rejected_marker_canonical_cannot_read_compares_by_fold() -> None:
+    decision = run([obs("color", "maroon")], [target("color")], rejected={"color": "Maroon"})
+    assert decision.writes == () and ("color", "rejected_before") in decision.dropped
+    other = run([obs("color", "maroon")], [target("color")], rejected={"color": "Zzz-Unknown"})
+    assert [w.key for w in other.writes] == ["color"]
+
+
+def test_a_different_value_still_fills() -> None:
+    decision = run(
+        [obs("neckline", "round neck")], [target("neckline")], rejected={"neckline": "v-neck"}
+    )
+    assert [(w.key, w.value) for w in decision.writes] == [("neckline", "round neck")]
+
+
+def test_no_marker_as_today() -> None:
+    decision = run([obs("neckline", "v-neck")], [target("neckline")], rejected={})
+    assert [w.key for w in decision.writes] == ["neckline"]
+
+
+# ---- SI9 T12 (AC13, AC15; CP-D16, CP-D17, CP-D25) ----
+
+
+def _full(key: str, mode: str = "fill") -> PhotoTarget:
+    return target(key, mode, list(pf.VOCAB[key]))
+
+
+def _neck_only_round() -> CategoryTemplate:
+    spec = KURTA.specs["neckline"].model_copy(
+        update={"allowed_values": ["Round Neck"], "value_map": {}}
+    )
+    return KURTA.model_copy(update={"specs": {**KURTA.specs, "neckline": spec}})
+
+
+def test_si9_no_conflict_for_a_value_the_template_lacks() -> None:
+    decision = run(
+        [obs("neckline", "crew neck", confidence=0.99)],
+        [_full("neckline", "check")],
+        stored=facts(neckline=seller("neckline", "crew neck")),
+        template=_neck_only_round(),
+    )
+    assert decision.tasks == () and ("neckline", "not_in_template") in decision.dropped
+
+
+def test_si9_template_spelling_stored_is_no_conflict() -> None:
+    decision = run(
+        [obs("fit", "regular fit", confidence=0.99)],
+        [_full("fit", "check")],
+        stored=facts(fit=seller("fit", "Regular")),
+        template=KURTA,
+    )
+    assert decision.tasks == () and decision.writes == ()
+
+
+def test_si9_fill_writes_the_template_spelling() -> None:
+    decision = run([obs("fit", "regular fit")], [_full("fit")], template=KURTA)
+    assert [(w.key, w.value) for w in decision.writes] == [("fit", "Regular")]
+
+
+def test_si9_out_of_subset_read_is_dropped() -> None:
+    confident = run([obs("fit", "oversized")], [_full("fit")], template=KURTA)
+    assert confident.writes == () and ("fit", "not_in_template") in confident.dropped
+    low = run(
+        [obs("fit", "oversized", confidence=0.5)],
+        [_full("fit")],
+        required=frozenset({"fit"}),
+        template=KURTA,
+    )
+    assert low.tasks == ()
+
+
+def test_si9_question_offers_the_subset_in_template_spellings() -> None:
+    decision = run(
+        [
+            obs(
+                "fit",
+                "slim fit",
+                confidence=0.5,
+                alternatives=[
+                    {"value": "oversized", "confidence": 0.3},
+                    {"value": "regular fit", "confidence": 0.2},
+                ],
+            )
+        ],
+        [_full("fit")],
+        required=frozenset({"fit"}),
+        template=KURTA,
+    )
+    (task,) = decision.tasks
+    allowed = task.expected_answer["allowed_values"]
+    assert set(allowed) == {"Regular", "Slim", "Relaxed"}
+    assert [s["value"] for s in task.suggestions] == ["Slim", "Regular"]  # oversized dropped
+
+
+@pytest.mark.parametrize("key", ["embroidery", "occasion"])
+def test_si9_unlisted_keys_are_never_asked(key: str) -> None:
+    first, second = pf.VOCAB[key][1], pf.VOCAB[key][2]
+    differs = run(
+        [obs(key, second, confidence=0.99)],
+        [_full(key, "check")],
+        stored=facts(**{key: seller(key, first)}),
+        template=KURTA,
+    )
+    assert differs.tasks == ()
+    absent = run([obs(key, second)], [_full(key)], template=KURTA)
+    assert [w.key for w in absent.writes] == [key]

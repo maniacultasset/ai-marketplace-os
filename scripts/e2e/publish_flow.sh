@@ -178,7 +178,7 @@ wait_listing() {
 # generated_approved SKU: a product, a stub generation and the reviewer's approval; sets
 # $listing_id and $version.
 generated_approved() {
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\"}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"identifier_exemption\": true}"
   expect 201
   local product job
   product="$(json 'b["id"]')"
@@ -247,6 +247,9 @@ call POST "$api/listings/publish" "$reviewer" "e2e-pub-rev-$run" "$items"
 expect 403
 
 step publish_202
+# SI9: the fake's default GET (DISCOVERABLE + ASIN) reads as on Amazon, not buyable; this flow
+# checks "published, still processing" first, so the SKU has no product page yet
+fake_control "{\"spapi_get\": {\"$prefix-A\": \"no_summary\"}}"
 call POST "$api/listings/publish" "$operator" "e2e-pub-$run" "$items"
 expect 202
 json 'b["items"][0]["http_status"] == 202 and b["items"][0]["listing_status"] == "publishing"' >/dev/null

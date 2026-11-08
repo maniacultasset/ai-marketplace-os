@@ -142,6 +142,22 @@ def ensure_brand_manufacturer(conn: Conn, tenant_id: UUID) -> None:
         brand_manufacturer(conn, tenant_id)
 
 
+def ean() -> str:
+    """SI5 B2: a fresh, valid EAN-13 (an Amazon create needs a barcode or the GTIN exemption).
+    Random, so `products_identifier_uq` holds across the products of one tenant."""
+    from uuid import uuid4
+
+    from app.core.identifiers import gtin_valid
+
+    body = f"890{uuid4().int % 10**9:09d}"
+    return next(body + d for d in "0123456789" if gtin_valid(body + d))
+
+
+def barcoded() -> dict[str, Any]:
+    """The identifier columns of a sellable product with a fresh EAN (SI5 B2)."""
+    return {"identifier_type": "ean", "identifier_value": ean(), "identifier_status": "provided"}
+
+
 SELLER_PRICED: dict[str, Any] = {
     "mrp": "999.00",
     "selling_price": "499.00",
@@ -151,13 +167,15 @@ SELLER_PRICED: dict[str, Any] = {
 
 def seller_product(conn: Conn, tenant_id: UUID, kind: str = "standalone", **columns: Any) -> UUID:
     """SI2: a product the adapters can publish: priced, with a country, the seller's colour and
-    fabric (standalone) and the tenant's brand-default manufacturer. SI8: a style or standalone
-    also gets `gender` women (a child never does: `ck_products_style_owned`); the brand resolves
-    to the tenant name. Columns override."""
+    fabric (standalone) and the tenant's brand-default manufacturer; since SI5 a sellable one
+    (not a style) has an EAN. SI8: a style or standalone also gets `gender` women (a child never
+    does: `ck_products_style_owned`); the brand resolves to the tenant name. Columns override."""
     ensure_brand_manufacturer(conn, tenant_id)
     defaults: dict[str, Any] = dict(SELLER_PRICED)
     if kind != "child":
         defaults["gender"] = "women"
+    if kind != "style":
+        defaults.update(barcoded())
     if kind == "standalone":
         defaults["attributes"] = {
             "color": fact(value="navy blue"),
@@ -520,3 +538,20 @@ def listing_issue(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any)
         prefix = f"{values['source']}|{values['field_path']}|{values['error_code']}|"
         values["dedupe_key"] = prefix + str(values.get("rule_id") or "")
     return insert(conn, "listing_issues", **values)  # type: ignore[no-any-return]
+
+
+def image_candidate(
+    conn: Conn, tenant_id: UUID, product_id: UUID, source_image_id: UUID | None, **columns: Any
+) -> UUID:
+    """SI7: a queued `fix` candidate of `source_image_id` (or a `size_chart` one without a
+    source), with a fresh cache key."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "product_id": product_id,
+        "source_image_id": source_image_id,
+        "kind": "fix" if source_image_id is not None else "size_chart",
+        "source_hash": f"{n:064x}",
+        "generator_key": "fix/v1",
+    }
+    return insert(conn, "image_candidates", **{**defaults, **columns})  # type: ignore[no-any-return]

@@ -38,6 +38,7 @@ GOOGLE_AUTHORIZE_EXAMPLE: Final = (
 GOOGLE_CALLBACK_LOCATION: Final = "https://kuinn.in/auth/google?handle=gh_example_opaque_value"
 ISSUE: Final = "0b1c2d3e-0000-4000-8000-000000001001"
 TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
+CANDIDATE: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 SUBMISSION: Final = "0b1c2d3e-0000-4000-8000-000000001301"
 LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
@@ -463,6 +464,31 @@ _GOOGLE_SIGNUP_STATUS: Final = {
     "decided_at": None,
 }
 
+# SI7: a ready white-background candidate of the main image (the signed previews are examples)
+_CANDIDATE: Final = {
+    "id": CANDIDATE,
+    "kind": "white_background",
+    "source_image_id": IMAGE,
+    "colourway_id": None,
+    "status": "ready",
+    "failure_reason": None,
+    "width": 1200,
+    "height": 1200,
+    "fidelity": {
+        "mask_iou": 0.97,
+        "colour_distance": 0.02,
+        "agreement": 0.99,
+        "hole_share": 0.0,
+    },
+    "model": "google/gemini-2.5-flash-image",
+    "prompt_version": "image_edit/white_bg/v1",
+    "cost_usd": "0.039000",
+    "preview_url": "https://storage.example/candidate.jpg?X-Goog-Signature=example",
+    "source_preview_url": "https://storage.example/clean.jpg?X-Goog-Signature=example",
+    "accepted_image_id": None,
+    "created_at": T0,
+}
+
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
     {
         "auth_login": {
@@ -643,6 +669,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "gender": "women",
             "variant_attributes": {},
             "photo_facts": [_PHOTO_FACT],
+            "photo_read": {"status": "read", "at": T1, "written": 1, "asked": 0},
         },
         "brand_profile_get": _BRAND_PROFILE,
         "brand_profile_update": _BRAND_PROFILE,
@@ -659,6 +686,10 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "photo_facts": [{**_PHOTO_FACT, "confirmed": True, "confirmed_at": T1}],
             "product_identifier": {"type": "ean", "value": "4006381333931"},
             "identifier_exemption": False,
+        },
+        "products_recategorize": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "category": "ethnic_wear_kurta_sets",
         },
         "products_bulk": {
             "import_id": IMPORT,
@@ -711,7 +742,21 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ],
             "poll_url": f"/api/v1/jobs/{JOB}",
         },
-        "listings_list": _page([_LISTING]),
+        "listings_list": _page(
+            [
+                _LISTING,
+                {
+                    **_LISTING,
+                    "id": "0b1c2d3e-0000-4000-8000-000000000203",
+                    "product_id": PRODUCT_2,
+                    "status": "published",
+                    "marketplace_state": "inactive",
+                    "approved_version_id": VERSION,
+                    "live_url": "https://www.amazon.in/dp/B0EXAMPLE1",
+                    "external_id": "B0EXAMPLE1",
+                },
+            ]
+        ),
         "listings_get": {**_LISTING, "content": _CONTENT, "validation": _VALIDATION_FAILED_SUMMARY},
         "listings_preview": {
             "schema_version": "2.0.0",
@@ -779,6 +824,25 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "image_candidates_create": {
+            "candidate_id": CANDIDATE,
+            "status": "queued",
+            "job_id": JOB,
+            "poll_url": f"/api/v1/jobs/{JOB}",
+        },
+        "image_candidates_list": {"items": [_CANDIDATE]},
+        "image_candidates_accept": {
+            "image_id": IMAGE,
+            "job_id": JOB,
+            "status": "queued",
+            "poll_url": f"/api/v1/jobs/{JOB}",
+        },
+        "image_candidates_reject": {
+            **_CANDIDATE,
+            "status": "rejected",
+            "preview_url": None,
+            "source_preview_url": None,
+        },
         "images_upload": {
             "image_id": IMAGE,
             "job_id": JOB,
@@ -835,6 +899,18 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "tasks_list": _page([_TASK]),
         "tasks_answer": _FACT_TASK,
+        "tasks_close": {
+            **_TASK,
+            "kind": "marketplace_error_review",
+            "target_path": "account.listing_error",
+            "question": "Review the error Amazon reported for this listing.",
+            "status": "applied",
+            "answered_by_user_id": USER,
+            "answered_at": T1,
+            "applied_at": T1,
+            "resolution": "done",
+            "updated_at": T1,
+        },
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
         "signup_create": {"request_id": SIGNUP, "status": "pending"},

@@ -40,7 +40,7 @@ from sqlalchemy import exists, func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, RowCountError
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
 from app.db.job_context import bind_job_actor, unbind_job_actor
@@ -185,6 +185,8 @@ class PreviewSource:
     """None when the version pinned no template, or a template with no `product_type`."""
     colour_images: Mapping[str, tuple[uuid.UUID, ...]] = field(default_factory=dict)
     """colour_key -> the live images of that colourway, main first, then by position (S22 C1)."""
+    live: bool = False
+    """SI9 B4: the listing has a published version (its next full send is an update)."""
 
 
 class _Versions(TenantScopedRepository[ListingVersion]):
@@ -226,6 +228,54 @@ class ListingRepository(TenantScopedRepository[Listing]):
             .limit(1)
         )
         return (await self.db.execute(stmt)).first() is not None
+
+    async def for_product_for_update(self, product_id: uuid.UUID) -> list[Listing]:
+        """Every listing of the product, locked in id order with NOWAIT (SI9 recategorize). The
+        caller already holds the product row, and a generation persist takes the listing before
+        the product, so waiting here could deadlock: a held listing is `LISTING_BUSY` (409)."""
+        stmt = (
+            self._select()
+            .where(Listing.product_id == product_id)
+            .order_by(Listing.id)
+            .with_for_update(nowait=True)
+            .execution_options(populate_existing=True)
+        )
+        try:
+            return list((await self.db.execute(stmt)).scalars())
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == "55P03":
+                raise ConflictError(ErrorCode.LISTING_BUSY, "listings") from exc
+            raise
+
+    async def set_category(self, listing_id: uuid.UUID, category: str) -> None:
+        """SI9 recategorize: the listing's category (its next generation uses that category's
+        template); never on a listing the marketplace has seen (the service checks)."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing).where(Listing.id == listing_id, criterion).values(category=category)
+        ).returning(Listing.id)
+        if (await self.db.execute(stmt)).scalar_one_or_none() is None:
+            raise RowCountError(1, 0)
+
+    async def reviewable_for_product(self, product_id: uuid.UUID) -> list[Listing]:
+        """SI9 B5 (CP-D15): the product's listings a reject re-validates (`validated`,
+        `needs_review`, `approved`; not paused or archived), locked `FOR UPDATE SKIP LOCKED`, so
+        a listing another transaction holds (a generation, a publish) is skipped, never waited
+        on; its own run re-checks later."""
+        stmt = (
+            self._select()
+            .where(
+                Listing.product_id == product_id,
+                Listing.status.in_(("validated", "needs_review", "approved")),
+                Listing.paused_at.is_(None),
+                Listing.archived_at.is_(None),
+            )
+            .order_by(Listing.id)
+            .with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True)
+        )
+        return list((await self.db.execute(stmt)).scalars())
 
     async def get_for_update(self, listing_id: uuid.UUID) -> Listing | None:
         stmt = (
@@ -489,7 +539,12 @@ class ListingRepository(TenantScopedRepository[Listing]):
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return found
 
-    async def preview_source(self, listing_id: uuid.UUID) -> PreviewSource | None:
+    async def preview_source(
+        self, listing_id: uuid.UUID, *, version: SourceVersion | None = None
+    ) -> PreviewSource | None:
+        """The listing's adapter input. SI9 B4: with `version` (content not stored yet: the
+        generation persist and the edit check it before the insert), that version replaces the
+        current one, and the template is the one it pins."""
         lst = Listing
         row = (
             await self.db.execute(
@@ -502,6 +557,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
                     lst.status,
                     lst.product_id,
                     lst.current_version_id,
+                    lst.published_version_id,
                 )
             )
         ).one_or_none()
@@ -511,7 +567,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
         product = await _product(products, row.product_id)
         if product is None:
             return None
-        version = await self._version(row.id, row.current_version_id)
+        if version is None:
+            version = await self._version(row.id, row.current_version_id)
         template = None
         if version is not None and version.category_template_id is not None:
             pinned = await CategoryTemplateRepository(self.db).pinned(version.category_template_id)
@@ -530,6 +587,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
             children=children,
             template=template,
             colour_images=colour_images,
+            live=row.published_version_id is not None,
         )
 
     async def _colours(

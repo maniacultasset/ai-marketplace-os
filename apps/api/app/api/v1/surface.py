@@ -71,6 +71,11 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
+from app.api.v1.schemas.image_candidates import (
+    ImageCandidateAccepted,
+    ImageCandidateOut,
+    ImageCandidatePage,
+)
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.invites import (
@@ -621,6 +626,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               has_body=True, if_match=True, conflict_code=E.STALE_VERSION, etag=True,
               extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
               action=A.PRODUCT_IMPORT),
+    Operation("products_recategorize", "POST", "/products/{product_id}/recategorize", 200,
+              ProductOut, "products",
+              "Change the category of a product that has listings; its unpublished listings "
+              "take the new category and wait for a regenerate (409 when any listing was "
+              "published)", "SI9", path_id="product_id", has_body=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, etag=True,
+              extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
               "Import products from a CSV file", "S13", has_body=True, idempotency=True,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)}), action=A.PRODUCT_IMPORT),
@@ -724,6 +736,24 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
               "Delete an image (and its prepared and public copies)", "SI1",
               path_id="image_id", action=A.PRODUCT_IMPORT),
+    # ---- image candidates (SI7) ----
+    Operation("image_candidates_create", "POST", "/products/{product_id}/image-candidates", 202,
+              ImageCandidateAccepted, "images",
+              "Make an image candidate from a photo or the size chart", "SI7",
+              path_id="product_id", has_body=True, body_ids=("source_image_id",),
+              idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
+              ImageCandidatePage, "images", "The product's image candidates", "SI7",
+              path_id="product_id", action=A.TENANT_READ),
+    Operation("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept", 202,
+              ImageAccepted, "images", "Use a candidate as a product image", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_reject", "POST", "/image-candidates/{candidate_id}/reject", 200,
+              ImageCandidateOut, "images", "Discard a candidate", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),
@@ -752,6 +782,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
               extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
               action=A.PRODUCT_IMPORT),
+    Operation("tasks_close", "POST", "/tasks/{task_id}/close", 200, TaskOut, "tasks",
+              "Close an account task (marketplace_error_review, permission_decision) as done or "
+              "dismissed", "SI9", path_id="task_id", has_body=True, idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.MARKETPLACE_CONNECT),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),

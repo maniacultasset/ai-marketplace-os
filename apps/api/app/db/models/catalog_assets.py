@@ -1,11 +1,12 @@
-"""`marketplace_accounts` (DATABASE.md §5.5), `images` (§5.2) and `batches` (§5.3). Columns,
-defaults, keys and indexes mirror revision 0002_listing_pipeline under the same names; the CHECK
-constraints live only in the revision."""
+"""`marketplace_accounts` (DATABASE.md §5.5), `images` (§5.2), `image_candidates` (SI7, 0018) and
+`batches` (§5.3). Columns, defaults, keys and indexes mirror the revisions under the same names;
+the CHECK constraints live only in the revisions."""
 
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
+    Numeric,
     PrimaryKeyConstraint,
     Text,
     UniqueConstraint,
@@ -138,6 +140,8 @@ class Image(TenantScoped, Base):
             unique=True,
             postgresql_where=text("public_id IS NOT NULL"),
         ),
+        # 0018 (SI7): the image this one was made from; cleared, never repointed
+        to_row("images", "parent_image_id", "images", ondelete="SET NULL (parent_image_id)"),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -167,6 +171,89 @@ class Image(TenantScoped, Base):
     clean_mime_type: Mapped[str | None] = mapped_column(Text)
     public_id: Mapped[str | None] = mapped_column(Text)
     public_written_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0018 (SI7, ADR-0030): write-once provenance. `candidate_id` has no FK (CP-D3).
+    origin: Mapped[str] = mapped_column(Text, server_default=text("'seller'"))
+    parent_image_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+# The failures a seller may retry: they stay outside the cache index (CP-D19). `source_changed`
+# is a source that changed or went away before the candidate could be made or accepted: a state,
+# not a verdict on the pixels, so the same photo asked for again is a new candidate.
+RETRYABLE_FAILURES = ("model_failed", "credit_used_up", "budget", "source_changed")
+CANDIDATE_CACHE_WHERE = (
+    "NOT (status = 'failed' AND failure_reason IN "
+    "('model_failed', 'credit_used_up', 'budget', 'source_changed'))"
+)
+
+
+class ImageCandidate(TenantScoped, Base):
+    """A proposed product image (SI7). Never read by the `images` readers: it becomes an image only
+    when the seller accepts it."""
+
+    __tablename__ = "image_candidates"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_image_candidates")),
+        anchor("image_candidates"),
+        tenant_fk("image_candidates"),
+        to_row("image_candidates", "product_id", "products"),
+        to_row("image_candidates", "colourway_id", "product_colourways", ondelete="RESTRICT"),
+        ForeignKeyConstraint(
+            ["colourway_id", "product_id"],
+            ["product_colourways.id", "product_colourways.style_product_id"],
+            ondelete="RESTRICT",
+            name=conv("fk_image_candidates_colourway_id_product_id"),
+        ),
+        to_row("image_candidates", "source_image_id", "images"),
+        to_row("image_candidates", "accepted_image_id", "images"),
+        to_membership("image_candidates", "created_by"),
+        to_membership("image_candidates", "decided_by"),
+        Index(
+            conv("uq_image_candidates_cache"),
+            "tenant_id",
+            "product_id",
+            "kind",
+            "source_hash",
+            "generator_key",
+            unique=True,
+            postgresql_where=text(CANDIDATE_CACHE_WHERE),
+        ),
+        Index(
+            conv("ix_image_candidates_product"),
+            "tenant_id",
+            "product_id",
+            text("created_at DESC"),
+        ),
+        Index(conv("ix_image_candidates_tenant_id_created_at"), "tenant_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    product_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    colourway_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    source_image_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    kind: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'queued'"))
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    # sha256 of the source's clean copy (or of the size chart); never granted to the read roles
+    source_hash: Mapped[str] = mapped_column(Text)
+    generator_key: Mapped[str] = mapped_column(Text)
+    storage_key: Mapped[str | None] = mapped_column(Text)
+    mime_type: Mapped[str | None] = mapped_column(Text)
+    width_px: Mapped[int | None] = mapped_column(Integer)
+    height_px: Mapped[int | None] = mapped_column(Integer)
+    fidelity_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    served_provider: Mapped[str | None] = mapped_column(Text)
+    # soft reference, no FK: agent_runs is pruned at 13 months, a candidate lives with its product
+    agent_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), server_default=text("0"))
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    accepted_image_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

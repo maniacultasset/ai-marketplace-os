@@ -26,15 +26,10 @@ from mkos_schemas.enums import ListingStatus, Marketplace
 from mkos_schemas.publish import MarketplacePreview, PreviewItem
 
 from app.adapters.registry import previewer
-from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import tenant_uow
-from app.services.adapter_input import (
-    build_adapter_listing,
-    canonical_listing,
-    colour_image_ids,
-)
+from app.services.adapter_check import adapter_listing_for
 from app.services.product_type_schema import current_schemas
 
 LISTING_BUSY_REASON: Final = "listing_busy"
@@ -68,17 +63,8 @@ async def preview_listing(principal: Principal, listing_id: uuid.UUID) -> Market
         preview = previewer(source.marketplace)
     except NotImplementedError:
         raise MarketplaceNotSupported(source.marketplace) from None
-    body = canonical_listing(source)
-    ids = {image.image_id for image in body.images} | colour_image_ids(source)
-    refs = {image_id: f"image:{image_id}" for image_id in ids}
-    adapter_listing = build_adapter_listing(
-        source,
-        facts=family,
-        image_refs=refs,
-        idempotency_key=f"preview:{listing_id}",
-        product_type_schema=schema,
-        parent_type_schema=parent_schema,
-        allow_http_images=get_settings().app_env == "local",
+    adapter_listing = adapter_listing_for(
+        source, family, schema, parent_schema, idempotency_key=f"preview:{listing_id}"
     )
     result = preview(adapter_listing)
     return MarketplacePreview(

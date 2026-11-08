@@ -82,10 +82,12 @@ the `schemas-v1.0.0` tag, a MAJOR three-team change after.
 - **v1 metrics:** 10 (L2166-2210), e.g. time to first listing, first-pass success, auto-resolution,
   questions per SKU, live-confirmation accuracy.
 - **Not v1** (L181-217): orders, inventory, ads, pricing optimization, returns, customer service, a
-  "whole marketplace OS". Image generation is never a v1 dependency (L2249-2251).
+  "whole marketplace OS". Image generation is never a v1 dependency (L2249-2251). SI7 (T134, user
+  2026-11-07): a seller-approved white-background main candidate ships in V1, beside the listing flow.
 - **BRD open decisions** (§25, L2227-2267), with its own recommendations: 2-3 marketplaces;
   form + spreadsheet first; **autonomous submission with optional approval**; English first,
-  language-ready; no image generation; versioned schemas; an internal error taxonomy; an inference
+  language-ready; no image generation (SI7 note: the user put the seller-approved white-background main
+  in V1, T134); versioned schemas; an internal error taxonomy; an inference
   policy; single and bulk jobs through one workflow.
 
 ## 3. Source map
@@ -498,7 +500,8 @@ without an answer.
   told to the client."
 - **§3:** point to the 14->10 map (§4.14). Note on invariant 3: the BRD's autonomy is Phase 3 at the
   earliest (ADR-0008).
-- **§4 non-goals:** add inventory, pricing optimization, orders/returns and image generation
+- **§4 non-goals:** add inventory, pricing optimization, orders/returns and image generation (SI7
+  note: beyond the seller-approved white-background main, T134)
   (L187-217, L2249-2251).
 - **§5 glossary:** BRD "canonical product record" = `products` + variants; `CanonicalListing` =
   per-marketplace content. Once C2 is ruled, add "`published` != live".

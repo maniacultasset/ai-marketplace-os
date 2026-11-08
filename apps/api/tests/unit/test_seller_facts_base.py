@@ -208,3 +208,13 @@ def test_unit_facts_read_only_and_repr_has_no_address() -> None:
     assert "Mill Road" not in repr(facts)
     assert "Mill Road" not in repr(item)
     assert "Test Mills" in repr(facts)
+
+
+def test_seller_facts_identifier_defaults_empty() -> None:
+    """SI5 B1: an item carries no identifier and no exemption unless the seller gave one."""
+    facts = SellerFacts()
+    assert (facts.identifier_type, facts.identifier_value, facts.identifier_exempt) == (
+        None,
+        None,
+        False,
+    )

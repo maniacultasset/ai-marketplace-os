@@ -1410,10 +1410,10 @@
   },
   {
    "id": "R10079",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "DATABASE.md:510; DATABASE.md:525",
-   "note": "Rule suggestion field exists; image seed lists thresholds, no corrective text."
+   "ref": "apps/api/app/services/image_checks.py:83-90; T134",
+   "note": "BACKGROUND_OFF suggestion text \"Background removal / replacement\" (DEFAULT_SUGGESTIONS); SI7 fix and white_background candidates are the corrective actions"
   },
   {
    "id": "R10081",

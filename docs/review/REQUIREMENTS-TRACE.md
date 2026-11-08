@@ -8,22 +8,22 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,049 of 8,916 (79%) are covered by our plan**: 6,093 as written and
-  956 deliberately changed by an ADR, Canon row or recorded decision.
-- **494 are gaps** (backend/DB 244, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
+- **7,051 of 8,916 (79%) are covered by our plan**: 6,094 as written and
+  957 deliberately changed by an ADR, Canon row or recorded decision.
+- **493 are gaps** (backend/DB 243, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
-- 512 belong to the AI or FE team, and 542 are marked Phase 2/3 by the site itself.
+- 512 belong to the AI or FE team, and 541 are marked Phase 2/3 by the site itself.
 
 | Status | Statements | Share |
 |---|---:|---:|
-| ✅ covered | 6,093 | 68.3% |
-| 🔁 covered-changed | 956 | 10.7% |
-| ⚠️ gap | 494 | 5.5% |
+| ✅ covered | 6,094 | 68.3% |
+| 🔁 covered-changed | 957 | 10.7% |
+| ⚠️ gap | 493 | 5.5% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
-| ⏭ later-phase | 542 | 6.1% |
+| ⏭ later-phase | 541 | 6.1% |
 
 ## By page
 
@@ -44,7 +44,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [09] Master Field Dictionary & E2E Walkthrough (§20–21) | 103 | 13 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [10] Acceptance Criteria, Metrics & Lead Handoff (§22–26) | 86 | 4 | 11 | 0 | 4 | 0 | 2 | 15 |
 | [01] 45-Day Plan & Definition of Done | 85 | 3 | 1 | 0 | 2 | 0 | 0 | 3 |
-| [02] Phase-1 Scope Lock & Non-Goals | 49 | 1 | 1 | 0 | 4 | 6 | 36 | 5 |
+| [02] Phase-1 Scope Lock & Non-Goals | 49 | 2 | 1 | 0 | 4 | 6 | 35 | 5 |
 | [03] Day-by-Day Execution Plan (45 Days) | 441 | 75 | 106 | 1 | 76 | 49 | 0 | 183 |
 | [04] Team Structure & Solo Sprint | 57 | 7 | 3 | 0 | 13 | 16 | 0 | 16 |
 | [05] GCP Tech Stack & Architecture | 85 | 19 | 6 | 0 | 0 | 11 | 0 | 6 |
@@ -103,7 +103,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | [46] Deterministic Image Checks | 24 | 0 | 3 | 0 | 0 | 0 | 0 | 3 |
 | [47] Vision Model Checks | 16 | 0 | 2 | 0 | 0 | 0 | 0 | 2 |
 | [48] ImageReport Schema | 32 | 1 | 0 | 0 | 1 | 0 | 0 | 1 |
-| [49] Image Error Taxonomy | 15 | 0 | 6 | 0 | 1 | 0 | 0 | 7 |
+| [49] Image Error Taxonomy | 16 | 0 | 5 | 0 | 1 | 0 | 0 | 6 |
 | [50] Image Correction Loop | 12 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
 | [51] Marketplace Image Rules | 15 | 0 | 0 | 0 | 1 | 0 | 0 | 1 |
 | [52] Image Storage Lifecycle | 6 | 2 | 1 | 0 | 0 | 0 | 3 | 1 |
@@ -1029,7 +1029,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R13665 | L13665 | Production launch checklist: All Phase 1 features implemented. | T16; VISION Q25 | Phase-1 set per plan scope lock (T16); steps after S14 unsequenced |
 | R13668 | L13668 | Production launch checklist: Marketplace OAuth flows verified with production accounts. | T77 | Prod filings/app approval status unknown (STATE open decision 5); verify step itself unplanned |
 
-## ⚠️ Gaps we own: backend + DB (244)
+## ⚠️ Gaps we own: backend + DB (243)
 
 Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITECTURE.md and the build steps.
 
@@ -1343,7 +1343,6 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 
 | R-id | Lines | The site says | Ref | What is missing / differs |
 |---|---|---|---|---|
-| R10079 | L10079 | BACKGROUND_OFF corrective action: Background removal / replacement. | DATABASE.md:510; DATABASE.md:525 | Rule suggestion field exists; image seed lists thresholds, no corrective text. |
 | R10085 | L10085 | RESOLUTION_LOW corrective action: Upscale or re-export. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |
 | R10091 | L10091 | TEXT_DETECTED corrective action: Remove text from main image. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |
 | R10097 | L10097 | WATERMARK corrective action: Remove watermark. | DATABASE.md:510; DATABASE.md:525 | Corrective text not in the image seed. |

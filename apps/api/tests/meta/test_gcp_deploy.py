@@ -1651,7 +1651,11 @@ def test_revoke_runs_only_where_the_worker_holds_the_binding(toolkit: Path, tmp_
         ("staging", {"PIPELINE_REF": "v0.1.0"}, "PIPELINE_REF must be a full 40-character"),
         ("staging", {"LLM_PROVIDER": "openrouter"}, "LLM_PROVIDER must be openai or deepseek"),
         ("staging", {"LLM_GATEWAY": "https://x.test/v1"}, "LLM_GATEWAY must be direct or"),
-        ("prod", {"LLM_GATEWAY": "OpenRouter"}, "LLM_GATEWAY must be direct or openrouter"),
+        (
+            "prod",
+            {"LLM_GATEWAY": "OpenRouter", "IMAGE_EDIT_ENABLED": "false"},
+            "LLM_GATEWAY must be direct or openrouter",
+        ),
         ("prod", {"LLM_MODEL_DEFAULT": ""}, NO_ROUTER_MODEL),
         ("prod", {"LLM_MODEL_DEFAULT": "deepseek-chat"}, NO_ROUTER_MODEL),
         ("prod", {"LLM_MODEL_DEFAULT": "deepseek/"}, NO_ROUTER_MODEL),
@@ -2175,3 +2179,94 @@ def test_images_edge_worker_serves_only_exact_public_names() -> None:
     assert r"const NAME = /^\/([a-z2-7]{26})\.(jpg|png)$/;" in src
     assert 'request.method !== "GET" && request.method !== "HEAD"' in src
     assert "url.hostname !== env.EDGE_HOST" in src
+
+
+# ---- SI7 (CP-D21): the image-edit switch and limits reach both roles through app_env ----
+
+IMAGE_EDIT_ROUTER = {
+    "LLM_GATEWAY": "openrouter",
+    "LLM_MODEL_DEFAULT": "deepseek/deepseek-chat",
+    "IMAGE_EDIT_ENABLED": "true",
+}
+
+
+def _worker_env(out: str) -> tuple[dict[str, str], list[str]]:
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    env = {e["name"]: e["value"] for e in container["env"] if "value" in e}
+    return env, [e["name"] for e in container["env"] if "valueFrom" in e]
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_env_files_ship_image_edit_switch(repo_root: Path, env_name: str) -> None:
+    text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+    # prod turned image editing on 2026-11-08 after the live check (DECISIONS D17); staging stays off.
+    assert values["IMAGE_EDIT_ENABLED"] == ("true" if env_name == "prod" else "false")
+    for key in (
+        "LLM_MODEL_IMAGE_EDIT",
+        "IMAGE_EDIT_TENANT_DAILY_LIMIT",
+        "IMAGE_EDIT_PLATFORM_DAILY_SHARE",
+    ):
+        assert key in values, key
+
+
+def test_image_edit_off_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["IMAGE_EDIT_ENABLED"] == "false"
+    worker, _ = _worker_env(out)
+    assert worker["IMAGE_EDIT_ENABLED"] == "false"
+    for env in (_api_env(out), worker):
+        assert "LLM_MODEL_IMAGE_EDIT" not in env
+        assert "IMAGE_EDIT_TENANT_DAILY_LIMIT" not in env
+
+
+def test_image_edit_switch_and_limits_reach_both_roles(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_env(
+        toolkit,
+        "staging",
+        **IMAGE_EDIT_ROUTER,
+        LLM_MODEL_IMAGE_EDIT="google/gemini-3.1-flash-image",
+        IMAGE_EDIT_TENANT_DAILY_LIMIT="7",
+        IMAGE_EDIT_PLATFORM_DAILY_SHARE="0.4",
+    )
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    api = _api_env(out)
+    worker, secrets = _worker_env(out)
+    for env in (api, worker):
+        assert env["IMAGE_EDIT_ENABLED"] == "true"
+        assert env["IMAGE_EDIT_TENANT_DAILY_LIMIT"] == "7"
+        assert env["IMAGE_EDIT_PLATFORM_DAILY_SHARE"] == "0.4"
+        # the api keys and labels candidates by the model the worker calls
+        assert env["LLM_MODEL_IMAGE_EDIT"] == "google/gemini-3.1-flash-image"
+    assert "OPENROUTER_API_KEY" in secrets
+    _boot(monkeypatch, worker, secrets)
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    _boot(monkeypatch, api, _secret_names(deploy))
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_api_env_boots_with_image_edit_on(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch, env_name: str
+) -> None:
+    _set_env(toolkit, env_name, **IMAGE_EDIT_ROUTER)
+    out = _run(toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA).stdout
+    env = _api_env(out)
+    assert env["IMAGE_EDIT_ENABLED"] == "true"
+    deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
+    _boot(monkeypatch, env, _secret_names(deploy))
+
+
+def test_image_edit_on_without_the_gateway_refused(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", IMAGE_EDIT_ENABLED="true")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "IMAGE_EDIT_ENABLED=true needs LLM_GATEWAY=openrouter" in result.stderr
+
+
+def test_bad_image_edit_switch_refused(toolkit: Path, tmp_path: Path) -> None:
+    _set_env(toolkit, "staging", IMAGE_EDIT_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0 and "IMAGE_EDIT_ENABLED must be true or false" in result.stderr

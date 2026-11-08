@@ -95,6 +95,7 @@ def _allowed() -> list[tuple[str, str | None, str, bool, bool]]:
                 "pending_review",
                 "live",
                 "partially_live",
+                "inactive",  # 0020 (SI9): on the marketplace, not buyable yet
             ):
                 continue
             rows.append((status, reason, state, paused, archived))
@@ -107,6 +108,8 @@ def _expected(status: str, reason: str | None, state: str, paused: bool, archive
     if paused:
         return "paused"
     if status == "blocked" and reason in HUMAN:
+        return "human_action_required"
+    if status == "published" and state == "inactive":
         return "human_action_required"
     if state in ("live", "partially_live"):
         return state

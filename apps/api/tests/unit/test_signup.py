@@ -799,8 +799,9 @@ def test_0019_is_the_single_head() -> None:
             parents.add(down.group(1))
     # DPP-1 sits on top of 0010, the account purge on top of DPP-1, Google sign-in on top of it,
     # the trusted browsers (ADR-0023) on top of Google sign-in, the PTD table (DW2) on top of them,
-    # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them,
-    # the `baby` audience (SI8) on top of that
+    # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
+    # image candidates (SI7) on top of team access, status truth (SI9) on top of that, the `baby`
+    # audience (SI8) on top of that
     assert revisions - parents == {"0019_gender_baby"}
 
 

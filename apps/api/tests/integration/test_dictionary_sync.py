@@ -120,6 +120,7 @@ def _typed_columns(conn: Conn, table: str) -> set[str]:
         "parent_product_id", "variation_theme", "size_run", "variant_attributes", "variant_key",
         "currency", "attributes", "provenance", "created_by", "deleted_at", "created_at",
         "updated_at", "onboarding_completed_at",
+        "photo_rejections",  # SI9 B5 (0020): rejected photo reads, never a fact
     }  # fmt: skip
     return names - not_facts
 

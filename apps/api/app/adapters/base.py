@@ -96,6 +96,10 @@ class SellerFacts:
     """SI8: the audience (`products.gender`, style-owned)."""
     style_number: str | None = None
     """SI8: the style number (style-owned)."""
+    # SI5 B1: the item's barcode (`products.identifier_*`), or the seller's GTIN exemption
+    identifier_type: str | None = None
+    identifier_value: str | None = None
+    identifier_exempt: bool = False
 
 
 @dataclass(frozen=True)
@@ -195,6 +199,10 @@ class AdapterListing:
     """SI2: the `LISTING_PRODUCT_ONLY` definition, for a family's parent; None = no check."""
     allow_http_images: bool = False
     """SI2: let an `http://` image locator through (APP_ENV=local only; the caller sets it)."""
+    live: bool = False
+    """SI9 B4 with SI5 CP-D14: the listing has a published version, so its next full send is an
+    update; a preview or check of it does not refuse an item with no barcode (an update never
+    does), so the pre-approval check agrees with what publish will send."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt

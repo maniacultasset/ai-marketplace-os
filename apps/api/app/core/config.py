@@ -27,6 +27,7 @@ import ipaddress
 import logging
 import re
 from collections.abc import Mapping
+from decimal import Decimal
 from functools import lru_cache
 from importlib import metadata
 from types import MappingProxyType
@@ -234,6 +235,18 @@ class Settings(BaseSettings):
     llm_tenant_daily_budget_usd: float = Field(default=2.5, allow_inf_nan=False)
     # the most `listing_generate` jobs one tenant may hold queued or running (enqueue-time cap)
     generation_live_jobs_per_tenant: int = Field(default=10, ge=1, le=200)
+    # SI7 (ADR-0030 proposed): the AI white-background edit. Off until the user's live call;
+    # the model id is an OpenRouter `vendor/model`; the two limits keep edits from starving
+    # listing generation (AI candidates per tenant per UTC day, and the platform's share of
+    # LLM_DAILY_BUDGET_USD spent on edits).
+    image_edit_enabled: bool = False
+    llm_model_image_edit: str = Field(
+        default="google/gemini-2.5-flash-image", min_length=1, max_length=128
+    )
+    image_edit_tenant_daily_limit: int = Field(default=10, ge=0, le=1000)
+    image_edit_platform_daily_share: Decimal = Field(
+        default=Decimal("0.5"), ge=0, le=1, allow_inf_nan=False
+    )
 
     # ---- amazon: the redirect URI is the exact string filed in the application ----
     amazon_app_id: str | None = None
@@ -596,6 +609,7 @@ def _boot_errors(s: Settings) -> list[str]:
     errors += _vision_errors(s)
     errors += _generation_errors(s)
     errors += _gateway_errors(s)
+    errors += _image_edit_errors(s)
     errors += _spapi_errors(s)
     errors += _ptd_errors(s)
     errors += _flipkart_errors(s)
@@ -668,6 +682,23 @@ def _gateway_errors(s: Settings) -> list[str]:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
     if "/" in s.llm_model_vision:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
+    return errors
+
+
+def _image_edit_errors(s: Settings) -> list[str]:
+    """SI7: the worker makes the image-edit call, only through OpenRouter, so outside local an
+    enabled edit needs `LLM_GATEWAY=openrouter` and a `vendor/model` id. The api never calls the
+    model (it keeps the default `direct`), so the check is the worker's only. Names only."""
+    if s.app_role != "worker" or s.app_env == "local" or not s.image_edit_enabled:
+        return []
+    errors: list[str] = []
+    if s.llm_gateway != "openrouter":
+        errors.append(
+            "IMAGE_EDIT_ENABLED requires LLM_GATEWAY=openrouter "
+            "for APP_ROLE=worker outside APP_ENV=local"
+        )
+    if not _is_vendor_model_id(s.llm_model_image_edit):
+        errors.append("IMAGE_EDIT_ENABLED requires LLM_MODEL_IMAGE_EDIT as vendor/model")
     return errors
 
 

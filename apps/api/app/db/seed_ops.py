@@ -93,10 +93,33 @@ SEED_MRP: Final = Decimal("1499.00")
 SEED_SELLING_PRICE: Final = Decimal("999.00")
 SEED_COUNTRY: Final = "IN"
 SEED_GENDER: Final = "women"  # SI8: the demo kurta family's audience
+# SI8 + SI9: the standalone demo kurtas too (Amazon apparel needs the audience before approval)
+SEED_GENDERED: Final = frozenset({"KURTA-001", "KURTA-002"})
 # SI2: the seller's own colour and fabric of the two seeded kurtas (the AI never supplies them)
 SEED_ATTRIBUTES: Final[Mapping[str, Mapping[str, str]]] = {
     "KURTA-001": {"color": "indigo", "fabric_type": "cotton"},
     "KURTA-002": {"color": "maroon", "fabric_type": "silk"},
+}
+# SI5: Amazon refuses a create without a barcode or a GTIN exemption, so every sellable seeded
+# product carries its own EAN-13 (Indian GS1 prefix 890, a company code per brand, valid check
+# digit), unique per tenant. A style never holds one; each family child has its own.
+SEED_BARCODES: Final[Mapping[str, Mapping[str, str]]] = {
+    "acme": {
+        "KURTA-001": "8901001000018",
+        "KURTA-002": "8901001000025",
+        "DECOR-001": "8901001000032",
+        "ACME-900": "8901001009004",
+        "KURTA-FAM-01-S-NAVY-BLUE": "8901001010017",
+        "KURTA-FAM-01-M-NAVY-BLUE": "8901001010024",
+        "KURTA-FAM-01-S-MAROON": "8901001010031",
+        "KURTA-FAM-01-M-MAROON": "8901001010048",
+    },
+    "bharat": {
+        "KURTA-001": "8902002000014",
+        "KURTA-002": "8902002000021",
+        "DECOR-001": "8902002000038",
+        "BH-900": "8902002009000",
+    },
 }
 GUIDELINES: Final[Mapping[str, list[str]]] = {
     "acme": ["Lead with fabric and fit.", "Never claim 'best' or 'guaranteed'."],
@@ -134,6 +157,18 @@ class _Listings(TenantScopedRepository[Listing]):
 
 def _seller_fact(value: object) -> dict[str, object]:
     return {"value": value, "source": "seller", "captured_via": "form", "updated_at": FACT_TIME}
+
+
+def _barcode(slug: str, sku: str) -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    """SI5: (the identifier columns, their provenance) of a seeded SKU, or two empty maps (a
+    style, or a SKU without a seeded barcode). The `identifier` provenance is a column fact
+    without a value, as the product API writes it."""
+    value = SEED_BARCODES.get(slug, {}).get(sku)
+    if value is None:
+        return {}, {}
+    columns = {"identifier_type": "ean", "identifier_value": value, "identifier_status": "provided"}
+    fact = {"source": "seller", "captured_via": "form", "updated_at": FACT_TIME}
+    return columns, {"identifier": fact}
 
 
 # ---- platform rows (migrator) ----
@@ -404,6 +439,8 @@ async def seed_products(session: AsyncSession, tenant: SeedTenant, profile: str)
     tenant_id = seed_tenant_id(tenant.slug)
     products = products_for(profile, tenant.slug)
     for sku, title, category in products:
+        barcode, barcode_fact = _barcode(tenant.slug, sku)
+        gender = {"gender": SEED_GENDER} if sku in SEED_GENDERED else {}
         await session.execute(
             insert(Product)
             .values(
@@ -411,6 +448,8 @@ async def seed_products(session: AsyncSession, tenant: SeedTenant, profile: str)
                 sku=sku,
                 title=title,
                 category=category,
+                **barcode,
+                **gender,
                 # SI1 D8: a unit without MRP is refused at publish, so the demo carries one
                 mrp=SEED_MRP,
                 selling_price=SEED_SELLING_PRICE,
@@ -422,6 +461,8 @@ async def seed_products(session: AsyncSession, tenant: SeedTenant, profile: str)
                     "mrp": _seller_fact(str(SEED_MRP)),
                     "selling_price": _seller_fact(str(SEED_SELLING_PRICE)),
                     "country_of_origin": _seller_fact(SEED_COUNTRY),
+                    **barcode_fact,
+                    **{key: _seller_fact(value) for key, value in gender.items()},
                 },
             )
             .on_conflict_do_nothing(constraint="products_tenant_sku_idx")
@@ -756,6 +797,7 @@ async def seed_demo_family(session: AsyncSession) -> None:
         for size in DEMO_FAMILY_SIZES:
             sku = demo_family_child_sku(size, colour)
             child_id = uuid.uuid5(SEED_NAMESPACE, f"acme:demo-family:child:{sku}")
+            barcode, barcode_fact = _barcode("acme", sku)
             await session.execute(
                 insert(Product)
                 .values(
@@ -767,7 +809,8 @@ async def seed_demo_family(session: AsyncSession) -> None:
                     parent_product_id=style_id,
                     variant_attributes={"size": size, "color": colour},
                     attributes={"size": _family_fact(size.upper(), normalized=size)},
-                    provenance=provenance,
+                    provenance={**provenance, **barcode_fact},
+                    **barcode,
                 )
                 .on_conflict_do_nothing()
             )

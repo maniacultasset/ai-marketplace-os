@@ -1,6 +1,7 @@
-"""SI8 T10 (AC2, AC9; CP-D3): the real publish job blocks apparel without an audience, maps
-brand and audience issues to their facts, retries only the audience triple, and pins the brand
-default in the approval digest. Run in the Docker batch (`make api-tests-integration`)."""
+"""SI8 T10 (AC2, AC9; CP-D3): apparel without an audience is caught before approval (SI9's
+marketplace check) and refused by the real publish job (the backstop); brand and audience issues
+map to their facts, a retry resends only the audience triple, and the brand default is pinned in
+the approval digest. Run in the Docker batch (`make api-tests-integration`)."""
 
 from __future__ import annotations
 
@@ -12,10 +13,11 @@ import httpx
 import pytest
 from tests.support import fake_marketplace
 
+from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .failure_support import RETRYABLE_CODE, AmzWorld, amz
-from .publish_support import approved, publish_one, retry, run_job
-from .review_support import OPERATOR
+from .publish_support import approved, before_audience_rule, publish_one, retry, run_job
+from .review_support import OPERATOR, REVIEWER, generated
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["amz"]
@@ -69,13 +71,43 @@ async def _ungendered(amz: AmzWorld) -> str:
             attributes={"color": "blue", "fabric_type": "cotton"},
             mrp=Decimal("1499.00"),
             selling_price=Decimal("999.00"),
+            product_identifier=("ean", f.ean()),  # SI5 B2: only the audience is missing
         ),
     )
     return sku
 
 
-async def test_kurta_without_gender_is_never_sent(api: httpx.AsyncClient, amz: AmzWorld) -> None:
-    made = await approved(amz.pub, sku=await _ungendered(amz))
+async def test_kurta_without_gender_is_caught_before_approval(amz: AmzWorld) -> None:
+    from app.repositories.uow import tenant_uow
+    from app.services.review import ReviewItem, approve_batch
+
+    made = await generated(amz.world, OPERATOR, sku=await _ungendered(amz))
+    assert amz.pub.listing(made.listing_id)["status"] == "blocked"
+    issues = amz.pub.rows(
+        "SELECT field_path, error_code FROM listing_issues WHERE listing_id = %s "
+        "AND source = 'schema' AND status = 'open'",
+        [made.listing_id],
+    )
+    assert ("facts.gender", "MISSING_ATTRIBUTE") in issues, issues
+    principal = amz.world.principal(REVIEWER)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        outcome = await approve_batch(
+            uow,
+            principal,
+            [ReviewItem(made.listing_id, made.version_id, "approve")],
+            http_key=str(uuid.uuid4()),
+        )
+    assert outcome.items[0].http_status != 200, outcome.items[0]
+    assert amz.writes() == 0
+
+
+async def test_kurta_without_gender_is_never_sent(
+    api: httpx.AsyncClient, amz: AmzWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sku = await _ungendered(amz)
+    with monkeypatch.context() as before:
+        before_audience_rule(before)
+        made = await approved(amz.pub, sku=sku)  # approved before the audience rule
     item = await publish_one(api, amz.pub, made)
     await _run(item["job_id"])
     assert amz.writes() == 0

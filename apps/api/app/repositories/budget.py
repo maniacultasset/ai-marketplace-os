@@ -1,8 +1,8 @@
 """The AI budget reads and locks (DATABASE.md:993-998; ENV.md:90-91; S18 T6, T7, D10).
 
 A budget day is the UTC day of `started_at`. A tenant has spent `SUM(agent_runs.cost_usd)` that
-day and holds `SUM(job_runs.cost_reserved_usd)` over its `listing_generate` and `brand_embed` jobs
-(`RESERVING_KINDS`) claimed that day;
+day and holds `SUM(job_runs.cost_reserved_usd)` over its `listing_generate`, `brand_embed` and
+(SI7) candidate `image_compliance` jobs (`RESERVING_KINDS`) claimed that day;
 its cap is `tenants.llm_daily_budget_usd`, else the `LLM_TENANT_DAILY_BUDGET_USD` default the
 caller passes. `global_state(platform_session, day)` is the same sum over every tenant, read in the
 read-only platform session (the caller owns it; CANON-ADDENDUM.md:181).
@@ -29,8 +29,16 @@ from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
 
 GLOBAL_LOCK_KEY: Final = "budget:global"
-# the job kinds that hold a budget reservation while they make paid model calls
-RESERVING_KINDS: Final = (JobKind.LISTING_GENERATE.value, JobKind.BRAND_EMBED.value)
+# SI7: the prompt-version prefix of an image-edit run (photo facts share agent_name `image`)
+IMAGE_EDIT_PROMPT_PREFIX: Final = "image_edit/"
+# the job kinds that hold a budget reservation while they make paid model calls. SI7: a candidate
+# job (`image_compliance` with `entity_type='image_candidate'`) reserves before its edit call;
+# upload jobs of the same kind keep `cost_reserved_usd = 0` and add nothing.
+RESERVING_KINDS: Final = (
+    JobKind.LISTING_GENERATE.value,
+    JobKind.BRAND_EMBED.value,
+    JobKind.IMAGE_COMPLIANCE.value,
+)
 ZERO: Final = Decimal("0")
 
 
@@ -123,4 +131,26 @@ async def global_state(platform_session: Any, day: date, *, cap: Decimal) -> Bud
         spent=Decimal((await platform_session.execute(spent)).scalar_one()),
         reserved=Decimal((await platform_session.execute(reserved)).scalar_one()),
         cap=cap,
+    )
+
+
+async def image_edit_spend(platform_session: Any, day: date) -> Decimal:
+    """PLAN D21: today's platform spend on image edits (the stored `image_edit/` runs) plus the
+    open reservations of candidate jobs. Cross-tenant: only in the read-only `platform_scope()`
+    session (`app/workers/budget.py`, the create service through it)."""
+    start, end = day_bounds(day)
+    spent = select(func.coalesce(func.sum(AgentRun.cost_usd), ZERO)).where(
+        AgentRun.agent_name == "image",
+        AgentRun.prompt_version.like(f"{IMAGE_EDIT_PROMPT_PREFIX}%"),
+        AgentRun.started_at >= start,
+        AgentRun.started_at < end,
+    )
+    reserved = select(func.coalesce(func.sum(JobRun.cost_reserved_usd), ZERO)).where(
+        JobRun.kind == JobKind.IMAGE_COMPLIANCE.value,
+        JobRun.entity_type == "image_candidate",
+        JobRun.started_at >= start,
+        JobRun.started_at < end,
+    )
+    return Decimal((await platform_session.execute(spent)).scalar_one()) + Decimal(
+        (await platform_session.execute(reserved)).scalar_one()
     )

@@ -133,6 +133,8 @@ PRODUCT_FIELDS = frozenset(
         "brand_name_inherited",
         "gender",
         "variant_attributes",
+        # SI9: the newest photo read (detail only; null on lists)
+        "photo_read",
         # SI5: the barcode and the GTIN exemption
         "product_identifier",
         "identifier_exemption",

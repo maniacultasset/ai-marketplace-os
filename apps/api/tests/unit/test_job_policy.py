@@ -101,3 +101,19 @@ def test_register_and_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_outcome_status_is_success_only() -> None:
     with pytest.raises(ValueError, match="succeeded or partial"):
         registry.Outcome("failed")  # type: ignore[arg-type]
+
+
+# ---- SI7 T11 (design §2.2): a candidate job runs under its tenant's own lock ----
+
+
+def test_candidate_jobs_take_a_tenant_lock() -> None:
+    import uuid
+
+    tenant = uuid.uuid4()
+    got = policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image_candidate", tenant)
+    assert got == f"image_candidate:{tenant}"
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == "image_compliance"
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE) == "image_compliance"
+    assert policy.lock_for(JobKind.LISTING_GENERATE, "image_candidate", tenant) is None
+    with pytest.raises(ValueError):
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image_candidate", None)

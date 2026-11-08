@@ -60,10 +60,16 @@ def audience_names() -> tuple[str, ...]:
 
 
 def sellable_names() -> tuple[str, ...]:
-    """SI2: the names a sellable item sends from the seller's facts (the offer and the
-    manufacturer contact). They feed a `required` of the LISTING definition; a PRODUCT_ONLY
+    """SI2: the names a sellable item sends from the seller's facts (the offer, the
+    manufacturer contact and, since SI5, the barcode or its exemption). They feed a `required` of the LISTING definition; a PRODUCT_ONLY
     definition need not declare them, so their absence is not drift."""
-    return (c.OFFER_ATTRIBUTE, c.CONDITION_ATTRIBUTE, c.MANUFACTURER_CONTACT)
+    return (
+        c.OFFER_ATTRIBUTE,
+        c.CONDITION_ATTRIBUTE,
+        c.MANUFACTURER_CONTACT,
+        c.EXTERNAL_ID_ATTRIBUTE,  # SI5 B2: the barcode or the exemption
+        c.EXEMPTION_ATTRIBUTE,
+    )
 
 
 def _item_properties(spec: Any) -> Mapping[str, Any] | None:

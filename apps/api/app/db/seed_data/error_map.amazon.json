@@ -1,0 +1,149 @@
+[
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90220",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a value that this listing does not send.",
+    "seller_action": "Add the missing value to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "18027",
+    "version": 1,
+    "error_code": "IMAGE_NON_COMPLIANT",
+    "error_class": "media_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon found text, a logo, a graphic or a watermark on the main image, which this product type does not allow.",
+    "seller_action": "Replace the main image with a plain product photo on a white background, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "category",
+    "raw_value": "MISSING_ATTRIBUTE",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a value that this listing does not send.",
+    "seller_action": "Add the missing value to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "category",
+    "raw_value": "INVALID_ATTRIBUTE",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not accept one of the values in this listing.",
+    "seller_action": "Pick a value Amazon allows for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "category",
+    "raw_value": "INVALID_IMAGE",
+    "version": 1,
+    "error_code": "IMAGE_NON_COMPLIANT",
+    "error_class": "media_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not accept one of the images in this listing.",
+    "seller_action": "Replace the image with one that meets Amazon's image rules, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "category",
+    "raw_value": "MISSING_IMAGE",
+    "version": 1,
+    "error_code": "IMAGE_NON_COMPLIANT",
+    "error_class": "media_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs an image that this listing does not have.",
+    "seller_action": "Add the required image, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "category",
+    "raw_value": "QUALIFICATION_REQUIRED",
+    "version": 1,
+    "error_code": "API_REJECTED_PARTIAL",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs your account to be approved before it can list this product.",
+    "seller_action": "Apply for approval for this brand or category in Amazon Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://github.com/amzn/selling-partner-api-models/blob/main/models/listings-items-api-model/listingsItems_2021-08-01.json",
+      "observed": false
+    },
+    "enabled": true
+  }
+]

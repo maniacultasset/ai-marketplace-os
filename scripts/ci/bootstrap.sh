@@ -281,7 +281,7 @@ echo "bootstrap: worker leg OK (SIGTERM exit 0 in ${worker_took}s)"
 for migrate_pass in 1 2; do
   migrate_out="$(docker run --rm --network "$network" -e APP_ENV=local -e APP_ROLE=migrate -e ALEMBIC_DATABASE_URL="$migrator_dsn" "$image")"
   printf '%s\n' "$migrate_out"
-  for want in "migrate: ok (" "dictionary sync: ok ("; do
+  for want in "migrate: ok (" "dictionary sync: ok (" "errors load: ok ("; do
     if ! grep -qF -- "$want" <<<"$migrate_out"; then
       echo "bootstrap: image migrate run $migrate_pass printed no '$want' line" >&2
       exit 1

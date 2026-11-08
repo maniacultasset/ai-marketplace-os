@@ -20,7 +20,9 @@ TITLE_RULE = UUID("51400000-0000-0000-0000-00000000c001")
 TENANT = uuid.UUID("00000000-0000-0000-0000-0000000000cc")
 
 
-def _deps(*rules: Any, critical: frozenset[str] = frozenset()) -> Any:
+def _deps(
+    *rules: Any, critical: frozenset[str] = frozenset(), rejections: dict[str, str] | None = None
+) -> Any:
     from app.core.config import Settings
     from app.services.pipeline_deps import BackendPipelineDeps, _ModelConfig
     from app.services.rules_loader import LoadedRules
@@ -39,6 +41,7 @@ def _deps(*rules: Any, critical: frozenset[str] = frozenset()) -> Any:
         embedder=None,
         models=_ModelConfig.from_settings(cfg),
         critical_keys=critical,
+        rejections=rejections or {},
     )
 
 
@@ -113,3 +116,20 @@ def test_critical_keys_are_required() -> None:
             embedder=None,
             models=None,  # type: ignore[arg-type]
         )
+
+
+# ---- SI9 T11 (CP-D13, CP-D26): the port carries only the ERROR "facts changed" flags ----
+
+
+async def test_the_port_carries_an_error_flag_for_a_title_hit() -> None:
+    deps = _deps(rejections={"neckline": "v-neck"})
+    report = await deps.validate_rules(listing(content={"title": "Classic V-Neck Kurta"}))
+    assert ErrorCode.FACT_MISMATCH in _codes(report) and not report.passed
+
+
+async def test_the_port_drops_a_warning_only_flag() -> None:
+    deps = _deps(rejections={"neckline": "v-neck"})
+    report = await deps.validate_rules(
+        listing(content={"title": "Classic Kurta", "bullets": ["A v-neck cut"]})
+    )
+    assert ErrorCode.FACT_MISMATCH not in _codes(report)

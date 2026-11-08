@@ -25,7 +25,7 @@ import json
 import math
 import uuid
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final, Literal
@@ -33,15 +33,18 @@ from typing import Any, Final, Literal
 from mkos_schemas.codes import ErrorCode
 from sqlalchemy.exc import DBAPIError
 
+from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.core.resolved_facts import match_brand
 from app.repositories.images import ImageDetail
+from app.repositories.jobs import PhotoReadRow
 from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
 from app.services import product_identifier
+from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.product_facts import (
@@ -59,9 +62,11 @@ __all__ = [
     "PartyView",
     "ProductView",
     "create_product",
+    "fibres_view",
     "get_product",
     "list_products",
     "product_etag",
+    "size_chart_view",
 ]
 
 PRODUCT_PK: Final = "pk_products"
@@ -194,6 +199,7 @@ class ProductView:
     colourways: tuple[ColourwayRow, ...] = ()
     etag: str = ""
     photo_facts: tuple[PhotoFactView, ...] = ()
+    photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool = False
 
@@ -207,7 +213,7 @@ def _normalized(facts: Mapping[str, Any], key: str) -> Any:
     return fact.get("normalized") if isinstance(fact, Mapping) else None
 
 
-def _fibres(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
+def fibres_view(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
     stored = _normalized(facts, "fiber_composition")
     if not isinstance(stored, list) or not stored:
         return None
@@ -224,7 +230,7 @@ def _fibres(facts: Mapping[str, Any]) -> list[dict[str, Any]] | None:
     return out
 
 
-def _size_chart(facts: Mapping[str, Any]) -> dict[str, Any] | None:
+def size_chart_view(facts: Mapping[str, Any]) -> dict[str, Any] | None:
     stored = _normalized(facts, "size_measurements")
     if not isinstance(stored, Mapping):
         return None
@@ -291,6 +297,7 @@ def _view(
     colourways: tuple[ColourwayRow, ...] = (),
     brand: tuple[str | None, bool] | None = None,
     gender: str | None = None,
+    photo_read: PhotoReadRow | None = None,
     style_exempt: bool = False,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
@@ -323,14 +330,15 @@ def _view(
         mrp=_money(row.mrp),
         selling_price=_money(row.selling_price),
         currency=row.currency,
-        fiber_composition=_fibres(facts),
-        size_chart=_size_chart(facts),
+        fiber_composition=fibres_view(facts),
+        size_chart=size_chart_view(facts),
         size_chart_url=_text_value(facts, "size_chart_url"),
         manufacturer=party,
         image_details=details,
         colourways=colourways,
         etag=product_etag(row.id, row.updated_at),
         photo_facts=photo_facts_of(facts),
+        photo_read=photo_read,
         **_identifier_view(row, style_exempt),
     )
 
@@ -364,7 +372,16 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     party_row = None if party_id is None else await uow.parties.get(party_id)
     party = None if party_row is None else party_view(party_row, inherited=inherited)
     keys = await uow.images.live_keys_for_products([row.id])
-    details = tuple(await uow.images.details_for_product(row.id))
+    edit_enabled = get_settings().image_edit_enabled
+    details = tuple(
+        replace(
+            detail,
+            fixes=tuple(
+                fixes_for(detail.slot, detail.report, detail.border, edit_enabled=edit_enabled)
+            ),
+        )
+        for detail in await uow.images.details_for_product(row.id)
+    )
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
@@ -376,6 +393,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         brand_name = await uow.brand_profile.default_brand_name()
         brand_inherited = brand_name is not None
     gender = row.gender if row.gender is not None else getattr(style, "gender", None)
+    photo_read = await uow.job_runs.latest_photo_read(row.id)
     exempt = False
     if _is_style(row):
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
@@ -387,6 +405,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         colourways=colourways,
         brand=(brand_name, brand_inherited),
         gender=gender,
+        photo_read=photo_read,
         style_exempt=exempt,
     )
 

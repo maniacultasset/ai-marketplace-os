@@ -112,6 +112,11 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "device_token",
         "device_tokens",
         "prev_token_hash",
+        # SI7: image bytes (base64) and signed preview URLs (bearer credentials) never reach a log
+        "image_b64",
+        "data_b64",
+        "preview_url",
+        "source_preview_url",
     }
 )
 DENY_SUFFIXES: Final[tuple[str, ...]] = (

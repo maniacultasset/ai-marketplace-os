@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from .factories import ean
 from .generation_support import GenWorld, make_generating
 
 OPERATOR = "operator@acme.test"
@@ -45,6 +46,7 @@ async def new_product(world: GenWorld, email: str = OPERATOR, sku: str | None = 
             mrp=Decimal("1499.00"),  # SI1 D8: a unit without MRP is refused at publish
             selling_price=Decimal("999.00"),  # SI2: the Amazon offer and Flipkart price block
             gender="women",  # SI8: Amazon apparel needs the audience
+            product_identifier=("ean", ean()),  # SI5 B2: an Amazon create needs a barcode
         ),
     )
     return sku

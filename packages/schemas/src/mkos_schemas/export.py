@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from .agent import AgentRunRecord
 from .auth import JWTClaims
 from .errors import ErrorReport
+from .image_edit import ImageEditRequest, ImageEditResult
 from .images import ImageReport
 from .imports import ImportReport
 from .jobs import (
@@ -54,6 +55,8 @@ MODELS: Final[tuple[type[BaseModel], ...]] = (
     ImportReport,
     JWTClaims,
     RuleSet,
+    ImageEditRequest,
+    ImageEditResult,
 )
 
 

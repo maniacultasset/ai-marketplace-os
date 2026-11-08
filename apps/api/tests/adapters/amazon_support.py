@@ -31,8 +31,8 @@ def image_refs(body: CanonicalListing) -> dict[uuid.UUID, str]:
     return {i.image_id: f"https://images.example.test/{i.image_id}.jpg" for i in body.images}
 
 
-# SI2 T2 (+ SI8 T3): the priced, compliant seller facts every built unit carries unless the caller passes
-# `unit_facts=`
+# SI2 T2 (+ SI8 T3): the priced, compliant (SI5: barcoded) seller facts every built unit
+# carries unless the caller passes `unit_facts=`
 SELLER_FACTS = SellerFacts(
     mrp=Decimal("999.00"),
     selling_price=Decimal("499.00"),
@@ -46,6 +46,8 @@ SELLER_FACTS = SellerFacts(
     brand_name="Test Brand",
     gender="women",
     style_number=None,
+    identifier_type="ean",  # SI5 B2: a create needs a barcode or the exemption
+    identifier_value="4006381333931",
 )
 
 
@@ -216,14 +218,15 @@ def attribute_names(path: str) -> list[str]:
 def reject(app: Any, fail: Any) -> None:
     """Make the fake refuse every attribute the named paths feed, on every SKU. A refused price
     path also refuses `condition_type`: it travels in the same offer, though the reverse index
-    leaves it out (an issue on it fails `listing`), so a fully refused create stores nothing."""
+    leaves it out (an issue on it fails `listing`), so a fully refused create stores nothing. SI5
+    B2: the barcode and the exemption have no field path either, so they go with the offer."""
     from app.adapters.amazon import constants as c
     from app.adapters.base import PRICE_PATHS
 
     for path, (code, text) in fail.items():
         names = attribute_names(path)
         if path in PRICE_PATHS:
-            names.append(c.CONDITION_ATTRIBUTE)
+            names += [c.CONDITION_ATTRIBUTE, c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE]
         for name in names:
             app.state.fake.spapi_reject[name] = (code, text)
 
