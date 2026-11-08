@@ -44,6 +44,8 @@ from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
 from app.services import product_identifier
+from app.services.field_sources import FieldSource, field_sources
+from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
@@ -211,6 +213,9 @@ class ProductView:
     hsn_code: str | None = None
     package: dict[str, Any] | None = None
     country_of_origin: str | None = None
+    # SI12: detail reads only (`{}` and None on lists)
+    field_sources: dict[str, FieldSource] = field(default_factory=dict)
+    hsn_suggestion: HsnSuggestion | None = None
 
 
 PACKAGE_COLUMNS: Final = {
@@ -232,6 +237,46 @@ class SellerValues:
     weight_from_style: bool = False
     country_from_style: bool = False
     country_from_brand: bool = False
+
+
+# SI12: the typed dictionary keys the source chips cover → their products columns
+SOURCE_COLUMNS: Final[Mapping[str, tuple[str, ...]]] = {
+    "brand_name": ("brand_name",),
+    "category": ("category",),
+    "gender": ("gender",),
+    "mrp": ("mrp",),
+    "selling_price": ("selling_price",),
+    "hsn_code": ("hsn_code",),
+    "country_of_origin": ("country_of_origin",),
+    "manufacturer": ("manufacturer_party_id",),
+    "package_dimensions": ("package_length_cm", "package_breadth_cm", "package_height_cm"),
+    "package_weight": ("package_weight_g",),
+}
+
+
+def _column_envelope(row: Any, key: str) -> dict[str, Any] | None:
+    """The row's provenance of a typed key, with a `value` marker when the row holds a value."""
+    if row is None or not any(getattr(row, c, None) is not None for c in SOURCE_COLUMNS[key]):
+        return None
+    provenance = row.provenance if isinstance(row.provenance, Mapping) else {}
+    stored = provenance.get(key)
+    return {**stored, "value": True} if isinstance(stored, Mapping) else None
+
+
+def effective_envelopes(row: Any, style: Any) -> dict[str, Any]:
+    """The Fact envelopes behind a single read's values: own, else the style's."""
+    out: dict[str, Any] = {}
+    for layer in (style, row):  # the row wins
+        if layer is None:
+            continue
+        attributes = layer.attributes if isinstance(layer.attributes, Mapping) else {}
+        out.update({k: v for k, v in attributes.items() if isinstance(v, Mapping)})
+    for key, columns in SOURCE_COLUMNS.items():
+        own_set = any(getattr(row, c, None) is not None for c in columns)
+        envelope = _column_envelope(row if own_set else style, key)
+        if envelope is not None:
+            out[key] = envelope
+    return out
 
 
 def _own_dims(row: Any) -> dict[str, Any] | None:
@@ -484,7 +529,15 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     if row.country_of_origin is None and getattr(style, "country_of_origin", None) is None:
         brand_country = await uow.brand_profiles.default_country()
     seller = seller_values(row, style, brand_country)
-    return _view(
+    sources = field_sources(
+        effective_envelopes(row, style),
+        inherited={
+            "manufacturer_inherited": inherited and party is not None,
+            "brand_name_inherited": brand_inherited,
+            "country_of_origin_from_brand": seller.country_from_brand,
+        },
+    )
+    view = _view(
         row,
         keys[row.id],
         details=details,
@@ -495,6 +548,11 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         photo_read=photo_read,
         style_exempt=exempt,
         seller=seller,
+    )
+    return replace(
+        view,
+        field_sources=sources,
+        hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
     )
 
 

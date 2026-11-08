@@ -23,6 +23,8 @@ from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
+    FieldSourceOut,
+    HsnSuggestionOut,
     PackageIn,
     PackageOut,
     PhotoFactOut,
@@ -36,6 +38,7 @@ from app.api.v1.schemas.products import (
     RecategorizeIn,
     SizeChart,
     SizeChartRow,
+    SuggestionsOut,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
@@ -158,6 +161,21 @@ def _out(view: products.ProductView) -> ProductOut:
         hsn_code=view.hsn_code,
         package=None if view.package is None else PackageOut.model_construct(**view.package),
         country_of_origin=view.country_of_origin,
+        field_sources={
+            key: FieldSourceOut.model_construct(
+                kind=source.kind, image_id=source.image_id, confidence=source.confidence
+            )
+            for key, source in view.field_sources.items()
+        },
+        suggestions=SuggestionsOut.model_construct(
+            hsn_code=(
+                None
+                if view.hsn_suggestion is None
+                else HsnSuggestionOut.model_construct(
+                    value=view.hsn_suggestion.value, basis=view.hsn_suggestion.basis
+                )
+            )
+        ),
     )
 
 
