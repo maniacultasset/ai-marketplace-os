@@ -1448,12 +1448,13 @@ def alerts_dry(toolkit: Path, tmp_path: Path) -> str:
 def test_alerts_dry_run_prints_all(toolkit: Path, tmp_path: Path) -> None:
     out = alerts_dry(toolkit, tmp_path)
     lines = gcloud_lines(out)
-    assert len([x for x in lines if "logging metrics create" in x]) == 2
+    # the 2 edge metrics plus the 2 worker-health ones (V1 hardening #1)
+    assert len([x for x in lines if "logging metrics create" in x]) == 4
     channels = [x for x in lines if "beta monitoring channels create" in x]
     assert len(channels) == 1 and "--type=email" in channels[0]
     assert "email_address=ops@kuinn.in" in channels[0]
     policies = [x for x in lines if "monitoring policies create" in x]
-    assert len(policies) == 5
+    assert len(policies) == 8
     assert not [x for x in policies if " beta " in x or " alpha " in x]
     docs = "\n".join(blocks(out, "policy"))
     assert "uptime_check/check_passed" in docs and 'check_id=\\"<uptime-check-id>\\"' in docs
@@ -1476,15 +1477,16 @@ def test_alerts_dry_run_prints_all(toolkit: Path, tmp_path: Path) -> None:
 def test_alerts_policy_files_valid(toolkit: Path, tmp_path: Path) -> None:
     out = alerts_dry(toolkit, tmp_path)
     docs = [json.loads(block) for block in blocks(out, "policy")]
-    assert len(docs) == 5
+    assert len(docs) == 8
     for doc in docs:
         assert doc["displayName"] and len(doc["conditions"]) == 1
         assert doc["notificationChannels"] == [
             "projects/aimos-prod/notificationChannels/<channel-id>"
         ]
         if "conditionMatchedLog" in doc["conditions"][0]:
-            assert doc["alertStrategy"]["notificationRateLimit"]["period"] == "300s"
-    assert sum("conditionMatchedLog" in d["conditions"][0] for d in docs) == 1
+            assert doc["alertStrategy"]["notificationRateLimit"]["period"] in ("300s", "3600s")
+    # Adaptive Protection and (V1 hardening #1) the maintenance job's ERROR lines
+    assert sum("conditionMatchedLog" in d["conditions"][0] for d in docs) == 2
 
 
 ALERT_BASE: list[dict[str, Any]] = [
@@ -1737,7 +1739,7 @@ def test_live_deploy_updates_the_maintenance_trigger(toolkit: Path, tmp_path: Pa
 
 ORIGIN_VALUE = "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b"
 ORIGIN_HEADER = f"x-kuinn-origin-auth: {ORIGIN_VALUE}"
-CF_REFUSED = ("setup", "rules", "enforce", "lock-ingress", "unlock-ingress", "alerts")
+CF_REFUSED = ("setup", "rules", "enforce", "lock-ingress", "unlock-ingress")
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -2030,3 +2032,39 @@ def test_cloudflare_bash32(toolkit: Path, tmp_path: Path) -> None:
         result = run_dry(toolkit, tmp_path, "prod", *args, interpreter="/bin/bash")
         assert result.returncode == 0, result.stderr
         assert "unbound variable" not in result.stderr
+
+
+# ---- V1 hardening #1: the provider-independent alerts, also under EDGE_PROVIDER=cloudflare ----
+
+
+def test_cloudflare_alerts_set_up_uptime_worker_and_maintenance(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in")
+    result = run_dry(toolkit, tmp_path, "prod", "edge", "alerts")
+    assert result.returncode == 0, result.stderr
+    lines = gcloud_lines(result.stdout)
+    uptime = next(x for x in lines if "monitoring uptime create" in x)
+    assert "--resource-labels=host=api.kuinn.in\\,project_id=aimos-prod" in uptime
+    assert "--path=/readyz" in uptime and "--protocol=https" in uptime
+    metrics = [x for x in lines if "logging metrics create" in x]
+    assert [m.split(" create ", 1)[1].split()[0] for m in metrics] == [
+        "worker_alerts_checked",
+        "worker_started",
+    ]
+    assert all("cloud_run_worker_pool" in m and "aimos-worker" in m for m in metrics)
+    docs = {d["displayName"]: d for d in (json.loads(b) for b in blocks(result.stdout, "policy"))}
+    assert sorted(docs) == [
+        "aimos-edge uptime failing",
+        "aimos-maintenance errors",
+        "aimos-worker heartbeat missing",
+        "aimos-worker restarting",
+    ]
+    absent = docs["aimos-worker heartbeat missing"]["conditions"][0]["conditionAbsent"]
+    assert absent["duration"] == "900s" and "worker_alerts_checked" in absent["filter"]
+    log = docs["aimos-maintenance errors"]["conditions"][0]["conditionMatchedLog"]["filter"]
+    assert 'job_name="aimos-maintenance"' in log and "severity>=ERROR" in log
+    assert len([x for x in lines if "monitoring policies create" in x]) == 4
+    # nothing of the load balancer path
+    assert "edge_armor_deny" not in result.stdout and "security-logs" not in result.stdout

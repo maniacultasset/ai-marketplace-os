@@ -17,7 +17,7 @@
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
-#               EDGE_PROVIDER=cloudflare keeps only cors and status, ADR-0025)
+#               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, maintenance), cors and status, ADR-0025)
 #
 # Every subcommand describes before it creates, so a rerun is safe. Each gcloud command is printed
 # before it runs; --dry-run prints them and runs none (its only gcloud call is a local `--help`
@@ -32,10 +32,14 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../../.." && pwd)"
 PLACEHOLDER="__FILL_ME__"
 # The worker's model keys (MODEL_KEYS) join USER_SECRETS and WORKER_SECRETS by LLM_GATEWAY, below.
-USER_SECRETS="SENTRY_DSN GOOGLE_OAUTH_CLIENT_SECRET AMAZON_CLIENT_SECRET"
+USER_SECRETS="SENTRY_DSN GOOGLE_OAUTH_CLIENT_SECRET AMAZON_CLIENT_SECRET ALERT_SLACK_WEBHOOK"
+# Optional user secrets: `setup` creates and grants them, but a process gets one only once it has
+# an enabled version (an empty secret would fail the deploy). ALERT_SLACK_WEBHOOK: the worker's
+# Slack sink for the alert kinds in app/core/alerts.py SLACK_KINDS (V1 hardening #2).
+OPTIONAL_SECRETS="ALERT_SLACK_WEBHOOK"
 REQUIRED_APIS="run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com cloudkms.googleapis.com storage.googleapis.com iam.googleapis.com logging.googleapis.com cloudresourcemanager.googleapis.com serviceusage.googleapis.com cloudscheduler.googleapis.com"
 API_SECRETS="DATABASE_URL JWT_SECRET ADMIN_SESSION_SECRET S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
-WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
+WORKER_SECRETS="DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN ALERT_SLACK_WEBHOOK"
 MIGRATE_SECRETS="ALEMBIC_DATABASE_URL"
 DB_INIT_SECRETS="POSTGRES_PASSWORD APP_RW_PASSWORD APP_RO_PASSWORD MIGRATOR_PASSWORD"
 OPS_SECRETS="ALEMBIC_DATABASE_URL"
@@ -436,6 +440,24 @@ secret_refs() {
   printf '%s' "$out"
 }
 
+# LIST: the names in LIST a process can mount now: every required one, and each optional one
+# (OPTIONAL_SECRETS) only while it has an enabled version. A dry run reads them as absent.
+bound_secrets() {
+  local out="" name
+  for name in $1; do
+    case " $OPTIONAL_SECRETS " in
+      *" $name "*)
+        if ! secret_has_version "$name"; then
+          say "secret $name has no value: not bound (optional)" >&2
+          continue
+        fi
+        ;;
+    esac
+    out="${out:+$out }$name"
+  done
+  printf '%s' "$out"
+}
+
 # ---- preflight ----
 check_filled() {
   local name value
@@ -779,6 +801,16 @@ check_user_secrets() {
     else
       missing=1
       say "secret $name has no value. Add it in your own terminal (the value is never echoed):"
+      printf "  bash -c 'read -rsp \"%s: \" v; echo; printf %%s \"\$v\" | gcloud secrets versions add %s --data-file=- --project=%s'\n" \
+        "$name" "$name" "$PROJECT"
+    fi
+  done
+  # V1 hardening #2: optional, so it never stops setup; the worker binds it once it has a value
+  for name in $OPTIONAL_SECRETS; do
+    if secret_has_version "$name"; then
+      say "secret $name: present (optional)"
+    else
+      say "secret $name has no value (optional; the worker's Slack alerts stay off). To add it:"
       printf "  bash -c 'read -rsp \"%s: \" v; echo; printf %%s \"\$v\" | gcloud secrets versions add %s --data-file=- --project=%s'\n" \
         "$name" "$name" "$PROJECT"
     fi
@@ -1158,7 +1190,7 @@ worker_yaml() {
     done <<EOF
 $(app_env worker "$url")
 EOF
-    for name in $WORKER_SECRETS; do
+    for name in ${WORKER_BOUND-$WORKER_SECRETS}; do
       printf '            - name: %s\n              valueFrom:\n                secretKeyRef:\n' "$name"
       printf '                  name: %s\n                  key: latest\n' "$name"
     done
@@ -1171,6 +1203,7 @@ deploy_worker() {
     say "worker pool skipped (WORKER_ENABLED=$WORKER_ENABLED in $ENV_NAME.env)"
     return 0
   fi
+  WORKER_BOUND="$(bound_secrets "$WORKER_SECRETS")"
   if ! gcloud run worker-pools deploy --help >/dev/null 2>&1; then
     say "this gcloud cannot load 'run worker-pools deploy'; using 'run worker-pools replace'"
     worker_yaml "$image" "$url" "$WORK/worker-pool.yaml"
@@ -1185,7 +1218,7 @@ deploy_worker() {
   gc run worker-pools deploy "$WORKER_POOL" --image="$image" --region="$REGION" \
     --service-account="$(sa_email "$SA_WORKER")" --cpu="$WORKER_CPU" --memory="$WORKER_MEMORY" \
     --instances="$WORKER_INSTANCES" --set-cloudsql-instances="$CONN" \
-    --env-vars-file="$WORK/worker-env.yaml" --set-secrets="$(secret_refs "$WORKER_SECRETS")" \
+    --env-vars-file="$WORK/worker-env.yaml" --set-secrets="$(secret_refs "$WORKER_BOUND")" \
     --labels="$LABELS"
 }
 
@@ -2047,8 +2080,15 @@ policy_name() {
   gq monitoring policies list --filter="displayName=\"$1\"" --format='value(name)' || true
 }
 
-edge_alerts() {
-  local channel uptime count file name existing threshold metric current
+# V1 hardening #1: the alerts that do not depend on the edge provider, to ALERT_EMAIL by a Cloud
+# Monitoring email channel: the uptime check of https://$EDGE_DOMAIN/readyz, the worker heartbeat
+# (no `periodic.alerts_checked` line for 15 min: the worker is down or hung, and with it every
+# app alert), worker restarts (more than 2 `worker.started` lines in 30 min: a crash loop) and
+# any ERROR line of the daily maintenance job (a failed step or an incomplete DPP purge). Runs
+# for EDGE_PROVIDER=cloudflare too (`edge alerts`); the load balancer path adds its own after.
+# Sets CHANNEL and UPTIME for the caller.
+ops_alerts() {
+  local channel uptime count file name existing current metric
   case "$ALERT_EMAIL" in
     "") die "alerts: set ALERT_EMAIL in scripts/deploy/gcp/$ENV_NAME.env (one address)" ;;
     *[,\ ]* | *@*@*) die "alerts: ALERT_EMAIL must be one address, not '$ALERT_EMAIL'" ;;
@@ -2058,13 +2098,6 @@ edge_alerts() {
   if [ "$DRY_RUN" -eq 0 ] && ! gcloud beta monitoring channels create --help >/dev/null 2>&1; then
     die "alerts: this gcloud has no beta monitoring commands; run: gcloud components install beta"
   fi
-  # Logs-based metrics.
-  for metric in \
-    "edge_armor_deny|resource.type=\"http_load_balancer\" AND jsonPayload.enforcedSecurityPolicy.outcome=\"DENY\"" \
-    "edge_rate_429|resource.type=\"http_load_balancer\" AND httpRequest.status=429"; do
-    gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
-      gc logging metrics create "${metric%%|*}" --description="API edge (DPP-2)" --log-filter="${metric#*|}"
-  done
   # The email channel (no GA create command).
   channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
   if [ -z "$channel" ]; then
@@ -2095,7 +2128,68 @@ edge_alerts() {
     count="$(printf '%s' "$uptime" | grep -c . || true)"
     [ "$count" -eq 1 ] || die "alerts: want exactly one uptime check named $EDGE_UPTIME, found $count"
   fi
-  CHANNEL="$channel" UPTIME="$uptime" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
+  CHANNEL="$channel"
+  UPTIME="$uptime"
+  # Logs-based metrics on the worker's own JSON lines (app/core/logging.py: `message`).
+  local pool="resource.type=\"cloud_run_worker_pool\" AND resource.labels.worker_pool_name=\"$WORKER_POOL\""
+  for metric in \
+    "worker_alerts_checked|$pool AND jsonPayload.message=\"periodic.alerts_checked\"" \
+    "worker_started|$pool AND jsonPayload.message=\"worker.started\""; do
+    gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
+      gc logging metrics create "${metric%%|*}" --description="worker health (V1 hardening #1)" --log-filter="${metric#*|}"
+  done
+  CHANNEL="$channel" UPTIME="$uptime" JOB="$MAINT_JOB" OUT="$WORK" python3 -c '
+import json, os
+e = os.environ
+def user_metric(name):
+    return "metric.type=\"logging.googleapis.com/user/%s\"" % name
+policies = {
+  "uptime": ("aimos-edge uptime failing", {"displayName": "/readyz failing from 2+ regions for 5 min",
+    "conditionThreshold": {
+      "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.labels.check_id=\"%s\"" % e["UPTIME"],
+      "comparison": "COMPARISON_GT", "thresholdValue": 1, "duration": "300s",
+      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_NEXT_OLDER",
+                        "crossSeriesReducer": "REDUCE_COUNT_FALSE", "groupByFields": ["resource.label.*"]}]}}),
+  "heartbeat": ("aimos-worker heartbeat missing", {"displayName": "no periodic.alerts_checked for 15 min",
+    "conditionAbsent": {"filter": user_metric("worker_alerts_checked"), "duration": "900s",
+      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM",
+                        "crossSeriesReducer": "REDUCE_SUM"}]}}),
+  "restarts": ("aimos-worker restarting", {"displayName": "more than 2 worker starts in 30 min",
+    "conditionThreshold": {"filter": user_metric("worker_started"), "comparison": "COMPARISON_GT",
+      "thresholdValue": 2, "duration": "0s",
+      "aggregations": [{"alignmentPeriod": "1800s", "perSeriesAligner": "ALIGN_SUM",
+                        "crossSeriesReducer": "REDUCE_SUM"}]}}),
+  "maintenance": ("aimos-maintenance errors", {"displayName": "an ERROR line in the daily maintenance job",
+    "conditionMatchedLog": {"filter": "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"%s\" AND severity>=ERROR" % e["JOB"]}}),
+}
+for key, (name, condition) in policies.items():
+    doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
+           "notificationChannels": [e["CHANNEL"]]}
+    if "conditionMatchedLog" in condition:
+        doc["alertStrategy"] = {"notificationRateLimit": {"period": "3600s"}}
+    with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
+        json.dump(doc, handle, indent=2)
+        handle.write("\n")'
+  for name in uptime heartbeat restarts maintenance; do
+    file="$WORK/policy-$name.json"
+    say "policy $file:"
+    sed 's/^/    /' "$file"
+    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
+    [ -n "$existing" ] || gc monitoring policies create --policy-from-file="$file"
+  done
+}
+
+edge_alerts() {
+  local file name existing threshold metric
+  ops_alerts
+  # Logs-based metrics.
+  for metric in \
+    "edge_armor_deny|resource.type=\"http_load_balancer\" AND jsonPayload.enforcedSecurityPolicy.outcome=\"DENY\"" \
+    "edge_rate_429|resource.type=\"http_load_balancer\" AND httpRequest.status=429"; do
+    gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
+      gc logging metrics create "${metric%%|*}" --description="API edge (DPP-2)" --log-filter="${metric#*|}"
+  done
+  CHANNEL="$CHANNEL" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
     RATIO="$EDGE_5XX_RATIO" RULE="$EDGE_RULE" OUT="$WORK" python3 -c '
 import json, os
 e = os.environ
@@ -2115,12 +2209,6 @@ policies = {
           "metric.type=\"logging.googleapis.com/user/edge_rate_429\"", float(e["R429"]))),
   "5xx": ("aimos-edge lb 5xx", threshold("5xx over %s of requests in 5 min" % e["RATIO"],
           lb + " AND metric.labels.response_code_class=500", float(e["RATIO"]), lb)),
-  "uptime": ("aimos-edge uptime failing", {"displayName": "/readyz failing from 2+ regions for 5 min",
-    "conditionThreshold": {
-      "filter": "metric.type=\"monitoring.googleapis.com/uptime_check/check_passed\" AND resource.type=\"uptime_url\" AND metric.labels.check_id=\"%s\"" % e["UPTIME"],
-      "comparison": "COMPARISON_GT", "thresholdValue": 1, "duration": "300s",
-      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_NEXT_OLDER",
-                        "crossSeriesReducer": "REDUCE_COUNT_FALSE", "groupByFields": ["resource.label.*"]}]}}),
   "ddos": ("aimos-edge adaptive protection", {"displayName": "Adaptive Protection attack alert",
     "conditionMatchedLog": {"filter": "resource.type=\"network_security_policy\" AND logName:\"networksecurity.googleapis.com%2Fdos_attack\""}}),
 }
@@ -2132,7 +2220,7 @@ for key, (name, condition) in policies.items():
     with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
         json.dump(doc, handle, indent=2)
         handle.write("\n")'
-  for name in deny 429 5xx uptime ddos; do
+  for name in deny 429 5xx ddos; do
     file="$WORK/policy-$name.json"
     say "policy $file:"
     sed 's/^/    /' "$file"
@@ -2163,7 +2251,7 @@ for key, (name, condition) in policies.items():
     *) gc logging sinks update _Default \
       --add-exclusion='name=edge-callback-urls,filter=resource.type="http_load_balancer" AND httpRequest.requestUrl:"/callback"' ;;
   esac
-  say "alerts: metrics, channel, uptime check, 5 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
+  say "alerts: metrics, channel, uptime check, 8 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
 }
 
 edge_status() {
@@ -2234,8 +2322,10 @@ cmd_edge() {
   [ -n "$EDGE_DOMAIN" ] || die "edge needs EDGE_DOMAIN (scripts/deploy/gcp/$ENV_NAME.env); staging has no domain"
   if cloudflare; then
     case "$sub" in
-      setup | rules | enforce | lock-ingress | unlock-ingress | alerts)
+      setup | rules | enforce | lock-ingress | unlock-ingress)
         die "edge $sub: EDGE_PROVIDER=cloudflare: see docs/runbooks/EDGE-CLOUDFLARE.md" ;;
+      # V1 hardening #1: the provider-independent alerts (uptime, worker, maintenance)
+      alerts) ops_alerts; say "alerts: channel, uptime check and 4 policies are in place" ;;
       cors) check_filled; bucket_cors ;;
       status) edge_status_cloudflare ;;
       *) usage ;;

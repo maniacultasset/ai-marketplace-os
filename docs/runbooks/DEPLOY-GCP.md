@@ -29,7 +29,7 @@ passed on a command line or written to a committed file.
 | `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`, `tenant make-admin --email E --staff-email F`, and (DPP-1, after the identity check in `MFA-STAFF.md`) `tenant unlock --email E --staff-email F` (no password) and `tenant reset-mfa --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>` (8 groups of an upper-case letter, a lower-case letter and a digit, so it meets the DPP rules; must-change at the next sign-in), and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `templates` | `templates refresh --product-type T --staff-email E --reason R` and `templates promote-definition --product-type T --version V [--digest D] --staff-email E --reason R` (DW2, `PTD-REFRESH.md`). Runs `python -m app.cli templates ...` in the one-off job `aimos-ptd` under its own identity `aimos-ptd` (secret access is per identity, so the shared ops identity never gets the token), with the Amazon app's public settings, `AMAZON_CLIENT_SECRET`, `AMAZON_PLATFORM_REFRESH_TOKEN` and the migrator URL. Only while `AMAZON_APP_ID` is set. The platform token is a self-authorization of the Kuinn app on the company's own seller account; the owner adds it with the printed `read -s` command. Only this job mounts it. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
-| `edge` | Prod only (needs `EDGE_DOMAIN`; staging is refused). `edge setup` builds the global external load balancer for `api.kuinn.in` (managed certificate, SSL policy MODERN / TLS 1.2, serverless NEGs for the service and its `candidate` tag, logged backends with the Cloud Armor policy `kuinn-api-waf`); `edge rules` converges the policy to `armor-rules.yaml` rule by rule, every group in preview unless listed in `EDGE_ENFORCE`; `edge enforce` does the same after printing what leaves preview; `edge lock-ingress` / `edge unlock-ingress` close and reopen the `run.app` URLs; `edge alerts` sets up the deny/429/5xx/uptime/Adaptive Protection alerts to `ALERT_EMAIL` and the 400-day `security-logs` bucket; `edge cors` resets the bucket CORS from `ALLOWED_ORIGINS`; `edge status` prints the read-only state and evidence. Order, gates and rollbacks: `docs/runbooks/EDGE-CUTOVER.md`. Interim (ADR-0025): with `EDGE_PROVIDER=cloudflare` only `edge cors` and `edge status` run, and the api gets the Worker's `EDGE_ORIGIN_SECRET`; see `docs/runbooks/EDGE-CLOUDFLARE.md`. |
+| `edge` | Prod only (needs `EDGE_DOMAIN`; staging is refused). `edge setup` builds the global external load balancer for `api.kuinn.in` (managed certificate, SSL policy MODERN / TLS 1.2, serverless NEGs for the service and its `candidate` tag, logged backends with the Cloud Armor policy `kuinn-api-waf`); `edge rules` converges the policy to `armor-rules.yaml` rule by rule, every group in preview unless listed in `EDGE_ENFORCE`; `edge enforce` does the same after printing what leaves preview; `edge lock-ingress` / `edge unlock-ingress` close and reopen the `run.app` URLs; `edge alerts` sets up the uptime, worker and maintenance alerts (see "Alerts and Slack") plus the deny/429/5xx/Adaptive Protection alerts to `ALERT_EMAIL` and the 400-day `security-logs` bucket; `edge cors` resets the bucket CORS from `ALLOWED_ORIGINS`; `edge status` prints the read-only state and evidence. Order, gates and rollbacks: `docs/runbooks/EDGE-CUTOVER.md`. Interim (ADR-0025): with `EDGE_PROVIDER=cloudflare` only `edge alerts` (the provider-independent part, below), `edge cors` and `edge status` run, and the api gets the Worker's `EDGE_ORIGIN_SECRET`; see `docs/runbooks/EDGE-CLOUDFLARE.md`. |
 
 `--sha <12 hex>` points `db-init`, `migrate`, `deploy`, `smoke` and `tenant` at an image other
 than `HEAD`'s.
@@ -147,6 +147,43 @@ The next `deploy` (or `--to-latest`) moves traffic forward again. The worker poo
 split: redeploy the previous image with `deploy.sh staging deploy --sha <previous sha>` (tags are
 immutable, so that image is still there). Migrations are forward-only. Roll the code back only when
 the older revision still works on the current schema, which is the expand-then-contract rule.
+
+## Alerts and Slack (V1 hardening #1, #2)
+
+Every app alert is sent by the worker, so a dead worker alerts nobody by itself. Cloud Monitoring
+covers that, with an email channel that does not depend on the edge provider or on the worker.
+
+**Email alerts.** `ALERT_EMAIL` in `prod.env` is blank: the owner fills in one address (x@y.z),
+commits, then runs `scripts/deploy/gcp/deploy.sh prod edge alerts`. With
+`EDGE_PROVIDER=cloudflare` it creates, once each (a rerun changes nothing, except the channel's
+address when `ALERT_EMAIL` changed):
+
+| What | Fires when |
+|---|---|
+| email channel `aimos-edge-alerts` | (to `ALERT_EMAIL`) |
+| uptime check `aimos-edge-readyz` on `https://api.kuinn.in/readyz`, every 5 min; policy `aimos-edge uptime failing` | `/readyz` fails from 2 or more regions for 5 minutes (API or database down) |
+| log metric `worker_alerts_checked`; policy `aimos-worker heartbeat missing` | no `periodic.alerts_checked` line from the worker pool for 15 minutes (worker down, hung or never started) |
+| log metric `worker_started`; policy `aimos-worker restarting` | more than 2 `worker.started` lines in 30 minutes (a crash loop) |
+| policy `aimos-maintenance errors` | any ERROR line of the `aimos-maintenance` job (a failed step or an incomplete DPP purge; at most one mail an hour) |
+
+On the load balancer path (`EDGE_PROVIDER` blank) the same command adds the deny, 429, 5xx and
+Adaptive Protection policies and the security log bucket. The two worker metrics filter on
+`resource.type="cloud_run_worker_pool"`; at the first run, check in Logs Explorer that the
+worker's lines carry that resource type, and fix the filter if Google names it otherwise.
+
+**Slack.** `ALERT_SLACK_WEBHOOK` is an optional secret: `setup` creates it with no value and grants
+it to the worker, prints how to add a value, and never stops for it. `deploy` binds it to the
+worker only once it has an enabled version, so an empty secret never fails a deploy. The worker
+posts the kinds in `SLACK_KINDS` (`app/core/alerts.py`): `llm_budget`, `llm_credit` (the OpenRouter
+credit at 50/80/95 %), `llm_provider_refused` (AI paused), `queue_latency`,
+`token_refresh_failed` and `job_dead_lettered` (each dead letter or failed publish, deduped per
+job per day, at most 20 per job kind per 15 minutes, then one summary). To turn it on: make an
+incoming webhook in the team's Slack, add it with the `read -rsp` command `setup` prints, then
+`deploy.sh prod deploy` (or the next `release`). Every alert kind also reaches Sentry.
+
+**Who owns what.** The owner of `ALERT_EMAIL` owns the Cloud Monitoring policies above. Sentry
+alert rules (new issue, regression) are set in Sentry's UI by the on-call engineer named in
+`docs/runbooks/INCIDENTS.md`; nothing in this toolkit creates them.
 
 ## Restore the database (point-in-time recovery)
 
