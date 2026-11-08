@@ -612,14 +612,27 @@ def _is_child(attributes: Mapping[str, Any]) -> bool:
     )
 
 
+def _theme_has_colour(attributes: Mapping[str, Any]) -> bool:
+    """True unless the read's `variation_theme` names a theme with no COLOR axis."""
+    themes = attributes.get(c.THEME_ATTRIBUTE)
+    names = [
+        str(one.get("name", "")).upper()
+        for one in (themes if isinstance(themes, list) else [])
+        if isinstance(one, dict)
+    ]
+    return not names or any("COLOR" in name.split("/") for name in names)
+
+
 def _read_index(attributes: Mapping[str, Any]) -> Mapping[str, tuple[str, ...]]:
     """The read-back index. `reverse_index(None)` reads image slot k as `images[k]`, which holds
     for a standalone (every image, version order). A colour child's slots carry its own
     colourway's images first (SI8 T4, CP-D4), and a read has no version to rebuild them from, so
     a child's read drops the image rows: an image issue fails `listing` and no image path reads
-    as succeeded, never a wrong `images[k]` (SI8 fix round 1, R1-1)."""
+    as succeeded, never a wrong `images[k]` (SI8 fix round 1, R1-1). A child whose theme has no
+    COLOR axis (e.g. `SIZE`) sends every image in version order, so it keeps the image rows; a
+    child with no readable theme drops them."""
     index = reverse_index(None)
-    if not _is_child(attributes):
+    if not _is_child(attributes) or not _theme_has_colour(attributes):
         return index
     return {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
 
