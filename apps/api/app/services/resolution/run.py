@@ -69,6 +69,7 @@ from typing import Any, Final, Literal
 from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorItem
 
+from app.adapters.amazon.precheck import link_in
 from app.adapters.registry import repairer
 from app.core.config import get_settings
 from app.core.errors import DomainError
@@ -675,7 +676,10 @@ async def _human_steps(
     for (kind, target), group in sorted(account_steps.items()):
         if kind == "permission_decision":
             row = by_issue[group[0].issue_id]
-            question, reason = seller_central_step(row.marketplace_code, listing.category)
+            # SI13: a brand restriction found by the pre-check carries Amazon's Seller Central
+            # link on its own line; only an allowed https host passes (CP-D13)
+            link = link_in(row.raw_message) or link_in(row.message)
+            question, reason = seller_central_step(row.marketplace_code, listing.category, link)
         else:
             question, reason = staff_step(group[0].action)
         task_id = await uow.human_tasks.open_account_task(

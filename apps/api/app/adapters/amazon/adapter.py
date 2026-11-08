@@ -62,6 +62,7 @@ from app.adapters.amazon.mapping import (
     MappedItem,
     build,
     error,
+    fact_path,
     is_mapped,
     item_index,
     preview,
@@ -635,10 +636,18 @@ class AmazonAdapter(MarketplaceAdapter):
                     continue
                 secrets = (*parties, *self._client.used_secrets())
                 items += precheck.from_restrictions(response.json, secrets)
+        lost = set(failed)
         return precheck.PrecheckResult(
             items=tuple(items[:MAX_ERROR_ITEMS]),
             matched=tuple(matched),
             failed=tuple(dict.fromkeys(failed)),
+            checked=len(units),
+            scope=tuple(
+                sorted(
+                    {fact_path(u, "identifier") for u in units if u.seller_sku not in lost}
+                    | ({"listing"} if restrictions and not lost else set())
+                )
+            ),
         )
 
     async def get_listing(
