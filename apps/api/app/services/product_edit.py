@@ -27,6 +27,11 @@ SI8: `brand_name` must be one of the tenant's own brand names (`products.checked
 422 VALUE_NOT_ALLOWED otherwise) and is stored in that name's spelling; `null` clears it back to
 the brand default. `gender` is one of the six audiences (the schema's `Literal`).
 
+SI12: `hsn_code`, `country_of_origin` and `package` are seller column facts under the dictionary
+keys `hsn_code`, `country_of_origin`, `package_dimensions` and `package_weight`. `package` merges
+(JSON merge patch, CP-D8): the three dimensions are one group (set together or cleared together),
+`weight_g` stands alone, a key not sent is unchanged and `package: null` clears all four.
+
 Levels: a style-owned field (`style_number`, `brand_name`, `gender`, `size_chart`, an attribute
 outside the row's owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's
 own or inherited
@@ -91,8 +96,14 @@ PATCH_FIELDS: Final = frozenset(
         # SI5: the barcode and the GTIN exemption (`product_identifier.plan`)
         "product_identifier",
         "identifier_exemption",
+        # SI12: the seller fields and the size-chart evidence
+        "hsn_code",
+        "country_of_origin",
+        "package",
+        "size_chart_image_id",
     }
 )
+_ALL_LEVELS: Final = frozenset({"style", "variant", "standalone"})
 # typed body field → (products column, dictionary key, owner levels)
 TYPED: Final[Mapping[str, tuple[str, str, frozenset[str]]]] = {
     "title": ("title", "title", frozenset({"style", "variant", "standalone"})),
@@ -112,7 +123,19 @@ TYPED: Final[Mapping[str, tuple[str, str, frozenset[str]]]] = {
         "manufacturer",
         frozenset({"style", "variant", "standalone"}),
     ),
+    # SI12 (owner levels from the dictionary: style, variant, standalone)
+    "hsn_code": ("hsn_code", "hsn_code", _ALL_LEVELS),
+    "country_of_origin": ("country_of_origin", "country_of_origin", _ALL_LEVELS),
 }
+# SI12: `package` (body key → products column); the dims are one dictionary key
+PACKAGE_DIMS: Final[Mapping[str, str]] = {
+    "length_cm": "package_length_cm",
+    "breadth_cm": "package_breadth_cm",
+    "height_cm": "package_height_cm",
+}
+PACKAGE_DIMS_KEY: Final = "package_dimensions"
+PACKAGE_WEIGHT_KEY: Final = "package_weight"
+PACKAGE_WEIGHT_COLUMN: Final = "package_weight_g"
 _NOT_NULLABLE: Final = frozenset({"title", "category"})
 
 
@@ -123,6 +146,8 @@ class ProductChange:
 
     typed_set: dict[str, Any] = field(default_factory=dict)
     typed_clear: tuple[str, ...] = ()
+    # SI12: dictionary key → {column: value} set together (the package dimensions)
+    groups_set: dict[str, dict[str, Any]] = field(default_factory=dict)
     attrs_set: dict[str, dict[str, Any]] = field(default_factory=dict)
     attrs_clear: tuple[str, ...] = ()
     # SI3: (index in `confirm_attributes`, key) of the photo values to confirm
@@ -131,7 +156,12 @@ class ProductChange:
     @property
     def empty(self) -> bool:
         return not (
-            self.typed_set or self.typed_clear or self.attrs_set or self.attrs_clear or self.confirm
+            self.typed_set
+            or self.typed_clear
+            or self.groups_set
+            or self.attrs_set
+            or self.attrs_clear
+            or self.confirm
         )
 
 
@@ -153,10 +183,15 @@ def is_photo_value(stored: Any) -> bool:
     )
 
 
-def _same_fact(stored: Any, new: Mapping[str, Any]) -> bool:
+def _same_fact(stored: Any, new: Mapping[str, Any], key: str | None = None) -> bool:
+    """SI12: for the size chart the evidence counts too, so confirming an unchanged chart from a
+    photo stores its `image:` evidence and a re-save without it drops a stale one."""
     if not isinstance(stored, Mapping):
         return False
-    return all(stored.get(k) == new.get(k) for k in ("value", "normalized", "source"))
+    compared: tuple[str, ...] = ("value", "normalized", "source")
+    if key == SIZE_CHART_KEY:
+        compared = (*compared, "evidence_ref")
+    return all(stored.get(k) == new.get(k) for k in compared)
 
 
 def _plan_money(
@@ -195,6 +230,40 @@ def _plan_money(
                 )
 
 
+def _plan_package(
+    row: Any,
+    package: Mapping[str, Any] | None,
+    typed: dict[str, Any],
+    cleared: list[str],
+    groups: dict[str, dict[str, Any]],
+) -> None:
+    """SI12 (CP-D8): `package` as a JSON merge patch over the stored values."""
+    dims_stored = any(getattr(row, c) is not None for c in PACKAGE_DIMS.values())
+    weight_stored = getattr(row, PACKAGE_WEIGHT_COLUMN) is not None
+    if package is None:
+        if dims_stored:
+            cleared.append(PACKAGE_DIMS_KEY)
+        if weight_stored:
+            cleared.append(PACKAGE_WEIGHT_KEY)
+        return
+    if any(name in package for name in PACKAGE_DIMS):
+        values = {column: package.get(name) for name, column in PACKAGE_DIMS.items()}
+        if all(v is None for v in values.values()):
+            if dims_stored:
+                cleared.append(PACKAGE_DIMS_KEY)
+        elif any(v is None for v in values.values()):  # the wire model refuses it already
+            raise InputError(ErrorCode.VALIDATION_FAILED, "package")
+        elif any(getattr(row, c) != v for c, v in values.items()):
+            groups[PACKAGE_DIMS_KEY] = values
+    if "weight_g" in package:
+        weight = package["weight_g"]
+        if weight is None:
+            if weight_stored:
+                cleared.append(PACKAGE_WEIGHT_KEY)
+        elif getattr(row, PACKAGE_WEIGHT_COLUMN) != weight:
+            typed[PACKAGE_WEIGHT_COLUMN] = weight
+
+
 def plan_patch(
     row: Any,
     style_row: Any,
@@ -206,6 +275,7 @@ def plan_patch(
     now: datetime,
     party_id: uuid.UUID | None = None,
     children: Sequence[tuple[Decimal | None, Decimal | None]] = (),
+    size_chart_image_id: uuid.UUID | None = None,
 ) -> ProductChange:
     """The change set of `patch` against the locked `row` (pure). `party_id` is the matched or
     created party for a non-null `manufacturer`; `children` are a style's `(price, mrp)`."""
@@ -235,6 +305,9 @@ def plan_patch(
                 raise InputError(ErrorCode.VALIDATION_FAILED, "category")
             typed[column] = value
     _plan_money(row, style_row, typed, set(cleared), children)
+    groups: dict[str, dict[str, Any]] = {}
+    if "package" in patch:
+        _plan_package(row, patch["package"], typed, cleared, groups)
 
     stored: Mapping[str, Any] = row.attributes if isinstance(row.attributes, Mapping) else {}
     attrs_set: dict[str, dict[str, Any]] = {}
@@ -247,8 +320,8 @@ def plan_patch(
             if SIZE_CHART_KEY in stored:
                 attrs_clear.append(SIZE_CHART_KEY)
         else:
-            fact = size_chart_fact(chart, now=now)
-            if not _same_fact(stored.get(SIZE_CHART_KEY), fact):
+            fact = size_chart_fact(chart, now=now, image_id=size_chart_image_id)
+            if not _same_fact(stored.get(SIZE_CHART_KEY), fact, SIZE_CHART_KEY):
                 attrs_set[SIZE_CHART_KEY] = fact
     attributes: Mapping[str, Any] = patch.get("attributes") or {}
     values = {k: v for k, v in attributes.items() if v is not None}
@@ -273,6 +346,7 @@ def plan_patch(
     return ProductChange(
         typed_set=typed,
         typed_clear=tuple(cleared),
+        groups_set=groups,
         attrs_set=attrs_set,
         attrs_clear=tuple(attrs_clear),
         confirm=_plan_confirm(patch, stored, defs, attributes),
@@ -318,6 +392,7 @@ def _envelopes(row: Any, change: ProductChange, column_keys: Mapping[str, str]) 
     provenance: Mapping[str, Any] = row.provenance or {}
     attr_keys = [*change.attrs_set, *change.attrs_clear, *(k for _i, k in change.confirm)]
     prov_keys = [column_keys[c] for c in change.typed_set] + list(change.typed_clear)
+    prov_keys += list(change.groups_set)
     return {
         "attributes": {k: attributes.get(k) for k in attr_keys},
         "provenance": {k: provenance.get(k) for k in prov_keys},
@@ -359,6 +434,26 @@ async def update_product(
         raise
 
 
+async def _size_chart_image(
+    uow: Any, row: Any, level: str, patch: Mapping[str, Any]
+) -> uuid.UUID | None:
+    """SI12: `size_chart_image_id` names a live `size_chart` image of this product, else 422 at
+    `size_chart_image_id` (a foreign, deleted or other product's image alike: no oracle). On a
+    variant the size chart's own level rule answers first (`plan_patch`)."""
+    image_id = patch.get("size_chart_image_id")
+    if image_id is None:
+        return None
+    if patch.get("size_chart") is None:  # the wire model refuses it already
+        raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart_image_id")
+    if level not in SIZE_CHART_LEVELS:
+        return None
+    found = await uow.images.size_chart_of(row.id, image_id)
+    if found is None:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart_image_id")
+    image: uuid.UUID = found.id
+    return image
+
+
 async def _update_product(
     principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
 ) -> ProductView:
@@ -393,6 +488,7 @@ async def _update_product(
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "brand_name")
             # SI8 CP-D9: one of the tenant's own brand names, stored in that name's spelling
             patch = {**patch, "brand_name": await checked_brand(uow, patch["brand_name"])}
+        chart_image = await _size_chart_image(uow, row, level, patch)
         change = plan_patch(
             row,
             style,
@@ -403,6 +499,7 @@ async def _update_product(
             now=now,
             party_id=party_id,
             children=children,
+            size_chart_image_id=chart_image,
         )
         id_change = product_identifier.plan(
             level,
@@ -439,6 +536,8 @@ async def _update_product(
             await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
         for column, value in change.typed_set.items():
             await uow.facts.set_typed(row.id, column, value, column_fact)
+        for values in change.groups_set.values():
+            await uow.facts.set_typed_group(row.id, values, column_fact)
         for key in change.typed_clear:
             await uow.facts.clear_typed(row.id, key)
         for key, fact in change.attrs_set.items():
@@ -479,6 +578,7 @@ async def _update_product(
             },
             "provenance": {
                 **{column_keys[c]: column_fact for c in change.typed_set},
+                **dict.fromkeys(change.groups_set, column_fact),
                 **dict.fromkeys(change.typed_clear),
             },
         }

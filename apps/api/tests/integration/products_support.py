@@ -138,6 +138,13 @@ PRODUCT_FIELDS = frozenset(
         # SI5: the barcode and the GTIN exemption
         "product_identifier",
         "identifier_exemption",
+        # SI12: the seller fields, field sources, suggestions and the size-chart read
+        "hsn_code",
+        "package",
+        "country_of_origin",
+        "field_sources",
+        "suggestions",
+        "size_chart_suggestion",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
@@ -218,7 +225,15 @@ def site_body(sku: str = "S12-KURTA-1", **overrides: Any) -> dict[str, Any]:
 
 
 def as_listed(single: dict[str, Any]) -> dict[str, Any]:
-    """SI8 (CP-D8): a single read as a list page shows it. A single read carries the effective
+    """SI8 (CP-D8), SI12: a single read as a list page shows it. A single read carries the effective
     brand (the brand default with `brand_name_inherited`); a list shows the row's own value."""
     own = None if single.get("brand_name_inherited") else single.get("brand_name")
-    return {**single, "brand_name": own, "brand_name_inherited": False}
+    # SI12: the field sources, the suggestions and the size-chart read are detail-only
+    return {
+        **single,
+        "brand_name": own,
+        "brand_name_inherited": False,
+        "field_sources": {},
+        "suggestions": {"hsn_code": None},
+        "size_chart_suggestion": None,
+    }

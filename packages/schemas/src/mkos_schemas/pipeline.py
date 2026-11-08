@@ -1,4 +1,4 @@
-"""AI seam protocol: PipelineDeps, run_listing_pipeline and the edit_image entry point (SI7)."""
+"""AI seam protocol: PipelineDeps, run_listing_pipeline, edit_image (SI7) and read_size_chart (SI12)."""
 
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from .jobs import (
 )
 from .listing import CanonicalListing
 from .rules import Rule, RuleSet
+from .size_chart_read import SizeChartReadRequest, SizeChartReadResult
 
 __all__ = [
     "AgentBlockStatus",
@@ -34,9 +35,13 @@ __all__ = [
     "ImageEditResult",
     "ModelCredentials",
     "PipelineDeps",
+    "ReadSizeChart",
     "Rule",
     "RuleSet",
+    "SizeChartReadRequest",
+    "SizeChartReadResult",
     "edit_image",
+    "read_size_chart",
     "run_listing_pipeline",
 ]
 
@@ -82,3 +87,18 @@ class EditImage(Protocol):
 async def edit_image(request: ImageEditRequest, credentials: ModelCredentials) -> ImageEditResult:
     """Implemented in mkos_pipeline (0.4.0); this module declares the contract only."""
     raise NotImplementedError("edit_image is implemented in mkos_pipeline")
+
+
+class ReadSizeChart(Protocol):
+    """The third AI-seam entry point (SI12): one size-chart read, called only by the backend worker."""
+
+    async def __call__(
+        self, request: SizeChartReadRequest, credentials: ModelCredentials
+    ) -> SizeChartReadResult: ...
+
+
+async def read_size_chart(
+    request: SizeChartReadRequest, credentials: ModelCredentials
+) -> SizeChartReadResult:
+    """Implemented in mkos_pipeline; this module declares the contract only."""
+    raise NotImplementedError("read_size_chart is implemented in mkos_pipeline")

@@ -11,7 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ImageSlot, Marketplace
+from mkos_schemas.enums import ImageRole, ImageSlot, Marketplace
 
 from app.api.errors import ApiError
 from app.api.v1.deps import IdempotencyKey, get_current_principal
@@ -64,6 +64,10 @@ async def images_upload(
         StorageKey | None, Form(description="A key from `/images/upload-url`, instead of `file`.")
     ] = None,
     colourway_id: Annotated[UUID | None, Form()] = None,
+    role: Annotated[
+        ImageRole | None,
+        Form(description="SI12: `back` or `close_up`, only with `slot: secondary`."),
+    ] = None,
 ) -> ImageAccepted:
     """Upload an image, or name one already uploaded, and start the compliance checks. Send
     exactly one of `file` and `storage_key`."""
@@ -77,7 +81,11 @@ async def images_upload(
         )
     data = None if file is None else await file.read()
     form = images.ImageUploadForm(
-        product_id=product_id, slot=slot, colourway_id=colourway_id, storage_key=storage_key
+        product_id=product_id,
+        slot=slot,
+        colourway_id=colourway_id,
+        storage_key=storage_key,
+        role=role,
     )
     try:
         body = await images.accept_image_upload(principal, idempotency_key, form, data)

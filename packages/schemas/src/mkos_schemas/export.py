@@ -30,6 +30,7 @@ from .jobs import (
 from .listing import CanonicalListing
 from .publish import ListingResult, MarketplacePreview, SubmissionOut
 from .rules import RuleSet
+from .size_chart_read import SizeChartReadRequest, SizeChartReadResult
 from .validation import ValidationResult, ValidationSummary
 
 SCHEMA_ID_BASE: Final = "https://schemas.mkos.internal/"
@@ -57,6 +58,8 @@ MODELS: Final[tuple[type[BaseModel], ...]] = (
     RuleSet,
     ImageEditRequest,
     ImageEditResult,
+    SizeChartReadRequest,
+    SizeChartReadResult,
 )
 
 

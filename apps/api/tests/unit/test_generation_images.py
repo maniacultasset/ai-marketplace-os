@@ -29,6 +29,7 @@ def row(
     position: int = 0,
     clean: bool = True,
     age: int = 0,
+    role: str | None = None,
 ) -> ListingImageRow:
     return ListingImageRow(
         image_id=uuid.UUID(int=next(_n) + 1),
@@ -40,6 +41,7 @@ def row(
         vision={"w": 800, "h": 1000},
         colourway_position=cw_pos,
         created_at=T0 + timedelta(minutes=age),
+        role=role,
     )
 
 
@@ -149,3 +151,63 @@ async def test_load_context_images_skips_bad_bytes(data: bytes) -> None:
     key = derived_key(TENANT, PRODUCT, present.image_id, "vision.jpg")
     store: Any = _Store({key: data})
     assert await load_context_images(store, TENANT, [present]) == []
+
+
+# ---- SI12 T8 (AC3): Back and Close-up sort right after the main ----
+
+
+def test_roles_order_main_back_close_up_then_the_rest() -> None:
+    chart = row("size_chart")
+    life = row("lifestyle")
+    plain = row("secondary", position=0, age=0)
+    close = row("secondary", position=1, age=1, role="close_up")  # uploaded first
+    back = row("secondary", position=2, age=2, role="back")
+    main = row("main")
+    label = row("packaging_label")
+    rows = [chart, life, plain, close, back, main, label]
+    expected = [main, back, close, plain, life, chart]
+    assert [r.image_id for r in order_for_listing(rows)] == [r.image_id for r in expected]
+    assert [r.image_id for r in pick_context(rows)] == [
+        *(r.image_id for r in expected),
+        label.image_id,
+    ]
+
+
+def test_roles_keep_colourway_phases() -> None:
+    red_back = row("secondary", colourway=RED, cw_pos=0, position=3, role="back")
+    red_plain = row("secondary", colourway=RED, cw_pos=0, position=0)
+    red_main = row("main", colourway=RED, cw_pos=0)
+    style_plain = row("secondary", position=0)
+    style_back = row("secondary", position=5, role="back")
+    main = row("main")
+    refs = order_for_listing([red_back, red_plain, red_main, style_plain, style_back, main])
+    assert [r.image_id for r in refs] == [
+        main.image_id,
+        style_back.image_id,
+        style_plain.image_id,
+        red_main.image_id,
+        red_back.image_id,
+        red_plain.image_id,
+    ]
+
+
+def test_context_keeps_six_plus_label_with_roles() -> None:
+    rows = [row("main"), row("secondary", role="back"), row("secondary", role="close_up")]
+    rows += [row("secondary", position=i) for i in range(6)]
+    label_old, label_new = row("packaging_label", age=1), row("packaging_label", age=9)
+    picked = pick_context([*rows, label_old, label_new])
+    assert len(picked) == 7
+    assert picked[-1].image_id == label_new.image_id
+    assert [r.role for r in picked[:3]] == [None, "back", "close_up"]
+    assert all(r.slot != "packaging_label" for r in order_for_listing([*rows, label_new]))
+
+
+async def test_context_image_carries_the_role() -> None:
+    back, main = row("secondary", role="back"), row("main")
+    objects = {derived_key(TENANT, PRODUCT, r.image_id, "vision.jpg"): JPEG for r in (back, main)}
+    store: Any = _Store(objects)
+    images = await load_context_images(store, TENANT, [main, back])
+    assert [(i.slot, i.role) for i in images] == [
+        (ImageSlot.MAIN, None),
+        (ImageSlot.SECONDARY, "back"),
+    ]

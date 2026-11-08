@@ -71,6 +71,7 @@ from app.api.v1.schemas.auth import (
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
+from app.api.v1.schemas.catalog import RequirementsOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
@@ -109,6 +110,7 @@ from app.api.v1.schemas.signup import (
     SignupRequestPage,
     SignupStatusOut,
 )
+from app.api.v1.schemas.size_chart_read import SizeChartReadOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
@@ -175,6 +177,9 @@ class Operation:
     or a status of the op's own (listings_preview's 501 for a marketplace with no adapter)."""
     step_up: Literal["any", "otp"] | None = None
     """DPP-1: a code entered in the last 1800 s is required under `MFA_ENFORCEMENT=all`."""
+    also_status: int | None = None
+    """SI12: a second 2xx the op may answer with the same body (the size-chart read's 200 for a
+    result already read, beside its 202 for a new job)."""
 
     def __post_init__(self) -> None:
         if self.public and self.platform_admin:
@@ -382,6 +387,13 @@ def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
     entry: dict[str, Any] = {
         "content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}
     }
+    if op.also_status is not None:
+        also = {
+            "model": op.response_model,
+            "description": "Done; answered from a result already stored (no new job).",
+            "content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}},
+        }
+        return {op.status: entry, op.also_status: also}
     if op.etag:
         entry["headers"] = {
             "ETag": {
@@ -461,6 +473,14 @@ _AI_ADMISSION: Final = MappingProxyType(
 )
 # SI10 D4: an AI image edit while AI is paused (a daily cap is a `failed/budget` candidate)
 _AI_PAUSED: Final = MappingProxyType({503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)})
+# SI12: the size-chart read: a variant (FACT_LEVEL_INVALID), and the SI10 admission
+_SIZE_CHART_READ: Final = MappingProxyType(
+    {
+        422: (E.FACT_LEVEL_INVALID,),
+        429: (E.BUDGET_EXCEEDED,),
+        503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID),
+    }
+)
 # S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
 _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 # DPP-1: the public challenge routes (a wrong code or burned challenge is 401; 501 under `off`)
@@ -850,6 +870,16 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume", 200, AiCreditOut,
               "admin", "Resume AI after a top-up or a key fix (repeatable)", "SI10",
               platform_admin=True),
+    # ---- SI12: the size-chart read ----
+    Operation("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read", 202,
+              SizeChartReadOut, "products", "Read the size-chart photo into a suggestion", "SI12",
+              path_id="product_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
+              extra_codes=_SIZE_CHART_READ, also_status=200),
+    # ---- SI12: what each marketplace needs ----
+    Operation("catalog_requirements_get", "GET", "/catalog/requirements", 200, RequirementsOut,
+              "catalog", "What each marketplace needs for a category", "SI12",
+              query=("category",), action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

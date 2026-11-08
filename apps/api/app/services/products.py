@@ -44,6 +44,8 @@ from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
 from app.services import product_identifier
+from app.services.field_sources import FieldSource, field_sources
+from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
@@ -104,6 +106,11 @@ class NewProduct:
     # SI5: the barcode `(type, value)` and the GTIN exemption
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool | None = None
+    # SI12: the seller fields; `package_dims` is (length, breadth, height) in cm
+    hsn_code: str | None = None
+    country_of_origin: str | None = None
+    package_dims: tuple[Decimal, Decimal, Decimal] | None = None
+    package_weight_g: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -202,6 +209,162 @@ class ProductView:
     photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool = False
+    # SI12: the seller fields (single reads: own → style, origin → brand default; lists: own)
+    hsn_code: str | None = None
+    package: dict[str, Any] | None = None
+    country_of_origin: str | None = None
+    # SI12: detail reads only (`{}` and None on lists)
+    field_sources: dict[str, FieldSource] = field(default_factory=dict)
+    hsn_suggestion: HsnSuggestion | None = None
+    size_chart_suggestion: dict[str, Any] | None = None
+
+
+READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
+PACKAGE_COLUMNS: Final = {
+    "length_cm": "package_length_cm",
+    "breadth_cm": "package_breadth_cm",
+    "height_cm": "package_height_cm",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class SellerValues:
+    """SI12: the effective seller fields of one read, and which came from elsewhere."""
+
+    hsn_code: str | None = None
+    package: dict[str, Any] | None = None
+    country_of_origin: str | None = None
+    hsn_from_style: bool = False
+    dims_from_style: bool = False
+    weight_from_style: bool = False
+    country_from_style: bool = False
+    country_from_brand: bool = False
+
+
+# SI12: the typed dictionary keys the source chips cover → their products columns
+SOURCE_COLUMNS: Final[Mapping[str, tuple[str, ...]]] = {
+    "brand_name": ("brand_name",),
+    "category": ("category",),
+    "gender": ("gender",),
+    "mrp": ("mrp",),
+    "selling_price": ("selling_price",),
+    "hsn_code": ("hsn_code",),
+    "country_of_origin": ("country_of_origin",),
+    "manufacturer": ("manufacturer_party_id",),
+    "package_dimensions": ("package_length_cm", "package_breadth_cm", "package_height_cm"),
+    "package_weight": ("package_weight_g",),
+}
+
+
+def _column_envelope(row: Any, key: str) -> dict[str, Any] | None:
+    """The row's provenance of a typed key, with a `value` marker when the row holds a value."""
+    if row is None or not any(getattr(row, c, None) is not None for c in SOURCE_COLUMNS[key]):
+        return None
+    provenance = row.provenance if isinstance(row.provenance, Mapping) else {}
+    stored = provenance.get(key)
+    return {**stored, "value": True} if isinstance(stored, Mapping) else None
+
+
+def effective_envelopes(row: Any, style: Any) -> dict[str, Any]:
+    """The Fact envelopes behind a single read's values: own, else the style's."""
+    out: dict[str, Any] = {}
+    for layer in (style, row):  # the row wins
+        if layer is None:
+            continue
+        attributes = layer.attributes if isinstance(layer.attributes, Mapping) else {}
+        out.update({k: v for k, v in attributes.items() if isinstance(v, Mapping)})
+    for key, columns in SOURCE_COLUMNS.items():
+        own_set = any(getattr(row, c, None) is not None for c in columns)
+        envelope = _column_envelope(row if own_set else style, key)
+        if envelope is not None:
+            out[key] = envelope
+    return out
+
+
+def _newest_chart(details: tuple[ImageDetail, ...]) -> ImageDetail | None:
+    """The product's size chart (CP-D3): its newest live style-level `size_chart` image."""
+    charts = [d for d in details if d.slot == "size_chart" and d.colourway_id is None]
+    if not charts:
+        return None
+    return max(
+        charts, key=lambda d: (d.created_at or datetime.min.replace(tzinfo=UTC), str(d.image_id))
+    )
+
+
+async def size_chart_suggestion(
+    uow: TenantUnitOfWork, row: Any, details: tuple[ImageDetail, ...]
+) -> dict[str, Any] | None:
+    """SI12: the read of the live size-chart photo (a style or standalone; else None). A stored
+    result counts only for the photo's current clean copy; without one, a live read job shows
+    `queued` or `reading` (one indexed read, CP-D6); otherwise None."""
+    if row.parent_product_id is not None:
+        return None
+    chart = _newest_chart(details)
+    if chart is None:
+        return None
+    stored = chart.size_chart_read
+    if (
+        stored is not None
+        and chart.clean_content_hash is not None
+        and stored.get("source_hash") == chart.clean_content_hash
+        and stored.get("status") in READ_STATUSES
+    ):
+        confidence = stored.get("confidence")
+        read_at = stored.get("read_at")
+        return {
+            "image_id": chart.image_id,
+            "status": stored["status"],
+            "chart": stored.get("chart") if stored.get("status") == "read" else None,
+            "confidence": confidence if isinstance(confidence, int | float) else None,
+            "read_at": datetime.fromisoformat(read_at) if isinstance(read_at, str) else None,
+        }
+    job = await uow.job_runs.latest_for_entity("size_chart_read", chart.image_id)
+    if job is None or job.status not in ("queued", "running"):
+        return None
+    status = "queued" if job.status == "queued" else "reading"
+    return {"image_id": chart.image_id, "status": status, "chart": None}
+
+
+def _own_dims(row: Any) -> dict[str, Any] | None:
+    dims = {name: getattr(row, column, None) for name, column in PACKAGE_COLUMNS.items()}
+    return dims if all(v is not None for v in dims.values()) else None
+
+
+def seller_values(row: Any, style: Any = None, brand_country: str | None = None) -> SellerValues:
+    """Own values; on a single read a missing one is the style's (the dims as one group), and a
+    missing origin is then the brand default."""
+    hsn = getattr(row, "hsn_code", None)
+    hsn_from_style = hsn is None and getattr(style, "hsn_code", None) is not None
+    if hsn_from_style:
+        hsn = style.hsn_code
+    dims = _own_dims(row)
+    dims_from_style = dims is None and style is not None and _own_dims(style) is not None
+    if dims_from_style:
+        dims = _own_dims(style)
+    weight = getattr(row, "package_weight_g", None)
+    weight_from_style = weight is None and getattr(style, "package_weight_g", None) is not None
+    if weight_from_style:
+        weight = style.package_weight_g
+    country = getattr(row, "country_of_origin", None)
+    country_from_style = country is None and getattr(style, "country_of_origin", None) is not None
+    if country_from_style:
+        country = style.country_of_origin
+    country_from_brand = country is None and brand_country is not None
+    if country_from_brand:
+        country = brand_country
+    package: dict[str, Any] | None = None
+    if dims is not None or weight is not None:
+        package = {**(dims or dict.fromkeys(PACKAGE_COLUMNS)), "weight_g": weight}
+    return SellerValues(
+        hsn_code=hsn,
+        package=package,
+        country_of_origin=country,
+        hsn_from_style=hsn_from_style,
+        dims_from_style=dims_from_style,
+        weight_from_style=weight_from_style,
+        country_from_style=country_from_style,
+        country_from_brand=country_from_brand,
+    )
 
 
 def _money(value: Any) -> str | None:
@@ -299,6 +462,7 @@ def _view(
     gender: str | None = None,
     photo_read: PhotoReadRow | None = None,
     style_exempt: bool = False,
+    seller: SellerValues | None = None,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
     are the product's live image keys in slot order (S17b CP7). SI5: a variant or standalone
@@ -340,7 +504,17 @@ def _view(
         photo_facts=photo_facts_of(facts),
         photo_read=photo_read,
         **_identifier_view(row, style_exempt),
+        **_seller_view(row if seller is None else None, seller),
     )
+
+
+def _seller_view(row: Any, seller: SellerValues | None) -> dict[str, Any]:
+    values = seller if seller is not None else seller_values(row)
+    return {
+        "hsn_code": values.hsn_code,
+        "package": values.package,
+        "country_of_origin": values.country_of_origin,
+    }
 
 
 def _is_style(row: Any) -> bool:
@@ -397,7 +571,19 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     exempt = False
     if _is_style(row):
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
-    return _view(
+    brand_country = None
+    if row.country_of_origin is None and getattr(style, "country_of_origin", None) is None:
+        brand_country = await uow.brand_profiles.default_country()
+    seller = seller_values(row, style, brand_country)
+    sources = field_sources(
+        effective_envelopes(row, style),
+        inherited={
+            "manufacturer_inherited": inherited and party is not None,
+            "brand_name_inherited": brand_inherited,
+            "country_of_origin_from_brand": seller.country_from_brand,
+        },
+    )
+    view = _view(
         row,
         keys[row.id],
         details=details,
@@ -407,6 +593,13 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         gender=gender,
         photo_read=photo_read,
         style_exempt=exempt,
+        seller=seller,
+    )
+    return replace(
+        view,
+        field_sources=sources,
+        hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
+        size_chart_suggestion=await size_chart_suggestion(uow, row, details),
     )
 
 
@@ -534,6 +727,9 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             "gender": cmd.gender,
             "mrp": cmd.mrp,
             "selling_price": cmd.selling_price,
+            "hsn_code": cmd.hsn_code,
+            "country_of_origin": cmd.country_of_origin,
+            "package_weight_g": cmd.package_weight_g,
         }
         if cmd.manufacturer is not None:
             # decision 16: a product route links a matching party and never rewrites it
@@ -547,6 +743,18 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             key = await uow.facts.column_key(column)
             assert key is not None  # noqa: S101 - set_typed refused an unknown column
             provenance[key] = column_fact
+        if cmd.package_dims is not None:  # SI12: the three dimensions are one fact
+            length, breadth, height = cmd.package_dims
+            await uow.facts.set_typed_group(
+                row.id,
+                {
+                    "package_length_cm": length,
+                    "package_breadth_cm": breadth,
+                    "package_height_cm": height,
+                },
+                column_fact,
+            )
+            provenance["package_dimensions"] = column_fact
         if id_change is not None:
             await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
             provenance[product_identifier.IDENTIFIER_KEY] = column_fact

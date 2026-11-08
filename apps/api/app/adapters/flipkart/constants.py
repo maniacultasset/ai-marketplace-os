@@ -69,6 +69,12 @@ PRICE_ATTRIBUTE: Final = "price"
 CURRENCY: Final = "INR"
 MAX_MONEY: Final = Decimal("9999999999.99")
 REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin")
+# SI12 B7 (PLAN D7, CP-D1; client input 2026-11-08 D2): the other dictionary keys Flipkart needs
+# from the seller (key None: every category). Shown as "Needed", never sent in v1: the keys
+# below stay in FORBIDDEN_ATTRIBUTES (`hsn`, `package_*`).
+EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
+    {None: ("hsn_code", "package_dimensions", "package_weight")}
+)
 
 # Never sent in v1. Any payload key here is a bug (price travels only inside `price`).
 FORBIDDEN_ATTRIBUTES: Final = frozenset(

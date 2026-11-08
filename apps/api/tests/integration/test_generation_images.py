@@ -117,3 +117,22 @@ async def test_missing_vision_is_skipped_but_listed(
     assert [i.image_id for i in seen[0].images] == [main]
     images = _version_images(gen_world, accepted.job_id)
     assert [i["image_id"] for i in images] == [str(main), str(second)]
+
+
+async def test_roles_reach_the_pipeline_in_order(
+    gen_world: GenWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SI12 T8 (AC3): main, back, close_up, other secondary, lifestyle; each carries its role."""
+    product_id = gen_world.product("acme", "KURTA-002")
+    life = _image(gen_world, product_id, "lifestyle")
+    plain = _image(gen_world, product_id, "secondary", position=0)
+    close = _image(gen_world, product_id, "secondary", position=1, role="close_up")
+    back = _image(gen_world, product_id, "secondary", position=2, role="back")
+    main = _image(gen_world, product_id, "main")
+    for image_id in (life, plain, close, back, main):
+        _put_vision(store, gen_world, product_id, image_id)
+    accepted, seen = await _run(gen_world, monkeypatch)
+    got = [(i.image_id, i.role) for i in seen[0].images]
+    assert got == [(main, None), (back, "back"), (close, "close_up"), (plain, None), (life, None)]
+    images = _version_images(gen_world, accepted.job_id)
+    assert [i["image_id"] for i in images] == [str(x) for x in (main, back, close, plain, life)]
