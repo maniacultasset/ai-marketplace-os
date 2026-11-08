@@ -159,6 +159,45 @@ async def test_a_reserve_refusal_makes_no_call(
     assert row["plain_cause"] is None
 
 
+async def test_a_budget_refusal_is_retried_by_a_new_job(
+    gen_world: GenWorld, diagnosis_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Round 1 fix: the next pass after a reserve refusal enqueues a fresh job (same `tries`)
+    that runs to a final state; the old key would hand back the finished job and strand it."""
+    from datetime import UTC, datetime, timedelta
+
+    from app.workers import budget
+    from app.workers.periodic import schedule_error_diagnosis
+
+    real = budget.reserve
+
+    async def refused(*args: Any, **kwargs: Any) -> bool:
+        raise budget.BudgetRefused("tenant")
+
+    await _unknown(gen_world)
+    monkeypatch.setattr(budget, "reserve", refused)
+    first = datetime.now(UTC)
+    assert await schedule_error_diagnosis(first) == 1
+    ((job_id, *_),) = _jobs(gen_world)
+    await run_job(job_id)
+    (row,) = _proposals(gen_world)
+    assert (row["status"], row["failure_reason"], row["tries"]) == ("failed", "budget", 0)
+    gen_world.conn.execute(
+        "UPDATE marketplace_error_proposals SET next_try_at = now() - interval '1 minute'"
+    )
+    # the same pass time names the old job: the claim rolls back, nothing is counted
+    assert await schedule_error_diagnosis(first) == 0
+    (row,) = _proposals(gen_world)
+    assert row["status"] == "failed" and len(_jobs(gen_world)) == 1
+    monkeypatch.setattr(budget, "reserve", real)
+    assert await schedule_error_diagnosis(first + timedelta(minutes=10)) == 1
+    jobs = _jobs(gen_world)
+    assert len(jobs) == 2 and jobs[1][2] == "queued"
+    await run_job(jobs[1][0])
+    (row,) = _proposals(gen_world)
+    assert row["status"] == "proposed" and row["plain_cause"]
+
+
 async def test_model_failures_count_to_three(
     gen_world: GenWorld, diagnosis_on: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -57,7 +57,8 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   proposal (or a retryable failed one) through `platform_scope()` (codes and ids only), each with
   its newest sample issue; per code the sample tenant's admission (`budget.admission`, a refusal
   skips the code and writes nothing), then in that tenant's unit of work `claim` and one
-  `brand_embed` job (`entity_type 'error_proposal'`, one attempt, key `diagnose:<id>:<tries>`).
+  `brand_embed` job (`entity_type 'error_proposal'`, one attempt, key
+  `diagnose:<id>:<tries>:<pass time>`; a key that names an old job rolls the claim back).
   One code's failure is logged and the pass goes on.
 - `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
   `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
@@ -415,6 +416,10 @@ async def schedule_status_sync() -> int:
 DIAGNOSIS_BATCH: Final = 5
 
 
+class _NotEnqueuedError(Exception):
+    """The pass's job key already named a job: the claim is rolled back, nothing is counted."""
+
+
 async def schedule_error_diagnosis(now: datetime | None = None) -> int:
     """One diagnosis scheduler pass (module docstring); the count of jobs enqueued."""
     import hashlib
@@ -451,7 +456,11 @@ async def schedule_error_diagnosis(now: datetime | None = None) -> int:
                     continue
                 row = await proposals.get(proposal_id)
                 tries = 0 if row is None else int(row.tries)
-                key = hashlib.sha256(f"diagnose:{proposal_id}:{tries}".encode()).hexdigest()
+                # one key per pass: a budget refusal keeps `tries`, so `<id>:<tries>` alone would
+                # hand back the finished job of the last pass. `claim` already stops two passes.
+                key = hashlib.sha256(
+                    f"diagnose:{proposal_id}:{tries}:{at.isoformat()}".encode()
+                ).hexdigest()
                 payload = DiagnosisPayload(proposal_id=proposal_id, sample_issue_id=issue_id)
                 job = await JobRunRepository(session, tenant_id).enqueue(
                     EnqueueSpec(
@@ -464,8 +473,12 @@ async def schedule_error_diagnosis(now: datetime | None = None) -> int:
                         job_key=key,
                     )
                 )
+                if not job.created:  # roll the claim back: a pending row with no job is stuck
+                    raise _NotEnqueuedError(str(job.job.id))
                 await proposals.set_job(proposal_id, job.job.id)
                 enqueued += 1
+        except _NotEnqueuedError as same:
+            log.warning("diagnosis.schedule_job_exists", code=code, job_run_id=str(same))
         except Exception as exc:  # one code's failure never blocks the others
             log.exception("diagnosis.schedule_failed", code=code, error_class=type(exc).__name__)
     log.info("periodic.error_diagnosis_scheduled", codes=len(codes), enqueued=enqueued)
