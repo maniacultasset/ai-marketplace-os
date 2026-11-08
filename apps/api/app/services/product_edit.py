@@ -183,10 +183,15 @@ def is_photo_value(stored: Any) -> bool:
     )
 
 
-def _same_fact(stored: Any, new: Mapping[str, Any]) -> bool:
+def _same_fact(stored: Any, new: Mapping[str, Any], key: str | None = None) -> bool:
+    """SI12: for the size chart the evidence counts too, so confirming an unchanged chart from a
+    photo stores its `image:` evidence and a re-save without it drops a stale one."""
     if not isinstance(stored, Mapping):
         return False
-    return all(stored.get(k) == new.get(k) for k in ("value", "normalized", "source"))
+    compared: tuple[str, ...] = ("value", "normalized", "source")
+    if key == SIZE_CHART_KEY:
+        compared = (*compared, "evidence_ref")
+    return all(stored.get(k) == new.get(k) for k in compared)
 
 
 def _plan_money(
@@ -270,6 +275,7 @@ def plan_patch(
     now: datetime,
     party_id: uuid.UUID | None = None,
     children: Sequence[tuple[Decimal | None, Decimal | None]] = (),
+    size_chart_image_id: uuid.UUID | None = None,
 ) -> ProductChange:
     """The change set of `patch` against the locked `row` (pure). `party_id` is the matched or
     created party for a non-null `manufacturer`; `children` are a style's `(price, mrp)`."""
@@ -314,8 +320,8 @@ def plan_patch(
             if SIZE_CHART_KEY in stored:
                 attrs_clear.append(SIZE_CHART_KEY)
         else:
-            fact = size_chart_fact(chart, now=now)
-            if not _same_fact(stored.get(SIZE_CHART_KEY), fact):
+            fact = size_chart_fact(chart, now=now, image_id=size_chart_image_id)
+            if not _same_fact(stored.get(SIZE_CHART_KEY), fact, SIZE_CHART_KEY):
                 attrs_set[SIZE_CHART_KEY] = fact
     attributes: Mapping[str, Any] = patch.get("attributes") or {}
     values = {k: v for k, v in attributes.items() if v is not None}
@@ -428,6 +434,26 @@ async def update_product(
         raise
 
 
+async def _size_chart_image(
+    uow: Any, row: Any, level: str, patch: Mapping[str, Any]
+) -> uuid.UUID | None:
+    """SI12: `size_chart_image_id` names a live `size_chart` image of this product, else 422 at
+    `size_chart_image_id` (a foreign, deleted or other product's image alike: no oracle). On a
+    variant the size chart's own level rule answers first (`plan_patch`)."""
+    image_id = patch.get("size_chart_image_id")
+    if image_id is None:
+        return None
+    if patch.get("size_chart") is None:  # the wire model refuses it already
+        raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart_image_id")
+    if level not in SIZE_CHART_LEVELS:
+        return None
+    found = await uow.images.size_chart_of(row.id, image_id)
+    if found is None:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart_image_id")
+    image: uuid.UUID = found.id
+    return image
+
+
 async def _update_product(
     principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
 ) -> ProductView:
@@ -462,6 +488,7 @@ async def _update_product(
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "brand_name")
             # SI8 CP-D9: one of the tenant's own brand names, stored in that name's spelling
             patch = {**patch, "brand_name": await checked_brand(uow, patch["brand_name"])}
+        chart_image = await _size_chart_image(uow, row, level, patch)
         change = plan_patch(
             row,
             style,
@@ -472,6 +499,7 @@ async def _update_product(
             now=now,
             party_id=party_id,
             children=children,
+            size_chart_image_id=chart_image,
         )
         id_change = product_identifier.plan(
             level,

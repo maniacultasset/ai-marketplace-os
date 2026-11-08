@@ -23,6 +23,7 @@ explicit).
 from __future__ import annotations
 
 import json
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -167,14 +168,20 @@ def owned_at(defs: Sequence[AttributeDef], key: str, level: str) -> bool:
     return False
 
 
-def size_chart_fact(chart: Mapping[str, Any], *, now: datetime) -> dict[str, object]:
+def size_chart_fact(
+    chart: Mapping[str, Any], *, now: datetime, image_id: uuid.UUID | None = None
+) -> dict[str, object]:
     """The `size_measurements` Fact: the normalized table and no `value` (`fact_map_valid`
-    accepts a Fact with only `normalized`). A refused chart is 422 at `size_chart`."""
+    accepts a Fact with only `normalized`). A refused chart is 422 at `size_chart`. SI12: a chart
+    the seller saved from a size-chart photo carries `evidence_ref image:<id>` (still `seller`)."""
     try:
         table = normalize_size_chart(chart)
     except SizeChartError as exc:
         raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart") from exc
-    return {"normalized": table, **_seller(fact_stamp(now))}
+    fact: dict[str, object] = {"normalized": table, **_seller(fact_stamp(now))}
+    if image_id is not None:
+        fact["evidence_ref"] = f"image:{image_id}"
+    return fact
 
 
 def seller_column_fact(*, now: datetime) -> dict[str, object]:

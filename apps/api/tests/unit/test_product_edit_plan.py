@@ -302,3 +302,46 @@ def test_brand_or_gender_on_a_variant_is_fact_level_invalid(name: str) -> None:
 def test_null_brand_and_gender_clear() -> None:
     change = _plan({"brand_name": None, "gender": None}, row=_row(brand_name="K", gender="men"))
     assert set(change.typed_clear) == {"brand_name", "gender"}
+
+
+# ---- SI12 T11 (AC8): the size chart confirmed from a size-chart photo ----
+
+CHART = {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+IMAGE = uuid.UUID("8a3f5c2e-1d4b-4e6a-9b7c-0d2e4f6a8b13")
+
+
+def _chart_fact(**over: Any) -> dict[str, Any]:
+    table = {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+    return {"normalized": table, **SELLER, **over}
+
+
+def test_chart_with_image_id_carries_the_evidence() -> None:
+    change = _plan({"size_chart": CHART}, size_chart_image_id=IMAGE)
+    fact = change.attrs_set["size_measurements"]
+    assert fact["evidence_ref"] == f"image:{IMAGE}"
+    assert (fact["source"], fact["captured_via"]) == ("seller", "api")
+
+
+def test_chart_without_image_id_is_stored_as_before() -> None:
+    fact = _plan({"size_chart": CHART}).attrs_set["size_measurements"]
+    assert "evidence_ref" not in fact
+    assert set(fact) == {"normalized", "source", "captured_via", "updated_at"}
+
+
+def test_unchanged_chart_confirmed_with_an_image_stores_the_evidence() -> None:
+    row = _row(attributes={"size_measurements": _chart_fact()})
+    assert _plan({"size_chart": CHART}, row=row).empty
+    change = _plan({"size_chart": CHART}, row=row, size_chart_image_id=IMAGE)
+    assert change.attrs_set["size_measurements"]["evidence_ref"] == f"image:{IMAGE}"
+
+
+def test_resave_without_image_drops_the_stale_evidence() -> None:
+    row = _row(attributes={"size_measurements": _chart_fact(evidence_ref=f"image:{IMAGE}")})
+    assert _plan({"size_chart": CHART}, row=row, size_chart_image_id=IMAGE).empty
+    change = _plan({"size_chart": CHART}, row=row)
+    assert "evidence_ref" not in change.attrs_set["size_measurements"]
+
+
+def test_evidence_counts_for_the_size_chart_only() -> None:
+    row = _row(attributes={"color": {"value": "red", **SELLER, "evidence_ref": "image:x"}})
+    assert _plan({"attributes": {"color": "red"}}, row=row).empty

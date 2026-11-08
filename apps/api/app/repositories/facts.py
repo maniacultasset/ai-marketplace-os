@@ -48,6 +48,8 @@ from app.repositories.base import TenantScopedRepository
 PRV_CODES: Final[Mapping[str, ErrorCode]] = FACT_SQLSTATES
 # the source a clear is checked as: only a seller clears, and only what the seller wrote
 _SELLER: Final[Mapping[str, Any]] = {"source": "seller"}
+# SI12: the size chart, whose `image:` evidence counts as a change (`set_attribute`)
+SIZE_CHART_EVIDENCE_KEY: Final = "size_measurements"
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,8 +166,13 @@ class FactWriter(TenantScopedRepository[Product]):
         await self._check(product_id, key, fact, "attributes", field)
         new = cast(literal(json.dumps(dict(fact))), JSONB)
         old = Product.attributes[key]
-        changed = tuple_(old["value"], old["normalized"], old["source"]).is_distinct_from(
-            tuple_(new["value"], new["normalized"], new["source"])
+        compared = ["value", "normalized", "source"]
+        if key == SIZE_CHART_EVIDENCE_KEY:
+            # SI12: a size chart confirmed from its photo (or re-saved without it) moves the
+            # evidence even when the table is the same
+            compared.append("evidence_ref")
+        changed = tuple_(*(old[k] for k in compared)).is_distinct_from(
+            tuple_(*(new[k] for k in compared))
         )
         values: dict[str, Any] = {
             "attributes": Product.attributes.op("||")(func.jsonb_build_object(key, new))
