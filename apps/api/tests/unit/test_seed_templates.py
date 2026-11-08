@@ -361,3 +361,28 @@ def test_si2_flipkart_value_maps() -> None:
     assert map_enum(country, "XX") is None
     assert specs["fiber_composition"].marketplace_field == "Fabric Composition"
     assert specs["manufacturer"].marketplace_field == "Manufacturer Details"
+
+
+def test_si5_seed_barcodes_cover_every_sellable_sku() -> None:
+    """Every sellable seeded SKU has its own valid EAN-13 per tenant; a style holds none."""
+    from app.core.identifiers import check
+    from app.db.seed_ops import (
+        DEMO_FAMILY_COLOURS,
+        DEMO_FAMILY_SIZES,
+        DEMO_FAMILY_SKU,
+        SEED_BARCODES,
+        TENANTS,
+        demo_family_child_sku,
+        products_for,
+    )
+
+    for tenant in TENANTS:
+        skus = {sku for sku, _, _ in products_for("demo", tenant.slug)}
+        if tenant.slug == "acme":
+            skus |= {
+                demo_family_child_sku(s, c) for c in DEMO_FAMILY_COLOURS for s in DEMO_FAMILY_SIZES
+            }
+        barcodes = SEED_BARCODES[tenant.slug]
+        assert set(barcodes) == skus and DEMO_FAMILY_SKU not in barcodes
+        assert len(set(barcodes.values())) == len(barcodes)
+        assert all(check("ean", v) is None and len(v) == 13 for v in barcodes.values())
