@@ -75,6 +75,9 @@ PAUSE_ALERT_WINDOW: Final = timedelta(hours=1)
 # (1290 to 2582 seen with google/gemini-2.5-flash-image), so one edit cost USD 0.039 to 0.078;
 # the reservation covers the top of that range.
 IMAGE_EDIT_RESERVATION_USD: Final = Decimal("0.10")
+# SI12 (PLAN D5): one vision read of a size-chart photo; the same as a generation reservation
+# (one call costs well under it). It counts toward the brand and platform daily caps.
+SIZE_CHART_READ_RESERVATION_USD: Final = Decimal("0.02")
 ImageScope = Literal["image_tenant", "image_global"]
 Scope = Literal["tenant", "global", "credit", "image_tenant", "image_global"]
 

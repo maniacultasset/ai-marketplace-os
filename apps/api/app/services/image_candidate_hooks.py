@@ -9,26 +9,57 @@
 - `on_image_requeue(session, old, new)`: a candidate job is never requeued by staff (the seller
   asks again through the API; a paid model call must not repeat silently). Upload jobs keep the
   staff requeue.
+- SI12: a size-chart read job (`entity_type='size_chart_read'`, entity = the image) that ended
+  other than `succeeded` stores `metadata.size_chart_read = {status: failed}` on the image (CP-D4),
+  fenced on the image's clean hash and never over another job's settled result, so the seller can
+  ask again; its staff requeue is refused alike.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Any, Final
 
 from app.core.logging import get_logger
 from app.db.models.ops import JobRun
 from app.repositories.image_candidates import ImageCandidateRepository
+from app.repositories.images import ImageRepository
 from app.repositories.jobs import NotEligibleError
-from app.workers.policy import CANDIDATE_ENTITY
+from app.workers.policy import CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY
 from app.workers.registry import Outcome
 
 log = get_logger(__name__)
 CANDIDATE_FAILED: Final = "model_failed"
 
 
+async def _size_chart_read_failed(session: Any, job: JobRun) -> None:
+    images = ImageRepository(session, job.tenant_id)
+    image = await images.get_live(job.entity_id)
+    if image is None or image.clean_content_hash is None:
+        return  # replaced or deleted: the suggestion follows the new photo
+    written = await images.write_size_chart_read(
+        image.id,
+        {"status": "failed", "read_at": datetime.now(UTC).isoformat()},
+        source_hash=image.clean_content_hash,
+        job_id=job.id,
+    )
+    if written:
+        log.info(
+            "size_chart_read.failed",
+            image_id=str(image.id),
+            job_run_id=str(job.id),
+            job_status=job.status,
+        )
+
+
 async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # branch on the final status only
-    if job.entity_type != CANDIDATE_ENTITY or job.status == "succeeded":
+    if job.status == "succeeded":
+        return
+    if job.entity_type == SIZE_CHART_READ_ENTITY:
+        await _size_chart_read_failed(session, job)
+        return
+    if job.entity_type != CANDIDATE_ENTITY:
         return
     moved = await ImageCandidateRepository(session, job.tenant_id).mark_failed(
         job.entity_id, job.id, CANDIDATE_FAILED
@@ -45,6 +76,9 @@ async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) 
 
 async def on_image_requeue(session: Any, old: JobRun, new: JobRun) -> None:
     del session, new
+    if old.entity_type == SIZE_CHART_READ_ENTITY:
+        log.info("size_chart_read.requeue_refused", job_run_id=str(old.id))
+        raise NotEligibleError("ask for the size-chart read again through the API")
     if old.entity_type != CANDIDATE_ENTITY:
         return
     log.info("image_candidate.requeue_refused", job_run_id=str(old.id))
