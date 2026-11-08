@@ -530,6 +530,115 @@ async def run_errors_catalog(*, unmapped: bool, limit: int) -> int:
 PHOTO_DAYS_MAX = 365
 
 
+# ---- SI13 T15: value-map proposals from outcomes (read-only, staff) ----
+
+VALUE_MAP_TENANTS: Final = 100
+
+
+async def value_map_report(min_listings: int) -> tuple[list[Any], list[Any]]:
+    """Every tenant's refused-then-live values (each in its own unit of work), aggregated in
+    memory through the pure `value_maps.propose`."""
+    from sqlalchemy import select
+
+    from app.adapters.amazon.aliases import COLOUR_FAMILY_ALIASES, SIZE_ALIASES
+    from app.db.models.platform import CategoryTemplate
+    from app.db.models.tenancy import Tenant
+    from app.db.session import platform_scope
+    from app.repositories.uow import tenant_uow
+    from app.repositories.value_observations import ValueObservationRepository
+    from app.services.resolution.value_maps import AXIS_KEYS, Observation, propose
+
+    enums: dict[str, set[str]] = {}
+    enum_keys: set[str] = set()
+    async with platform_scope() as session:
+        tenants = list(
+            (
+                await session.execute(
+                    select(Tenant.id).order_by(Tenant.id).limit(VALUE_MAP_TENANTS)
+                )
+            ).scalars()
+        )
+        rows = await session.execute(
+            select(CategoryTemplate.attributes).where(CategoryTemplate.is_current.is_(True))
+        )
+        for (attributes,) in rows:
+            for key, spec in ((attributes or {}).get("specs") or {}).items():
+                if not isinstance(spec, dict) or spec.get("value_type") != "enum":
+                    continue
+                enum_keys.add(str(key))
+                values = list(spec.get("allowed_values") or []) + list(
+                    (spec.get("value_map") or {}).values()
+                )
+                enums.setdefault(str(key), set()).update(str(v) for v in values)
+    keys = sorted(AXIS_KEYS | enum_keys)
+    observations: list[Any] = []
+    for tenant_id in tenants:
+        async with tenant_uow(tenant_id) as uow:
+            found = await ValueObservationRepository(uow.session, tenant_id).rejected_then_live(
+                keys
+            )
+        observations += [
+            Observation(
+                o.marketplace,
+                o.product_type,
+                o.key,
+                o.v,
+                o.w,
+                o.child,
+                str(o.listing_id),
+                str(tenant_id),
+            )
+            for o in found
+        ]
+    aliases = {**SIZE_ALIASES, **COLOUR_FAMILY_ALIASES}
+    return propose(
+        observations,
+        {k: sorted(v) for k, v in enums.items()},
+        aliases,
+        allowlist=enum_keys,
+        min_listings=min_listings,
+    )
+
+
+async def run_value_maps(min_listings: int) -> int:
+    """`errors value-maps`: JSON lines (no tenant, listing, SKU or message) and the ready alias
+    lines; nothing is written."""
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine
+
+    try:
+        with request_scope(new_request_id()):
+            found, unpaired = await value_map_report(min_listings)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors value-maps: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    for p in found:
+        line = {
+            "marketplace": p.marketplace,
+            "product_type": p.product_type,
+            "key": p.key,
+            "v": p.v,
+            "w": p.w,
+            "listings": p.listings,
+            "tenants": p.tenants,
+            "alias": p.alias_line(),
+        }
+        sys.stdout.write(json.dumps(line, sort_keys=True) + "\n")
+    for u in unpaired:
+        line = {
+            "key": u.key,
+            "v": u.v,
+            "unpaired_listings": u.listings,
+            "marketplace": u.marketplace,
+        }
+        sys.stdout.write(json.dumps(line, sort_keys=True) + "\n")
+    sys.stderr.write(f"errors value-maps: {len(found)} proposal(s), {len(unpaired)} unpaired\n")
+    return EXIT_OK
+
+
 # ---- SI13 T14: the staff review of AI-drafted error-map proposals ----
 
 
@@ -1556,6 +1665,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     errors_catalog.add_argument("--unmapped", action="store_true")
     errors_catalog.add_argument("--limit", type=_catalog_limit, default=200)
+    value_maps = errors_commands.add_parser(
+        "value-maps", help="alias proposals from refused-then-live values (staff, read-only)"
+    )
+    value_maps.add_argument("--min", type=int, default=3, dest="min_listings")
     proposals = errors_commands.add_parser(
         "proposals", help="AI-drafted error-map rows: list, approve or reject (staff)"
     )
@@ -1625,6 +1738,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_platform_load(args.error_map))
     if args.group == "errors" and args.command == "catalog":
         return asyncio.run(run_errors_catalog(unmapped=args.unmapped, limit=args.limit))
+    if args.group == "errors" and args.command == "value-maps":
+        return asyncio.run(run_value_maps(max(2, args.min_listings)))
     if args.group == "errors" and args.command == "proposals":
         if args.command_proposals == "list":
             return asyncio.run(run_proposals_list(status=args.status, limit=args.limit))
