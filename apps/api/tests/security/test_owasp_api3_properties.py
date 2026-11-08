@@ -129,6 +129,10 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
     "auth_google_link": _LOGIN_RESULT_TOP,
     # ADR-0020: a boolean (no password on a Google-only account), not a secret
     "auth_security": {"has_password": True},
+    # SI7: the candidate list signs 10-minute previews (nested under `items`, never stored or
+    # logged); the reject answer declares the same keys and sends them null (CP-D18)
+    "image_candidates_list": {"preview_url": False, "source_preview_url": False},
+    "image_candidates_reject": {"preview_url": True, "source_preview_url": True},
     # SI5 (ADR-0029): the copied link is shown once, to the owner or admin who asked for it
     "invites_create": {"invite_url": True},
     "members_password_reset": {"reset_url": True},

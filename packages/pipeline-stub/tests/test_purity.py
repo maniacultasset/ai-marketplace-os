@@ -18,6 +18,8 @@ ALLOWED_MODULES = frozenset(
         "__future__",
         # S26: `stub:timeout` awaits one bounded `asyncio.sleep` (no clock read, no loop time)
         "asyncio",
+        # SI7 (CP-D7): the image-edit stub hashes its input digest (no Pillow, no base64 work)
+        "hashlib",
         "collections.abc",
         "dataclasses",
         "datetime",

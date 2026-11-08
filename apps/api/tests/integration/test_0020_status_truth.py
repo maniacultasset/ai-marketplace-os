@@ -24,7 +24,7 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
-PREVIOUS = "0017_team_access"
+PREVIOUS = "0018_image_generation"
 REVISION = "0020_status_truth"
 V1_KEYS = (
     "neckline",

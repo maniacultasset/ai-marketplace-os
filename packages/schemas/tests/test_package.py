@@ -20,6 +20,7 @@ EXPECTED_MODULES = {
     "codes.py",
     "enums.py",
     "errors.py",
+    "image_edit.py",
     "export.py",
     "images.py",
     "imports.py",

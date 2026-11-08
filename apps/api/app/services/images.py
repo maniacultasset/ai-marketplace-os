@@ -23,7 +23,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, JobKind, Marketplace
 from mkos_schemas.images import ImageReport
 
-from app.adapters.storage import get_storage, images_bucket
+from app.adapters.storage import StorageUnavailable, get_storage, images_bucket
 from app.core.errors import DomainError, InputError, LimitError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
@@ -224,6 +224,7 @@ async def _register(
     the main replacement, the row, the job and the audit rows."""
     tenant = principal.tenant_id
     replaced: list[uuid.UUID] = []
+    candidate_keys: list[str] = []
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = _uow_on(session, tenant)
@@ -241,6 +242,8 @@ async def _register(
             if old is not None:
                 await uow.images.soft_delete(old.id)
                 replaced.append(old.id)
+                # SI7: its open candidates can no longer be accepted (as a delete does)
+                candidate_keys.extend(await uow.image_candidates.fail_for_source(old.id))
                 await _audit(
                     uow,
                     principal,
@@ -252,7 +255,7 @@ async def _register(
             position = 0
         else:
             position = await uow.images.next_position(form.product_id, form.colourway_id, form.slot)
-        job_id = await _insert_image_and_job(
+        job_id = await insert_image_and_job(
             uow,
             principal,
             NewImage(
@@ -271,6 +274,7 @@ async def _register(
     _status, body = await idempotent(principal, idem_key, "POST", UPLOAD_PATH, payload, handler)
     for old_id in replaced:  # SI1 T21: the replaced main's copies go after the commit
         await remove_objects_after_commit(principal, old_id)
+    await delete_candidate_objects(candidate_keys)
     log.info(
         "image.accepted",
         tenant_id=str(tenant),
@@ -280,7 +284,7 @@ async def _register(
     return body
 
 
-async def _insert_image_and_job(
+async def insert_image_and_job(
     uow: TenantUnitOfWork, principal: Principal, new: NewImage, *, field: str
 ) -> uuid.UUID:
     """The image row, its `image_compliance` job and the `image.uploaded` audit row; the job id.
@@ -368,7 +372,7 @@ async def register_on_create(
             position = 0
         else:
             position = await uow.images.next_position(product_id, None, slot)
-        await _insert_image_and_job(
+        await insert_image_and_job(
             uow,
             principal,
             NewImage(
@@ -517,7 +521,20 @@ async def delete_image(principal: Principal, image_id: uuid.UUID) -> None:
             before={"deleted_at": None},
             after={"deleted_at": datetime.now(UTC).isoformat()},
         )
+        # SI7 (CODE-PLAN §12 LOW 8): its open candidates can no longer be accepted
+        candidate_keys = await uow.image_candidates.fail_for_source(image_id)
     await remove_objects_after_commit(principal, image_id)
+    await delete_candidate_objects(candidate_keys)
+
+
+async def delete_candidate_objects(keys: list[str]) -> None:
+    """After the commit: delete the objects of retired candidates; a store outage leaves them for
+    the 30-day candidate sweep, which deletes them by key."""
+    for key in keys:
+        try:
+            await get_storage().delete(images_bucket(), key)
+        except StorageUnavailable:
+            log.info("image_candidate.object_kept", reason="store_down")
 
 
 # ---- T12: the report ----

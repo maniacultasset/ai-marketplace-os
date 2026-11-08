@@ -67,7 +67,11 @@ def _dry_run(repo_root: Path, target: str) -> list[str]:
     import os
     import subprocess
 
-    env = {**os.environ, "CI": "true"}  # CI skips the compose port guard
+    # The committed defaults, not the caller's: a lane runs `make api-tests TEST_DATABASE_URL=...`,
+    # and make hands that override to this child make through MAKEFLAGS and the environment.
+    caller_overrides = {"MAKEFLAGS", "MFLAGS", "MAKEOVERRIDES", "MAKELEVEL", "TEST_DATABASE_URL"}
+    env = {key: value for key, value in os.environ.items() if key not in caller_overrides}
+    env["CI"] = "true"  # CI skips the compose port guard
     result = subprocess.run(
         ["make", "-n", "-C", str(repo_root), target],
         capture_output=True,

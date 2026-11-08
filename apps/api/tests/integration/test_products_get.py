@@ -277,3 +277,27 @@ async def test_manufacturer_inherited_from_brand_default(
     body = (await _get(api, products_world, plain)).json()
     assert body["manufacturer"]["legal_name"] == "Brand Default Pvt Ltd"
     assert body["manufacturer"]["inherited"] is True
+
+
+async def test_si7_image_details_carry_origin_parent_and_fixes(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """SI7 (AC15): `image_details[*]` gains `origin`, `parent_image_id` and `fixes`; with the
+    switch off (the default) `white_background` is never listed (AC14)."""
+    from . import factories as f
+
+    created = await _created(api, products_world, "SI7-GET")
+    pid = uuid.UUID(created["id"])
+    tenant = products_world.tenant("acme")
+    report = {"checks": [{"check": "background", "method": "deterministic", "passed": False}]}
+    main = f.image(
+        auth_db, tenant, pid, slot="main", storage_key=f"{tenant}/{pid}/images/{uuid.uuid4()}",
+        image_report_json={"amazon": report},
+    )  # fmt: skip
+    response = await api.get(
+        f"{PRODUCTS}/{pid}", headers=bearer_for(products_world, "operator@acme.test")
+    )
+    details = {d["image_id"]: d for d in response.json()["image_details"]}
+    assert details[str(main)]["origin"] == "seller"
+    assert details[str(main)]["parent_image_id"] is None
+    assert details[str(main)]["fixes"] == []

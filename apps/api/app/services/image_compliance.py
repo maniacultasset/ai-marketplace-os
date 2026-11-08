@@ -127,6 +127,7 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
                 mime_type=derived.clean_mime,
                 vision_w=derived.vision_w,
                 vision_h=derived.vision_h,
+                border=derived.border,
             )
 
     async with tenant_uow(ctx.tenant_id) as uow:

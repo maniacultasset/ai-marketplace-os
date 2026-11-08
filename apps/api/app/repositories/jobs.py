@@ -48,7 +48,7 @@ _KEY_BEGAN: Final = text(
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
-ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document"})
+ENTITY_TYPES: Final = frozenset({"listing", "import", "image", "brand_document", "image_candidate"})
 
 
 def job_idempotency_key(
@@ -487,7 +487,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             kind=kind.value,
             queue=job.queue,
             job_run_id=job.id,
-            lock=spec.lock or lock_for(kind),
+            lock=spec.lock or lock_for(kind, spec.entity_type, self.tenant_id),
         )
         await self.db.execute(
             self._scoped_write(
@@ -779,7 +779,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 kind=done.kind,
                 queue=done.queue,
                 job_run_id=done.id,
-                lock=lock_for(done.kind),
+                lock=lock_for(done.kind, done.entity_type, done.tenant_id),
             )
             await self.db.execute(
                 self._scoped_write(
@@ -854,7 +854,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             return None
         await retire_on_session(self.db, job.queue_job_id)
         queue_job_id = await defer_on_session(
-            self.db, kind=job.kind, queue=job.queue, job_run_id=job.id, lock=lock_for(job.kind)
+            self.db,
+            kind=job.kind,
+            queue=job.queue,
+            job_run_id=job.id,
+            lock=lock_for(job.kind, job.entity_type, job.tenant_id),
         )
         await self.db.execute(
             self._scoped_write(

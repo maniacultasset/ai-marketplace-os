@@ -61,6 +61,11 @@ NAMED_KEYS = [
     "api_key",
     "mws_auth_token",
     "admin_staff_emails",
+    # SI7: image bytes and signed preview URLs
+    "image_b64",
+    "data_b64",
+    "preview_url",
+    "source_preview_url",
 ]
 
 
@@ -383,6 +388,23 @@ def test_error_code_field_not_redacted() -> None:
     assert redact(line) == line
     # in a URL query it is still the OAuth code and is redacted
     assert "123456" not in str(redact("https://x.test/cb?code=123456&state=s"))
+
+
+def test_si7_keys_redacted_in_log_lines_and_sentry_extra(log_lines: Any) -> None:
+    from app.core.logging import get_logger
+    from app.core.observability import before_send
+
+    capture = log_lines()
+    values = {
+        "image_b64": "iVBORZq9base64",
+        "data_b64": "/9j/Zq9base64",
+        "preview_url": "https://store.example/k?X-Amz-Signature=Zq9sig",
+        "source_preview_url": "https://store.example/s?X-Goog-Signature=Zq9sig",
+    }
+    get_logger("app.tests.si7").info("image_candidate.test", **values)
+    assert "Zq9" not in capture.text()
+    event = before_send({"extra": dict(values), "message": "x"}, {})
+    assert "Zq9" not in str(event)
 
 
 def test_copied_link_tokens_are_redacted() -> None:

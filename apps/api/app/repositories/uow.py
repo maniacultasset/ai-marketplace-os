@@ -29,6 +29,7 @@ from app.repositories.error_map import ErrorMapRepository
 from app.repositories.facts import FactWriter
 from app.repositories.human_tasks import HumanTaskRepository
 from app.repositories.identity import AuditRepository
+from app.repositories.image_candidates import ImageCandidateRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import JobRunRepository
 from app.repositories.listing_issues import ListingIssueRepository
@@ -102,6 +103,8 @@ class TenantUnitOfWork:
     parties: BusinessPartyRepository
     brand_profiles: BrandProfileRepository
     colourways: ColourwayRepository
+    # SI7: the proposed images
+    image_candidates: ImageCandidateRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -144,6 +147,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         parties=BusinessPartyRepository(session, tenant_id),
         brand_profiles=BrandProfileRepository(session, tenant_id),
         colourways=ColourwayRepository(session, tenant_id),
+        image_candidates=ImageCandidateRepository(session, tenant_id),
     )
 
 
