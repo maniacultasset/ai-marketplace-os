@@ -28,12 +28,20 @@ Outcomes: `Outcome` → `succeeded`/`partial`; timeout → `failed` + `JOB_TIMEO
 are left, else `dead_letter` + `RETRY_EXHAUSTED`; a shutdown abort (`CancelledError`) → back to
 `queued` uncounted, then re-raised; anything else → `failed` + `INTERNAL_ERROR` naming only the
 exception class. Log lines carry ids and codes only, never payload or cell values.
+
+A body crash (that last branch) is a code bug, so it is also made debuggable (V1 hardening #6):
+the exception goes to Sentry with `capture_exception` inside the job's tagged isolation scope
+(request id, trace id, job kind; `before_send` still redacts the event), and the `job.body_failed`
+line is ERROR with `stack`, the traceback's frames (file, line, function, code) without the
+exception's message, which may quote a cell value. That line is on a logger Sentry's logging
+integration ignores, so one crash is one Sentry issue.
 """
 
 from __future__ import annotations
 
 import asyncio
 import secrets
+import traceback
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
@@ -44,6 +52,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorSource, JobKind
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from opentelemetry.trace import SpanKind, Status, StatusCode
+from sentry_sdk.integrations.logging import ignore_logger
 
 from app.core.alerts import day_window, dead_letter_cap
 from app.core.logging import get_logger
@@ -69,8 +78,20 @@ from app.workers.policy import POLICIES, JobPolicy, backoff_s, lease_s
 from app.workers.registry import JobContext, Outcome, Persist
 
 log = get_logger(__name__)
+# V1 hardening #6: the crash line's own logger, ignored by Sentry's logging integration, so the
+# one Sentry event of a crash is the captured exception (no second, message-only event)
+CRASH_LOGGER = f"{__name__}.crash"
+ignore_logger(CRASH_LOGGER)
+_crash_log = get_logger(CRASH_LOGGER)
+STACK_FRAMES = 30
 _rand = secrets.SystemRandom()
 OK_STATUSES = frozenset({"succeeded"})
+
+
+def crash_stack(exc: BaseException) -> str:
+    """The last `STACK_FRAMES` frames of `exc`'s traceback (file, line, function and code line),
+    never the exception's message or a frame's locals."""
+    return "".join(traceback.format_list(traceback.extract_tb(exc.__traceback__)[-STACK_FRAMES:]))
 
 
 def policy_for(kind: JobKind, policies: Mapping[JobKind, JobPolicy] | None = None) -> JobPolicy:
@@ -244,7 +265,14 @@ async def _execute(
             )
             return "dead_letter", None
         name = "TimeoutError" if isinstance(exc, _BodyTimeoutError) else type(exc).__name__
-        log.warning("job.body_failed", job_run_id=str(job_id), error_class=name)
+        sentry_sdk.capture_exception(exc)  # in run_job's tagged isolation scope
+        _crash_log.error(
+            "job.body_failed",
+            job_run_id=str(job_id),
+            kind=kind.value,
+            error_class=name,
+            stack=crash_stack(exc),
+        )
         await _finish(
             head,
             job_id,

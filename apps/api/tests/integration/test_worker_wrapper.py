@@ -202,6 +202,39 @@ async def test_wrapper_unknown_exception_no_traceback_text(
     assert secret not in caplog.text
 
 
+async def test_wrapper_crash_reaches_sentry_tagged_with_a_stack(
+    jobs_db: JobWorld, override_body: Any, sentry_events: Any
+) -> None:
+    """V1 hardening #6: a body crash is one Sentry event (the exception, in the job's tagged
+    scope, redacted) and an ERROR line with the stack frames but not the exception message."""
+    import sentry_sdk
+    from app.core.config import Settings
+    from app.core.observability import init_sentry
+    from structlog.testing import capture_logs
+
+    init_sentry(Settings(_env_file=None, app_env="local", app_role="shell", sentry_dsn="https://k@o0.ingest.sentry.io/1"))  # fmt: skip
+    secret = "cell-value-canary-5151"
+
+    async def body(ctx: JobContext) -> Outcome:
+        raise KeyError(secret)
+
+    override_body(KIND, body)
+    job = insert_job(jobs_db.conn, jobs_db.tenant("acme"))
+    with capture_logs() as logs:
+        await wrapper.run_job(str(job))
+    sentry_sdk.get_client().flush(timeout=2)
+    assert job_row(jobs_db.conn, job)["status"] == "failed"
+    (line,) = [x for x in logs if x["event"] == "job.body_failed"]
+    assert line["log_level"] == "error" and line["error_class"] == "KeyError"
+    assert "in body" in line["stack"] and secret not in line["stack"]
+    events = [e for e in sentry_events.events() if e.get("exception")]
+    assert len(events) == 1
+    (event,) = events
+    assert event["exception"]["values"][-1]["type"] == "KeyError"
+    assert event["tags"]["job_kind"] == KIND.value
+    assert "request_id" in event["tags"]
+
+
 async def test_wrapper_no_body_failed(jobs_db: JobWorld, override_body: Any) -> None:
     from app.workers import registry
 
