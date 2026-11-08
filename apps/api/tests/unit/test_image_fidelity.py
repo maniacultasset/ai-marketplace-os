@@ -1,16 +1,17 @@
-"""SI7 T6: the fidelity judge and the composite (AC5). Scenes are drawn at 512 px, so the judge's
-256 px work size halves every length."""
+"""SI7 T6: the fidelity judge, the registration and the composite (AC5). Scenes are drawn at
+512 px, so the judge's 256 px work size halves every length."""
 
 from __future__ import annotations
 
 import colorsys
+import random
 from collections.abc import Callable
 
 import pytest
 from app.services import image_fidelity as fid
 from app.services.image_fidelity import composite, decide, judge, pad_square
 from app.services.image_fix import BorderProfile, border_profile
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 SIDE = 512
 WHITE = (255, 255, 255)
@@ -57,10 +58,14 @@ def test_background_swapped_to_white_passes() -> None:
     assert result.hole_share == 0
 
 
-def test_shifted_product_fails() -> None:
+def test_shifted_product_is_registered() -> None:
+    """The model moved the product by a tenth of the frame: the registration finds the move and
+    the mask still fits the seller's product."""
     original = _scene(OFF_WHITE, _box)
     edit = _scene(WHITE, lambda d: _box(d, dx=int(0.10 * SIDE)))
-    assert not judge(original, edit, _profile(original)).passed
+    result = judge(original, edit, _profile(original))
+    assert result.passed and result.mask_iou is not None and result.mask_iou >= 0.95
+    assert abs(result.alignment.dx - 0.10) <= 0.01 and abs(result.alignment.dy) <= 0.01
 
 
 def test_recoloured_product_fails_on_colour() -> None:
@@ -70,12 +75,26 @@ def test_recoloured_product_fails_on_colour() -> None:
     assert not result.passed and result.colour_distance > fid.HIST_MAX
 
 
-def test_scaled_product_fails_on_iou() -> None:
+def test_scaled_product_is_registered() -> None:
     original = _scene(OFF_WHITE, _box)
     edit = _scene(WHITE, lambda d: d.rectangle((176, 176, 336, 336), fill=RED))  # 0.8 x
     result = judge(original, edit, _profile(original))
-    assert result.mask_iou is not None and result.mask_iou < fid.IOU_MIN
-    assert not result.passed
+    assert result.passed and result.mask_iou is not None and result.mask_iou >= 0.9
+    assert abs(result.alignment.sx - 0.8) <= 0.02 and abs(result.alignment.sy - 0.8) <= 0.02
+
+
+@pytest.mark.parametrize(
+    "box",
+    [
+        (206, 206, 306, 306),  # half the size: beyond SCALE_MIN
+        (0, 0, 200, 200),  # moved to the corner: beyond SHIFT_MAX
+        (156, 206, 356, 306),  # squashed to half the height: beyond ASPECT_MAX
+    ],
+)
+def test_product_beyond_the_registration_range_fails(box: tuple[int, int, int, int]) -> None:
+    original = _scene(OFF_WHITE, _box)
+    edit = _scene(WHITE, lambda d: d.rectangle(box, fill=RED))
+    assert not judge(original, edit, _profile(original)).passed
 
 
 def test_busy_background_skips_iou() -> None:
@@ -112,8 +131,7 @@ def test_busy_background_erased_strap_fails_on_holes() -> None:
     original = _scene(None, _bag)
     prof = _profile(original)
     erased = judge(original, _scene(WHITE, lambda d: _bag(d, strap_top=False)), prof)
-    assert erased.mask_iou is None
-    assert erased.agreement >= fid.AGREEMENT_MIN and erased.colour_distance <= fid.HIST_MAX
+    assert erased.mask_iou is None and erased.agreement >= fid.AGREEMENT_MIN
     assert erased.hole_share > fid.HOLE_MAX and not erased.passed
     kept = judge(original, _scene(WHITE, _bag), prof)
     assert kept.passed
@@ -121,9 +139,9 @@ def test_busy_background_erased_strap_fails_on_holes() -> None:
 
 def _shirt(draw: ImageDraw.ImageDraw, *, right_sleeve: bool = True) -> None:
     draw.rectangle((192, 56, 320, 456), fill=RED)  # body
-    draw.rectangle((168, 56, 192, 456), fill=RED)  # left sleeve
+    draw.rectangle((152, 56, 192, 456), fill=RED)  # left sleeve
     if right_sleeve:
-        draw.rectangle((320, 56, 344, 456), fill=RED)
+        draw.rectangle((320, 56, 360, 456), fill=RED)
 
 
 def test_uniform_border_erased_sleeve_fails_on_holes_with_good_iou() -> None:
@@ -164,10 +182,12 @@ def test_white_padded_photo_is_judged_inside_the_photo() -> None:
 
 
 def test_white_padded_photo_still_fails_a_changed_product() -> None:
-    photo, original, scaled = _white_padded(inset=20)
+    photo, original, _ = _white_padded()
     prof = _profile(photo)
-    small = judge(original, scaled, prof, photo_size=photo.size)
-    assert small.mask_iou is not None and small.mask_iou < fid.IOU_MIN and not small.passed
+    _, _, redrawn = _white_padded()
+    ImageDraw.Draw(redrawn).rectangle((156, 256, 356, 356), fill=(40, 60, 170))  # a new panel
+    changed = judge(original, redrawn, prof, photo_size=photo.size)
+    assert changed.agreement < fid.AGREEMENT_MIN and not changed.passed
     _, _, recoloured = _white_padded(colour=_hue(RED, 30))
     result = judge(original, recoloured, prof, photo_size=photo.size)
     assert not result.passed and result.colour_distance > fid.HIST_MAX
@@ -210,8 +230,16 @@ def test_constants_are_pinned() -> None:
     assert (fid.WORK_PX, fid.ASPECT_TOL, fid.BLUR, fid.CAND_WHITE) == (256, 0.02, 1, 245)
     assert (fid.ORIG_DIST, fid.COLOUR_TOL, fid.HIST_BINS) == (24, 32, 8)
     assert (fid.AGREEMENT_MIN, fid.HIST_MAX, fid.IOU_MIN) == (0.90, 0.15, 0.80)
-    assert (fid.HOLE_PAD, fid.PALETTE_MIN, fid.HOLE_MAX) == (0.05, 0.02, 0.10)
+    assert (fid.PALETTE_MIN, fid.HOLE_MAX, fid.HOLE_RING) == (0.02, 0.10, 3)
     assert (fid.PAD_COLOUR, fid.PHOTO_EDGE) == ((255, 255, 255), 2)
+    assert (fid.SCALE_MIN, fid.SCALE_MAX, fid.ASPECT_MAX, fid.SHIFT_MAX) == (0.80, 1.25, 0.01, 0.25)
+    assert (fid.COARSE_PX, fid.FIT_PX, fid.FINE_PX, fid.DIFF_CAP, fid.BG_GAP) == (
+        32,
+        128,
+        512,
+        64,
+        0.06,
+    )
 
 
 def test_aspect_tolerance_pair() -> None:
@@ -244,3 +272,86 @@ def test_pad_square() -> None:
     assert out.size == (400, 400)
     assert out.getpixel((0, 0)) == (250, 250, 250) and out.getpixel((200, 200)) == (1, 2, 3)
     assert pad_square(out, (0, 0, 0)) is out
+
+
+# ---- registration: the model's mask, the seller's pixels ----
+
+BEIGE_ROOM = (214, 198, 172)
+
+
+def _print(img: Image.Image, box: tuple[int, int, int, int]) -> None:
+    """A printed product: navy with rust and gold diagonal bands, so a misregistered mask shows
+    (diagonal, so no whole row of pixels sits on one histogram bin boundary)."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    tile = Image.new("RGB", (w, h), (48, 48, 112))
+    draw = ImageDraw.Draw(tile)
+    for k, x in enumerate(range(-h, w, 64)):
+        draw.line((x, h, x + h, 0), fill=((176, 80, 48), (208, 144, 80))[k % 2], width=24)
+    # cloth texture: smooth blotches of light and shade, so the colours spread over many
+    # histogram bins as in a photo
+    rng = random.Random(7)  # noqa: S311 - a fixed texture, not a secret
+    shade = Image.new("L", (w // 8, h // 8))
+    shade.putdata([128 + rng.randint(-40, 40) for _ in range((w // 8) * (h // 8))])
+    shade = shade.resize((w, h), Image.Resampling.BICUBIC).convert("RGB")
+    img.paste(ImageChops.add(tile, shade, 1.0, -128), (x0, y0))
+
+
+def _room_photo() -> Image.Image:
+    """A 384 x 512 photo: the product in a beige room with a plant-green stripe and a dark floor."""
+    photo = Image.new("RGB", (384, SIDE), BEIGE_ROOM)
+    draw = ImageDraw.Draw(photo)
+    draw.rectangle((330, 0, 384, 300), fill=(70, 110, 60))
+    draw.rectangle((0, 440, 384, SIDE), fill=(110, 80, 60))
+    _print(photo, (112, 120, 272, 420))
+    return photo.filter(ImageFilter.GaussianBlur(1.5))  # a lens, not a vector drawing
+
+
+def _model_edit(original: Image.Image, scale: float, dx: float, dy: float) -> Image.Image:
+    """What a model returns: the product alone on white, scaled about the centre and shifted (in
+    units of the side), at the model's 1024 px."""
+    n = original.width
+    cut = Image.new("RGB", original.size, WHITE)
+    _print(cut, (112 + 64, 120, 272 + 64, 420))  # the photo sits 64 px in
+    cut = cut.filter(ImageFilter.GaussianBlur(1.5))
+    c = n / 2
+    data = (1 / scale, 0, c - (c + dx * n) / scale, 0, 1 / scale, c - (c + dy * n) / scale)
+    moved = cut.transform(cut.size, Image.Transform.AFFINE, data, fillcolor=WHITE)
+    return moved.resize((1024, 1024), Image.Resampling.LANCZOS)
+
+
+@pytest.mark.parametrize(
+    ("scale", "dx", "dy"), [(1.0, 0.0, 0.0), (0.93, 0.06, -0.03), (1.08, -0.05, 0.04)]
+)
+def test_moved_model_output_keeps_the_sellers_pixels(scale: float, dx: float, dy: float) -> None:
+    photo = _room_photo()
+    original = pad_square(photo, fid.PAD_COLOUR)
+    edit = _model_edit(original, scale, dx, dy)
+    result = judge(original, edit, _profile(photo), photo_size=photo.size)
+    assert result.passed, result
+    al = result.alignment
+    assert abs(al.sx - scale) <= 0.01 and abs(al.sy - scale) <= 0.01
+    assert abs(al.dx - dx) <= 0.01 and abs(al.dy - dy) <= 0.01
+    out = composite(original, edit, al)
+    for xy in ((200, 140), (256, 270), (320, 400), (190, 131)):  # inside the print, off its edge
+        assert out.getpixel(xy) == original.getpixel(xy)
+    for xy in ((100, 50), (420, 100), (300, 480), (10, 10)):  # the room, the floor, the padding
+        assert out.getpixel(xy) == WHITE
+
+
+def test_moved_and_recoloured_model_output_still_fails() -> None:
+    photo = _room_photo()
+    original = pad_square(photo, fid.PAD_COLOUR)
+    r, g, b = _model_edit(original, 0.95, 0.04, 0.0).split()
+    swapped = Image.merge("RGB", (b, g, r))  # navy turns brown, rust turns blue
+    result = judge(original, swapped, _profile(photo), photo_size=photo.size)
+    assert not result.passed and result.agreement < fid.AGREEMENT_MIN
+
+
+def test_moved_model_output_with_a_part_erased_still_fails() -> None:
+    photo = _room_photo()
+    original = pad_square(photo, fid.PAD_COLOUR)
+    edit = _model_edit(original, 0.95, 0.04, 0.0)
+    ImageDraw.Draw(edit).rectangle((0, 0, 1024, 420), fill=WHITE)  # the top third erased
+    result = judge(original, edit, _profile(photo), photo_size=photo.size)
+    assert result.hole_share > fid.HOLE_MAX and not result.passed

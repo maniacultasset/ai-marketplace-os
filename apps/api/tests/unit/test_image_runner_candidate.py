@@ -22,7 +22,7 @@ from app.services.image_runner import (
 )
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.images import ImageCheck, ImageReport
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 from tests import image_fixtures as fx
 
 FAKES = "tests.support.image_candidate_fakes"
@@ -86,10 +86,12 @@ async def test_finish_white_keeps_a_faithful_edit() -> None:
     assert agreement is not None and agreement >= 0.9
 
 
-async def test_finish_white_moved_product_is_fidelity() -> None:
+async def test_finish_white_product_beyond_the_registration_range_is_fidelity() -> None:
+    """Half the size and in the corner: no registration within the scale and shift bounds puts
+    this edit's mask on the seller's product."""
     clean_img = _scene((235, 235, 235), (2000, 2000))
     moved = Image.new("RGB", (1024, 1024), (255, 255, 255))
-    ImageDraw.Draw(moved).rectangle((0, 0, 400, 400), fill=PRODUCT)
+    ImageDraw.Draw(moved).rectangle((0, 0, 256, 256), fill=PRODUCT)
     reply = await run_candidate_isolated(
         "finish_white",
         {"clean": fx.encode(clean_img, "PNG"), "output": fx.encode(moved, "PNG")},
@@ -170,6 +172,52 @@ async def test_finish_white_kept_backdrop_inside_white_bars_is_not_white(
         _params(),
     )
     assert reply == CandidateReply(ok=False, reason="not_white")
+
+
+def _shaded(img: Image.Image) -> Image.Image:
+    """`img` with the product shaded left to right, so each of its pixels is told apart."""
+    out = img.copy()
+    draw = ImageDraw.Draw(out)
+    w, h = img.size
+    for x in range(w // 4, 3 * w // 4):
+        k = (x - w // 4) * 60 // (w // 2)
+        draw.line((x, h // 4, x, 3 * h // 4), fill=(40 + k, 70 + k // 2, 160 - k))
+    return out
+
+
+async def test_finish_white_shifted_edit_keeps_the_sellers_pixels() -> None:
+    """The model moved and shrank the product: the candidate is still the seller's own pixels on
+    pure white, not the model's drawing."""
+    clean = _shaded(_scene(BEIGE))
+    w, h = clean.size
+    side = max(w, h)
+    cut = Image.new("RGB", (side, side), (255, 255, 255))  # the product alone, as the model saw it
+    box = (w // 4, h // 4, 3 * w // 4, 3 * h // 4)
+    cut.paste(clean.crop(box), ((side - w) // 2 + box[0], (side - h) // 2 + box[1]))
+    edit = cut.resize((1024, 1024), Image.Resampling.LANCZOS).filter(ImageFilter.GaussianBlur(2))
+    side = edit.width
+    moved = Image.new("RGB", (side, side), (255, 255, 255))
+    small = edit.resize((side * 95 // 100, side * 95 // 100), Image.Resampling.LANCZOS)
+    moved.paste(small, (side * 6 // 100, side * 2 // 100))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean, "PNG"), "output": fx.encode(moved, "PNG")},
+        _params(),
+    )
+    assert reply.fidelity is not None and reply.fidelity["agreement"] is not None
+    img = _open(reply).convert("RGB")
+    # framed: the product is centred on a white square; find it and compare with the seller's
+    found = ImageOps.invert(img).getbbox()
+    assert found is not None
+    crop = img.crop(found).resize((clean.width // 2, clean.height // 2), Image.Resampling.BOX)
+    seller = clean.crop(
+        (clean.width // 4, clean.height // 4, 3 * clean.width // 4, 3 * clean.height // 4)
+    ).resize(crop.size, Image.Resampling.BOX)
+    for xy in ((crop.width // 4, crop.height // 2), (3 * crop.width // 4, crop.height // 2)):
+        got, want = crop.getpixel(xy), seller.getpixel(xy)
+        assert all(abs(a - b) <= 6 for a, b in zip(got, want, strict=True))  # type: ignore[arg-type]
+    for xy in ((3, 3), (img.width - 4, img.height // 2), (img.width // 2, img.height - 4)):
+        assert img.getpixel(xy) == (255, 255, 255)
 
 
 async def test_finish_white_beige_photo_recoloured_product_is_fidelity() -> None:

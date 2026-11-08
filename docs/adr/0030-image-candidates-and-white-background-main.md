@@ -20,8 +20,9 @@ platform and USD 1 per brand. The backend never imports a model SDK, and the AI 
 
 1. Three ways to get a better image. Each produces a **candidate**, never an image:
    - (a) `white_background`: one Gemini Flash Image edit through OpenRouter (`LLM_MODEL_IMAGE_EDIT`, default
-     `google/gemini-2.5-flash-image`, `data_collection: deny`). The backend then composites the seller's own pixels
-     back over the model's background.
+     `google/gemini-2.5-flash-image`, `data_collection: deny`). The model's output only decides which pixels are
+     background: the backend registers it onto the seller's photo (a scale and shift fit, so a model that moved or
+     re-scaled the subject still lines up) and builds the candidate from the seller's own pixels on pure white.
    - (b) `fix`: deterministic Pillow framing (whiten a near-white border, trim, square, 85 % fill, 1000-2000 px).
      No global colour change.
    - (c) `size_chart`: a deterministic Pillow render of the seller's size chart and fabric.
@@ -30,8 +31,13 @@ platform and USD 1 per brand. The backend never imports a model SDK, and the AI 
    accepts it, with provenance `origin` (`seller|generated|rendered`), `parent_image_id` and `candidate_id`. The
    old main is kept as a secondary image. No listing state waits on a candidate. An accepted image reaches a
    marketplace only in a new listing version that another user approves (invariants 1 and 3).
-3. A deterministic fidelity check (mask IoU, pixel agreement, colour histogram distance and the share of product
-   colours turned white) discards a model output that moved, scaled, recoloured or erased part of the product. The image compliance checks then judge the result like any upload.
+3. A deterministic fidelity check on the registered output (mask IoU, pixel agreement, colour histogram distance and
+   the share of product colours left outside the mask) discards a model output that no scale and shift can place on
+   the seller's product (a redrawn pose), or that recoloured or erased part of it. A move or re-scale within the
+   registration's bounds is not a failure, since the candidate's pixels are the seller's either way. The image
+   compliance checks then judge the result like any upload. (Revised 2026-11-08: the first build compared the
+   edit with the photo pixel for pixel, so a subject the model shifted failed agreement and a busy backdrop it
+   removed counted as erased product; live Gemini edits failed `fidelity`.)
 4. The AI seam gains a second entry point: `edit_image(ImageEditRequest, ModelCredentials) -> ImageEditResult` in
    `mkos-pipeline` (0.4.0). It is called only by `app/workers/image_edit_seam.py`, through a lazy lookup, so an older
    pipeline pin degrades to "not available".
