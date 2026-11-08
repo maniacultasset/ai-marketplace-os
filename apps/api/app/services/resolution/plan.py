@@ -305,17 +305,25 @@ def plan(issues: Sequence[IssueView], ctx: PlanContext) -> tuple[Step, ...]:
     return tuple(steps)
 
 
-def lane_for(error_code: str, error_class: str, source: str = "amazon_adapter") -> Lane:
-    """The lane an issue of this code and class takes with no listing context (the catalogue)."""
+def lane_for(
+    error_code: str,
+    error_class: str,
+    source: str = "amazon_adapter",
+    *,
+    field_path: str = "listing",
+    ctx: PlanContext | None = None,
+) -> Lane:
+    """The lane an issue of this code and class takes at `field_path` (the map row's field
+    hint, else `listing`) with no listing context unless `ctx` is given (the catalogue)."""
     view = IssueView(
         id=uuid.UUID(int=0),
         source=source,
-        field_path="listing",
+        field_path=field_path,
         error_code=error_code,
         error_class=error_class,
         severity="error",
     )
-    found = _lane(view, PlanContext())
+    found = _lane(view, PlanContext() if ctx is None else ctx)
     return "staff" if found is None else found[0]
 
 

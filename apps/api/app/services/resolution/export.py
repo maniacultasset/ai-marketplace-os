@@ -1,7 +1,8 @@
 """The Auto / Seller / Marketplace table (SI13 T16; P:B5, D17), pure: one row per enabled
-highest-version error-map row, labelled with the lane the planner gives the code
-(`plan.lane_for`): `auto_repair|auto_content|ai_field|retry` -> Auto, `seller` -> Seller,
-`marketplace` -> Marketplace, `staff` -> Kuinn team. The doc is `policy_ref.doc` when it is https,
+highest-version error-map row, labelled with the lane the planner gives the code at the row's
+field hint (`plan.lane_for`): `auto_repair|auto_content|ai_field|retry` -> Auto, `seller` ->
+Seller, `marketplace` -> Marketplace, `staff` -> Kuinn team; a code whose lane depends on whether
+the seller may still recategorise shows both (`Seller (Kuinn team once live)`). The doc is `policy_ref.doc` when it is https,
 else `staff-approved` for an approved AI proposal, else a dash. The last line counts the codes no
 row maps yet. Markdown escapes `|` and newlines; CSV goes through `csv.writer` and neutralises a
 spreadsheet formula (a cell starting with `=`, `+`, `-`, `@`, a tab or a CR gets a leading `'`).
@@ -15,7 +16,9 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
-from app.services.resolution.plan import lane_for
+from mkos_schemas.paths import is_valid_field_path
+
+from app.services.resolution.plan import PlanContext, lane_for
 
 LABELS: Final[Mapping[str, str]] = {
     "auto_repair": "Auto",
@@ -53,6 +56,27 @@ def _doc(policy_ref: Any) -> str:
     return "—"
 
 
+def who(row: Any) -> str:
+    """The lane label at the row's field hint (as the adapter builds the issue path). When a
+    listing the seller may still recategorise takes another lane than one that has been live
+    (CATEGORY_MISMATCH: seller, then staff), both show: `Seller (Kuinn team once live)`."""
+    hint = getattr(row, "field_hint", None)
+    path = hint if isinstance(hint, str) and is_valid_field_path(hint) else "listing"
+    source = f"{row.marketplace}_adapter"
+    live = lane_for(row.error_code, row.error_class, source, field_path=path)
+    fresh = lane_for(
+        row.error_code,
+        row.error_class,
+        source,
+        field_path=path,
+        ctx=PlanContext(recategorizable=True),
+    )
+    label = LABELS.get(live, "Kuinn team")
+    if fresh == live:
+        return label
+    return f"{LABELS.get(fresh, 'Kuinn team')} ({label} once live)"
+
+
 def rows(map_rows: Iterable[Any], unmapped_count: int = 0) -> list[ExportRow]:
     """`map_rows` carry marketplace, match_on, raw_value, version, error_code, error_class,
     plain_text, policy_ref and enabled; only the enabled highest version of each key is kept."""
@@ -66,13 +90,12 @@ def rows(map_rows: Iterable[Any], unmapped_count: int = 0) -> list[ExportRow]:
     out = []
     for key in sorted(best):
         row = best[key]
-        lane = lane_for(row.error_code, row.error_class, f"{row.marketplace}_adapter")
         code = row.raw_value if row.match_on == "code" else f"category:{row.raw_value}"
         out.append(
             ExportRow(
                 row.marketplace,
                 code,
-                LABELS.get(lane, "Kuinn team"),
+                who(row),
                 row.error_code,
                 row.plain_text,
                 _doc(row.policy_ref),

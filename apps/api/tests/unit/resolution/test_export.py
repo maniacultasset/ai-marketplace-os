@@ -24,6 +24,7 @@ class Row:
     enabled: bool = True
     marketplace: str = "amazon"
     match_on: str = "code"
+    field_hint: str | None = None
 
 
 def test_the_four_labels() -> None:
@@ -79,3 +80,24 @@ def test_formula_start_is_neutralised(start: str) -> None:
 def test_an_equals_in_the_middle_is_unchanged() -> None:
     out = to_csv(rows([Row("1", "VALUE_NOT_ALLOWED", "invalid_value", "a = b")]))
     assert list(csv.reader(io.StringIO(out)))[1][4] == "a = b"
+
+
+def test_the_lane_follows_the_field_hint_and_the_recategorise_context() -> None:
+    """Round 1 fix: the table routes these codes as the live planner does (F:103, F:106)."""
+    table = rows(
+        [
+            Row(
+                "100980", "IDENTIFIER_DUPLICATE", "identifier_error", field_hint="facts.identifier"
+            ),
+            Row(
+                "4005015", "IDENTIFIER_DUPLICATE", "identifier_error", field_hint="facts.identifier"
+            ),
+            Row("4000003", "CATEGORY_MISMATCH", "category_mismatch", field_hint="facts.category"),
+            Row("101158", "CATEGORY_MISMATCH", "category_mismatch", field_hint="facts.category"),
+            Row("9", "VALUE_NOT_ALLOWED", "invalid_value", field_hint="not a path!"),
+        ]
+    )
+    who = {r.code: r.who for r in table}
+    assert who["100980"] == who["4005015"] == "Seller"
+    assert who["4000003"] == who["101158"] == "Seller (Kuinn team once live)"
+    assert who["9"] in {"Auto", "Seller", "Marketplace", "Kuinn team"}
