@@ -2,11 +2,12 @@
 suggestion, only when the seller asks.
 
 Order (CODE-PLAN T18):
-1. The product (404, tenant-scoped; a foreign one answers as a missing one), a variant is 422
+1. A completed replay of the Idempotency-Key answers its stored status and body (the first 202
+   stays 202 after the job ends, the photo changes or the product goes); another body under the
+   key is 409 `IDEMPOTENCY_KEY_REUSED`.
+2. The product (404, tenant-scoped; a foreign one answers as a missing one), a variant is 422
    `FACT_LEVEL_INVALID` (the chart is style-owned), no live size-chart image is 422 at
    `size_chart_image`, no clean derivative yet is 409 `INVALID_STATUS_TRANSITION`.
-2. A completed replay of the Idempotency-Key answers its stored status and body (the first 202
-   stays 202 after the job ends); another body under the key is 409.
 3. Without a lock: a `read` or `unreadable` result for the current clean hash answers 200 with no
    job; a live job answers 202 with it. A stored `unavailable` or `failed` is not cached.
 4. The SI10 admission, outside any unit of work: AI paused is 503 with the pause's code, a daily
@@ -128,12 +129,13 @@ async def request_read(
 ) -> tuple[int, dict[str, Any]]:
     tenant = principal.tenant_id
     payload = json.dumps({"product_id": str(product_id)}, sort_keys=True).encode()
-    async with tenant_uow(tenant, user_id=principal.user_id) as uow:
-        target = await _target(uow, product_id)
+    # the payload and path name only the product, so the peek needs no `_target`: a replay
+    # answers the first response whatever happened to the product or its photos since
     replay = await _peek(principal, idem_key, path, payload)
     if replay is not None:
         return replay
     async with tenant_uow(tenant, user_id=principal.user_id) as uow:
+        target = await _target(uow, product_id)
         fast = await _answer(uow, target)
     if fast is not None:
         return fast

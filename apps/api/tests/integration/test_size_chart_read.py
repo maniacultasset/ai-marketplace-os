@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 import pytest
+from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
@@ -165,6 +166,71 @@ async def test_same_key_replays_the_first_202(
     await run_image_job(uuid.UUID(first.json()["job_id"]))
     replay = await _read(api, images_db, p, key=key)
     assert replay.status_code == 202 and replay.json() == first.json()
+
+
+# a same-key retry answers the stored first 202 whatever happened to the photos or the product
+# since (invariant 10; the peek runs before the product and size-chart checks)
+
+
+async def test_replay_after_the_photo_is_deleted_answers_the_first_202(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    _, p, image = _world(images_db, store)
+    key = str(uuid.uuid4())
+    first = await _read(api, images_db, p, key=key)
+    assert first.status_code == 202, first.text
+    images_db.conn.execute("UPDATE images SET deleted_at = now() WHERE id = %s", [image])
+    replay = await _read(api, images_db, p, key=key)
+    assert replay.status_code == 202, replay.text
+    assert replay.json() == first.json()
+
+
+async def test_replay_after_a_new_unchecked_photo_answers_the_first_202(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    tenant, p, _image = _world(images_db, store)
+    key = str(uuid.uuid4())
+    first = await _read(api, images_db, p, key=key)
+    assert first.status_code == 202, first.text
+    chart_image(images_db.conn, store, tenant, p, derived=False)  # newest, still being checked
+    replay = await _read(api, images_db, p, key=key)
+    assert replay.status_code == 202, replay.text
+    assert replay.json() == first.json()
+
+
+@pytest.mark.parametrize("change", ["deleted", "variant"])
+async def test_replay_after_the_product_changes_answers_the_first_202(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, change: str
+) -> None:
+    tenant, p, _image = _world(images_db, store)
+    key = str(uuid.uuid4())
+    first = await _read(api, images_db, p, key=key)
+    assert first.status_code == 202, first.text
+    if change == "deleted":
+        images_db.conn.execute("UPDATE products SET deleted_at = now() WHERE id = %s", [p])
+    else:  # p becomes the variant in the style's free `m` cell
+        style, _child = style_and_child(images_db.conn, tenant)
+        with images_db.conn.transaction():
+            images_db.conn.execute(
+                "UPDATE products SET parent_product_id = %s, category = 'kurtas', "
+                "variant_attributes = %s, attributes = %s WHERE id = %s",
+                [
+                    style,
+                    Jsonb({"size": "m"}),
+                    Jsonb({"size": f.fact(value="M", normalized="m")}),
+                    p,
+                ],
+            )
+            images_db.conn.execute(
+                "INSERT INTO variant_matrix_cells (tenant_id, style_product_id, colourway_id, "
+                "size_key, availability, unavailable_reason, variant_product_id, source) "
+                "VALUES (%s, %s, NULL, 'm', 'available', NULL, %s, 'seller')",
+                [tenant, style, p],
+            )
+        assert (await _read(api, images_db, p)).status_code == 422  # a fresh key sees the variant
+    replay = await _read(api, images_db, p, key=key)
+    assert replay.status_code == 202, replay.text
+    assert replay.json() == first.json()
 
 
 @pytest.mark.parametrize("stored", ["unavailable", "failed"])
