@@ -21,13 +21,14 @@ row lock, then its listings' locks in id order:
 5. one `product.recategorized` audit row (the category before and after under `provenance`, the
    superseded listing ids in `reason`).
 
-SI13 T8 (P:A2, D9; CP-D7, CP-D19): a seen listing passes step 2 only when it is `failed`, was
-never live (`first_published_at` NULL) and has an open marketplace `CATEGORY_MISMATCH` row on its
-current version (Amazon said the category is wrong). It then moves `failed ->
-blocked/validation_errors` on the existing user `edit` edge (the approval voided), and the audit
-reason starts `recategorize;issue:<id>;`. The issue stays open until the regenerate makes a new
-version. A published, publishing, ever-live or `blocked` listing, and any seen listing without
-that row, still answers 409.
+SI13 T8 (P:A2, D9; CP-D7): a seen listing passes step 2 only when it is `failed`, was never live
+(`first_published_at` NULL) and has an open marketplace `CATEGORY_MISMATCH` row on its current
+version (Amazon said the category is wrong). It takes the new category and keeps `failed` (no
+status edge is added or used: the user `edit` edge needs a new edit version, so CP-D19's move is
+not available); the seller's regenerate (`failed -> generating`, which voids the approval) makes
+the new version under the new template. The audit reason starts `recategorize;issue:<id>;`. The
+issue stays open until that new version. A published, publishing, ever-live or `blocked`
+listing, and any seen listing without that row, still answers 409.
 """
 
 from __future__ import annotations
@@ -143,17 +144,7 @@ async def recategorize_product(
         actor = UserActor(principal.user_id)
         for listing in listings:
             await uow.listings.set_category(listing.id, category)
-            if listing.id in rejected:
-                # CP-D19: the existing user `edit` edge (failed -> blocked, voids the approval)
-                await uow.listings.move(
-                    listing,
-                    to="blocked",
-                    event="edit",
-                    reason="validation_errors",
-                    actor=actor,
-                    clear_approval=True,
-                )
-            elif listing.status in SUPERSEDED and listing.paused_at is None:
+            if listing.status in SUPERSEDED and listing.paused_at is None:
                 await uow.listings.move(
                     listing,
                     to="blocked",
