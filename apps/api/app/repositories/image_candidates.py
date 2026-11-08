@@ -20,7 +20,7 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import delete, func, or_, text, update
+from sqlalchemy import delete, exists, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
@@ -29,6 +29,7 @@ from app.db.models.catalog_assets import (
     RETRYABLE_FAILURES,
     ImageCandidate,
 )
+from app.db.models.ops import JobRun
 from app.repositories.base import TenantScopedRepository
 from app.repositories.budget import day_bounds
 
@@ -142,6 +143,29 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def find_refused_today(
+        self, product_id: UUID, kind: str, source_hash: str, generator_key: str, day: date
+    ) -> ImageCandidate | None:
+        """Today's `failed/budget` refusal for this cache key, if any: a refused create asked
+        again answers it instead of writing another row."""
+        start, end = day_bounds(day)
+        stmt = (
+            self._select()
+            .where(
+                ImageCandidate.product_id == _uuid("product_id", product_id),
+                ImageCandidate.kind == kind,
+                ImageCandidate.source_hash == source_hash,
+                ImageCandidate.generator_key == generator_key,
+                ImageCandidate.status == "failed",
+                ImageCandidate.failure_reason == "budget",
+                ImageCandidate.created_at >= start,
+                ImageCandidate.created_at < end,
+            )
+            .order_by(ImageCandidate.created_at.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def get(self, candidate_id: UUID) -> ImageCandidate | None:
         """The row as stored now (a row loaded earlier in the session is refreshed: the fenced
         writes are Core UPDATEs)."""
@@ -178,15 +202,28 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
 
     async def count_ai_today(self, day: date, *, exclude_id: UUID | None = None) -> int:
         """PLAN D21: the tenant's AI candidates of the UTC day that are queued or reached the
-        model (a budget refusal with no run is not counted), `exclude_id` aside."""
+        model (a budget refusal with no run is not counted), `exclude_id` aside. A call that may
+        have been billed with no stored run (an untrusted result, a seam exception, a timeout)
+        keeps its job's reservation, so a kept reservation counts too."""
         start, end = day_bounds(day)
+        kept = exists(
+            select(JobRun.id).where(
+                JobRun.tenant_id == ImageCandidate.tenant_id,
+                JobRun.id == ImageCandidate.job_id,
+                JobRun.cost_reserved_usd > 0,
+            )
+        )
         stmt = (
             self._select()
             .where(
                 ImageCandidate.kind == AI_KIND,
                 ImageCandidate.created_at >= start,
                 ImageCandidate.created_at < end,
-                or_(ImageCandidate.status == "queued", ImageCandidate.agent_run_id.is_not(None)),
+                or_(
+                    ImageCandidate.status == "queued",
+                    ImageCandidate.agent_run_id.is_not(None),
+                    kept,
+                ),
             )
             .with_only_columns(func.count(ImageCandidate.id))
         )

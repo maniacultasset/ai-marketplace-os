@@ -607,3 +607,23 @@ async def test_edit_source_replaced_before_the_job_is_not_cached(
     row = candidate_row(images_db.conn, candidate)
     assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
     assert seen == [] and _reserved(images_db.conn, job) == 0
+
+
+async def test_an_untrusted_paid_edit_still_counts_toward_the_daily_limit(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime
+
+    from app.repositories.uow import tenant_uow
+
+    def foreign(result: ImageEditResult, request: ImageEditRequest) -> ImageEditResult:
+        record = result.agent_runs[0].model_copy(update={"job_id": uuid.uuid4()})
+        return result.model_copy(update={"agent_runs": [record]})
+
+    candidate, job, _ = await _edit(images_db, store)
+    _stub_with(edit_on, foreign)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["agent_run_id"]) == ("failed", None)
+    async with tenant_uow(images_db.tenant("acme")) as uow:
+        assert await uow.image_candidates.count_ai_today(datetime.now(UTC).date()) == 1

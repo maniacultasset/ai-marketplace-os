@@ -275,6 +275,15 @@ async def create_candidate(
                 IMAGE_EDIT_RESERVATION_USD,
             )
             if refused is not None:
+                again = await uow.image_candidates.find_refused_today(
+                    product_id,
+                    body.kind,
+                    key.source_hash,
+                    key.generator_key,
+                    datetime.now(UTC).date(),
+                )
+                if again is not None:  # a refusal asked again: no new row, no new audit
+                    return 202, _accepted(again, with_job=False)
                 failed = dataclasses.replace(new, status="failed", failure_reason="budget")
                 row, _ = await uow.image_candidates.create_or_get(failed)
                 await _audit_candidate(

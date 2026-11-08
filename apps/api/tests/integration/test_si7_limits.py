@@ -203,3 +203,33 @@ async def test_the_platform_share_refuses_a_create(
         headers=headers(images_db),
     )
     assert response.json()["status"] == "failed" and response.json()["job_id"] is None
+
+
+async def test_a_repeated_refused_create_reuses_todays_refusal(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    tenant = images_db.tenant("acme")
+    _queued_ai(images_db, tenant, 10)
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    bodies = []
+    for _ in range(3):
+        response = await api.post(
+            f"/api/v1/products/{p}/image-candidates",
+            json={"kind": "white_background", "source_image_id": str(src)},
+            headers=headers(images_db),
+        )
+        assert response.status_code == 202, response.text
+        bodies.append(response.json())
+    assert len({b["candidate_id"] for b in bodies}) == 1
+    assert all(b["status"] == "failed" and b["job_id"] is None for b in bodies)
+    refused = count(
+        images_db.conn,
+        "SELECT count(*) FROM image_candidates WHERE product_id = %s AND failure_reason = 'budget'",
+        [p],
+    )
+    audits = count(
+        images_db.conn,
+        "SELECT count(*) FROM audit_log WHERE entity_id = %s",
+        [uuid.UUID(bodies[0]["candidate_id"])],
+    )
+    assert (refused, audits) == (1, 1)
