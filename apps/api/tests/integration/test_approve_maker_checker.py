@@ -105,8 +105,11 @@ async def test_db_maker_checker_backstop(
     """The API check patched out: `lv_guard` refuses (MKC01), the item's savepoint rolls back,
     the denial is audited, and the other item of the batch is kept."""
     import app.services.review as review
+    from app.services.maker_checker import approve_block as real  # SI10 T16: the chain check
 
-    monkeypatch.setattr(review, "approver_refusal", lambda *_a: None)
+    monkeypatch.setattr(
+        review, "approve_block", lambda caller, **kw: real(caller, **{**kw, "chain": frozenset()})
+    )
     mine = await generated(gen_world, OWNER)
     other = await generated(gen_world, OPERATOR)
     response = await post_approve(api, gen_world, OWNER, [item(mine), item(other)])
