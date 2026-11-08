@@ -142,6 +142,16 @@ class Image(TenantScoped, Base):
         ),
         # 0018 (SI7): the image this one was made from; cleared, never repointed
         to_row("images", "parent_image_id", "images", ondelete="SET NULL (parent_image_id)"),
+        # 0023 (SI12): one live Back and one live Close-up per product and colourway
+        Index(
+            conv("images_one_role"),
+            "product_id",
+            "colourway_id",
+            "role",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+            postgresql_where=text("role IS NOT NULL AND deleted_at IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -175,6 +185,8 @@ class Image(TenantScoped, Base):
     origin: Mapped[str] = mapped_column(Text, server_default=text("'seller'"))
     parent_image_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     candidate_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # 0023 (SI12): `back` | `close_up` on a `secondary` image (ck_images_role); null otherwise
+    role: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 
