@@ -14,7 +14,7 @@ import pytest
 
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
-from .products_support import PRODUCTS, Conn, bearer_for, insert_products
+from .products_support import PRODUCTS, Conn, as_listed, bearer_for, insert_products
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
@@ -97,7 +97,7 @@ async def test_db_valid_edge_row_reads_back(
 
     one = await api.get(f"{PRODUCTS}/{product_id}", headers=headers)
     assert one.status_code == 200, one.text
-    assert one.json() == row
+    assert as_listed(one.json()) == row  # SI8: lists show the own brand (CP-D8)
 
 
 async def test_paging_walks_through_every_hostile_row(

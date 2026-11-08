@@ -210,3 +210,10 @@ def site_body(sku: str = "S12-KURTA-1", **overrides: Any) -> dict[str, Any]:
     }
     body.update(overrides)
     return body
+
+
+def as_listed(single: dict[str, Any]) -> dict[str, Any]:
+    """SI8 (CP-D8): a single read as a list page shows it. A single read carries the effective
+    brand (the brand default with `brand_name_inherited`); a list shows the row's own value."""
+    own = None if single.get("brand_name_inherited") else single.get("brand_name")
+    return {**single, "brand_name": own, "brand_name_inherited": False}

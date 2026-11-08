@@ -56,8 +56,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     assert not set(NEW_COLUMNS) & _columns(scratch_db)
     command.upgrade(cfg, REVISION)
     assert set(NEW_COLUMNS) <= _columns(scratch_db)
-    command.check(cfg)
-    command.downgrade(cfg, PREVIOUS)
+    command.downgrade(cfg, PREVIOUS)  # `check` runs at head below (SI8: 0015 is no longer the head)
     assert not set(NEW_COLUMNS) & _columns(scratch_db)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
         assert (
