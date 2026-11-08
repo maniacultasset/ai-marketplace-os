@@ -37,7 +37,7 @@ from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
 from app.db.session import get_engine
 from app.repositories.base import TenantScopedRepository
-from app.workers.policy import POLICIES, lock_for
+from app.workers.policy import POLICIES, lock_for, priority_for
 from app.workers.policy import lease_s as kind_lease_s
 
 log = get_logger(__name__)
@@ -493,6 +493,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             queue=job.queue,
             job_run_id=job.id,
             lock=spec.lock or lock_for(kind, spec.entity_type, self.tenant_id),
+            priority=priority_for(kind),
         )
         await self.db.execute(
             self._scoped_write(
@@ -801,6 +802,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 queue=done.queue,
                 job_run_id=done.id,
                 lock=lock_for(done.kind, done.entity_type, done.tenant_id),
+                priority=priority_for(done.kind),
             )
             await self.db.execute(
                 self._scoped_write(
@@ -880,6 +882,7 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             queue=job.queue,
             job_run_id=job.id,
             lock=lock_for(job.kind, job.entity_type, job.tenant_id),
+            priority=priority_for(job.kind),
         )
         await self.db.execute(
             self._scoped_write(

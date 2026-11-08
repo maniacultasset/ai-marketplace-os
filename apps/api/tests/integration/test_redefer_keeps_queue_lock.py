@@ -148,3 +148,31 @@ async def test_candidate_lease_reaper_requeue_keeps_tenant_lock(jobs_db: JobWorl
     row = job_row(jobs_db.conn, job)
     assert row["status"] == "queued"
     assert _lock(jobs_db, row["queue_job_id"]) == f"image_candidate:{tenant}"
+
+
+async def test_publish_entries_outrank_status_syncs(jobs_db: JobWorld) -> None:
+    """V1 hardening #8: within the shared `publish` queue a publish entry carries a higher
+    procrastinate priority than a status sync, so a burst of syncs never delays it."""
+    from app.db.queue import defer_on_session
+    from app.workers.policy import PUBLISH_PRIORITY, priority_for
+
+    assert priority_for(JobKind.LISTING_PUBLISH) == PUBLISH_PRIORITY > 0
+    assert priority_for(JobKind.LISTING_STATUS_SYNC) == 0
+    tenant = jobs_db.tenant("acme")
+    qids: dict[str, str] = {}
+    async with unit_of_work(tenant) as session:
+        for kind in (JobKind.LISTING_STATUS_SYNC, JobKind.LISTING_PUBLISH):
+            qids[kind.value] = await defer_on_session(
+                session,
+                kind=kind.value,
+                queue="publish",
+                job_run_id=uuid.uuid4(),
+                priority=priority_for(kind),
+            )
+    rows: dict[str, int] = dict(
+        jobs_db.conn.execute(
+            "SELECT task_name, priority FROM procrastinate_jobs WHERE id = ANY(%s)",
+            [[int(q) for q in qids.values()]],
+        ).fetchall()
+    )
+    assert rows == {"listing_status_sync": 0, "listing_publish": PUBLISH_PRIORITY}

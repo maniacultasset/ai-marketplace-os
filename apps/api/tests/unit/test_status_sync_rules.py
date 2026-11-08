@@ -304,3 +304,20 @@ def test_partial_after_nine_polls_stays_within_check() -> None:
         [ItemRead("S1", "processing")], status="failed", reason="publish_partial", polls=MAX_POLLS
     )
     assert d.poll_count <= MAX_POLLS
+
+
+def test_daily_slot_is_spread_over_an_hour() -> None:
+    """V1 hardening #8: a daily (or longer) slot gets up to one hour of jitter; the short polls
+    after a publish keep their exact times."""
+    from datetime import timedelta
+
+    from app.services.status_sync import SYNC_JITTER, spread
+
+    assert timedelta(hours=1) == SYNC_JITTER
+    assert spread(DAILY, 0.0) == DAILY
+    assert spread(DAILY, 0.5) == DAILY + timedelta(minutes=30)
+    assert spread(timedelta(minutes=2), 0.9) == timedelta(minutes=2)
+    for _ in range(50):
+        assert DAILY <= spread(DAILY) < DAILY + SYNC_JITTER
+    with pytest.raises(ValueError):
+        spread(DAILY, 1.0)

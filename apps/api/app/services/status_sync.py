@@ -27,6 +27,7 @@ invariant 9). No I/O.
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -48,6 +49,23 @@ DELTAS: Final[tuple[timedelta, ...]] = (
     timedelta(hours=48),
 )
 DAILY: Final = timedelta(hours=24)
+# V1 hardening #8: a daily slot is spread over the next hour, so the listings of one bulk publish
+# do not all come due in the same minute and fill the publish slots together.
+SYNC_JITTER: Final = timedelta(hours=1)
+_rand = secrets.SystemRandom()
+
+
+def spread(delta: timedelta, rand: float | None = None) -> timedelta:
+    """`delta` plus up to `SYNC_JITTER` when it is a daily slot (or longer); the short polls
+    after a publish keep their exact times. `rand` in [0, 1) (tests pass it)."""
+    if delta < DAILY:
+        return delta
+    r = _rand.random() if rand is None else rand
+    if not 0.0 <= r < 1.0:
+        raise ValueError("rand must be in [0, 1)")
+    return delta + SYNC_JITTER * r
+
+
 ORDER: Final = ("processing", "pending_review", "rejected", "inactive")
 WAITING: Final = frozenset({"processing", "pending_review"})
 

@@ -44,6 +44,21 @@ POLICIES: Final[Mapping[JobKind, JobPolicy]] = MappingProxyType(
 )
 
 
+# V1 hardening #8: procrastinate fetches the highest priority first within a queue. A publish
+# (always human-approved) shares the `publish` slots with the status syncs, so it jumps any
+# queued burst of daily syncs instead of waiting behind them. Every defer (enqueue, the reaper's
+# requeue, the orphan re-defer) derives the priority from the kind here.
+PUBLISH_PRIORITY: Final = 10
+_PRIORITIES: Final[Mapping[JobKind, int]] = MappingProxyType(
+    {JobKind.LISTING_PUBLISH: PUBLISH_PRIORITY}
+)
+
+
+def priority_for(kind: JobKind | str) -> int:
+    """The procrastinate priority of a queue entry of `kind` (0 unless listed above)."""
+    return _PRIORITIES.get(JobKind(kind), 0)
+
+
 # S17b: image_compliance jobs run one at a time (procrastinate queueing lock). S26: every defer
 # (enqueue, the lease reaper's requeue, the orphan re-defer, the staff requeue) derives the lock
 # from the kind here, so a re-deferred job never runs unlocked beside another one.

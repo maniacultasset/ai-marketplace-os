@@ -32,6 +32,7 @@ from app.services.status_sync import (
     ItemRead,
     SyncDecision,
     next_slot,
+    spread,
     sync_decision,
 )
 from app.workers.registry import Outcome
@@ -204,7 +205,7 @@ async def apply_sync(
     columns: dict[str, Any] = {
         "last_synced_at": DbNow(),
         "sync_poll_count": decision.poll_count,
-        "next_sync_at": None if decision.next_in is None else DbNow(decision.next_in),
+        "next_sync_at": None if decision.next_in is None else DbNow(spread(decision.next_in)),
     }
     changed = decision.marketplace_state != listing.marketplace_state
     if changed:
@@ -259,7 +260,7 @@ async def count_failed_poll(session: Any, job: JobRun, outcome: Outcome | None) 
     if listing is None or listing.status != "published" or listing.next_sync_at is not None:
         return
     if listing.marketplace_state in ("live", "partially_live"):
-        await uow.listings.set_columns(listing.id, next_sync_at=DbNow(DAILY))
+        await uow.listings.set_columns(listing.id, next_sync_at=DbNow(spread(DAILY)))
         return
     if listing.marketplace_state == "inactive":
         # SI9 B3 (CP-D9): published + inactive is the not-buyable state: count up to the 9th
@@ -267,10 +268,12 @@ async def count_failed_poll(session: Any, job: JobRun, outcome: Outcome | None) 
         if listing.sync_poll_count < MAX_POLLS:
             count = listing.sync_poll_count + 1
             await uow.listings.set_columns(
-                listing.id, sync_poll_count=count, next_sync_at=DbNow(next_slot(count) or DAILY)
+                listing.id,
+                sync_poll_count=count,
+                next_sync_at=DbNow(spread(next_slot(count) or DAILY)),
             )
         else:
-            await uow.listings.set_columns(listing.id, next_sync_at=DbNow(DAILY))
+            await uow.listings.set_columns(listing.id, next_sync_at=DbNow(spread(DAILY)))
         return
     count = listing.sync_poll_count + 1
     gap = next_slot(count)
