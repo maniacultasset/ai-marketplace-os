@@ -1406,7 +1406,19 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
     assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
     for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
         assert staging[name] == "", name
+    # SI12: the size-chart read keeps LLM_MODEL_VISION until the AI lead picks its own model
+    assert prod["LLM_MODEL_VISION_SIZE_CHART"] == staging["LLM_MODEL_VISION_SIZE_CHART"] == ""
     assert staging["WORKER_ENABLED"] == "true"
+
+
+def test_size_chart_model_goes_to_the_worker_only_when_set(toolkit: Path, tmp_path: Path) -> None:
+    """SI12: blank (as committed) sends nothing, so the worker keeps LLM_MODEL_VISION."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _worker_container(out)[0]
+    _set_env(toolkit, "staging", LLM_MODEL_VISION_SIZE_CHART="gpt-4o")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _worker_container(out)[0]["LLM_MODEL_VISION_SIZE_CHART"] == "gpt-4o"
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _api_env(out)
 
 
 def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) -> None:

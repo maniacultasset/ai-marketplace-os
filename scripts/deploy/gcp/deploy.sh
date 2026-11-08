@@ -216,6 +216,8 @@ PIPELINE_KEY_SECRET="MKOS_PIPELINE_DEPLOY_KEY"
 LLM_GATEWAY="${LLM_GATEWAY:-direct}"
 LLM_PROVIDER="${LLM_PROVIDER:-openai}"
 LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
+# SI12: the vision model of the size-chart read only (an OpenAI id; blank: LLM_MODEL_VISION)
+LLM_MODEL_VISION_SIZE_CHART="${LLM_MODEL_VISION_SIZE_CHART-}"
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
 # SI7 (ADR-0030): the AI white-background edit. Off by default; the api answers 422 and hides the
@@ -981,6 +983,8 @@ app_env() {
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
     [ -z "$LLM_MODEL_DEFAULT" ] || printf 'LLM_MODEL_DEFAULT\t%s\n' "$LLM_MODEL_DEFAULT"
+    [ -z "$LLM_MODEL_VISION_SIZE_CHART" ] ||
+      printf 'LLM_MODEL_VISION_SIZE_CHART\t%s\n' "$LLM_MODEL_VISION_SIZE_CHART"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.

@@ -227,6 +227,9 @@ class Settings(BaseSettings):
     llm_model_escalation: str = "gpt-4o"
     llm_provider_vision: VisionProvider = "openai"
     llm_model_vision: str = Field(default="gpt-4o-mini", min_length=1, max_length=128)
+    # SI12: the vision model of the seller-requested size-chart read only; unset or blank means
+    # `llm_model_vision`, so the read can move to a stronger model without moving photo facts.
+    llm_model_vision_size_chart: str | None = Field(default=None, min_length=1, max_length=128)
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = EMBEDDING_DIMENSIONS  # pinned: the vector(1536) column type
     llm_timeout_seconds: int = 60
@@ -301,6 +304,7 @@ class Settings(BaseSettings):
         "edge_origin_secret",
         "gcs_bucket_images_public",
         "image_public_base_url",
+        "llm_model_vision_size_chart",
         mode="before",
     )
     @classmethod
@@ -686,6 +690,10 @@ def _gateway_errors(s: Settings) -> list[str]:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
     if "/" in s.llm_model_vision:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
+    if s.llm_model_vision_size_chart is not None and "/" in s.llm_model_vision_size_chart:
+        errors.append(
+            "LLM_GATEWAY=openrouter requires LLM_MODEL_VISION_SIZE_CHART as an OpenAI model id"
+        )
     return errors
 
 
