@@ -49,6 +49,20 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   no product page yet; `no_asin` a summary with no `asin` and an empty status); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
   the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
   itself without touching another run's SKUs).
+- SI11 (T4): a PUT with `mode=VALIDATION_PREVIEW` is the dry run: it never stores, answers
+  `{sku, status: VALID|INVALID, issues}` and counts `state.spapi_preview_calls`; any other `mode`
+  (or a `mode` on PATCH) is 400. `/__control spapi_preview_reply {sku: "ACCEPTED"}` (once) makes
+  the next preview of the SKU answer that status (the "it may have stored it" fault).
+  `/__control spapi_scenario {sku: name}` (sticky) decides issues from the value actually sent,
+  so a fixed resend passes and an unchanged one fails again (`SCENARIOS`): `enum_fold` (`color`
+  outside Red/Blue), `size_alias` (`size` outside S/M/L/XL/2XL), `missing_derivable` (no
+  `department`), `locked_attribute` (`item_type_keyword` on a stored SKU), `title_too_long`
+  (`item_name` over 150), `identifier_invalid` (a barcode with separators), `image_main` (the
+  first main image ever sent), `brand_gating` (every write, never clears), `unknown_code` (code
+  77777, no category), `async_after_accept` (the write is accepted; the GETs carry the
+  `enum_fold` issue until a resend fixes it), `recurring` (the `color` issue after any resend).
+  A GET of a scenario SKU answers BUYABLE once no scenario issue remains. The reset by prefix
+  clears scenarios, preview replies and the first-image memory too.
 
 Flipkart Seller API listings v3 (S22 T9; believed, DW1) under `/flipkart/sellers`:
 `POST /listings/v3` (create, a batch), `POST /listings/v3/update` (named attributes only) and
@@ -187,6 +201,11 @@ class FakeState:
     spapi_summary: dict[str, str] = field(default_factory=dict)
     spapi_body: str | None = None
     spapi_get: dict[str, str] = field(default_factory=dict)
+    # ---- SI11: the dry run and the scripted rejection scenarios ----
+    spapi_preview_calls: int = 0
+    spapi_preview_reply: dict[str, str] = field(default_factory=dict)
+    spapi_scenario: dict[str, str] = field(default_factory=dict)
+    spapi_first_main: dict[str, Any] = field(default_factory=dict)
     # ---- S26 failure injection ----
     spapi_drop_after_write: set[str] = field(default_factory=set)
     refresh_canary: str = "CANARYzq9-0000000000000000"
@@ -483,6 +502,12 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
             "no_asin",
         )
         state.spapi_get.update({k: v for k, v in gets.items() if v in states})
+    scenarios = body.get("spapi_scenario")
+    if isinstance(scenarios, dict):
+        state.spapi_scenario.update({k: v for k, v in scenarios.items() if v in SCENARIOS})
+    replies = body.get("spapi_preview_reply")
+    if isinstance(replies, dict):
+        state.spapi_preview_reply.update({k: str(v) for k, v in replies.items()})
 
 
 def reset_prefix(state: FakeState, prefix: str) -> int:
@@ -492,7 +517,14 @@ def reset_prefix(state: FakeState, prefix: str) -> int:
     gone = [key for key in state.spapi_items if key[1].startswith(prefix)]
     for key in gone:
         del state.spapi_items[key]
-    for table in (state.spapi_issues, state.spapi_get, state.spapi_summary):
+    for table in (
+        state.spapi_issues,
+        state.spapi_get,
+        state.spapi_summary,
+        state.spapi_scenario,
+        state.spapi_preview_reply,
+        state.spapi_first_main,
+    ):
         for sku in [s for s in table if s.startswith(prefix)]:
             del table[sku]
     state.calls = [c for c in state.calls if f"/{prefix}" not in c["path"]]
@@ -503,8 +535,20 @@ def _errors(code: str, message: str, status: int) -> JSONResponse:
     return JSONResponse({"errors": [{"code": code, "message": message}]}, status_code=status)
 
 
-def _issues_for(state: FakeState, sku: str, attributes: dict[str, Any]) -> list[dict[str, Any]]:
-    issues = list(state.spapi_issues.pop(sku, []))
+def _issues_for(
+    state: FakeState,
+    sku: str,
+    attributes: dict[str, Any],
+    *,
+    stored: bool = False,
+    preview: bool = False,
+) -> list[dict[str, Any]]:
+    issues = [] if preview else list(state.spapi_issues.pop(sku, []))
+    scenario = state.spapi_scenario.get(sku)
+    if scenario is not None:
+        issues.extend(
+            _scenario_write_issues(state, scenario, sku, attributes, stored=stored, preview=preview)
+        )
     for name in sorted(attributes):
         if name in state.spapi_reject:
             code, message = state.spapi_reject[name]
@@ -527,6 +571,166 @@ def _rejected(issues: list[dict[str, Any]]) -> set[str]:
         if issue.get("severity") == "ERROR"
         for name in issue.get("attributeNames", [])
     }
+
+
+# ---- SI11: the dry run and the scripted rejection scenarios ----
+
+PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
+EXTERNAL_ID: Final = "externally_assigned_product_identifier"
+MAIN_IMAGE: Final = "main_product_image_locator"
+AMAZON_COLOURS: Final = frozenset({"Red", "Blue"})
+AMAZON_SIZES: Final = frozenset({"S", "M", "L", "XL", "2XL"})
+MAX_TITLE: Final = 150
+# name -> the issue it raises: the attribute (None: the whole item), the code and the category.
+SCENARIOS: Final[dict[str, dict[str, Any]]] = {
+    "enum_fold": {"attribute": "color", "code": "99300", "category": "INVALID_ATTRIBUTE"},
+    "size_alias": {"attribute": "size", "code": "99300", "category": "INVALID_ATTRIBUTE"},
+    "missing_derivable": {
+        "attribute": "department",
+        "code": "90220",
+        "category": "MISSING_ATTRIBUTE",
+    },
+    "locked_attribute": {
+        "attribute": "item_type_keyword",
+        "code": "4005033",
+        "category": "INVALID_ATTRIBUTE",
+    },
+    "title_too_long": {"attribute": "item_name", "code": "99301", "category": "INVALID_ATTRIBUTE"},
+    "identifier_invalid": {
+        "attribute": EXTERNAL_ID,
+        "code": "99302",
+        "category": "INVALID_ATTRIBUTE",
+    },
+    "image_main": {"attribute": MAIN_IMAGE, "code": "99310", "category": "INVALID_IMAGE"},
+    "brand_gating": {"attribute": None, "code": "99320", "category": "QUALIFICATION_REQUIRED"},
+    "unknown_code": {"attribute": None, "code": "77777", "category": None},
+    "async_after_accept": {"attribute": "color", "code": "99300", "category": "INVALID_ATTRIBUTE"},
+    "recurring": {"attribute": "color", "code": "99300", "category": "INVALID_ATTRIBUTE"},
+}
+SCENARIO_MESSAGES: Final[dict[str, str]] = {
+    "enum_fold": "The value provided for 'color' is not one of the allowed values.",
+    "size_alias": "The value provided for 'size' is not one of the allowed values.",
+    "missing_derivable": "'department' is required but not supplied.",
+    "locked_attribute": "The value for 'item_type_keyword' cannot be changed after creation.",
+    "title_too_long": "The value for 'item_name' is longer than 150 characters.",
+    "identifier_invalid": "The product identifier is not a valid barcode.",
+    "image_main": "The main image does not meet the image requirements.",
+    "brand_gating": "You need approval to list products of this brand.",
+    "unknown_code": "Something unusual went wrong with this listing.",
+    "async_after_accept": "The value provided for 'color' is not one of the allowed values.",
+    "recurring": "The value provided for 'color' is not one of the allowed values.",
+}
+
+
+def _first(attributes: Mapping[str, Any], name: str, key: str = "value") -> Any:
+    """The first value of an SP-API attribute list (`[{"value": ...}]`), or None."""
+    values = attributes.get(name)
+    if isinstance(values, list) and values and isinstance(values[0], dict):
+        return values[0].get(key)
+    return None
+
+
+def _scenario_issue(name: str) -> dict[str, Any]:
+    spec = SCENARIOS[name]
+    issue: dict[str, Any] = {
+        "code": spec["code"],
+        "message": SCENARIO_MESSAGES[name],
+        "severity": "ERROR",
+        "attributeNames": [spec["attribute"]] if spec["attribute"] else [],
+    }
+    if spec["category"]:
+        issue["categories"] = [spec["category"]]
+    return issue
+
+
+def _value_fails(name: str, attributes: Mapping[str, Any], first_main: Any) -> bool:
+    """The value-based rule of `name` on the attributes an item holds (or a write sends)."""
+    if name in ("enum_fold", "async_after_accept"):
+        return "color" in attributes and _first(attributes, "color") not in AMAZON_COLOURS
+    if name == "size_alias":
+        return "size" in attributes and _first(attributes, "size") not in AMAZON_SIZES
+    if name == "title_too_long":
+        return len(str(_first(attributes, "item_name") or "")) > MAX_TITLE
+    if name == "identifier_invalid":
+        value = str(_first(attributes, EXTERNAL_ID) or "")
+        return any(ch in value for ch in " -")
+    if name == "image_main":
+        sent = _first(attributes, MAIN_IMAGE, "media_location")
+        return sent is not None and sent == first_main
+    if name == "recurring":
+        return "color" in attributes
+    return False
+
+
+def _scenario_write_issues(
+    state: FakeState,
+    name: str,
+    sku: str,
+    attributes: Mapping[str, Any],
+    *,
+    stored: bool,
+    preview: bool,
+) -> list[dict[str, Any]]:
+    if name in ("brand_gating", "unknown_code"):
+        return [_scenario_issue(name)]
+    if name == "async_after_accept":
+        return []  # accepted now; the GETs carry the issue
+    if name == "missing_derivable":
+        held = dict(state_attributes(state, sku)) if stored else {}
+        held.update(attributes)
+        return [] if "department" in held else [_scenario_issue(name)]
+    if name == "locked_attribute":
+        return [_scenario_issue(name)] if stored and "item_type_keyword" in attributes else []
+    if name == "image_main" and not preview:
+        sent = _first(attributes, MAIN_IMAGE, "media_location")
+        if sent is not None:
+            state.spapi_first_main.setdefault(sku, sent)
+    first_main = state.spapi_first_main.get(sku)
+    return [_scenario_issue(name)] if _value_fails(name, attributes, first_main) else []
+
+
+def _scenario_read_issues(
+    state: FakeState, name: str, sku: str, stored: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """What a GET reads for a scenario SKU: the scenario's rule on the stored attributes."""
+    held = stored["attributes"]
+    if name == "missing_derivable":
+        return [] if "department" in held else [_scenario_issue(name)]
+    if _value_fails(name, held, state.spapi_first_main.get(sku)):
+        return [_scenario_issue(name)]
+    return []
+
+
+def state_attributes(state: FakeState, sku: str) -> Mapping[str, Any]:
+    for (_, stored_sku), item in state.spapi_items.items():
+        if stored_sku == sku:
+            return item["attributes"]  # type: ignore[no-any-return]
+    return {}
+
+
+def _blocks_write(state: FakeState, sku: str, issues: list[dict[str, Any]], *, put: bool) -> bool:
+    """A scenario that refuses the whole write: gating and unknown codes always; on a PUT any
+    scenario ERROR (an INVALID create stores nothing, as SP-API)."""
+    name = state.spapi_scenario.get(sku)
+    if name is None:
+        return False
+    if name in ("brand_gating", "unknown_code"):
+        return True
+    code = SCENARIOS[name]["code"]
+    return put and any(i.get("code") == code and i.get("severity") == "ERROR" for i in issues)
+
+
+def _spapi_preview(state: FakeState, key: tuple[str, str], body: dict[str, Any]) -> Response:
+    """`mode=VALIDATION_PREVIEW`: the verdict on the payload, nothing stored."""
+    sku = key[1]
+    attributes = body.get("attributes")
+    if not isinstance(attributes, dict) or not isinstance(body.get("productType"), str):
+        return _errors("InvalidInput", "productType and attributes are required", 400)
+    state.spapi_preview_calls += 1
+    issues = _issues_for(state, sku, attributes, stored=key in state.spapi_items, preview=True)
+    status = "INVALID" if any(i.get("severity") == "ERROR" for i in issues) else "VALID"
+    forced = state.spapi_preview_reply.pop(sku, None)
+    return JSONResponse({"sku": sku, "status": forced or status, "issues": issues})
 
 
 async def _spapi(state: FakeState, request: Request) -> Response:
@@ -574,10 +778,15 @@ async def _spapi(state: FakeState, request: Request) -> Response:
     key = (seller, sku)
     if request.method == "GET":
         return _spapi_get(state, key)
+    query_mode = request.query_params.get("mode")
+    if query_mode is not None and (query_mode != PREVIEW_MODE or request.method != "PUT"):
+        return _errors("InvalidInput", f"mode {query_mode[:40]} is not supported here", 400)
     try:
         body = json.loads(raw or b"{}")
     except ValueError:
         return _errors("InvalidInput", "body is not JSON", 400)
+    if query_mode == PREVIEW_MODE:
+        return _spapi_preview(state, key, body)
     if request.method == "PATCH":
         response = _spapi_patch(state, key, body)
     else:
@@ -616,10 +825,14 @@ def _spapi_put(state: FakeState, key: tuple[str, str], body: dict[str, Any]) -> 
     attributes = body.get("attributes")
     if not isinstance(attributes, dict) or not isinstance(body.get("productType"), str):
         return _errors("InvalidInput", "productType and attributes are required", 400)
-    issues = _issues_for(state, sku, attributes)
+    issues = _issues_for(state, sku, attributes, stored=key in state.spapi_items)
     rejected = _rejected(issues)
     sent = set(attributes)
-    if sku in state.spapi_invalid or (sent and sent <= rejected):
+    if (
+        sku in state.spapi_invalid
+        or (sent and sent <= rejected)
+        or _blocks_write(state, sku, issues, put=True)
+    ):
         return _accepted(state, sku, issues, "INVALID")
     state.spapi_items[key] = {
         "productType": body["productType"],
@@ -642,9 +855,13 @@ def _spapi_patch(state: FakeState, key: tuple[str, str], body: dict[str, Any]) -
         if patch.get("op") != "replace" or not path.startswith("/attributes/"):
             return _errors("InvalidInput", "only replace of /attributes/<name>", 400)
         named[path.removeprefix("/attributes/")] = patch.get("value")
-    issues = _issues_for(state, key[1], named)
+    issues = _issues_for(state, key[1], named, stored=True)
     rejected = _rejected(issues)
-    if key[1] in state.spapi_invalid or set(named) <= rejected:
+    if (
+        key[1] in state.spapi_invalid
+        or set(named) <= rejected
+        or _blocks_write(state, key[1], issues, put=False)
+    ):
         return _accepted(state, key[1], issues, "INVALID")
     stored["attributes"].update({k: v for k, v in named.items() if k not in rejected})
     stored["issues"] = issues
@@ -658,6 +875,10 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
         return _errors("NOT_FOUND", "The requested listing was not found.", 404)
     status = state.spapi_summary.get(key[1], "DISCOVERABLE")
     issues = stored["issues"]
+    scenario = state.spapi_scenario.get(key[1])
+    if scenario is not None:
+        issues = _scenario_read_issues(state, scenario, key[1], stored)
+        status = "DISCOVERABLE" if issues else "BUYABLE"
     if mode == "buyable":
         status = "BUYABLE"
     elif mode == "discoverable":
