@@ -76,7 +76,9 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   `/__control spapi_catalog {ean: {"scenario": name, "brand": "<the seller's brand>",
   "restriction": name}}` (sticky) scripts them: `other_brand_ean` (brand `Acme Traders`),
   `similar_brand_ean` (`<brand> Co`), `same_brand_ean` (`<brand>`), `no_brand_ean` (no brand),
-  `catalog_5xx`; restriction `brand_restricted` (APPROVAL_REQUIRED with a Seller Central https
+  `catalog_5xx`; `"copies": "<n>"` files the EAN under n ASINs. Search pages as Amazon does
+  (`pageSize` default 10, max 20; `pagination.nextToken`, sent back as `pageToken`);
+  `spapi_catalog_page_5xx: true` fails every page after the first. Restriction `brand_restricted` (APPROVAL_REQUIRED with a Seller Central https
   link), `brand_restricted_bad_link` (an `http://` link), `restrictions_5xx`. An unscripted EAN has
   no match and an unscripted ASIN no restriction. Both are recorded in `/__calls`.
 
@@ -224,6 +226,7 @@ class FakeState:
     spapi_first_main: dict[str, Any] = field(default_factory=dict)
     # ---- SI13: catalog search, restrictions, the first product type sent ----
     spapi_catalog: dict[str, dict[str, str]] = field(default_factory=dict)
+    spapi_catalog_page_5xx: bool = False  # a request with a pageToken answers 500
     spapi_first_type: dict[str, str] = field(default_factory=dict)
     # ---- S26 failure injection ----
     spapi_drop_after_write: set[str] = field(default_factory=set)
@@ -537,6 +540,8 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
         for ean, spec in catalog.items():
             if isinstance(spec, dict) and spec.get("scenario") in CATALOG_SCENARIOS:
                 state.spapi_catalog[str(ean)] = {k: str(v) for k, v in spec.items()}
+    if isinstance(body.get("spapi_catalog_page_5xx"), bool):
+        state.spapi_catalog_page_5xx = body["spapi_catalog_page_5xx"]
     replies = body.get("spapi_preview_reply")
     if isinstance(replies, dict):
         state.spapi_preview_reply.update({k: str(v) for k, v in replies.items()})
@@ -1033,7 +1038,7 @@ def _read_auth(state: FakeState, request: Request) -> Response | None:
     return None
 
 
-def _catalog_item(ean: str, spec: Mapping[str, str]) -> dict[str, Any]:
+def _catalog_item(ean: str, spec: Mapping[str, str], copy: int = 0) -> dict[str, Any]:
     scenario = spec["scenario"]
     brand = {
         "other_brand_ean": OTHER_BRAND,
@@ -1048,7 +1053,7 @@ def _catalog_item(ean: str, spec: Mapping[str, str]) -> dict[str, Any]:
     if brand is not None:
         summary["brand"] = brand
     return {
-        "asin": catalog_asin(ean),
+        "asin": catalog_asin(ean if copy == 0 else f"{ean}#{copy}"),
         "summaries": [summary],
         "identifiers": [
             {
@@ -1072,8 +1077,24 @@ def _catalog_search(state: FakeState, request: Request) -> Response:
     specs = {ean: state.spapi_catalog[ean] for ean in eans if ean in state.spapi_catalog}
     if any(spec["scenario"] == "catalog_5xx" for spec in specs.values()):
         return _errors("InternalFailure", "We encountered an internal error.", 500)
-    items = [_catalog_item(ean, spec) for ean, spec in specs.items()]
-    return JSONResponse({"numberOfResults": len(items), "items": items})
+    items = [
+        _catalog_item(ean, spec, copy)
+        for ean, spec in specs.items()
+        for copy in range(max(1, min(int(spec.get("copies", "1") or 1), 20)))
+    ]
+    size_text = request.query_params.get("pageSize", "10")
+    token = request.query_params.get("pageToken")
+    if not size_text.isdigit() or not 1 <= int(size_text) <= 20:
+        return _errors("InvalidInput", "pageSize must be 1 to 20", 400)
+    if token is not None and (not token.startswith("o") or not token[1:].isdigit()):
+        return _errors("InvalidInput", "bad pageToken", 400)
+    if token is not None and state.spapi_catalog_page_5xx:
+        return _errors("InternalFailure", "We encountered an internal error.", 500)
+    size, start = int(size_text), 0 if token is None else int(token[1:])
+    body: dict[str, Any] = {"numberOfResults": len(items), "items": items[start : start + size]}
+    if start + size < len(items):
+        body["pagination"] = {"nextToken": f"o{start + size}"}
+    return JSONResponse(body)
 
 
 def _restrictions(state: FakeState, request: Request) -> Response:

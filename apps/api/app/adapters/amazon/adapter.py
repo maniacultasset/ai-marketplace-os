@@ -600,7 +600,8 @@ class AmazonAdapter(MarketplaceAdapter):
         """SI13: the read-only catalog and brand-restriction pre-check (`precheck` module). One
         search per 20 barcodes in SKU order; restrictions once per distinct matched or
         other-brand ASIN when `restrictions`. A failed call puts its SKUs in `failed` and the
-        check goes on; it never raises an adapter error and never writes."""
+        check goes on; a partial search (a `nextToken` left) puts the chunk's unflagged SKUs in
+        `failed`. It never raises an adapter error and never writes."""
         units = sorted(
             (u for u in item.units() if precheck.barcode_of(item, u) is not None),
             key=lambda u: u.seller_sku,
@@ -623,6 +624,12 @@ class AmazonAdapter(MarketplaceAdapter):
             except (AdapterError, ValueError):
                 failed += [u.seller_sku for u in chunk]
                 continue
+            pagination = body.get("pagination")
+            if isinstance(pagination, dict) and pagination.get("nextToken"):
+                # a partial search: an unflagged unit may match on a page never read, so it is
+                # not checked and stays out of `scope` (its open row is kept, never closed)
+                flagged = {i.field for i in found}
+                failed += [u.seller_sku for u in chunk if fact_path(u, "identifier") not in flagged]
             items += found
             matched += same
             for sku, asin in same:

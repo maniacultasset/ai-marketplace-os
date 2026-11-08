@@ -96,6 +96,18 @@ class SpApiResponse:
     raw: bytes
 
 
+_PAGE_TOKEN_MAX: Final = 2048
+
+
+def _next_token(body: Mapping[str, Any]) -> str | None:
+    """`pagination.nextToken` of a searchCatalogItems reply, or None (a bounded string only)."""
+    pagination = body.get("pagination")
+    token = pagination.get("nextToken") if isinstance(pagination, dict) else None
+    if isinstance(token, str) and 0 < len(token) <= _PAGE_TOKEN_MAX and token.isprintable():
+        return token
+    return None
+
+
 def backoff_delay(k: int, rng: Rng) -> float:
     """The delay before retry `k` (0-based)."""
     return min(BACKOFF_CAP_S, 2.0**k + rng.uniform(0.0, JITTER_S))
@@ -227,9 +239,12 @@ class SpApiClient:
         identifiers: Sequence[str],
         identifiers_type: Literal["EAN", "UPC", "GTIN"],
     ) -> SpApiResponse:
-        """SI13: searchCatalogItems by barcode (at most 20). Sends only the barcodes, their type
-        and the marketplace; refused before the limiter or a token when any value is not a
-        plain 8-14 digit barcode."""
+        """SI13: searchCatalogItems by barcode (at most 20). Sends only the barcodes, their type,
+        the marketplace and `pageSize=20`; refused before the limiter or a token when any value
+        is not a plain 8-14 digit barcode. Follows `pagination.nextToken` (`pageToken`, each page
+        through the limiter) for at most `CATALOG_MAX_PAGES` pages and merges the items. When a
+        later page fails or the bound is hit, the merged reply keeps `pagination.nextToken`, so
+        the caller knows the search is partial; a failed first call raises as before."""
         values = list(identifiers) if not isinstance(identifiers, str) else []
         if not values or len(values) > c.CATALOG_MAX_IDENTIFIERS:
             raise ValueError("1 to 20 barcodes per search")
@@ -242,8 +257,32 @@ class SpApiClient:
             "identifiersType": identifiers_type,
             "marketplaceIds": self._marketplace_id,
             "includedData": c.CATALOG_INCLUDED,
+            "pageSize": str(c.CATALOG_PAGE_SIZE),
         }
-        return await self._call(self._read_route("catalog_search", c.CATALOG_PATH, query), None)
+        first = await self._call(self._read_route("catalog_search", c.CATALOG_PATH, query), None)
+        body = first.json if isinstance(first.json, dict) else {}
+        items = list(body.get("items") or []) if isinstance(body.get("items"), list) else []
+        token = _next_token(body)
+        pages = 1
+        while token is not None and pages < c.CATALOG_MAX_PAGES:
+            route = self._read_route(
+                "catalog_search", c.CATALOG_PATH, {**query, "pageToken": token}
+            )
+            try:
+                page = await self._call(route, None)
+            except AdapterError:
+                break  # the token stays: the caller treats the search as incomplete
+            found = page.json if isinstance(page.json, dict) else {}
+            if page.status != 200 or not isinstance(found.get("items"), list):
+                break
+            items += found["items"]
+            token = _next_token(found)
+            pages += 1
+        merged: dict[str, Any] = {**body, "items": items}
+        merged.pop("pagination", None)
+        if token is not None:
+            merged["pagination"] = {"nextToken": token}
+        return SpApiResponse(status=first.status, json=merged, headers=first.headers, raw=first.raw)
 
     async def get_restrictions(self, asin: str) -> SpApiResponse:
         """SI13: getListingsRestrictions for one ASIN and this seller (condition new)."""

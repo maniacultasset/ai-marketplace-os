@@ -37,6 +37,7 @@ async def test_search_catalog_url_and_bucket() -> None:
     assert f"{call['raw_path']}?{call['query']}" == (
         "/catalog/2022-04-01/items?identifiers=8901234567890%2C8900000000017"
         "&identifiersType=EAN&marketplaceIds=A21TJRUUN4KGV&includedData=summaries%2Cidentifiers"
+        "&pageSize=20"
     )
     assert client._limiter.calls == ["catalog_search"]
 
@@ -70,6 +71,8 @@ async def test_only_ids_are_sent() -> None:
             "identifiersType",
             "marketplaceIds",
             "includedData",
+            "pageSize",
+            "pageToken",
             "asin",
             "sellerId",
             "conditionType",
@@ -171,3 +174,44 @@ async def test_the_limiter_refuses_an_unknown_operation() -> None:
         await limiter.acquire("catalog_delete")
     assert {"catalog_search", "restrictions_get"} <= set(c.RATES)
     assert tuple(c.RATES) == c.OPERATIONS
+
+
+# ---- round 1 fix: pages (pageSize default 10, max 20; nextToken -> pageToken) ----
+
+
+async def test_search_follows_next_token_and_merges_pages() -> None:
+    app = build_fake()
+    eans = [f"89000000{n:05d}" for n in range(15)]
+    await _control(
+        app, spapi_catalog={e: {"scenario": "other_brand_ean", "copies": "2"} for e in eans}
+    )
+    client = spapi_client(app)
+    response = await client.search_catalog(eans, "EAN")
+    assert len(response.json["items"]) == 30 and "pagination" not in response.json
+    calls = _calls(app)
+    assert len(calls) == 2 and "pageToken=o20" in calls[1]["query"]
+    assert client._limiter.calls == ["catalog_search", "catalog_search"]
+
+
+async def test_search_stops_at_the_page_bound_and_keeps_the_token() -> None:
+    app = build_fake()
+    eans = [f"89000000{n:05d}" for n in range(20)]
+    await _control(
+        app, spapi_catalog={e: {"scenario": "other_brand_ean", "copies": "6"} for e in eans}
+    )
+    response = await spapi_client(app).search_catalog(eans, "EAN")
+    assert len(_calls(app)) == 5 and len(response.json["items"]) == 100
+    assert response.json["pagination"] == {"nextToken": "o100"}
+
+
+async def test_a_failed_later_page_keeps_the_token() -> None:
+    app = build_fake()
+    eans = [f"89000000{n:05d}" for n in range(15)]
+    await _control(
+        app,
+        spapi_catalog={e: {"scenario": "other_brand_ean", "copies": "2"} for e in eans},
+        spapi_catalog_page_5xx=True,
+    )
+    response = await spapi_client(app).search_catalog(eans, "EAN")
+    assert len(response.json["items"]) == 20
+    assert response.json["pagination"] == {"nextToken": "o20"}

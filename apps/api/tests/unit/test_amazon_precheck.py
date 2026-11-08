@@ -345,3 +345,50 @@ def test_parent_is_never_searched() -> None:
     assert parent.item_role == "parent" and barcode_of(sent, parent) is None
     odd = AdapterItem(uuid.uuid4(), "X-1", "standalone")
     assert barcode_of(sent, odd) is None  # no facts
+
+
+# ---- round 1 fix: a search over more than one page ----
+
+
+def _paged_family(n: int) -> tuple[Any, list[Any], dict[Any, Any]]:
+    rows = [{"size": f"S{k}", "color": "red"} for k in range(n)]
+    sent = amazon_family(children=rows)
+    facts = {
+        u.product_id: _facts(identifier_value=f"8900000000{k:03d}")
+        for k, u in enumerate(sent.units())
+    }
+    sent = dataclasses.replace(sent, unit_facts=facts)
+    kids = sorted((u for u in sent.units() if u.item_role == "child"), key=lambda u: u.seller_sku)
+    return sent, kids, facts
+
+
+async def test_a_match_on_page_two_is_flagged() -> None:
+    app = build_fake()
+    sent, kids, facts = _paged_family(15)
+    spec = {"scenario": "other_brand_ean", "copies": "2"}  # 30 items: two pages of 20
+    await _control(
+        app, spapi_catalog={str(facts[k.product_id].identifier_value): spec for k in kids}
+    )
+    result = await amazon_adapter(app).precheck_catalog(sent, restrictions=False)
+    flagged = {i.field for i in result.items if i.raw_code == "catalog:other_brand"}
+    assert flagged == {f"variants[{k.seller_sku}].facts.identifier" for k in kids}
+    assert result.failed == ()
+
+
+async def test_a_partial_search_keeps_unflagged_units_out_of_scope() -> None:
+    app = build_fake()
+    sent, kids, facts = _paged_family(15)
+    spec = {"scenario": "other_brand_ean", "copies": "2"}
+    await _control(
+        app,
+        spapi_catalog={str(facts[k.product_id].identifier_value): spec for k in kids},
+        spapi_catalog_page_5xx=True,
+    )
+    result = await amazon_adapter(app).precheck_catalog(sent, restrictions=False)
+    flagged = {i.field for i in result.items}
+    assert len(flagged) == 10  # page one: 20 items, two per barcode
+    unflagged = [k for k in kids if f"variants[{k.seller_sku}].facts.identifier" not in flagged]
+    assert len(unflagged) == 5 and set(result.failed) == {k.seller_sku for k in unflagged}
+    for k in unflagged:
+        assert f"variants[{k.seller_sku}].facts.identifier" not in result.scope
+    assert flagged <= set(result.scope)

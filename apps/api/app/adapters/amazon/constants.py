@@ -143,6 +143,10 @@ CATALOG_PATH: Final = f"/catalog/{CATALOG_API_VERSION}/items"
 RESTRICTIONS_PATH: Final = f"/listings/{API_VERSION}/restrictions"
 CATALOG_MAX_IDENTIFIERS: Final = 20  # searchCatalogItems takes up to 20 identifiers per call
 CATALOG_INCLUDED: Final = "summaries,identifiers"
+# searchCatalogItems pages: pageSize default 10, max 20; `pagination.nextToken` -> `pageToken`
+# https://developer-docs.amazon.com/sp-api/reference/searchcatalogitems
+CATALOG_PAGE_SIZE: Final = 20
+CATALOG_MAX_PAGES: Final = 5  # one EAN can match several ASINs; past this the search is partial
 RESTRICTION_CONDITION: Final = "new_new"
 
 # The issue severities and the summary states SP-API answers with.
