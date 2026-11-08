@@ -4,7 +4,8 @@ A `brand_embed` job with `entity_type 'error_proposal'` (JobKind stays closed), 
 `schedule_error_diagnosis` (`app/workers/periodic.py`). Its body:
 
 1. One short tenant read: the sample issue (code, field, severity, message), its listing (SKUs,
-   product, brand, pinned product type, the version's attribute values) and the critical keys.
+   product, brand, barcode, every party value, pinned product type, and the version's title,
+   bullets, description, search and hidden terms and attribute values) and the critical keys.
 2. `diagnosis.build_input`: Amazon's text redacted into `data["message"]` only.
 3. `budget.reserve` of `DIAGNOSIS_RESERVATION_USD` on the attempt. A refusal finishes the proposal
    `failed/budget` (tries kept, retried in 10 minutes) and ends the job with `{"refused": scope}`.
@@ -25,6 +26,7 @@ Besides `app/workers/generation.py` and the two image seams, this is the only mo
 from __future__ import annotations
 
 import importlib
+import re
 import uuid
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
@@ -36,6 +38,7 @@ from mkos_schemas.jobs import GenerationContext
 
 from app.core.config import get_settings
 from app.core.logging import get_logger
+from app.core.resolved_facts import ProductFacts
 from app.repositories.error_proposals import MAX_TRIES, ErrorProposalRepository
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.pipeline_deps import diagnosis_credentials
@@ -89,6 +92,55 @@ def _strings(value: Any) -> list[str]:
     return []
 
 
+def content_secrets(content_json: Any) -> list[tuple[str, str]]:
+    """The version's own product text Amazon may quote back: the title, every bullet, the
+    description, the search and hidden terms, and the string attribute values (each 3+ chars)."""
+    if not isinstance(content_json, dict):
+        return []
+    found: list[str] = []
+    content = content_json.get("content")
+    if isinstance(content, dict):
+        for key in ("title", "bullets", "description"):
+            found += _strings(content.get(key))
+    keywords = content_json.get("keywords")
+    if isinstance(keywords, dict):
+        for key in ("search_terms", "hidden_terms"):
+            found += _strings(keywords.get(key))
+    attributes = content_json.get("attributes")
+    if isinstance(attributes, dict):
+        for value in attributes.values():
+            found += _strings(value)
+    return [(v, "{value}") for v in found if len(v.strip()) >= diagnosis.SECRET_MIN]
+
+
+_PARTY_ROLES: Final = ("manufacturer", "marketer", "packer", "importer", "consumer_care")
+_PARTY_PART_MIN: Final = 4  # as `adapters.base.party_secrets`: "IN", "GJ" would redact any text
+
+
+def party_values(facts: ProductFacts | None) -> list[tuple[str, str]]:
+    """Every party string of the product (manufacturer, marketer, packer, importer, consumer
+    care): name, address, each run of address parts of 4+ characters, email, phone, GSTIN."""
+    if facts is None:
+        return []
+    found: set[str] = set()
+    for role in _PARTY_ROLES:
+        party = getattr(facts.compliance, role)
+        if party is None:
+            continue
+        for value in (party.legal_name, party.email, party.phone, party.gstin):
+            if value and value.strip():
+                found.add(value.strip())
+        address = (party.address or "").strip()
+        if address:
+            parts = [p for p in re.split(r"\s*[,\n]\s*", address) if p]
+            for i in range(len(parts)):
+                for j in range(i + 1, len(parts) + 1):
+                    run = ", ".join(parts[i:j])
+                    if len(run) >= _PARTY_PART_MIN:
+                        found.add(run)
+    return [(v, "{value}") for v in sorted(found) if len(v) >= diagnosis.SECRET_MIN]
+
+
 async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] | None:
     issue = await uow.listing_issues.get(sample_id)
     if issue is None:
@@ -105,6 +157,7 @@ async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] |
         if listing.marketplace_sku:
             secrets.append((listing.marketplace_sku, "{sku}"))
         product = await uow.products.get_by_id(listing.product_id)
+        secrets += party_values(await uow.product_facts.resolve(listing.product_id))
         if product is not None:
             secrets.append((product.sku, "{sku}"))
             if product.brand_name:
@@ -116,11 +169,10 @@ async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] |
             None if version_id is None else await uow.listing_versions.get(listing.id, version_id)
         )
         if version is not None:
+            secrets += content_secrets(version.content_json)
             attributes = (version.content_json or {}).get("attributes") or {}
             if isinstance(attributes, dict):
-                for key, value in attributes.items():
-                    fields.add(f"attributes.{key}")
-                    secrets += [(v, "{value}") for v in _strings(value) if len(v) >= 3]
+                fields.update(f"attributes.{key}" for key in attributes)
             if version.category_template_id is not None:
                 pinned = await uow.templates.pinned(version.category_template_id)
                 product_type = None if pinned is None else pinned.product_type

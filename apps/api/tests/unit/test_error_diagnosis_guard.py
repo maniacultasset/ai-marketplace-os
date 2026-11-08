@@ -223,3 +223,48 @@ def test_redaction_folds_before_matching_secrets(message: str) -> None:
 def test_a_hidden_secret_value_is_folded_too() -> None:
     text = redact("Your SKU KURTA-NAVY-M was refused", [("KURTA​-NAVY-M", "{sku}")])
     assert text == "Your SKU {sku} was refused"
+
+
+def test_the_listing_text_and_party_values_are_secrets() -> None:
+    from types import SimpleNamespace
+
+    from app.workers.error_diagnosis import content_secrets, party_values
+
+    content = {
+        "content": {
+            "title": "Zebra Silk Kurta Royal Blue",
+            "bullets": ["Pure silk weave", "ok"],
+            "description": "A royal blue silk kurta for festive wear.",
+        },
+        "keywords": {"search_terms": ["festive kurta"], "hidden_terms": ["silk kurti"]},
+        "attributes": {"color": "Royal Blue", "size": ["M", "Large"], "count": 2},
+    }
+    values = {v for v, _ in content_secrets(content)}
+    assert values == {
+        "Zebra Silk Kurta Royal Blue",
+        "Pure silk weave",
+        "A royal blue silk kurta for festive wear.",
+        "festive kurta",
+        "silk kurti",
+        "Royal Blue",
+        "Large",
+    }
+    party = SimpleNamespace(
+        legal_name="Zebra Mills Pvt Ltd",
+        address="12 Ring Road, Surat, GJ",
+        email="ops@zebra.example",
+        phone="+91 99999 00000",
+        gstin="24ABCDE1234F1Z5",
+    )
+    none = SimpleNamespace(legal_name=None, address=None, email=None, phone=None, gstin=None)
+    facts = SimpleNamespace(
+        compliance=SimpleNamespace(
+            manufacturer=party, marketer=None, packer=none, importer=party, consumer_care=None
+        )
+    )
+    parties = {v for v, _ in party_values(facts)}  # type: ignore[arg-type]
+    assert {"Zebra Mills Pvt Ltd", "12 Ring Road, Surat", "Surat", "ops@zebra.example"} <= parties
+    assert "GJ" not in parties and party_values(None) == []
+    quoted = "The value 'Zebra Silk Kurta Royal Blue' for item_name is too long"
+    secrets = [("ZBR-001", "{sku}"), ("Zebra", "{brand}"), *content_secrets(content)]
+    assert "Silk Kurta" not in redact(quoted, secrets)

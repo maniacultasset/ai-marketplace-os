@@ -198,6 +198,49 @@ async def test_a_budget_refusal_is_retried_by_a_new_job(
     assert row["status"] == "proposed" and row["plain_cause"]
 
 
+async def test_the_listing_text_never_reaches_the_model(
+    gen_world: GenWorld, diagnosis_on: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Round 1 fix: Amazon quoting the listing's title, a bullet or a search term is redacted
+    before the call, and a draft that echoes the title is stored invalid with no text."""
+    from app.services.resolution.diagnosis import DiagnosisOut
+    from app.workers import error_diagnosis
+
+    seen: dict[str, Any] = {}
+
+    async def echo(**kwargs: Any) -> Any:
+        seen.update(kwargs)
+        return DiagnosisOut(
+            plain_cause=f"Rename to {title} to match the catalog.",
+            suggested_fix="Update the title in the listing form, then resend.",
+            lane_class="seller",
+        )
+
+    made, issue = await _unknown(gen_world)
+    content = gen_world.conn.execute(
+        "SELECT v.content_json FROM listing_versions v JOIN listings l "
+        "ON l.current_version_id = v.id WHERE l.id = %s",
+        [made.listing_id],
+    ).fetchone()
+    assert content is not None
+    title = content[0]["content"]["title"]
+    bullet = content[0]["content"]["bullets"][0]
+    gen_world.conn.execute(
+        "UPDATE listing_issues SET message = %s WHERE id = %s",
+        [f"The value '{title}' for item_name is too long. Bullet '{bullet}' too.", issue],
+    )
+    monkeypatch.setattr(error_diagnosis, "call_complete_json", echo)
+    await _schedule()
+    ((job_id, *_),) = _jobs(gen_world)
+    await run_job(job_id)
+    message = seen["data"]["message"]
+    assert title not in message and bullet not in message, message
+    # whole, not only the attribute words inside them ("cotton")
+    assert message == "The value '{value}' for item_name is too long. Bullet '{value}' too."
+    (row,) = _proposals(gen_world)
+    assert row["status"] == "invalid" and row["plain_cause"] is None
+
+
 async def test_model_failures_count_to_three(
     gen_world: GenWorld, diagnosis_on: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
