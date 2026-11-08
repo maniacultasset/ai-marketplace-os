@@ -351,9 +351,12 @@ forbidden_modules =
     app.workers.adapters
 # DW2: the staff PTD refresh is a platform call under the platform authorization (T53), never a
 # tenant token; only the CLI reaches the definitions client.
+# V1 hardening #11: the connect's seller check is one read-only GET with the token just granted
+# (never a stored credential), so the callback service reaches the client through it alone.
 ignore_imports =
     app.cli -> app.adapters.amazon.definitions
     app.cli -> app.adapters.amazon.client
+    app.adapters.amazon.seller_check -> app.adapters.amazon.client
 
 # The status sync only reads (S21 T19; DATABASE.md:890; invariant 1): its job and service never
 # import a mutating adapter or `open_adapter` themselves; they get the read-only `ReaderView` from

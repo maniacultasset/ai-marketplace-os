@@ -209,6 +209,21 @@ async def test_start_rate_limited_per_ip(gapi: httpx.AsyncClient, gw: GoogleWorl
     assert statuses[10] == 429
 
 
+async def test_start_limit_is_per_browser_not_per_shared_ip(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1 hardening #15: behind the dashboard proxy every user shares one IP, so one browser
+    hitting its limit never locks out another; the per-IP ceiling still caps a flow rotator."""
+    from app.api import rate_limit
+
+    noisy, other = GoogleBrowser(gapi, gw), GoogleBrowser(gapi, gw)
+    assert [(await noisy.start()).status_code for _ in range(11)][-1] == 429
+    assert (await other.start()).status_code == 302
+    monkeypatch.setattr(rate_limit, "GOOGLE_IP_CEILING", 2)  # ceiling 20 a minute per IP
+    statuses = [(await GoogleBrowser(gapi, gw).start()).status_code for _ in range(10)]
+    assert 429 in statuses
+
+
 # ---- callback ----
 
 
@@ -969,3 +984,28 @@ async def test_mfa_enrolled_suspended_member_403_before_any_challenge(
     assert response.status_code == 403, response.text
     assert response.json()["error"]["type"] == "TENANT_SUSPENDED"
     assert "challenge_token" not in response.text
+
+
+async def test_google_sign_in_with_the_same_email_verifies_an_invitee(
+    gapi: httpx.AsyncClient, gw: GoogleWorld
+) -> None:
+    """V1 hardening #12: an account flagged `email_unverified` (made from a copied invite link)
+    is cleared once Google signs it in with that same verified address."""
+    gw.conn.execute("UPDATE users SET email_unverified = true WHERE email = %s", [OWNER])
+    browser = GoogleBrowser(gapi, gw)
+    done = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert done["outcome"] == "link_required"
+    linked = await gapi.post(
+        LINK,
+        json={
+            "link_handle": done["link"]["link_handle"],
+            "binding": browser.secret,
+            "password": PASSWORD,
+        },
+    )
+    assert linked.status_code == 200, linked.text
+    flag = "SELECT email_unverified FROM users WHERE email = %s"
+    assert gw.conn.execute(flag, [OWNER]).fetchone() == (True,)  # a password proves no address
+    again = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert again["outcome"] == "sign_in"
+    assert gw.conn.execute(flag, [OWNER]).fetchone() == (False,)

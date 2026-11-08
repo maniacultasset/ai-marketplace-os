@@ -112,8 +112,12 @@ def test_candidate_jobs_take_a_tenant_lock() -> None:
     tenant = uuid.uuid4()
     got = policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image_candidate", tenant)
     assert got == f"image_candidate:{tenant}"
-    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == "image_compliance"
-    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE) == "image_compliance"
+    # V1 hardening #9: an upload image job locks its own tenant only
+    assert (
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == f"image_compliance:{tenant}"
+    )
+    with pytest.raises(ValueError):
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE)
     assert policy.lock_for(JobKind.LISTING_GENERATE, "image_candidate", tenant) is None
     with pytest.raises(ValueError):
         policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image_candidate", None)
@@ -131,7 +135,9 @@ def test_size_chart_read_takes_the_tenant_lock() -> None:
     got = policy.lock_for(JobKind.IMAGE_COMPLIANCE, "size_chart_read", tenant)
     assert got == f"image_candidate:{tenant}"
     assert policy.SIZE_CHART_READ_ENTITY == "size_chart_read"
-    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == "image_compliance"
+    assert (
+        policy.lock_for(JobKind.IMAGE_COMPLIANCE, "image", tenant) == f"image_compliance:{tenant}"
+    )
     assert policy.lock_for(JobKind.LISTING_GENERATE, "size_chart_read", tenant) is None
     with pytest.raises(ValueError):
         policy.lock_for(JobKind.IMAGE_COMPLIANCE, "size_chart_read", None)

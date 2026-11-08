@@ -152,6 +152,9 @@ class User(Base):
     # 0012 (ADR-0020): the linked Google account's `sub`; written only by the definer functions
     # (users_credential_guard), never granted to the read-only roles.
     google_sub: Mapped[str | None] = mapped_column(Text)
+    # 0026 (V1 hardening #12): an account made from a copied invite link with a password; a
+    # Google sign-in with the same verified email clears it. Such an account cannot approve.
+    email_unverified: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
 
 
 def _user_fk(table: str) -> ForeignKeyConstraint:

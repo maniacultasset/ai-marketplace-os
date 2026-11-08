@@ -231,12 +231,52 @@ async def test_callback_seller_id_pattern(
     _assert_bad_state(await callback(mapi, "flipkart", flipkart), mkt)
 
 
-@pytest.mark.xfail(strict=True, reason="DW9: verify the seller id with a marketplace call")
 async def test_amazon_seller_param_mismatch(mkt: MktWorld, mapi: httpx.AsyncClient) -> None:
+    """V1 hardening #11: a swapped `selling_partner_id` (another brand's seller id) fails the
+    SP-API seller check under the new token: 409 with its own message, nothing sealed."""
     query = await _consented(mapi, mkt, "amazon", seller="A1CONSENTED")
     query["selling_partner_id"] = "A2SWAPPED"
     response = await callback(mapi, "amazon", query)
+    assert response.status_code == 409, response.text
+    error = response.json()["error"]
+    assert error["type"] == "OAUTH_STATE_INVALID"
+    assert "did not confirm this seller account" in error["message"]
+    assert _pending_rows(mkt) == [] and account_rows(mkt.conn) == []
+    probes = [c for c in mkt.control.calls if c["method"] == "GET"]
+    assert [c["path"] for c in probes] == [
+        "/listings/2021-08-01/items/A2SWAPPED/kuinn-seller-check"
+    ]
+
+
+async def test_amazon_seller_check_passes_for_the_granted_seller(
+    mkt: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    """The probe of the granted seller reads 404 (no such SKU): verified, the pending row lands."""
+    query = await _consented(mapi, mkt, "amazon", seller="A1CONSENTED")
+    pending_of(await callback(mapi, "amazon", query))
+    assert [r["seller_id"] for r in _pending_rows(mkt)] == ["A1CONSENTED"]
+    assert [c["path"] for c in mkt.control.calls] == [
+        "/listings/2021-08-01/items/A1CONSENTED/kuinn-seller-check"
+    ]
+
+
+async def test_amazon_seller_check_refuses_a_400(mkt: MktWorld, mapi: httpx.AsyncClient) -> None:
+    query = await _consented(mapi, mkt, "amazon", seller="A1BADSELLER")
+    mkt.control.spapi_bad_seller.add("A1BADSELLER")
+    response = await callback(mapi, "amazon", query)
     assert response.status_code == 409
+    assert _pending_rows(mkt) == []
+
+
+async def test_amazon_seller_check_unreachable_is_503(
+    mkt: MktWorld, mapi: httpx.AsyncClient
+) -> None:
+    query = await _consented(mapi, mkt, "amazon")
+    mkt.control.spapi_body = "html"  # a reply that is not JSON: no answer to trust
+    response = await callback(mapi, "amazon", query)
+    assert response.status_code == 503
+    assert response.json()["error"]["type"] == "MARKETPLACE_UNAVAILABLE"
+    assert _pending_rows(mkt) == []
 
 
 async def test_callback_unconfigured_501(

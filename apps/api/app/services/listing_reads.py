@@ -101,7 +101,7 @@ async def _approve_hint(
     if version is None or listing.status not in REVIEWABLE:
         return None, None
     chain = await version_chain(uow, listing.id, version.id)
-    member = await uow.members.role_for_share(principal.user_id)
+    member = await uow.members.approver_state(principal.user_id)
     block = approve_block(
         principal.user_id,
         role=None if member is None else member[0],

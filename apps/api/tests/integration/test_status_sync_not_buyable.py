@@ -88,7 +88,7 @@ async def test_not_buyable_never_exhausts_then_daily(api: httpx.AsyncClient, pub
         row = pub.listing(made.listing_id)
         assert (row["status"], row["marketplace_state"]) == ("published", "inactive")
     assert pub.listing(made.listing_id)["sync_poll_count"] == 9
-    assert timedelta(hours=23) < _gap(pub, made.listing_id) <= timedelta(hours=24)
+    assert timedelta(hours=23) < _gap(pub, made.listing_id) <= timedelta(hours=25)  # + jitter
     (sub,) = pub.submissions(made.listing_id)
     assert sub["outcome"] == "accepted"
 
@@ -160,7 +160,7 @@ async def test_dead_letter_on_not_buyable_reschedules(
         "inactive",
         9,
     )
-    assert timedelta(hours=23) < _gap(pub, made.listing_id) <= timedelta(hours=24)
+    assert timedelta(hours=23) < _gap(pub, made.listing_id) <= timedelta(hours=25)  # + jitter
 
 
 async def test_refresh_status_and_external_id_on_get(api: httpx.AsyncClient, pub: PubWorld) -> None:

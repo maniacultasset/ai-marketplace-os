@@ -389,7 +389,13 @@ class UserRepository:
         return bool((await self.db.execute(stmt)).scalar_one_or_none())
 
     async def insert_signup_user(
-        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str | None
+        self,
+        *,
+        user_id: uuid.UUID,
+        email: str,
+        password_hash: str,
+        display_name: str | None,
+        email_unverified: bool = False,
     ) -> bool:
         """A new user from the public sign-up (users_signup needs `app.login_email` = the
         lower-cased email); False when a concurrent sign-up of the same email took
@@ -402,8 +408,20 @@ class UserRepository:
                 email=email,
                 hashed_password=password_hash,
                 display_name=display_name,
+                email_unverified=email_unverified,
             )
             .on_conflict_do_nothing()
+            .returning(User.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def mark_email_verified(self, user_id: uuid.UUID) -> bool:
+        """V1 hardening #12: clear `email_unverified` on the caller's own row (`users_self`, so
+        `app.user_id` = `user_id`); False when it was already clear."""
+        stmt = identity_scope(
+            update(User)
+            .where(User.id == user_id, User.email_unverified.is_(True))
+            .values(email_unverified=False)
             .returning(User.id)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
