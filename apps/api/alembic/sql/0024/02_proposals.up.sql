@@ -80,7 +80,7 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.marketplace_error_proposal
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- The worker drafts, never approves: app_rw inserts `pending` rows and moves them through the
--- drafting states; only the migrator (the staff CLI) moves `proposed` to approved or rejected.
+-- drafting states (a pending row may take its job id); only the migrator (the staff CLI) moves `proposed` to approved or rejected.
 -- Closed rows never change. Keyed on session_user as every other guard (0004/03).
 CREATE FUNCTION public.marketplace_error_proposals_guard() RETURNS trigger
   LANGUAGE plpgsql
@@ -101,7 +101,7 @@ BEGIN
       RAISE EXCEPTION 'staff review moves a proposed row to approved or rejected only'
         USING ERRCODE = 'GRD01';
     END IF;
-  ELSIF NOT ((OLD.status = 'pending' AND NEW.status IN ('proposed', 'invalid', 'failed'))
+  ELSIF NOT ((OLD.status = 'pending' AND NEW.status IN ('pending', 'proposed', 'invalid', 'failed'))
              OR (OLD.status = 'failed' AND NEW.status IN ('pending', 'failed'))) THEN
     RAISE EXCEPTION 'proposal % -> % is not a drafting step', OLD.status, NEW.status
       USING ERRCODE = 'GRD01';

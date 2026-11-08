@@ -206,6 +206,12 @@ def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
     )
 
 
+def diagnosis_credentials(settings: Settings) -> ModelCredentials:
+    """SI13: the error-diagnosis call is one text completion, so it uses the generation model and
+    key (no new env var)."""
+    return credentials_for(_ModelConfig.from_settings(settings), "generation")
+
+
 def size_chart_read_credentials(settings: Settings) -> ModelCredentials:
     """SI12: the size-chart read is one vision call, so it uses the vision model and key from the
     existing settings (no new env var)."""

@@ -1,0 +1,8 @@
+{
+  "plain_cause": "Amazon refused a value it expects in another format for this product.",
+  "lane_class": "seller",
+  "error_code": "VALUE_NOT_ALLOWED",
+  "error_class": "invalid_value",
+  "field_hint": null,
+  "suggested_fix": "Check the product details Amazon names, correct them and send the listing again."
+}

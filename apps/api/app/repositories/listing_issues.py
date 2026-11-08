@@ -494,6 +494,11 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         rows = builtins.list((await self.db.execute(stmt.limit(limit + 1))).scalars())
         return rows[:limit], len(rows) > limit
 
+    async def get(self, issue_id: uuid.UUID) -> ListingIssue | None:
+        """SI13: one row of this tenant (the diagnosis job's sample), unlocked."""
+        stmt = self._select().where(ListingIssue.id == issue_id)
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def lock(self, issue_id: uuid.UUID) -> ListingIssue | None:
         stmt = (
             self._select()

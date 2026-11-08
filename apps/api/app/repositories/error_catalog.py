@@ -68,3 +68,45 @@ async def catalog_rows(
         )
         for r in rows
     ]
+
+
+# ---- SI13 T13: the diagnosis scheduler's reads (ids and codes only) ----
+
+_UNMAPPED: Final = text("""
+    SELECT c.marketplace, c.marketplace_code
+    FROM public.marketplace_error_catalog c
+    WHERE NOT c.mapped
+      AND c.error_class = 'unknown'
+      AND c.marketplace_code IS NOT NULL
+      AND c.marketplace_code ~ '^[0-9A-Za-z_.:-]{1,128}$'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.marketplace_error_proposals p
+        WHERE p.marketplace = c.marketplace AND p.match_on = 'code'
+          AND p.raw_value = c.marketplace_code
+          AND NOT (p.status = 'failed' AND p.tries < 3
+                   AND (p.next_try_at IS NULL OR p.next_try_at <= now())))
+    GROUP BY c.marketplace, c.marketplace_code
+    ORDER BY max(c.last_seen) DESC, c.marketplace, c.marketplace_code
+    LIMIT :limit
+    """)
+_NEWEST: Final = text(
+    "SELECT id, tenant_id FROM public.listing_issues "
+    "WHERE marketplace = :marketplace AND marketplace_code = :code AND error_class = 'unknown' "
+    "ORDER BY last_seen_at DESC, id LIMIT 1"
+)
+
+
+async def unmapped_codes(session: Any, *, limit: int) -> list[tuple[str, str]]:
+    """(marketplace, code) of the unmapped `unknown` codes that have no proposal, or only a
+    retryable failed one, newest first. Synthetic pre-check codes never qualify (their class is
+    not `unknown`)."""
+    if isinstance(limit, bool) or not 1 <= limit <= MAX_ROWS:
+        raise ValueError(f"limit must be in 1..{MAX_ROWS}")
+    rows = (await session.execute(_UNMAPPED, {"limit": limit})).all()
+    return [(str(r.marketplace), str(r.marketplace_code)) for r in rows]
+
+
+async def newest_sample(session: Any, marketplace: str, code: str) -> tuple[Any, Any] | None:
+    """(issue id, tenant id) of the newest issue with this code; ids only."""
+    row = (await session.execute(_NEWEST, {"marketplace": marketplace, "code": code})).first()
+    return None if row is None else (row.id, row.tenant_id)
