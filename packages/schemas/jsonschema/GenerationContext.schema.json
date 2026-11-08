@@ -3000,6 +3000,14 @@
       "title": "Schema Version",
       "type": "string"
     },
+    "target_fields": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 10,
+      "title": "Target Fields",
+      "type": "array"
+    },
     "tenant_id": {
       "format": "uuid",
       "title": "Tenant Id",

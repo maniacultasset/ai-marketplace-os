@@ -578,3 +578,140 @@ def test_product_out_photo_read_optional() -> None:
     assert ProductOut.model_validate(body).photo_read is None
     got = ProductOut.model_validate({**body, "photo_read": _PHOTO_READ}).photo_read
     assert got is not None and got.written == 2
+
+
+# ---- SI11 (contract 2.1.0 MINOR): the resolution read, IssueOut.lane/cause, ListingOut.remote_check ----
+
+_T = "2026-11-08T09:30:00Z"
+
+
+def _attempt(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "kind": "submission",
+        "number": 1,
+        "version": 1,
+        "at": _T,
+        "actor": "system",
+        "outcome": "rejected",
+        "failed": [
+            {
+                "field": "attributes.color",
+                "message": "Amazon does not accept this colour.",
+                "lane": "auto_repair",
+                "cause": "mapping",
+                "marketplace_code": "90220",
+            }
+        ],
+        "changed": [
+            {"kind": "repair", "field": "attributes.color", "rule": "enum_fold", "summary": "x"}
+        ],
+    }
+    return base | overrides
+
+
+def _resolution(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "state": "idle",
+        "cycles_used": 0,
+        "attempts": [],
+        "next_step": {"kind": "none"},
+    }
+    return base | overrides
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        "checking",
+        "fixing",
+        "resubmitted",
+        "fix_ready",
+        "needs_you",
+        "needs_marketplace",
+        "stopped",
+        "live",
+        "idle",
+    ],
+)
+def test_resolution_round_trips_each_state(state: str) -> None:
+    from app.api.v1.schemas.resolution import ResolutionOut
+
+    out = ResolutionOut.model_validate(_resolution(state=state, attempts=[_attempt()]))
+    again = ResolutionOut.model_validate(out.model_dump(mode="json"))
+    assert again == out and again.max_cycles == 3
+
+
+def test_resolution_attempt_superseded_and_precheck() -> None:
+    from app.api.v1.schemas.resolution import AttemptOut
+
+    assert AttemptOut.model_validate(_attempt(outcome="superseded")).outcome == "superseded"
+    assert AttemptOut.model_validate(_attempt(kind="precheck", number=0, outcome="issues"))
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"state": "done"},
+        {"cycles_used": 4},
+        {"cycles_used": -1},
+        {"attempts": [_attempt()] * 11},
+        {"attempts": [_attempt(number=-1)]},
+        {"attempts": [_attempt(outcome="maybe")]},
+        {"attempts": [_attempt(failed=[{**_attempt()["failed"][0], "lane": "robot"}])]},
+        {"attempts": [_attempt(failed=[{**_attempt()["failed"][0], "message": "m" * 1001}])]},
+        {"next_step": {"kind": "none", "text": "t" * 301}},
+        {"next_step": {"kind": "teleport"}},
+    ],
+)
+def test_resolution_refuses(bad: dict[str, Any]) -> None:
+    from app.api.v1.schemas.resolution import ResolutionOut
+
+    with pytest.raises(ValidationError):
+        ResolutionOut.model_validate(_resolution(**bad))
+
+
+def test_issue_and_listing_old_payloads_still_validate() -> None:
+    from app.api.v1.schemas.issues import IssueOut
+    from app.api.v1.schemas.listings import ListingOut
+
+    issue = {
+        "id": PID,
+        "listing_id": PID,
+        "marketplace": "amazon",
+        "source": "amazon_adapter",
+        "field_path": "attributes.color",
+        "error_code": "VALUE_NOT_ALLOWED",
+        "error_class": "invalid_value",
+        "retry_class": "user_action",
+        "severity": "error",
+        "auto_fixable": False,
+        "message": "m",
+        "occurrences": 1,
+        "first_seen_at": _T,
+        "last_seen_at": _T,
+        "status": "open",
+        "created_at": _T,
+        "updated_at": _T,
+    }
+    parsed = IssueOut.model_validate(issue)
+    assert (parsed.lane, parsed.cause) == (None, None)
+    assert IssueOut.model_validate(issue | {"lane": "seller", "cause": "seller_fact"}).lane == (
+        "seller"
+    )
+    with pytest.raises(ValidationError):
+        IssueOut.model_validate(issue | {"lane": "robot"})
+    listing = {
+        "id": PID,
+        "product_id": PID,
+        "marketplace": "amazon",
+        "status": "validated",
+        "marketplace_state": "not_submitted",
+        "status_changed_at": _T,
+        "created_at": _T,
+        "updated_at": _T,
+    }
+    assert ListingOut.model_validate(listing).remote_check is None
+    check = {"version_id": PID, "status": "pending"}
+    assert ListingOut.model_validate(listing | {"remote_check": check}).remote_check
+    with pytest.raises(ValidationError):
+        ListingOut.model_validate(listing | {"remote_check": check | {"status": "done"}})

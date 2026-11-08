@@ -15,6 +15,7 @@ from mkos_schemas.enums import ErrorClass, ErrorSource, FixAction, Marketplace, 
 from pydantic import AwareDatetime
 
 from app.api.pagination import Page
+from app.api.v1.schemas.resolution import Cause, Lane
 
 IssueStatus = Literal["open", "auto_fixed", "resolved", "dismissed"]
 IssueResolution = Literal[
@@ -59,6 +60,9 @@ class IssueOut(WireModel):
     resolved_by_user_id: UUID | None = None
     human_task_id: UUID | None = None
     recurrence_of_id: UUID | None = None
+    # SI11: who handles it (Kuinn, the seller, the marketplace or staff) and whose value it was
+    lane: Lane | None = None
+    cause: Cause | None = None
     created_at: AwareDatetime
     updated_at: AwareDatetime
 

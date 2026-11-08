@@ -55,3 +55,36 @@ def test_job_payload_v2_refused() -> None:
 def test_payloads_are_additive_only() -> None:
     for name, model in MODELS.items():
         assert set(_fixture(name)) <= set(model.model_fields), name
+
+
+# ---- SI11: trigger, op and version_id (additive, left out at their defaults) ----
+
+
+def test_old_payloads_load_with_si11_defaults() -> None:
+    publish = PublishJobPayload.model_validate(_fixture("publish"))
+    assert publish.trigger == "user"
+    sync = StatusSyncPayload.model_validate(_fixture("status_sync"))
+    assert (sync.op, sync.version_id, sync.trigger) == ("sync", None, "system")
+
+
+def test_si11_keys_written_only_when_set() -> None:
+    raw = _fixture("publish") | {"trigger": "resolution"}
+    assert dump(PublishJobPayload.model_validate(raw))["trigger"] == "resolution"
+    version = "0b1c2d3e-0000-4000-8000-000000000202"
+    preview = _fixture("status_sync") | {"op": "preview", "version_id": version}
+    dumped = dump(StatusSyncPayload.model_validate(preview))
+    assert (dumped["op"], dumped["version_id"]) == ("preview", version)
+    assert "trigger" not in dumped
+
+
+@pytest.mark.parametrize(
+    ("model", "name", "extra"),
+    [
+        (StatusSyncPayload, "status_sync", {"op": "x"}),
+        (StatusSyncPayload, "status_sync", {"trigger": "user"}),
+        (PublishJobPayload, "publish", {"trigger": "system"}),
+    ],
+)
+def test_si11_vocabularies_closed(model: type[BaseModel], name: str, extra: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        model.model_validate(_fixture(name) | extra)
