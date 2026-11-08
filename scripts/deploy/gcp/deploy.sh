@@ -221,8 +221,17 @@ PIPELINE_KEY_SECRET="MKOS_PIPELINE_DEPLOY_KEY"
 LLM_GATEWAY="${LLM_GATEWAY:-direct}"
 LLM_PROVIDER="${LLM_PROVIDER:-openai}"
 LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
-# SI12: the vision model of the size-chart read only (an OpenAI id; blank: LLM_MODEL_VISION)
+# The vision model (photo facts; an OpenAI id, sent as openai/<model> under openrouter; blank: the
+# Settings default gpt-4o-mini) and SI12's size-chart read model (blank: LLM_MODEL_VISION)
+LLM_MODEL_VISION="${LLM_MODEL_VISION-}"
 LLM_MODEL_VISION_SIZE_CHART="${LLM_MODEL_VISION_SIZE_CHART-}"
+# SI12: the size-chart read switch. Off by default: the api answers `unavailable` with no job and
+# the worker settles a queued read `unavailable` with no call.
+SIZE_CHART_READ_ENABLED="${SIZE_CHART_READ_ENABLED:-false}"
+case "$SIZE_CHART_READ_ENABLED" in
+  true | false) ;;
+  *) die "SIZE_CHART_READ_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
 # SI7 (ADR-0030): the AI white-background edit. Off by default; the api answers 422 and hides the
@@ -1016,6 +1025,7 @@ app_env() {
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
     [ -z "$LLM_MODEL_DEFAULT" ] || printf 'LLM_MODEL_DEFAULT\t%s\n' "$LLM_MODEL_DEFAULT"
+    [ -z "$LLM_MODEL_VISION" ] || printf 'LLM_MODEL_VISION\t%s\n' "$LLM_MODEL_VISION"
     [ -z "$LLM_MODEL_VISION_SIZE_CHART" ] ||
       printf 'LLM_MODEL_VISION_SIZE_CHART\t%s\n' "$LLM_MODEL_VISION_SIZE_CHART"
   fi
@@ -1030,6 +1040,8 @@ app_env() {
       # reservation use one switch and one limit, and the api keys and labels candidates by the
       # model the worker calls
       printf 'IMAGE_EDIT_ENABLED\t%s\n' "$IMAGE_EDIT_ENABLED"
+      # SI12: the size-chart read switch, so the api's ask and the worker's job agree
+      printf 'SIZE_CHART_READ_ENABLED\t%s\n' "$SIZE_CHART_READ_ENABLED"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
         printf 'IMAGE_EDIT_TENANT_DAILY_LIMIT\t%s\n' "$IMAGE_EDIT_TENANT_DAILY_LIMIT"

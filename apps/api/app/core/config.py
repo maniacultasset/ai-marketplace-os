@@ -230,6 +230,10 @@ class Settings(BaseSettings):
     # SI12: the vision model of the seller-requested size-chart read only; unset or blank means
     # `llm_model_vision`, so the read can move to a stronger model without moving photo facts.
     llm_model_vision_size_chart: str | None = Field(default=None, min_length=1, max_length=128)
+    # SI12: the seller-requested size-chart read. Off: the api answers `unavailable` with no job and
+    # no spend, the worker settles a queued read `unavailable` with no call, and the product read
+    # says `size_chart_read_enabled: false` so the dashboard can hide the button.
+    size_chart_read_enabled: bool = False
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = EMBEDDING_DIMENSIONS  # pinned: the vector(1536) column type
     llm_timeout_seconds: int = 60

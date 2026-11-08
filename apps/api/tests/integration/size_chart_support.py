@@ -18,12 +18,21 @@ READ_MODULES = ("app.workers.size_chart_read",)
 
 
 def use_read_storage(monkeypatch: pytest.MonkeyPatch, store: Any) -> None:
-    """Point the image modules and the size-chart read worker at `store`."""
+    """Point the image modules and the size-chart read worker at `store`, with the read switched
+    on (`SIZE_CHART_READ_ENABLED`, off by default)."""
     import importlib
 
     use_storage(monkeypatch, store)
     for name in READ_MODULES:
         monkeypatch.setattr(importlib.import_module(name), "get_storage", lambda: store)
+    set_read_switch(monkeypatch, on=True)
+
+
+def set_read_switch(monkeypatch: pytest.MonkeyPatch, *, on: bool) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("SIZE_CHART_READ_ENABLED", "true" if on else "false")
+    get_settings.cache_clear()
 
 
 def chart_photo(colour: tuple[int, int, int] = (250, 250, 250), size: int = 64) -> bytes:

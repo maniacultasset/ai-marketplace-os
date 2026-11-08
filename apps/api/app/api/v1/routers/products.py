@@ -182,6 +182,7 @@ def _out(view: products.ProductView) -> ProductOut:
             for key, source in view.field_sources.items()
         },
         size_chart_suggestion=_suggestion(view.size_chart_suggestion),
+        size_chart_read_enabled=view.size_chart_read_enabled,
         suggestions=SuggestionsOut.model_construct(
             hsn_code=(
                 None

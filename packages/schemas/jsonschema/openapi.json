@@ -6671,6 +6671,12 @@
               }
             ]
           },
+          "size_chart_read_enabled": {
+            "default": false,
+            "description": "SI12: whether `POST /products/{product_id}/size-chart-read` can read the photo; while false it answers `unavailable` (hide the button). False on lists.",
+            "title": "Size Chart Read Enabled",
+            "type": "boolean"
+          },
           "size_chart_suggestion": {
             "anyOf": [
               {
@@ -42616,7 +42622,7 @@
     },
     "/api/v1/products/{product_id}/size-chart-read": {
       "post": {
-        "description": "Read the product's size-chart photo (a style or standalone product) into a suggestion. 202\nnames the job (poll the product for `size_chart_suggestion`); 200 answers a photo already\nread (`read` or `unreadable`) with no new job. Nothing is saved as a fact: save the edited\nchart with `PATCH /products/{product_id}` and `size_chart_image_id`. A variant is 422\n`FACT_LEVEL_INVALID`, no size-chart photo 422, a photo still being checked 409. While AI is\npaused for every brand it is 503 with the pause's code (SI10); past the daily cap 429.",
+        "description": "Read the product's size-chart photo (a style or standalone product) into a suggestion. 202\nnames the job (poll the product for `size_chart_suggestion`); 200 answers a photo already\nread (`read` or `unreadable`) with no new job. Nothing is saved as a fact: save the edited\nchart with `PATCH /products/{product_id}` and `size_chart_image_id`. A variant is 422\n`FACT_LEVEL_INVALID`, no size-chart photo 422, a photo still being checked 409. While AI is\npaused for every brand it is 503 with the pause's code (SI10); past the daily cap 429. While\nthe read is switched off (`size_chart_read_enabled: false` on the product) it is 200\n`unavailable` with no job and nothing spent.",
         "operationId": "size_chart_read_create",
         "parameters": [
           {

@@ -1897,7 +1897,9 @@ export interface paths {
          *     read (`read` or `unreadable`) with no new job. Nothing is saved as a fact: save the edited
          *     chart with `PATCH /products/{product_id}` and `size_chart_image_id`. A variant is 422
          *     `FACT_LEVEL_INVALID`, no size-chart photo 422, a photo still being checked 409. While AI is
-         *     paused for every brand it is 503 with the pause's code (SI10); past the daily cap 429.
+         *     paused for every brand it is 503 with the pause's code (SI10); past the daily cap 429. While
+         *     the read is switched off (`size_chart_read_enabled: false` on the product) it is 200
+         *     `unavailable` with no job and nothing spent.
          */
         post: operations["size_chart_read_create"];
         delete?: never;
@@ -4517,6 +4519,12 @@ export interface components {
              */
             selling_price?: string | null;
             size_chart?: components["schemas"]["SizeChart"] | null;
+            /**
+             * Size Chart Read Enabled
+             * @description SI12: whether `POST /products/{product_id}/size-chart-read` can read the photo; while false it answers `unavailable` (hide the button). False on lists.
+             * @default false
+             */
+            size_chart_read_enabled: boolean;
             /** @description SI12: the size-chart read of a style or standalone; null on lists. */
             size_chart_suggestion?: components["schemas"]["SizeChartSuggestionOut"] | null;
             /** Size Chart Url */
