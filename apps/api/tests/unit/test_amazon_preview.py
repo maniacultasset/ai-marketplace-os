@@ -248,8 +248,28 @@ def test_preview_view_exposes_only_the_dry_run() -> None:
     from app.workers.previewers import PreviewView
 
     public = {n for n in dir(PreviewView) if not n.startswith("_")}
-    assert public == {"preview_remote", "aclose"}
+    assert public == {"preview_remote", "precheck", "aclose"}  # SI13: + the read-only pre-check
     assert "__getattr__" not in PreviewView.__dict__
+
+
+async def test_preview_view_precheck_reaches_no_write() -> None:
+    """SI13 (AC6): the pre-check goes through `precheck_catalog` only; the view offers no put,
+    patch, client or adapter, and an adapter error becomes a failed check, never a raise."""
+    from app.adapters.base import MarketplaceUnavailable, PrecheckResult
+    from app.adapters.fake import FakeAdapter
+    from app.workers.previewers import PreviewView
+    from tests.adapters.amazon_support import amazon_item
+
+    fake = FakeAdapter("amazon")
+    view = PreviewView(fake)
+    for name in ("put", "patch", "_client", "create_listing", "update_listing", "get_listing"):
+        assert not hasattr(view, name), name
+    sent = amazon_item()
+    assert await view.precheck(sent, restrictions=True) == PrecheckResult()
+    assert fake.precheck_calls == [True]
+    fake.precheck_error = MarketplaceUnavailable(None)  # type: ignore[arg-type]
+    failed = await view.precheck(sent, restrictions=False)
+    assert failed.failed == (sent.seller_sku,) and failed.items == ()
 
 
 async def test_preview_view_refuses_an_adapter_without_dry_run() -> None:

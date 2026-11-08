@@ -54,6 +54,7 @@ from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.amazon import constants as c
+from app.adapters.amazon import precheck
 from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
@@ -66,6 +67,7 @@ from app.adapters.amazon.mapping import (
     preview,
     reverse_index,
 )
+from app.adapters.amazon.precheck import PrecheckResult
 from app.adapters.base import (
     AdapterError,
     AdapterItem,
@@ -590,6 +592,54 @@ class AmazonAdapter(MarketplaceAdapter):
             ref = ref or outcome.ref
             applied += int(outcome.applied)
         return self._result(item, results, ref=ref, bodies=bodies)
+
+    async def precheck_catalog(self, item: AdapterListing, *, restrictions: bool) -> PrecheckResult:
+        """SI13: the read-only catalog and brand-restriction pre-check (`precheck` module). One
+        search per 20 barcodes in SKU order; restrictions once per distinct matched or
+        other-brand ASIN when `restrictions`. A failed call puts its SKUs in `failed` and the
+        check goes on; it never raises an adapter error and never writes."""
+        units = sorted(
+            (u for u in item.units() if precheck.barcode_of(item, u) is not None),
+            key=lambda u: u.seller_sku,
+        )
+        parties = party_secrets(item)
+        items: list[ErrorItem] = []
+        matched: list[tuple[str, str]] = []
+        failed: list[str] = []
+        asin_skus: dict[str, list[str]] = {}
+        size = c.CATALOG_MAX_IDENTIFIERS
+        for start in range(0, len(units), size):
+            chunk = units[start : start + size]
+            kinds = {precheck.identifier_type_of(item, u) for u in chunk}
+            id_type = kinds.pop() if len(kinds) == 1 else "EAN"
+            barcodes = list(dict.fromkeys(str(precheck.barcode_of(item, u)) for u in chunk))
+            try:
+                response = await self._client.search_catalog(barcodes, id_type)
+                body = response.json if isinstance(response.json, dict) else {}
+                found, same, others = precheck.from_catalog(item, chunk, body.get("items"))
+            except (AdapterError, ValueError):
+                failed += [u.seller_sku for u in chunk]
+                continue
+            items += found
+            matched += same
+            for sku, asin in same:
+                asin_skus.setdefault(asin, []).append(sku)
+            for asin in others:
+                asin_skus.setdefault(asin, [])
+        if restrictions:
+            for asin in sorted(asin_skus):
+                try:
+                    response = await self._client.get_restrictions(asin)
+                except (AdapterError, ValueError):
+                    failed += asin_skus[asin]
+                    continue
+                secrets = (*parties, *self._client.used_secrets())
+                items += precheck.from_restrictions(response.json, secrets)
+        return precheck.PrecheckResult(
+            items=tuple(items[:MAX_ERROR_ITEMS]),
+            matched=tuple(matched),
+            failed=tuple(dict.fromkeys(failed)),
+        )
 
     async def get_listing(
         self, seller_sku: str, *, listing_id: UUID | None = None

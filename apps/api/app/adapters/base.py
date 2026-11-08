@@ -124,6 +124,17 @@ class AdapterItem:
 
 
 @dataclass(frozen=True)
+class PrecheckResult:
+    """SI13: what one catalog and restriction pre-check found: the issue items, the (sku, asin)
+    pairs the marketplace already lists under the seller's brand, and the SKUs whose check failed
+    (never blocking)."""
+
+    items: tuple[ErrorItem, ...] = ()
+    matched: tuple[tuple[str, str], ...] = ()
+    failed: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class AdapterTemplate:
     """The listing version's pinned template. `product_type` NULL means the category is not
     mapped for this marketplace."""

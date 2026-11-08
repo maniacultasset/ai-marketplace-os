@@ -57,6 +57,7 @@ from app.adapters.base import (
     ListingNotFound,
     MarketplaceAdapter,
     PerformanceDay,
+    PrecheckResult,
     PreviewItem,
     RemotePreview,
     UpdateFields,
@@ -115,6 +116,10 @@ class FakeAdapter(MarketplaceAdapter):
         self.preview_status: str | None = None
         self.preview_applied = False
         self.preview_calls = 0
+        # SI13: the scripted catalog pre-check, and the reads' product type and issues
+        self.precheck_result = PrecheckResult()
+        self.precheck_error: Exception | None = None
+        self.precheck_calls: list[bool] = []
 
     # ---- inspection (tests only) ----
 
@@ -345,6 +350,14 @@ class FakeAdapter(MarketplaceAdapter):
                 status="issues", errors=tuple(self.preview_errors), per_sku=per_sku, scope=scope
             )
         return RemotePreview(status="clean", per_sku=per_sku, scope=scope)
+
+    async def precheck_catalog(self, item: AdapterListing, *, restrictions: bool) -> PrecheckResult:
+        """SI13: the scripted pre-check (`precheck_result`, or `precheck_error` raised), counted
+        in `precheck_calls` with the `restrictions` switch."""
+        self.precheck_calls.append(restrictions)
+        if self.precheck_error is not None:
+            raise self.precheck_error
+        return self.precheck_result
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

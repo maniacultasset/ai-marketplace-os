@@ -424,6 +424,7 @@ source_modules =
     app.adapters.registry
     app.adapters.amazon.repairs
     app.adapters.amazon.aliases
+    app.adapters.amazon.precheck
 forbidden_modules =
     httpx
     socket
