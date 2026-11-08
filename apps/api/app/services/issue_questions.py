@@ -117,7 +117,7 @@ async def open_questions(
             if value_type == "text" and choices is not None and not definition.vocabulary:
                 value_type = "enum"
             question, reason = question_for(
-                ErrorCode(group[0].error_code), key, "", value_type=definition.value_type
+                ErrorCode(group[0].error_code), key, "", value_type=value_type
             )
             task = await uow.human_tasks.open_fact_task(
                 listing.product_id,

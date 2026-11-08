@@ -101,7 +101,7 @@ async def test_rules_question_offers_the_template_subset(
 ) -> None:
     made = await generated(gen_world, sku=await _no_colour_product(gen_world))
     task = gen_world.conn.execute(
-        "SELECT t.expected_answer FROM human_tasks t JOIN listing_issues i "
+        "SELECT t.expected_answer, t.question FROM human_tasks t JOIN listing_issues i "
         "ON i.human_task_id = t.id WHERE i.listing_id = %s AND i.field_path = 'attributes.color' "
         "AND i.source = 'rules_engine'",
         [made.listing_id],
@@ -112,3 +112,5 @@ async def test_rules_question_offers_the_template_subset(
     spec = _spec(gen_world, "color")
     spellings = [*(spec.get("allowed_values") or []), *sorted(spec.get("value_map") or {})]
     assert expected["allowed_values"] == list(dict.fromkeys(spellings))
+    # the question's hint matches the enum answer spec
+    assert str(task[1]).endswith(" Pick one of the listed values.")
