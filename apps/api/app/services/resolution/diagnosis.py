@@ -11,7 +11,7 @@ the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
   `data["message"]`, the untrusted block the `DEVELOPER` prompt names.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
   starts like a spreadsheet formula (`=`, `+`, `-`, `@`, a tab or a CR), holds a control, format or
-  bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, `data:`, `//host`,
+  bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, a `data:` URI, `//host`,
   `www.`, a host on a real TLD in any case or any host with a path, an IPv4 host, an email; an ideographic or fullwidth full
   stop reads as `.`), `<tag`, `&#`, a `{...}` token or a folded secret;
   when the code or class is not a member of the
@@ -65,10 +65,12 @@ _SPACE: Final = re.compile(r"\s+")
 _TOKEN: Final = re.compile(r"\{[^{}]*\}")
 _BAD_TEXT: Final = (
     re.compile(r"(?i)https?://|www\.|<[a-z/!]|&#|\{|\}"),
-    # any scheme link (`ftp://`, `javascript:alert(`), a protocol-relative `//host`, `data:`, or a
-    # bare domain on a short TLD list; the general `\w+\.[a-z]{2,}` would refuse "value.Then"
+    # any scheme link (`ftp://`, `javascript:alert(`), a protocol-relative `//host`, a `data:` URI
+    # (`data:text/html;`, `data:,`; "lacks required data: add" is prose), or a bare domain on a
+    # short TLD list; the general `\w+\.[a-z]{2,}` would refuse "value.Then"
     re.compile(
-        r"(?i)(?:[a-z][a-z0-9+.-]*:(?://|[^\s]*\()|//\S|javascript:|data:"
+        r"(?i)(?:[a-z][a-z0-9+.-]*:(?://|[^\s]*\()|//\S|\bjavascript:"
+        r"|\bdata:(?:[a-z-]+/[\w.+-]+)?[;,]"
         r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|net|org|io|co|ly|me|app|dev|example|xyz)\b)"
     ),
 )

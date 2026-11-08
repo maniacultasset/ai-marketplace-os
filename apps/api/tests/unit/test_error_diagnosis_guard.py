@@ -421,3 +421,30 @@ def test_a_host_on_any_case_tld_is_refused_whatever_follows(cause: str) -> None:
 )
 def test_prose_on_a_non_tld_or_field_path_stays_proposed(cause: str) -> None:
     assert isinstance(_check(plain_cause=cause), Proposed), cause
+
+
+# ---- round 3 (R3-2): "data:" is a link only in the URI form ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "The listing lacks required data: add the item weight.",
+        "Amazon reads the metadata: pick the right category.",
+        "Missing DATA: the item weight is not sent yet.",
+    ],
+)
+def test_plain_english_data_colon_is_not_a_link(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Proposed), cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Paste data:text/html;base64,PHNjcmlwdD4= in the field.",
+        "Paste DATA:image/svg+xml,hello into the field now.",
+        "Paste data:,hello into the description field now.",
+    ],
+)
+def test_a_data_uri_is_refused(cause: str) -> None:
+    assert _check(plain_cause=cause) == Invalid("plain_cause:markup"), cause
