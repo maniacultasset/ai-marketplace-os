@@ -150,3 +150,40 @@ def test_model_config_repr_hides_every_key() -> None:
     shown = repr(deps._models)
     assert "sk-o-visible" not in shown and "sk-d-vis" not in shown
     assert "gpt-4o-mini" in shown  # the snapshot still names its models
+
+
+def _settings(**over: Any) -> Any:
+    from app.core.config import Settings
+
+    return Settings(_env_file=None, app_env="local", database_url=LOCAL_URL, **over)
+
+
+async def test_size_chart_read_defaults_to_the_vision_model() -> None:
+    """SI12: with LLM_MODEL_VISION_SIZE_CHART unset (or blank) the read uses LLM_MODEL_VISION."""
+    from app.services.pipeline_deps import size_chart_read_credentials
+
+    for over in ({}, {"llm_model_vision_size_chart": ""}, {"llm_model_vision_size_chart": "  "}):
+        cfg = _settings(openai_api_key="sk-openai", llm_model_vision="gpt-4o-mini", **over)
+        creds = size_chart_read_credentials(cfg)
+        assert (creds.provider, creds.model, creds.api_base) == ("openai", "gpt-4o-mini", None)
+
+
+async def test_size_chart_read_takes_its_own_model_and_photo_facts_keep_theirs() -> None:
+    from app.services.pipeline_deps import size_chart_read_credentials
+
+    over = {"llm_model_vision": "gpt-4o-mini", "llm_model_vision_size_chart": "gpt-4o"}
+    direct = _settings(openai_api_key="sk-openai", **over)
+    creds = size_chart_read_credentials(direct)
+    assert (creds.model, creds.api_key.get_secret_value()) == ("gpt-4o", "sk-openai")
+    deps = _deps(openai_api_key="sk-openai", **over)
+    assert await _creds(deps, "vision") == ("openai", "gpt-4o-mini", "sk-openai")
+
+    router = _settings(
+        llm_gateway="openrouter",
+        llm_model_default="deepseek/deepseek-chat",
+        openrouter_api_key="sk-router",
+        **over,
+    )
+    creds = size_chart_read_credentials(router)
+    assert (creds.model, creds.api_base) == ("openai/gpt-4o", OPENROUTER)
+    assert creds.api_key.get_secret_value() == "sk-router"

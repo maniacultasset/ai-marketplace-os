@@ -1412,7 +1412,41 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
     assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
     for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
         assert staging[name] == "", name
+    # SI12: the size-chart read keeps LLM_MODEL_VISION until the AI lead picks its own model, and
+    # stays off on both; prod's photo facts run on gpt-4o (pipeline v0.5.0 prices it)
+    assert prod["LLM_MODEL_VISION_SIZE_CHART"] == staging["LLM_MODEL_VISION_SIZE_CHART"] == ""
+    assert prod["SIZE_CHART_READ_ENABLED"] == staging["SIZE_CHART_READ_ENABLED"] == "false"
+    assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
+    assert prod["PIPELINE_REF"] == "f631923204f4ed9b4d617965c5c83e5cc347a75b"
     assert staging["WORKER_ENABLED"] == "true"
+
+
+def test_size_chart_model_goes_to_the_worker_only_when_set(toolkit: Path, tmp_path: Path) -> None:
+    """SI12: blank (as committed) sends nothing, so the worker keeps LLM_MODEL_VISION."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _worker_container(out)[0]
+    assert "LLM_MODEL_VISION" not in _worker_container(out)[0]
+    _set_env(toolkit, "staging", LLM_MODEL_VISION="gpt-4o", LLM_MODEL_VISION_SIZE_CHART="gpt-4o")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    worker = _worker_container(out)[0]
+    assert worker["LLM_MODEL_VISION"] == worker["LLM_MODEL_VISION_SIZE_CHART"] == "gpt-4o"
+    assert "LLM_MODEL_VISION_SIZE_CHART" not in _api_env(out)
+    assert "LLM_MODEL_VISION" not in _api_env(out)
+
+
+def test_size_chart_read_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """SI12: the api's ask and the worker's job read one switch; off as committed."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["SIZE_CHART_READ_ENABLED"] == "false"
+    assert _worker_container(out)[0]["SIZE_CHART_READ_ENABLED"] == "false"
+    _set_env(toolkit, "staging", SIZE_CHART_READ_ENABLED="true")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["SIZE_CHART_READ_ENABLED"] == "true"
+    assert _worker_container(out)[0]["SIZE_CHART_READ_ENABLED"] == "true"
+    _set_env(toolkit, "staging", SIZE_CHART_READ_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "SIZE_CHART_READ_ENABLED must be true or false" in result.stderr
 
 
 def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) -> None:

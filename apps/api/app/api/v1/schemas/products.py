@@ -614,6 +614,13 @@ class ProductOut(WireModel):
         default=None,
         description="SI12: the size-chart read of a style or standalone; null on lists.",
     )
+    size_chart_read_enabled: bool = Field(
+        default=False,
+        description=(
+            "SI12: whether `POST /products/{product_id}/size-chart-read` can read the photo; while "
+            "false it answers `unavailable` (hide the button). False on lists."
+        ),
+    )
 
 
 class ProductPage(Page[ProductOut]):

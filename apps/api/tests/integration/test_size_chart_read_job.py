@@ -21,7 +21,13 @@ from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .images_support import FakeStorage, images_db, run_image_job
 from .jobs_support import JobWorld, job_row
-from .size_chart_support import chart_image, enqueue_read, read_state, use_read_storage
+from .size_chart_support import (
+    chart_image,
+    enqueue_read,
+    read_state,
+    set_read_switch,
+    use_read_storage,
+)
 
 __all__ = ["images_db"]
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -396,3 +402,21 @@ async def test_staff_requeue_refused(
         "SELECT count(*) FROM job_runs WHERE parent_job_id = %s", [job]
     ).fetchone()
     assert count == (0,)
+
+
+async def test_a_read_queued_before_the_switch_went_off_settles_unavailable_with_no_call(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    tenant, p = _product(images_db)
+    image, _digest = chart_image(images_db.conn, store, tenant, p)
+    seen = _answer(monkeypatch, lambda result, _request: result)
+    job = await enqueue_read(tenant, image)
+    set_read_switch(monkeypatch, on=False)
+    try:
+        await run_image_job(job)
+    finally:
+        set_read_switch(monkeypatch, on=True)
+    state = read_state(images_db.conn, image)
+    assert state is not None and state["status"] == "unavailable"
+    assert seen == [] and _runs(images_db.conn, job) == []
+    assert _reserved(images_db.conn, job) == 0

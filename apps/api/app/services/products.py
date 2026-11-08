@@ -217,6 +217,7 @@ class ProductView:
     field_sources: dict[str, FieldSource] = field(default_factory=dict)
     hsn_suggestion: HsnSuggestion | None = None
     size_chart_suggestion: dict[str, Any] | None = None
+    size_chart_read_enabled: bool = False
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
@@ -603,6 +604,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         field_sources=sources,
         hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
         size_chart_suggestion=await size_chart_suggestion(uow, row, details),
+        size_chart_read_enabled=get_settings().size_chart_read_enabled,
     )
 
 

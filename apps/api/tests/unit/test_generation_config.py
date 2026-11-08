@@ -35,6 +35,9 @@ NO_ROUTER_KEY = (
 )
 NO_ROUTER_MODEL = "LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model"
 NO_ROUTER_VISION = "LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id"
+NO_ROUTER_SIZE_CHART = (
+    "LLM_GATEWAY=openrouter requires LLM_MODEL_VISION_SIZE_CHART as an OpenAI model id"
+)
 
 
 def _boot(monkeypatch: pytest.MonkeyPatch, **env: str) -> Settings:
@@ -224,6 +227,21 @@ def test_router_worker_refuses_a_vendor_vision_model(
     env = _router_env("staging", OPENROUTER_API_KEY=CANARY_KEY, LLM_MODEL_VISION="openai/gpt-4o")
     message = _refusal(monkeypatch, env)
     assert NO_ROUTER_VISION in message and NO_ROUTER_MODEL not in message
+
+
+def test_router_worker_refuses_a_vendor_size_chart_model(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SI12: the size-chart model gets `openai/` added too; a bare id boots."""
+    env = _router_env(
+        "staging", OPENROUTER_API_KEY=CANARY_KEY, LLM_MODEL_VISION_SIZE_CHART="openai/gpt-4o"
+    )
+    message = _refusal(monkeypatch, env)
+    assert NO_ROUTER_SIZE_CHART in message and NO_ROUTER_VISION not in message
+    env = _router_env(
+        "staging", OPENROUTER_API_KEY=CANARY_KEY, LLM_MODEL_VISION_SIZE_CHART="gpt-4o"
+    )
+    assert _boot(monkeypatch, **env).llm_model_vision_size_chart == "gpt-4o"
 
 
 def test_bare_models_still_fine_under_direct_and_local_router(
