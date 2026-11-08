@@ -275,3 +275,76 @@ async def test_race_on_the_live_index_never_fails_the_caller(
         assert await request_preview(uow, listing, made.version_id, trigger="resolution") is None
         assert await uow.listings.get(made.listing_id) is not None  # still usable
     assert len(preview_jobs(prev, made.listing_id)) == 1
+
+
+# ---- fix round 1 (R1-4): the seller's facts are part of the preview payload ----
+
+
+def _colour_error() -> ErrorItem:
+    return ErrorItem(
+        field="attributes.color",
+        error_code=ErrorCode.VALUE_NOT_ALLOWED,
+        severity=Severity.ERROR,
+        message="The value provided for 'color' is not one of the allowed values.",
+        source=ErrorSource.AMAZON_ADAPTER,
+        retryable=False,
+        raw_code="99300",
+    )
+
+
+async def test_a_fact_fix_on_the_same_version_gets_a_new_preview(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    from .review_support import OPERATOR, REVIEWER, item, only_item, post_approve
+
+    prev.fake.preview_errors = [_colour_error()]
+    made = await generated(prev.world)
+    await _run_previews(prev, made.listing_id)
+    assert _check(prev, made.listing_id)[1:] == ("issues", "blocked")
+    # the seller fixes the fact the preview refused; the listing keeps its version
+    product_id = prev.listing(made.listing_id)["product_id"]
+    url = f"/api/v1/products/{product_id}"
+    got = await api.get(url, headers=prev.world.headers(OPERATOR))
+    assert got.status_code == 200, got.text
+    patched = await api.patch(
+        url,
+        headers={**prev.world.headers(OPERATOR), "If-Match": got.headers["ETag"]},
+        json={"attributes": {"color": "red"}},
+    )
+    assert patched.status_code == 200, patched.text
+    prev.fake.preview_errors = []
+    response = await api.post(
+        "/api/v1/listings/validate",
+        headers=prev.world.headers(OPERATOR),
+        json={"listing_id": str(made.listing_id)},
+    )
+    assert response.status_code == 200, response.text
+    jobs = preview_jobs(prev, made.listing_id)
+    assert len(jobs) == 2, [j["status"] for j in jobs]  # a new key: the facts changed
+    assert jobs[1]["payload_json"]["version_id"] == str(made.version_id)
+    await _run_previews(prev, made.listing_id)
+    (row,) = preview_rows(prev, made.listing_id)
+    assert row["status"] != "open"
+    assert _check(prev, made.listing_id)[:2] == (made.version_id, "clean")
+    approve = await post_approve(api, prev.world, REVIEWER, [item(made)])
+    assert only_item(approve)["http_status"] == 200, approve.text
+
+
+async def test_a_replayed_key_never_leaves_the_check_pending(prev: PubWorld) -> None:
+    from app.repositories.uow import tenant_uow
+    from app.services.remote_preview import request_preview
+
+    prev.fake.preview_errors = [_colour_error()]
+    made = await generated(prev.world)
+    await _run_previews(prev, made.listing_id)
+    prev.conn.execute(  # a live sync job once forced the pending path
+        "UPDATE listings SET remote_check_status = 'pending', remote_check_at = NULL "
+        "WHERE id = %s",
+        [made.listing_id],
+    )
+    async with tenant_uow(prev.world.tenant("acme")) as uow:
+        listing = await uow.listings.get(made.listing_id)
+        replay = await request_preview(uow, listing, made.version_id, trigger="resolution")
+        assert replay is None  # the same version, repairs and facts: a replay
+    assert len(preview_jobs(prev, made.listing_id)) == 1
+    assert _check(prev, made.listing_id)[:2] == (made.version_id, "issues")

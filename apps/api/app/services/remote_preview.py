@@ -10,8 +10,11 @@ writes Amazon's issues as `amazon_adapter` rows of the `preview` channel (CP-D4)
   is Amazon, the setting is on, the listing is not paused or archived, its account is `active`
   and the account breaker is closed, and the status is `validated`, `needs_review` or `approved`
   (a `resolution` re-check after a repair may also run from `blocked/validation_errors`). The job
-  key is `sha256("preview:" listing ":" version ":" repair_set)` (CP-D26): the same version with
-  the same repairs is the same payload, so a second verdict is a replay. A live sync job of the
+  key is `sha256("preview:" listing ":" version ":" repair_set ":" facts)` (CP-D26; fix round 1):
+  the same version with the same repairs and the same seller facts (`listing_facts_digest` of the
+  product family: a preview sends the origin, barcode and identity facts, which change without a
+  new version) is the same payload, so a second verdict is a replay. A replay never leaves the
+  check `pending`: it takes the earlier job's verdict (`pending` only while that job is live). A live sync job of the
   listing means no insert: the check is marked `pending` and the live job's terminal enqueues it
   (CP-D5). The insert runs in a SAVEPOINT, so the live-index race never fails the caller's
   request or terminal transaction. Returns the new job's id, or None.
@@ -43,6 +46,7 @@ from app.adapters.base import RemotePreview
 from app.core.config import get_settings
 from app.core.errors import ConflictError
 from app.core.logging import get_logger
+from app.core.resolved_facts import listing_facts_digest
 from app.db.models.ops import JobRun
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import JobActor
@@ -85,9 +89,21 @@ def previewable(listing: Any, trigger: Trigger) -> bool:
     )
 
 
-def preview_key(listing_id: uuid.UUID, version_id: uuid.UUID, repair_set: bytes) -> str:
-    raw = f"preview:{listing_id}:{version_id}:{repair_set.hex()}"
+def preview_key(
+    listing_id: uuid.UUID, version_id: uuid.UUID, repair_set: bytes, facts: bytes = b""
+) -> str:
+    raw = f"preview:{listing_id}:{version_id}:{repair_set.hex()}:{facts.hex()}"
     return hashlib.sha256(raw.encode("ascii")).hexdigest()
+
+
+def replayed_check(job: JobRun) -> str:
+    """The check state a replayed key leaves: the earlier job's verdict, `pending` while it is
+    still live, `failed` when it ended without one (stale, failed or dead-lettered)."""
+    if job.status in ("queued", "running"):
+        return "pending"
+    result = job.result_json if isinstance(job.result_json, dict) else {}
+    verdict = result.get("remote_check")
+    return verdict if verdict in ("clean", "issues", "failed") else "failed"
 
 
 async def request_preview(
@@ -118,13 +134,15 @@ async def request_preview(
         await uow.listings.set_remote_check(listing.id, version_id, "pending")
         return None
     repairs = await uow.listing_repairs.live_for_listing(listing.id)
+    family = await uow.product_facts.resolve_family(listing.product_id)
+    facts = b"" if family is None else listing_facts_digest(*family)
     spec = EnqueueSpec(
         kind=JobKind.LISTING_STATUS_SYNC,
         entity_type="listing",
         entity_id=listing.id,
         listing_id=listing.id,
         created_by=None,
-        job_key=preview_key(listing.id, version_id, repair_set_digest(repairs)),
+        job_key=preview_key(listing.id, version_id, repair_set_digest(repairs), facts),
         payload=dump(
             StatusSyncPayload(
                 listing_id=listing.id, op="preview", version_id=version_id, trigger=trigger
@@ -138,8 +156,9 @@ async def request_preview(
         # a sync job went live between the check and the insert: it enqueues this one later
         await uow.listings.set_remote_check(listing.id, version_id, "pending")
         return None
-    if not enqueued.created:
-        return None  # the same version and repairs were judged already: a replay
+    if not enqueued.created:  # the same version, repairs and facts were judged already
+        await uow.listings.set_remote_check(listing.id, version_id, replayed_check(enqueued.job))
+        return None
     await uow.listings.set_remote_check(listing.id, version_id, "pending")
     log.info(
         "preview.requested",
