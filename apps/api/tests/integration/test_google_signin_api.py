@@ -209,6 +209,21 @@ async def test_start_rate_limited_per_ip(gapi: httpx.AsyncClient, gw: GoogleWorl
     assert statuses[10] == 429
 
 
+async def test_start_limit_is_per_browser_not_per_shared_ip(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1 hardening #15: behind the dashboard proxy every user shares one IP, so one browser
+    hitting its limit never locks out another; the per-IP ceiling still caps a flow rotator."""
+    from app.api import rate_limit
+
+    noisy, other = GoogleBrowser(gapi, gw), GoogleBrowser(gapi, gw)
+    assert [(await noisy.start()).status_code for _ in range(11)][-1] == 429
+    assert (await other.start()).status_code == 302
+    monkeypatch.setattr(rate_limit, "GOOGLE_IP_CEILING", 2)  # ceiling 20 a minute per IP
+    statuses = [(await GoogleBrowser(gapi, gw).start()).status_code for _ in range(10)]
+    assert 429 in statuses
+
+
 # ---- callback ----
 
 

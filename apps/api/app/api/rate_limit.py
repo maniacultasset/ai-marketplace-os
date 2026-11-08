@@ -34,6 +34,7 @@ origin secret matched, and `request_ip()` falls back to `client_ip()` otherwise.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import ipaddress
 from collections.abc import Mapping, Sequence
@@ -123,15 +124,35 @@ async def enforce_login_limit(request: Request, email: str) -> None:
     await _enforce(login_email_bucket(email), settings.auth_login_email_rate_limit_per_min)
 
 
-def google_bucket(ip: str) -> str:
-    return f"google:{hashlib.sha256(ip.encode()).hexdigest()}"
+# V1 hardening #15: through the dashboard's `/api` proxy every browser can share one client IP
+# (the proxy's egress), so the Google steps count per browser flow, with a much higher ceiling
+# per IP as the backstop against one source rotating its flow ids.
+GOOGLE_IP_CEILING: Final = 20
 
 
-async def enforce_google_limit(request: Request) -> None:
-    """ADR-0020: every Google sign-in step, per `sha256(ip)`, before any handle is read."""
-    await _enforce(
-        google_bucket(request_ip(request)), get_settings().auth_google_rate_limit_per_min
-    )
+def google_bucket(ip: str, flow: str = "") -> str:
+    return f"google:{hashlib.sha256(f'{ip}|{flow}'.encode()).hexdigest()}"
+
+
+def google_ip_bucket(ip: str) -> str:
+    return f"google-ip:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+def google_flow(binding_secret: str) -> str:
+    """The flow key of a step that carries the browser's binding secret: the same value `start`
+    got as `b` (base64url of its sha256), so one browser's steps share one bucket."""
+    digest = hashlib.sha256(binding_secret.encode()).digest()
+    return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+async def enforce_google_limit(request: Request, flow: str | None = None) -> None:
+    """ADR-0020: every Google sign-in step, before any handle is read: per `sha256(ip|flow)`
+    at the configured rate (flow: `b` at start, the `state` at the callback, the binding's `b`
+    afterwards), and per `sha256(ip)` at `GOOGLE_IP_CEILING` times that rate."""
+    limit = get_settings().auth_google_rate_limit_per_min
+    ip = request_ip(request)
+    await _enforce(google_ip_bucket(ip), limit * GOOGLE_IP_CEILING)
+    await _enforce(google_bucket(ip, flow or ""), limit)
 
 
 def signup_bucket(ip: str) -> str:
