@@ -2326,6 +2326,11 @@ export interface components {
              * Format: uuid
              */
             product_id: string;
+            /**
+             * Role
+             * @description SI12: `back` or `close_up`, only with `slot: secondary`.
+             */
+            role?: ("back" | "close_up") | null;
             slot: components["schemas"]["ImageSlot"];
             /**
              * Storage Key

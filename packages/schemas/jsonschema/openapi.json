@@ -639,6 +639,22 @@
             "title": "Product Id",
             "type": "string"
           },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: `back` or `close_up`, only with `slot: secondary`.",
+            "title": "Role"
+          },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           },
