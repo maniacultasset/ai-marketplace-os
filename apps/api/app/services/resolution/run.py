@@ -66,6 +66,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Final, Literal
 
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorItem
 
@@ -84,6 +85,7 @@ from app.services.auto_fix.text import seller_central_step, staff_step
 from app.services.issues import adapter_source
 from app.services.remote_preview import request_preview
 from app.services.resolution.plan import (
+    SELLER_ACTIONS,
     IssueView,
     PlanContext,
     Step,
@@ -628,9 +630,19 @@ async def _human_steps(
     opened: dict[str, list[uuid.UUID]] = {}
     # belt and braces (round 4): a seller step the inbox cannot take goes to staff before the
     # inbox is asked, and so does any seller row the inbox left with no question behind it (no
-    # dictionary target, an image index outside the version): an open ERROR never stalls taskless
-    steps = [_to_staff(s, by_issue) if s.lane == "seller" else s for s in steps]
-    seller = [by_issue[s.issue_id] for s in steps if s.lane == "seller"]
+    # dictionary target, an image index outside the version): an open ERROR never stalls taskless.
+    # SI13 (CP-D8) exempts two seller actions that open no question, `recategorize` and
+    # `edit_identifier`: their issue row (lane seller, the field path and the templated message
+    # naming the action) is the seller's signal over HTTP, the action is on the listing (the
+    # recategorise route, the product's barcode edit), and the resolution read's next step names
+    # it. They never reach the inbox and are never turned into staff.
+    steps = [
+        _to_staff(s, by_issue) if s.lane == "seller" and s.action not in SELLER_ACTIONS else s
+        for s in steps
+    ]
+    seller = [
+        by_issue[s.issue_id] for s in steps if s.lane == "seller" and s.action not in SELLER_ACTIONS
+    ]
     if seller:
         source = await uow.listings.preview_source(listing.id)
         pinned = None if source is None else source.template
@@ -652,7 +664,7 @@ async def _human_steps(
         steps = [
             (
                 Step(s.issue_id, "staff", s.cause, staff_action(by_issue[s.issue_id].field_path))
-                if s.lane == "seller" and s.issue_id in left
+                if s.lane == "seller" and s.issue_id in left and s.action not in SELLER_ACTIONS
                 else s
             )
             for s in steps
@@ -718,6 +730,15 @@ async def _images(uow: TenantUnitOfWork, listing: Any) -> Sequence[Any]:
     return () if canonical is None else canonical.images
 
 
+async def _recategorizable(uow: TenantUnitOfWork, listing: Any, rows: Sequence[Any]) -> bool:
+    """SI13 T7: read only when an adapter CATEGORY_MISMATCH row is open (the planner's rule 2)."""
+    from app.services.product_recategorize import recategorizable
+
+    if not any(r.error_code == ErrorCode.CATEGORY_MISMATCH.value for r in rows):
+        return False
+    return await recategorizable(uow, listing)
+
+
 async def _resolve(
     uow: TenantUnitOfWork, listing: Any, *, entry: Entry, job: JobRun
 ) -> ResolutionResult:
@@ -740,6 +761,7 @@ async def _resolve(
     content_fixable = await _content_fixable(uow, listing, rows)
     ctx = PlanContext(
         content_fixable=content_fixable,
+        recategorizable=await _recategorizable(uow, listing, rows),
         ai_allowed=await _ai_allowed(uow, listing.tenant_id),
         critical_keys=await uow.product_facts.critical_keys(),
         repairable=frozenset(candidates),

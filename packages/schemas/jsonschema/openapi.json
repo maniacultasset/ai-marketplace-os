@@ -5344,7 +5344,9 @@
               "answer",
               "marketplace",
               "resume",
-              "regenerate"
+              "regenerate",
+              "recategorize",
+              "edit_identifier"
             ],
             "title": "Kind",
             "type": "string"

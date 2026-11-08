@@ -10,6 +10,7 @@ from app.services.auto_fix.policy import fact_key
 from app.services.issue_questions import _image_index
 from app.services.resolution.plan import (
     AUTOMATIC,
+    SELLER_ACTIONS,
     IssueView,
     PlanContext,
     answerable,
@@ -221,6 +222,14 @@ def test_a_seller_step_is_always_one_the_inbox_can_ask(
     staff step (`mapping` on `listing`), never a question the inbox cannot open."""
     issue = _issue(field_path=path, error_code=code.value, source=source, error_class=klass.value)
     for step in plan([issue], PlanContext(ai_allowed=True)):
+        if step.lane == "seller" and step.action in SELLER_ACTIONS:
+            # SI13 (CP-D8): an action on the listing, no inbox question, on its own path only
+            assert (code, step.action) in (
+                (ErrorCode.CATEGORY_MISMATCH, "recategorize"),
+                (ErrorCode.IDENTIFIER_DUPLICATE, "edit_identifier"),
+            ), (path, code)
+            assert fact_key(path) is not None, path
+            continue
         if step.lane == "seller":
             assert seller_answers(path), (path, code)
         if step.lane == "staff" and step.action in ("mapping", "unanswerable_fact"):
@@ -272,3 +281,90 @@ def test_content_fixable_never_moves_a_fact_or_an_unfixable_row() -> None:
     other = _issue(field_path="content.title", error_code="FIELD_TOO_LONG")
     steps = plan([fact, other], PlanContext(content_fixable=frozenset({fact.id})))
     assert [s.lane for s in steps] == ["seller", "staff"]
+
+
+# ---- SI13 T7: category, burst hold, SKU and identifier rules ----
+
+
+def _cat(**over: Any) -> IssueView:
+    return _issue(
+        field_path="facts.category",
+        error_code="CATEGORY_MISMATCH",
+        error_class="category_mismatch",
+        marketplace_code=None,
+        **over,
+    )
+
+
+def _missing(attribute: str) -> IssueView:
+    return _issue(
+        field_path=f"attributes.{attribute}",
+        error_code="MISSING_ATTRIBUTE",
+        error_class="missing_data",
+        marketplace_code="90220",
+    )
+
+
+def test_category_mismatch_recategorizable_is_seller() -> None:
+    (step,) = plan([_cat()], PlanContext(recategorizable=True))
+    assert (step.lane, step.action, step.cause) == ("seller", "recategorize", "mapping")
+
+
+def test_category_mismatch_otherwise_is_staff() -> None:
+    (step,) = plan([_cat()], PlanContext())
+    assert (step.lane, step.action) == ("staff", "recategorize_review")
+
+
+def test_lane_for_category_without_context_is_staff() -> None:
+    assert lane_for("CATEGORY_MISMATCH", "category_mismatch") == "staff"
+
+
+def test_burst_hold_one_step_only() -> None:
+    issues = [_cat(), *(_missing(a) for a in ("fabric_type", "neck_style", "sleeve_type"))]
+    steps = plan(issues, PlanContext(recategorizable=True))
+    assert [(s.lane, s.action) for s in steps] == [("seller", "recategorize")]
+    held = plan(issues[1:], PlanContext())
+    assert len(held) == 3
+
+
+def test_a_warning_category_row_holds_nothing() -> None:
+    issues = [_cat(severity="warning"), _missing("fabric_type")]
+    assert len(plan(issues, PlanContext())) == 1
+
+
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"error_code": "SKU_CONFLICT", "error_class": "identifier_error"},
+        {"error_code": "SELLER_SKU_CONFLICT", "error_class": "identifier_error"},
+        {"marketplace_code": "4005013"},
+        {"marketplace_code": "101168"},
+    ],
+)
+def test_sku_and_locked_codes_go_to_staff(over: dict[str, Any]) -> None:
+    issue = _issue(**{"field_path": "listing", **over})
+    for ctx in (PlanContext(), PlanContext(repairable=frozenset({issue.id}), ai_allowed=True)):
+        (step,) = plan([issue], ctx)
+        assert (step.lane, step.action) == ("staff", "sku_conflict")
+
+
+@pytest.mark.parametrize("path", ["facts.identifier", "variants[A-1].facts.identifier"])
+def test_other_brand_barcode_is_seller_edit(path: str) -> None:
+    issue = _issue(
+        field_path=path,
+        error_code="IDENTIFIER_DUPLICATE",
+        error_class="identifier_error",
+        marketplace_code="catalog:other_brand",
+    )
+    (step,) = plan([issue], PlanContext())
+    assert (step.lane, step.action) == ("seller", "edit_identifier")
+
+
+@pytest.mark.parametrize("path", ["variants[A-1]", "listing", "facts.identifier_type"])
+def test_identifier_duplicate_elsewhere_is_not_seller(path: str) -> None:
+    issue = _issue(
+        field_path=path, error_code="IDENTIFIER_DUPLICATE", error_class="identifier_error"
+    )
+    for step in plan([issue], PlanContext()):
+        assert step.lane != "seller" or step.action != "edit_identifier"
+        assert step.lane != "seller" or seller_answers(path)

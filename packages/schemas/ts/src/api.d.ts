@@ -4083,7 +4083,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "none" | "wait" | "approve" | "answer" | "marketplace" | "resume" | "regenerate";
+            kind: "none" | "wait" | "approve" | "answer" | "marketplace" | "resume" | "regenerate" | "recategorize" | "edit_identifier";
             /** Task Ids */
             task_ids?: string[];
             /**
