@@ -104,6 +104,11 @@ class NewProduct:
     # SI5: the barcode `(type, value)` and the GTIN exemption
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool | None = None
+    # SI12: the seller fields; `package_dims` is (length, breadth, height) in cm
+    hsn_code: str | None = None
+    country_of_origin: str | None = None
+    package_dims: tuple[Decimal, Decimal, Decimal] | None = None
+    package_weight_g: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -534,6 +539,9 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             "gender": cmd.gender,
             "mrp": cmd.mrp,
             "selling_price": cmd.selling_price,
+            "hsn_code": cmd.hsn_code,
+            "country_of_origin": cmd.country_of_origin,
+            "package_weight_g": cmd.package_weight_g,
         }
         if cmd.manufacturer is not None:
             # decision 16: a product route links a matching party and never rewrites it
@@ -547,6 +555,18 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             key = await uow.facts.column_key(column)
             assert key is not None  # noqa: S101 - set_typed refused an unknown column
             provenance[key] = column_fact
+        if cmd.package_dims is not None:  # SI12: the three dimensions are one fact
+            length, breadth, height = cmd.package_dims
+            await uow.facts.set_typed_group(
+                row.id,
+                {
+                    "package_length_cm": length,
+                    "package_breadth_cm": breadth,
+                    "package_height_cm": height,
+                },
+                column_fact,
+            )
+            provenance["package_dimensions"] = column_fact
         if id_change is not None:
             await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
             provenance[product_identifier.IDENTIFIER_KEY] = column_fact

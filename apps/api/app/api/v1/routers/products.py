@@ -23,6 +23,7 @@ from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
+    PackageIn,
     PhotoFactOut,
     PhotoReadOut,
     ProductCreate,
@@ -188,10 +189,25 @@ async def products_create(
                 else (body.product_identifier.type, body.product_identifier.value)
             ),
             identifier_exemption=body.identifier_exemption,
+            hsn_code=body.hsn_code,
+            country_of_origin=body.country_of_origin,
+            package_dims=_package_dims(body.package),
+            package_weight_g=None if body.package is None else body.package.weight_g,
         ),
     )
     response.headers["ETag"] = view.etag
     return _out(view)
+
+
+def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal] | None:
+    """SI12: the create's three dimensions, or None when they are not all set (the wire model
+    keeps them all set or all null)."""
+    if package is None:
+        return None
+    dims = (package.length_cm, package.breadth_cm, package.height_cm)
+    if dims[0] is None or dims[1] is None or dims[2] is None:
+        return None
+    return (dims[0], dims[1], dims[2])
 
 
 @route(router, OPS["products_list"])
@@ -262,6 +278,8 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = tuple(value)
         elif name == "product_identifier":
             out[name] = (value.type, value.value)
+        elif name == "package":  # SI12: only the keys sent (a merge patch)
+            out[name] = {key: getattr(value, key) for key in value.model_fields_set}
         else:
             out[name] = value
     return out

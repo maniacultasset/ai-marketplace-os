@@ -138,6 +138,13 @@ PRODUCT_FIELDS = frozenset(
         # SI5: the barcode and the GTIN exemption
         "product_identifier",
         "identifier_exemption",
+        # SI12: the seller fields, field sources, suggestions and the size-chart read
+        "hsn_code",
+        "package",
+        "country_of_origin",
+        "field_sources",
+        "suggestions",
+        "size_chart_suggestion",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
