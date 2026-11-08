@@ -75,6 +75,12 @@ def _with(sent: AdapterListing, **over: Any) -> AdapterListing:
         ("Haldiram's", "Haldirams", "same"),  # the apostrophe never splits a token
         ("Haldiram\u2019s", "Haldirams", "same"),
         ("Mamaearth", "Mama Earth", "similar"),  # spacing only
+        # the apostrophe is also read as a separator (round 2 fix)
+        ("Haldiram's", "Haldiram", "similar"),
+        ("Haldiram", "Haldiram\u2019s", "similar"),
+        ("L'Oreal Paris", "L Oreal", "similar"),
+        ("L'Oreal", "LOreal", "same"),
+        ("Haldiram's", "Bikaji's", "other"),
         ("Zeb", "Zebra", "other"),
     ],
 )

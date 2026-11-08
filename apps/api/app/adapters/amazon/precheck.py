@@ -55,9 +55,12 @@ RESTRICTED: Final = frozenset({"APPROVAL_REQUIRED", "NOT_ELIGIBLE"})
 REASON_CODE_RE: Final = re.compile(r"[A-Z_]{1,64}", re.ASCII)
 ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
 _TOKEN_SPLIT: Final = re.compile(r"[^\w]+")
-# Marks dropped before folding: NFKC turns "\u2122" into "TM" (one token "zebratm"), and an
-# apostrophe would split "Haldiram's" into "haldiram" + "s".
-_BRAND_MARKS: Final = dict.fromkeys(map(ord, "\u2122\u2120\u00ae'\u2019"))
+# Marks dropped before folding: NFKC turns "\u2122" into "TM" (one token "zebratm").
+_BRAND_MARKS: Final = dict.fromkeys(map(ord, "\u2122\u2120\u00ae"))
+# An apostrophe is read both ways: dropped ("Haldiram's" = "Haldirams") and as a separator
+# ("Haldiram's" ~ "Haldiram", "L'Oreal Paris" ~ "L Oreal").
+_APOSTROPHES: Final = dict.fromkeys(map(ord, "'\u2019"))
+_RELATION_RANK: Final[dict[str, int]] = {"same": 0, "similar": 1, "other": 2}
 OTHER_BRAND_MESSAGE: Final = (
     "This barcode belongs to another brand on Amazon. Check the barcode, or claim a GTIN exemption."
 )
@@ -73,8 +76,18 @@ def _tokens(value: str) -> tuple[str, ...]:
     return tuple(t for t in _TOKEN_SPLIT.split(fold(value.translate(_BRAND_MARKS))) if t)
 
 
+def _readings(value: str) -> set[tuple[str, ...]]:
+    return {_tokens(value.translate(_APOSTROPHES)), _tokens(value)}
+
+
 def brand_relation(ours: str, theirs: str) -> BrandRelation:
-    mine, other = _tokens(ours), _tokens(theirs)
+    """The most lenient relation over both readings of each apostrophe: a form-only difference
+    is never `other`."""
+    found = [_relation(a, b) for a in _readings(ours) for b in _readings(theirs)]
+    return min(found, key=_RELATION_RANK.__getitem__)
+
+
+def _relation(mine: tuple[str, ...], other: tuple[str, ...]) -> BrandRelation:
     if not mine or not other:
         return "other"
     if mine == other:
