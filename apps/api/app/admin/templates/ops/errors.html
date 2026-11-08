@@ -1,0 +1,16 @@
+{% extends "sqladmin/layout.html" %}
+{% block content %}
+{% include "ops/_nav.html" %}
+<h2>Marketplace errors (most issues first, at most 200)</h2>
+<p class="text-muted">Add a reviewed row to <code>app/db/seed_data/error_map.amazon.json</code> in a PR, with the public page that confirms it; <code>errors load</code> loads it on deploy.</p>
+<table class="table table-vcenter card-table" data-ops="errors">
+  <thead><tr><th>Marketplace</th><th>Code</th><th>Mapped</th><th>Error code</th><th>Class</th><th>Lane</th><th>Issues</th><th>Tenants</th><th>First seen</th><th>Last seen</th><th>Recurrence</th><th>Resolutions</th><th>Suggested row</th></tr></thead>
+  <tbody>
+  {% for row in rows %}
+    <tr><td>{{ row.marketplace }}</td><td>{{ row.marketplace_code or "-" }}</td><td>{{ "yes" if row.mapped else "no" }}</td><td>{{ row.error_code }}</td><td>{{ row.error_class }}</td><td>{{ row.lane }}</td><td>{{ row.issues }}</td><td>{{ row.tenants }}</td><td>{{ row.first_seen }}</td><td>{{ row.last_seen }}</td><td>{{ row.recurrence_rate }}</td><td>{% for name, n in row.resolutions.items() %}{{ name }}: {{ n }}{% if not loop.last %}, {% endif %}{% endfor %}</td><td>{% if row.suggested %}<pre>{{ row.suggested }}</pre>{% else %}-{% endif %}</td></tr>
+  {% else %}
+    <tr><td colspan="13">No marketplace errors yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

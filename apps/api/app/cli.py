@@ -58,6 +58,12 @@ in one transaction: a stored key with the same content is a no-op, one that diff
 `enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
 written); each write is audited with a NULL tenant. An invalid file exits 1, a missing one 2.
 
+`errors catalog [--unmapped] [--limit 1..500]` (SI11 T19) prints the marketplace errors seen, one
+JSON line per (marketplace, code, error code, class): mapped or not, the lane, counts, tenants,
+first and last seen, the resolutions and, for an unmapped code, a suggested map row to review in a
+PR. It reads the `marketplace_error_catalog` view through `platform_scope()`; no tenant id or
+message text is printed (the view holds neither).
+
 `platform load [--error-map PATH]` (S20 T5b) loads every platform row a fresh database needs and
 no tenant row: the S9 platform rows (templates, NULL-tenant rules, the dictionary), the Amazon
 category mappings, and the error map (default: the local fake fixture). Like `seed` it runs only
@@ -481,6 +487,41 @@ async def run_dead_letter_list(tenant: str | None, limit: int) -> int:
             f"attempt {row.attempt}\t{row.error_code or '-'}\t{finished}\n"
         )
     sys.stdout.write(f"jobs dead-letter list: {len(rows)} job(s)\n")
+    return EXIT_OK
+
+
+def _catalog_limit(value: str) -> int:
+    try:
+        number = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("--limit must be an integer") from None
+    if not 1 <= number <= 500:
+        raise argparse.ArgumentTypeError("--limit must be in 1..500")
+    return number
+
+
+async def run_errors_catalog(*, unmapped: bool, limit: int) -> int:
+    """SI11 T19: the marketplace error catalogue as JSON lines (marketplace, code, mapped, error
+    code, class, lane, counts, dates, resolutions, the suggested map row of an unmapped code).
+    No tenant id and no message text: the view holds neither."""
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.error_catalog import catalog_rows
+    from app.services.resolution.catalog import catalog_line
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                rows = await catalog_rows(session, unmapped=unmapped, limit=limit)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors catalog: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    for row in rows:
+        sys.stdout.write(json.dumps(catalog_line(row), sort_keys=True) + "\n")
+    sys.stderr.write(f"errors catalog: {len(rows)} code(s)\n")
     return EXIT_OK
 
 
@@ -1442,6 +1483,11 @@ def build_parser() -> argparse.ArgumentParser:
     errors_commands = errors.add_subparsers(dest="command", required=True)
     errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
     errors_load.add_argument("--file", type=Path, default=None)
+    errors_catalog = errors_commands.add_parser(
+        "catalog", help="the marketplace errors seen, as JSON lines (staff, read-only)"
+    )
+    errors_catalog.add_argument("--unmapped", action="store_true")
+    errors_catalog.add_argument("--limit", type=_catalog_limit, default=200)
     images = groups.add_parser("images", help="image copies (SI1, staff)")
     images_commands = images.add_subparsers(dest="command", required=True)
     unpublish = images_commands.add_parser(
@@ -1489,6 +1535,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             sys.stderr.write("platform load: no such file\n")
             return EXIT_NO_FILE
         return asyncio.run(run_platform_load(args.error_map))
+    if args.group == "errors" and args.command == "catalog":
+        return asyncio.run(run_errors_catalog(unmapped=args.unmapped, limit=args.limit))
     if args.group == "errors":
         # resolved at call time, so the default is the module constant as it stands
         args.file = args.file or ERROR_MAP_AMAZON_PATH

@@ -111,7 +111,19 @@ async def edit_content(
     if not changed:
         summary = await uow.validation_runs.summary_for(parent.id)
         return to_detail(listing, old, summary)
+    return await save_edit(uow, principal, listing, parent, new, changed)
 
+
+async def save_edit(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    listing: Any,
+    parent: Any,
+    new: CanonicalListing,
+    changed: list[str],
+) -> dict[str, Any]:
+    """Steps 4-7 of the module docstring: the `edit` version, its checks, the move and the
+    questions. SI11 T17's fact-only version (`fact_edit`) goes through the same steps."""
     from_status = listing.status
     number = await uow.listing_versions.next_version(listing.id)
     check = await rules_check(uow, listing, new)
@@ -211,3 +223,35 @@ async def edit(
             keywords=keywords,
             attributes=attributes,
         )
+
+
+async def fact_edit(
+    uow: TenantUnitOfWork, principal: Principal, listing: Any, paths: list[str]
+) -> uuid.UUID | None:
+    """SI11 T17 (P:B6 revise R5, T51): the seller answered the fact question behind a marketplace
+    refusal. A fact-only version (`origin edit`, the content copied from the current version,
+    `changed_paths` the answered fact paths, the answerer its editor) so the answerer can never
+    approve what the answer changed (`lv_guard`), revalidated in the same request, then one
+    marketplace dry run of it. Returns the new version id (None when the listing cannot take an
+    edit now: generating, paused, archived, or no current version)."""
+    from app.services.remote_preview import request_preview
+
+    if (
+        listing.status in ("generating", "created", "publishing")
+        or listing.current_version_id is None
+        or getattr(listing, "paused_at", None) is not None
+        or getattr(listing, "archived_at", None) is not None
+    ):
+        return None
+    parent = await uow.listing_versions.current(listing)
+    old = previous_listing(listing, parent)
+    if parent is None or old is None:
+        return None
+    await save_edit(uow, principal, listing, parent, old, sorted(set(paths)))
+    moved = await uow.listings.get(listing.id)
+    if moved is None or moved.current_version_id is None:
+        return None
+    version_id: uuid.UUID = moved.current_version_id
+    await request_preview(uow, moved, version_id, trigger="system")
+    log.info("listing.fact_edited", listing_id=str(listing.id), version_id=str(version_id))
+    return version_id

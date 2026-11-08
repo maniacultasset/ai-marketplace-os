@@ -94,6 +94,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
+    ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -143,7 +144,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 99
+    assert len(FROZEN) == 100
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -436,7 +437,7 @@ def test_login_response_is_login_result() -> None:
 
 
 def test_99_operations() -> None:
-    assert len(OPS) == 99
+    assert len(OPS) == 100
 
 
 def test_error_codes_per_d2() -> None:
@@ -559,7 +560,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

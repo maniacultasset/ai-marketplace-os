@@ -309,3 +309,19 @@ def seller_central_step(
         if len(question) + len(step) <= QUESTION_MAX:
             question += step
     return _fit(question), _fit(reason)
+
+
+REWRITE_MAX: Final = 500
+
+
+def rewrite_feedback(marketplace: str, field: str, plain: str) -> str:
+    """SI11 T16: the one feedback line an AI single-field rewrite gets per refusal (at most 500
+    characters): the marketplace, the field's plain name and the mapped plain message, never the
+    raw marketplace text beyond it."""
+    who = (
+        "Amazon"
+        if marketplace == "amazon"
+        else "Flipkart" if marketplace == "flipkart" else "The marketplace"
+    )
+    message = " ".join((plain or "").split())[:300] or "the value was not accepted"
+    return f"{who} refused {field_label(field)}: {message} Rewrite only this field."[:REWRITE_MAX]

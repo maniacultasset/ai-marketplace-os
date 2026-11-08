@@ -34,10 +34,14 @@ from app.core.rbac import Principal
 from app.repositories.uow import repositories_on, tenant_uow
 from app.services.intake_values import MoneyError, parse_money
 from app.services.photo_facts import ANSWER_MAX_PIECES, VOCAB, canonical, fold
-from app.services.product_facts import STANDALONE, build_attributes
+from app.services.product_facts import STANDALONE, build_attributes, fact_stamp
 
 FACT_KINDS: Final = frozenset({"missing_fact", "conflicting_facts"})
-FACT_TARGET: Final = re.compile(r"^facts\.attributes\.([a-z0-9_]{1,64})$")
+FACT_TARGET: Final = re.compile(r"^facts\.(?:attributes\.([a-z0-9_]{1,64})|(gender|brand_name))$")
+# SI11 T17 (CP-D25): the answerable `products` columns (the identity facts Amazon needs)
+GENDERS: Final = frozenset({"women", "men", "unisex", "girls", "boys", "baby"})
+ADAPTER_SOURCES: Final = ("amazon_adapter", "flipkart_adapter")
+SELLER_KINDS: Final = frozenset({"missing_fact", "conflicting_facts", "image_replacement"})
 MAX_PIECES: Final = ANSWER_MAX_PIECES
 # DATABASE.md:1419 / fact_map_valid: an evidence snapshot is at most 2048 bytes as JSON text
 SNAPSHOT_BUDGET: Final = 1900
@@ -209,8 +213,24 @@ async def _answer(
             return task
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "human_tasks")
     key = found.group(1)
+    column = found.group(2)
     written: dict[str, Any] = {}
-    if "value" in answer:
+    if column is not None:
+        if "value" in answer:
+            value = await _column_value(uow, column, answer["value"])
+            column_fact: dict[str, Any] = {
+                "source": "seller",
+                "captured_via": "human_task",
+                "updated_at": fact_stamp(datetime.now(UTC)),
+                "evidence_ref": f"human_task:{task.id}",
+                "evidence_snapshot": _snapshot(task.question, answer["value"]),
+            }
+            await uow.facts.set_typed(product.id, column, value, column_fact)
+            # the column UPDATE bypasses the ORM: the product row this transaction loaded is
+            # stale, and the revalidation below must read the answered value
+            uow.session.expire(product, [column, "provenance"])
+            written = {column: value}
+    elif "value" in answer:
         value = _answer_value(key, answer["value"], task.expected_answer)
         defs = await uow.attribute_definitions.resolve([key])
         try:
@@ -246,7 +266,46 @@ async def _answer(
             after=None if after is None else json.dumps(after, sort_keys=True),
             reason=task.target_path,
         )
+    if written and task.target_path:
+        await _fact_edits(uow, principal, task.id, task.target_path)
     return await uow.human_tasks.get_for_update(task.id)
+
+
+async def _column_value(uow: Any, column: str, raw: Any) -> str:
+    """SI11 T17: a `facts.gender` or `facts.brand_name` answer, checked as the product PATCH
+    checks it (the gender vocabulary; a brand only from the tenant's own brand names)."""
+    from app.services.products import checked_brand
+
+    if not isinstance(raw, str) or not raw.strip() or len(raw) > 200:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "value")
+    if column == "gender":
+        value = raw.strip().casefold()
+        if value not in GENDERS:
+            raise InputError(ErrorCode.VALUE_NOT_ALLOWED, "value")
+        return value
+    try:
+        brand = await checked_brand(uow, raw.strip())
+    except InputError as exc:
+        raise InputError(exc.code, "value") from None
+    assert brand is not None  # noqa: S101 - a non-blank value matched or raised
+    return brand
+
+
+async def _fact_edits(uow: Any, principal: Principal, task_id: uuid.UUID, path: str) -> None:
+    """SI11 T17 (P:B6, T51): an answer behind a marketplace refusal makes a fact-only version of
+    each listing whose refusal the task answers, once no other live question stands on it; the
+    answerer is its editor, so the answerer never approves it (`lv_guard`)."""
+    from app.services.listing_edit import fact_edit
+
+    for listing_id in await uow.listing_issues.listings_for_task(task_id, ADAPTER_SOURCES):
+        live = await uow.resolution.task_kinds(await uow.listing_issues.live_task_ids(listing_id))
+        if any(kind in SELLER_KINDS for kind, _status in live.values()):
+            continue  # another question still open: one version once every answer is in
+        listing = await uow.listings.get_for_update(listing_id)
+        if listing is None:
+            continue
+        paths = await uow.listing_issues.answered_paths(listing_id, ADAPTER_SOURCES, SELLER_KINDS)
+        await fact_edit(uow, principal, listing, paths or [path])
 
 
 async def answer_task(

@@ -76,6 +76,7 @@ Q7: dict[str, str] = {
     "listings_regenerate": "listing:regenerate",
     "listings_retry_fields": "listing:publish",
     "listings_submissions": "tenant:read",  # S21 CP7
+    "listings_resolution": "tenant:read",  # SI11 T20
     "listings_refresh_status": "listing:publish",  # S21 CP7
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
@@ -147,7 +148,7 @@ def test_ops_are_the_q7_list() -> None:
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
     # + SI9 two
     # + SI10 two
-    assert len(OPS) == 99
+    assert len(OPS) == 100
     assert set(OPS) == set(Q7)
 
 

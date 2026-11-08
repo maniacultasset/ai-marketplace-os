@@ -6,7 +6,9 @@
   or `cancelled` while its listing is still `generating` and owned by it (the newest
   `listing_generate` job of the listing) moves the listing to `failed/generation_failed`, with
   the job as actor. Anything else is a no-op. It invents no `agent_runs` and leaves the budget
-  reservation as it is (a timeout or crash stays counted, DATABASE.md:998).
+  reservation as it is (a timeout or crash stays counted, DATABASE.md:998). SI11: when that job
+  was a resolution fix (`mode` `auto_fix` or `ai_field`), its still-open refusals then go to the
+  human lanes (`resolution.run.hand_over`), so the listing never stalls with nobody told.
 - `on_generate_requeue(session, old, new)`: refused (CP5). A dead-lettered generation's listing is
   already `failed/generation_failed`, and only a user `regenerate` (with its decision row) may
   send it back to `generating`; the staff CLI exits 4.
@@ -24,6 +26,7 @@ from app.workers.registry import Outcome
 
 log = get_logger(__name__)
 ENDED_WITHOUT_LISTING: Final = frozenset({"failed", "dead_letter", "cancelled"})
+FIX_MODES: Final = frozenset({"auto_fix", "ai_field"})
 
 
 async def on_generate_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
@@ -44,6 +47,21 @@ async def on_generate_terminal(session: Any, job: JobRun, outcome: Outcome | Non
         actor=JobActor(job.id),
     )
     log.info("generation.listing_failed", job_run_id=str(job.id), job_status=job.status)
+    await _hand_over_fix(session, job, listing)
+
+
+async def _hand_over_fix(session: Any, job: JobRun, listing: Any) -> None:
+    """SI11 (part B fix round 1): a resolution fix job (`auto_fix`, `ai_field`) that ended with
+    no version hands its still-open refusals to the human lanes (`resolution.run.hand_over`)."""
+    payload = job.payload_json or {}
+    if payload.get("mode") not in FIX_MODES:
+        return
+    from app.repositories.uow import repositories_on
+    from app.services.resolution.run import hand_over
+    from app.workers.payloads import AutoFixPayload
+
+    fix = AutoFixPayload.model_validate(payload)
+    await hand_over(repositories_on(session, job.tenant_id), listing, fix.issue_ids, job=job)
 
 
 async def on_generate_requeue(session: Any, old: JobRun, new: JobRun) -> None:
