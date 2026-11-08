@@ -43,6 +43,7 @@ TENANT_COLUMN: dict[str, str] = {
     "job_runs": "tenant_id",
     "listing_issues": "tenant_id",
     "listing_items": "tenant_id",
+    "listing_repairs": "tenant_id",  # 0022 (ADR-0028)
     "listing_submissions": "tenant_id",
     "listing_versions": "tenant_id",
     "listings": "tenant_id",

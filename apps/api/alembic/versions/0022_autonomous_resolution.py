@@ -12,9 +12,14 @@ proposed). Expand only, as migrator, in one transaction (`sql/0022/01_*`):
 3. `listings.remote_check_version_id`, `remote_check_status` (pending, clean, issues, failed) and
    `remote_check_at`: the marketplace's dry-run verdict on one version, with
    `ck_listings_remote_check` and the deferrable `(id, remote_check_version_id)` version FK.
+4. The tenant table `listing_repairs` (`sql/0022/02_*`): adapter-side repairs, one live row per
+   (listing, item, attribute), one try per (listing, issue key, rule), retired once; RLS template;
+   `audit_allowlist` (+ `listing_repair`) and `purge_tenant_order()` redefined from 0018.
+5. The platform view `marketplace_error_catalog` (`sql/0022/03_*`): counts per marketplace code,
+   no tenant id and no message text, readable only by `app_platform_ro`.
 
 Downgrade (local and CI only, RULES.md "No prod downgrade") refuses while a listing's last event
-is `auto_fix`, then drops the columns and restores the 0004 bodies and CHECKs.
+is `auto_fix` or a `listing_repairs` row exists, then restores the previous bodies and CHECKs.
 
 Revision ID: 0022_autonomous_resolution
 Revises: 0020_status_truth
@@ -36,8 +41,8 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 SQL_DIR: Final = Path(__file__).resolve().parents[1] / "sql" / "0022"
-UP: Final = ("01_status.up.sql",)
-DOWN: Final = ("01_status.down.sql",)
+UP: Final = ("01_status.up.sql", "02_repairs.up.sql", "03_catalog.up.sql")
+DOWN: Final = ("03_catalog.down.sql", "02_repairs.down.sql", "01_status.down.sql")
 
 
 def _run_sql(name: str) -> None:

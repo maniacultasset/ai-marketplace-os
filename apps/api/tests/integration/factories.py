@@ -552,3 +552,25 @@ def image_candidate(
         "generator_key": "fix/v1",
     }
     return insert(conn, "image_candidates", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
+def listing_repair(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any) -> UUID:
+    """A live `enum_fold` repair of `color` on `listing_id`, in its marketplace (0022, SI11)."""
+    n = _next()
+    found = conn.execute("SELECT marketplace FROM listings WHERE id = %s", (listing_id,)).fetchone()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "listing_id": listing_id,
+        "marketplace": found[0] if found else "amazon",
+        "field_path": "facts.attributes.color",
+        "attribute": "color",
+        "rule": "enum_fold",
+        "issue_key": f"amazon_adapter|facts.attributes.color|INVALID_VALUE|{n}",
+        "source_digest": bytes(32),
+        "to_digest": bytes([1]) * 32,
+        "value_json": [{"value": "Red"}],
+    }
+    values = {**defaults, **columns}
+    if values["value_json"] is not None:
+        values["value_json"] = Jsonb(values["value_json"])
+    return insert(conn, "listing_repairs", **values)  # type: ignore[no-any-return]

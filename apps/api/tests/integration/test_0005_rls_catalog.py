@@ -51,6 +51,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
     # 0018 (SI7): the plain template
     "image_candidates": TEMPLATE,
+    # 0022 (SI11): the plain template
+    "listing_repairs": TEMPLATE,
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}

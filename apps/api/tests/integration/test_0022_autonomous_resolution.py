@@ -18,6 +18,8 @@ from . import factories as f
 from .conftest import ScratchDb, expect_sqlstate
 from .integrity_support import (
     approved_flow,
+    as_app_rw,
+    as_migrator,
     flow,
     force_state,
     next_version,
@@ -290,3 +292,270 @@ def test_remote_check_fk_is_deferrable(db: Conn) -> None:
         "WHERE conname = 'fk_listings_remote_check_version_id'"
     ).fetchone()
     assert row == (True, False, True)
+
+
+# ---- listing_repairs (T2) ----
+
+
+def _repair_world(db: Conn) -> Any:
+    fl = flow(db)
+    item = f.listing_item(db, fl.tenant_id, fl.listing_id, fl.product_id)
+    return fl, item
+
+
+@pytest.mark.parametrize(
+    ("columns", "constraint"),
+    [
+        ({"rule": "nearest"}, "ck_listing_repairs_rule"),
+        ({"source_digest": bytes(31)}, "ck_listing_repairs_digests"),
+        ({"to_digest": bytes(33)}, "ck_listing_repairs_digests"),
+        ({"value_json": None}, "ck_listing_repairs_value_json"),
+        ({"rule": "drop_locked"}, "ck_listing_repairs_value_json"),
+        ({"value_json": [{"value": "x" * 2049}]}, "ck_listing_repairs_value_json"),
+        ({"retired_reason": "superseded"}, "ck_listing_repairs_retired"),
+        ({"retired_at": "2026-11-08T00:00:00Z"}, "ck_listing_repairs_retired"),
+        (
+            {"retired_at": "2026-11-08T00:00:00Z", "retired_reason": "bored"},
+            "ck_listing_repairs_retired",
+        ),
+        ({"attribute": "Brand"}, "ck_listing_repairs_attribute"),
+        ({"attribute": ""}, "ck_listing_repairs_attribute"),
+        ({"rule": "unit_format", "alias_version": 1}, "ck_listing_repairs_alias_version"),
+        ({"alias_version": 0}, "ck_listing_repairs_alias_version"),
+        ({"field_path": ""}, "ck_listing_repairs_field_path"),
+        ({"field_path": "x" * 193}, "ck_listing_repairs_field_path"),
+        ({"issue_key": "k" * 401}, "ck_listing_repairs_issue_key"),
+    ],
+)
+def test_repair_checks_refuse(db: Conn, columns: dict[str, Any], constraint: str) -> None:
+    fl = flow(db)
+    with pytest.raises(psycopg.errors.CheckViolation) as caught, db.transaction():
+        f.listing_repair(db, fl.tenant_id, fl.listing_id, **columns)
+    assert caught.value.diag.constraint_name == constraint
+
+
+def test_repair_valid_shapes(db: Conn) -> None:
+    fl, item = _repair_world(db)
+    f.listing_repair(db, fl.tenant_id, fl.listing_id, alias_version=1)
+    f.listing_repair(
+        db, fl.tenant_id, fl.listing_id, listing_item_id=item, attribute="item_type_keyword",
+        rule="drop_locked", value_json=None,
+    )  # fmt: skip
+
+
+def test_repair_one_live_per_attribute(db: Conn) -> None:
+    fl, item = _repair_world(db)
+    first = f.listing_repair(db, fl.tenant_id, fl.listing_id)
+    with pytest.raises(psycopg.errors.UniqueViolation) as caught, db.transaction():
+        f.listing_repair(db, fl.tenant_id, fl.listing_id)  # NULL item on both: NOT DISTINCT
+    assert caught.value.diag.constraint_name == "uq_listing_repairs_live"
+    f.listing_repair(db, fl.tenant_id, fl.listing_id, listing_item_id=item)  # another item
+    db.execute(
+        "UPDATE listing_repairs SET retired_at = now(), retired_reason = 'superseded' "
+        "WHERE id = %s",
+        (first,),
+    )
+    f.listing_repair(db, fl.tenant_id, fl.listing_id)  # a retired row frees the slot
+
+
+def test_repair_one_try_per_key_even_after_retire(db: Conn) -> None:
+    fl = flow(db)
+    first = f.listing_repair(db, fl.tenant_id, fl.listing_id, issue_key="k1")
+    db.execute(
+        "UPDATE listing_repairs SET retired_at = now(), retired_reason = 'source_changed' "
+        "WHERE id = %s",
+        (first,),
+    )
+    with pytest.raises(psycopg.errors.UniqueViolation) as caught, db.transaction():
+        f.listing_repair(db, fl.tenant_id, fl.listing_id, issue_key="k1")
+    assert caught.value.diag.constraint_name == "uq_listing_repairs_once"
+    f.listing_repair(db, fl.tenant_id, fl.listing_id, issue_key="k1", rule="unit_format")
+
+
+def test_repair_retires_once(db: Conn) -> None:
+    fl = flow(db)
+    repair = f.listing_repair(db, fl.tenant_id, fl.listing_id)
+    retire = "UPDATE listing_repairs SET retired_at = now(), retired_reason = %s WHERE id = %s"
+    with as_app_rw(db, fl.tenant_id):
+        db.execute(retire, ("superseded", repair))
+        expect_sqlstate(db, "GRD01", retire, ("source_changed", repair))
+
+
+@pytest.mark.parametrize(
+    "statement",
+    [
+        "UPDATE listing_repairs SET value_json = '[]'::jsonb WHERE id = %s",
+        "UPDATE listing_repairs SET source_digest = '\\x00'::bytea WHERE id = %s",
+        "DELETE FROM listing_repairs WHERE id = %s",
+    ],
+)
+def test_repair_app_rw_privileges(db: Conn, statement: str) -> None:
+    fl = flow(db)
+    repair = f.listing_repair(db, fl.tenant_id, fl.listing_id)
+    with as_app_rw(db, fl.tenant_id):
+        expect_sqlstate(db, "42501", statement, (repair,))
+
+
+def test_repair_rls_other_tenant(db: Conn) -> None:
+    a, b = flow(db), flow(db)
+    f.listing_repair(db, a.tenant_id, a.listing_id)
+    with as_app_rw(db, b.tenant_id):
+        assert scalar(db, "SELECT count(*) FROM listing_repairs") == 0
+        # B's tenant id on A's listing: the composite FK refuses it (A's listing is not B's)
+        expect_sqlstate(
+            db,
+            "23503",
+            "INSERT INTO listing_repairs (tenant_id, listing_id, marketplace, field_path, "
+            "attribute, rule, issue_key, source_digest, to_digest, value_json) VALUES "
+            "(%s, %s, 'amazon', 'facts.attributes.size', 'size_name', 'enum_fold', 'k', %s, %s, "
+            "'[]'::jsonb)",
+            (b.tenant_id, a.listing_id, bytes(32), bytes(32)),
+        )
+        # A's tenant id under B's GUC: RLS refuses it
+        expect_sqlstate(
+            db,
+            "42501",
+            "INSERT INTO listing_repairs (tenant_id, listing_id, marketplace, field_path, "
+            "attribute, rule, issue_key, source_digest, to_digest, value_json) VALUES "
+            "(%s, %s, 'amazon', 'facts.attributes.size', 'size_name', 'enum_fold', 'k2', %s, %s, "
+            "'[]'::jsonb)",
+            (a.tenant_id, a.listing_id, bytes(32), bytes(32)),
+        )
+
+
+def test_repair_read_roles_never_see_value_json(db: Conn) -> None:
+    fl = flow(db)
+    f.listing_repair(db, fl.tenant_id, fl.listing_id)
+    for role in ("app_ro", "app_platform_ro"):
+        with db.transaction():
+            db.execute(f"SET LOCAL ROLE {role}")
+            assert scalar(db, "SELECT count(*) FROM listing_repairs") >= 1
+            assert scalar(db, "SELECT rule FROM listing_repairs LIMIT 1") == "enum_fold"
+            expect_sqlstate(db, "42501", "SELECT value_json FROM listing_repairs")
+
+
+def test_repair_cascades_with_account_purge(db: Conn) -> None:
+    fl, item = _repair_world(db)
+    f.listing_repair(db, fl.tenant_id, fl.listing_id, listing_item_id=item)
+    db.execute(
+        "UPDATE marketplace_accounts SET status = 'revoked', token_enc = NULL, "
+        "kms_key_version = NULL, revoked_at = now() - interval '30 days' WHERE id = %s",
+        (fl.account_id,),
+    )
+    with as_migrator(db):
+        db.execute("SELECT purge_marketplace_account(%s, %s)", (fl.tenant_id, fl.account_id))
+    assert (
+        scalar(db, "SELECT count(*) FROM listing_repairs WHERE tenant_id = %s", (fl.tenant_id,))
+        == 0
+    )
+
+
+def test_repair_audit_allowlist(db: Conn) -> None:
+    assert scalar(db, "SELECT audit_allowlist('listing_repair')") == ["rule", "attribute"]
+    order = scalar(db, "SELECT purge_tenant_order()")
+    assert order.index("listing_repairs") < order.index("listing_items")
+
+
+# ---- marketplace_error_catalog (T2) ----
+
+CATALOG_COLUMNS = {
+    "marketplace",
+    "marketplace_code",
+    "error_code",
+    "error_class",
+    "mapped",
+    "issues",
+    "occurrences",
+    "tenants",
+    "first_seen",
+    "last_seen",
+    "preview",
+    "resolutions",
+    "recurrence_rate",
+}
+
+
+def _adapter_issue(db: Conn, fl: Any, **columns: Any) -> Any:
+    values: dict[str, Any] = {
+        "source": "amazon_adapter",
+        "field_path": "facts.attributes.color",
+        "error_code": "INVALID_VALUE",
+        "error_class": "invalid_value",
+        "retry_class": "user_action",
+        "marketplace_code": "77777",
+        "raw_message": "secret seller text",
+        "message": "The colour is not one Amazon accepts.",
+        **columns,
+    }
+    values.setdefault(
+        "dedupe_key",
+        f"{values['source']}|{values['field_path']}|{values['error_code']}|{values['marketplace_code']}",
+    )
+    return f.listing_issue(db, fl.tenant_id, fl.listing_id, **values)
+
+
+def test_catalog_columns_have_no_tenant_or_text(db: Conn) -> None:
+    columns = {
+        str(r[0])
+        for r in db.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'marketplace_error_catalog'"
+        )
+    }
+    assert columns == CATALOG_COLUMNS
+    assert not columns & {"tenant_id", "raw_message", "message", "plain_message"}
+
+
+def test_catalog_counts_across_tenants(db: Conn) -> None:
+    a, b = flow(db), flow(db)
+    _adapter_issue(db, a, marketplace_code="99901")
+    _adapter_issue(db, b, marketplace_code="99901", occurrences=3)
+    _adapter_issue(
+        db, b, marketplace_code="99901", field_path="facts.attributes.size",
+        dedupe_key="amazon_adapter|facts.attributes.size|INVALID_VALUE|99901|preview",
+    )  # fmt: skip
+    f.listing_issue(db, a.tenant_id, a.listing_id)  # a rules_engine row never counts
+    with db.transaction():
+        db.execute("SET LOCAL ROLE app_platform_ro")
+        row = db.execute(
+            "SELECT mapped, issues, occurrences, tenants, preview, resolutions, recurrence_rate "
+            "FROM marketplace_error_catalog WHERE marketplace_code = '99901'"
+        ).fetchall()
+    assert len(row) == 1
+    mapped, issues, occurrences, tenants, preview, resolutions, rate = row[0]
+    assert (mapped, issues, occurrences, tenants, preview) == (False, 3, 5, 2, True)
+    assert resolutions == {"open": 3}
+    assert float(rate) == 0.0
+
+
+def test_catalog_refused_for_app_rw(db: Conn) -> None:
+    with db.transaction():
+        db.execute("SET LOCAL ROLE app_rw")
+        expect_sqlstate(db, "42501", "SELECT count(*) FROM marketplace_error_catalog")
+
+
+def test_catalog_app_ro_reads_only_through_platform_ro(db: Conn) -> None:
+    """app_ro holds no grant of its own; it reads the view only because it inherits
+    app_platform_ro (0000_bootstrap: `GRANT app_platform_ro TO app_ro WITH INHERIT TRUE`)."""
+    grants = {
+        str(r[0])
+        for r in db.execute(
+            "SELECT grantee FROM information_schema.role_table_grants "
+            "WHERE table_name = 'marketplace_error_catalog'"
+        )
+    }
+    assert grants - {"migrator"} == {"app_platform_ro"}
+
+
+def test_downgrade_refused_with_repair_row(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
+    cfg = alembic_env(None)
+    command.upgrade(cfg, REVISION)
+    with psycopg.connect(scratch_db.libpq) as conn:
+        conn.execute("SET session_replication_role = replica")
+        fl = flow(conn)
+        f.listing_repair(conn, fl.tenant_id, fl.listing_id)
+        conn.commit()
+    with pytest.raises(Exception, match="downgrade refused"):
+        command.downgrade(cfg, PREVIOUS)
+    with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
+        assert scalar(conn, "SELECT version_num FROM alembic_version") == REVISION
