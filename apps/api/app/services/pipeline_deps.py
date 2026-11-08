@@ -43,7 +43,7 @@ import asyncio
 import json
 import time
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Final, Literal, cast, get_args
 from uuid import UUID
 
@@ -207,9 +207,15 @@ def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
 
 
 def size_chart_read_credentials(settings: Settings) -> ModelCredentials:
-    """SI12: the size-chart read is one vision call, so it uses the vision model and key from the
-    existing settings (no new env var)."""
-    return credentials_for(_ModelConfig.from_settings(settings), "vision")
+    """SI12: the size-chart read is one vision call with the vision key, base and timeout. Its model
+    is `LLM_MODEL_VISION_SIZE_CHART` when set (sent as `openai/<model>` under OpenRouter, as the
+    vision model is), else `LLM_MODEL_VISION`, so photo facts keep their model either way."""
+    models = _ModelConfig.from_settings(settings)
+    override = settings.llm_model_vision_size_chart
+    if override is not None:
+        model = gateway_openai_model(override) if settings.llm_gateway == "openrouter" else override
+        models = replace(models, vision_model=model)
+    return credentials_for(models, "vision")
 
 
 def image_edit_credentials(settings: Settings) -> ModelCredentials:

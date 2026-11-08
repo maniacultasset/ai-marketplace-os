@@ -17,7 +17,7 @@ from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .images_support import FakeStorage, headers, images_db, run_image_job, style_and_child
 from .jobs_support import JobWorld, as_member, bad_token, count, job_row
-from .size_chart_support import chart_image, read_state, use_read_storage
+from .size_chart_support import chart_image, read_state, set_read_switch, use_read_storage
 
 __all__ = ["images_db"]
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -431,3 +431,38 @@ async def test_suggestion_null_on_variants_lists_and_without_a_chart(
     item = next(x for x in listed.json()["data"] if x["id"] == str(p))
     assert item["size_chart_suggestion"] is None
     assert job_row(images_db.conn, uuid.UUID(first.json()["job_id"]))["status"] == "succeeded"
+
+
+# ---- the switch (SIZE_CHART_READ_ENABLED) ----
+
+
+async def test_switched_off_answers_unavailable_with_no_job_and_no_spend(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    tenant, p, image = _world(images_db, store)
+    assert (await _detail(api, images_db, p))["size_chart_read_enabled"] is True
+    set_read_switch(monkeypatch, on=False)
+    try:
+        response = await _read(api, images_db, p)
+        assert response.status_code == 200, response.text
+        assert response.json() == {
+            "image_id": str(image),
+            "status": "unavailable",
+            "job_id": None,
+            "poll_url": None,
+        }
+        assert _jobs(images_db, image) == 0 and _runs(images_db, tenant) == 0
+        assert count(images_db.conn, "SELECT count(*) FROM idempotency_keys") == 0
+        assert read_state(images_db.conn, image) is None
+        detail = await _detail(api, images_db, p)
+        assert detail["size_chart_read_enabled"] is False
+        assert detail["size_chart_suggestion"] is None
+        # the checks before the switch still answer: a variant is 422
+        _, child = style_and_child(images_db.conn, tenant)
+        variant = await _read(api, images_db, child)
+        assert variant.status_code == 422 and _code(variant) == "FACT_LEVEL_INVALID"
+    finally:
+        set_read_switch(monkeypatch, on=True)
