@@ -246,6 +246,12 @@ class ProductPatch(StrictModel):
         return self
 
 
+class RecategorizeIn(StrictModel):
+    """SI9: the new category of a product that already has listings (never a published one)."""
+
+    category: Slug
+
+
 class FibreOut(WireModel):
     fibre: str
     percent: float
@@ -283,6 +289,17 @@ class PhotoFactOut(WireModel):
     confirmed_at: AwareDatetime | None = None
 
 
+class PhotoReadOut(WireModel):
+    """SI9: the newest photo read of the product (the generation that saved a version).
+    `read` with counts, `unchanged` (same photos as last time), `failed` (the photo call failed,
+    the listing was still saved) or `not_read` (no photo, or nothing left to read)."""
+
+    status: Literal["read", "unchanged", "failed", "not_read"]
+    at: AwareDatetime
+    written: int = Field(ge=0, le=16)
+    asked: int = Field(ge=0, le=16)
+
+
 class ProductOut(WireModel):
     id: UUID
     sku: Sku
@@ -308,6 +325,9 @@ class ProductOut(WireModel):
     image_details: list[ProductImageOut] = Field(default_factory=list)
     colourways: list[ColourwayOut] = Field(default_factory=list)
     photo_facts: list[PhotoFactOut] = Field(default_factory=list)
+    photo_read: PhotoReadOut | None = Field(
+        default=None, description="The newest photo read; product detail only, null on lists."
+    )
     product_identifier: ProductIdentifierOut | None = Field(
         default=None, description="SI5: the barcode (always null on a style)."
     )

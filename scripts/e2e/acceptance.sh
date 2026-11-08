@@ -425,6 +425,10 @@ json 'all(f["status"] != "failed" for s in b["data"] for i in s["items"] if i["s
   || fail "a field other than XL's failed"
 
 leg retry_fields
+# SI9: no product page yet, so the "published, processing" wait below cannot race a sync that
+# reads the fake's default (DISCOVERABLE + ASIN) as not buyable
+nosummary="$(python3 -c 'import json, sys; print(json.dumps({"spapi_get": {f"FSH-TEE-001{s}": "no_summary" for s in ("", "-S", "-M", "-L", "-XL")}}))')"
+fake_control "$nosummary"
 patches_before="$(fake_patches "$style")"
 xl_before="$(fake_patches "$style-XL")"
 call POST "$api/listings/$listing_id/publish/retry-fields" "$operator" "acc-retry-$run"

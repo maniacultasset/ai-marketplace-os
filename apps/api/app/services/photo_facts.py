@@ -23,7 +23,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib import resources
-from typing import Any, Final
+from typing import Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.agent import AgentRunRecord
@@ -50,8 +50,11 @@ __all__ = [
     "build_targets",
     "canonical",
     "fold",
+    "photo_read_skip",
     "photo_set",
+    "same_as_rejected",
     "screen",
+    "template_spelling",
 ]
 
 V1_KEYS: Final = (
@@ -411,15 +414,35 @@ def photo_set(images: Sequence[ContextImage], hashes: Mapping[UUID, str]) -> Pho
     )
 
 
-def allowed_for(key: str, template: CategoryTemplate) -> tuple[str, ...]:
-    """The `VOCAB[key]` values this listing's marketplace enum can hold (CP-D18), in VOCAB order.
-
-    A spec without `allowed_values` (or no spec) allows the whole vocabulary."""
+def _spellings(key: str, template: CategoryTemplate) -> list[str] | None:
+    """The template's accepted spellings for `key`: its `allowed_values`, then its `value_map`
+    keys (sorted), the list the Rules check accepts (`rules_engine.template.template_allowed`,
+    inlined: this module imports no Rules code); None when the spec has neither."""
     spec = template.specs.get(key)
-    if spec is None or spec.allowed_values is None:
+    if spec is None or (spec.allowed_values is None and not spec.value_map):
+        return None
+    return [*(spec.allowed_values or []), *sorted(spec.value_map)]
+
+
+def allowed_for(key: str, template: CategoryTemplate) -> tuple[str, ...]:
+    """The `VOCAB[key]` values this listing's marketplace enum can hold, in vocabulary space
+    (SI9 CP-D16): every VOCAB value some template spelling means. A spec with neither
+    `allowed_values` nor a `value_map` (or no spec) allows the whole vocabulary."""
+    spellings = _spellings(key, template)
+    if spellings is None:
         return VOCAB[key]
-    mapped = {canonical(key, value) for value in spec.allowed_values}
+    mapped = {canonical(key, value) for value in spellings}
     return tuple(value for value in VOCAB[key] if value in mapped)
+
+
+def template_spelling(key: str, value: str, template: CategoryTemplate) -> str:
+    """SI9 CP-D25: the template's own spelling of the VOCAB `value` (the first `allowed_values`
+    entry that means it, else the first sorted `value_map` key), so the Rules check accepts it as
+    written; `value` itself without an enum spec."""
+    for spelling in _spellings(key, template) or []:
+        if canonical(key, spelling) == value:
+            return spelling
+    return value
 
 
 def _template_keys(template: CategoryTemplate) -> set[str]:
@@ -429,6 +452,29 @@ def _template_keys(template: CategoryTemplate) -> set[str]:
         *template.conditional_attributes,
         *template.specs,
     }
+
+
+def photo_read_skip(
+    facts: ProductFacts,
+    template: CategoryTemplate,
+    images: Sequence[ContextImage],
+    *,
+    current_set: PhotoSet,
+    last_set: PhotoSet | None,
+) -> Literal["not_read", "unchanged"] | None:
+    """SI9 B7: why the photos are not read, or None when they are eligible: `not_read` for a
+    variant, a template without an apparel key, or no product photo; `unchanged` for the photo
+    set the last read recorded."""
+    if (
+        facts.level == "variant"
+        or not (_template_keys(template) & APPAREL_SIGNAL)
+        or not any(image.slot in PHOTO_SLOTS for image in images)
+        or not current_set
+    ):
+        return "not_read"
+    if last_set == current_set:
+        return "unchanged"
+    return None
 
 
 def build_targets(
@@ -441,13 +487,7 @@ def build_targets(
 ) -> list[PhotoTarget]:
     """The keys to read from the photos for this listing (module docstring); `[]` means no call."""
     listed = _template_keys(template)
-    if (
-        facts.level == "variant"
-        or not (listed & APPAREL_SIGNAL)
-        or not any(image.slot in PHOTO_SLOTS for image in images)
-        or not current_set
-        or last_set == current_set
-    ):
+    if photo_read_skip(facts, template, images, current_set=current_set, last_set=last_set):
         return []
     targets: list[PhotoTarget] = []
     for key in V1_KEYS:
@@ -455,16 +495,18 @@ def build_targets(
             continue
         if key == "number_of_pieces" and key not in listed:
             continue
-        allowed = allowed_for(key, template)
-        if not allowed:
-            continue
+        if not allowed_for(key, template):
+            continue  # a listed enum no vocabulary value fits
         stored = facts.attributes.get(key)
         fill = key not in CHECK_ONLY and (stored is None or is_unconfirmed_ai(stored))
+        if not fill and key not in listed:
+            continue  # SI9 D9: a key the template does not list is read as a copy hint only
         targets.append(
             PhotoTarget(
                 key=key,
                 mode="fill" if fill else "check",
-                allowed_values=list(allowed),
+                # SI9 CP-D16: the pipeline reads in vocabulary space; the backend screens
+                allowed_values=list(VOCAB[key]),
                 min_confidence=FLOORS[key],
             )
         )
@@ -567,20 +609,29 @@ def _evidence(text: str, image_id: UUID) -> tuple[dict[str, Any], ...]:
     return ({"kind": "source_value", "text": f"photos: {text}", "ref": f"image:{image_id}"},)
 
 
-def _expected(key: str) -> dict[str, Any]:
+def _expected(key: str, template: CategoryTemplate) -> dict[str, Any]:
     """The task's AnswerSpec (DATABASE.md:1411): a piece count is a number, any other key one of
-    its vocabulary values."""
+    the template's accepted values in its own spellings (SI9 CP-D23), so an answer can never fail
+    the Rules check's `VALUE_NOT_ALLOWED`."""
     if key == "number_of_pieces":
         return {"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES}
-    return {"kind": "enum", "allowed_values": list(VOCAB[key])}
+    spelled = dict.fromkeys(template_spelling(key, v, template) for v in allowed_for(key, template))
+    return {"kind": "enum", "allowed_values": list(spelled)}
 
 
-def _missing(key: str, value: str, obs: PhotoObservation, target: PhotoTarget) -> PhotoTask:
-    suggestions: list[dict[str, Any]] = [_ai_suggestion(value, obs.image_id)]
+def _missing(
+    key: str, value: str, obs: PhotoObservation, target: PhotoTarget, template: CategoryTemplate
+) -> PhotoTask:
+    allowed = allowed_for(key, template)
+    shown = template_spelling(key, value, template)
+    suggestions: list[dict[str, Any]] = [_ai_suggestion(shown, obs.image_id)]
     for alt in obs.alternatives:
         entry = _allowed_entry(alt.value, target)
-        if entry is not None and all(s["value"] != entry for s in suggestions):
-            suggestions.append(_ai_suggestion(entry, obs.image_id))
+        if entry is None or entry not in allowed:
+            continue  # outside the template subset (SI9 CP-D17)
+        spelled = template_spelling(key, entry, template)
+        if all(s["value"] != spelled for s in suggestions):
+            suggestions.append(_ai_suggestion(spelled, obs.image_id))
     label = LABELS[key]
     return PhotoTask(
         kind="missing_fact",
@@ -589,13 +640,18 @@ def _missing(key: str, value: str, obs: PhotoObservation, target: PhotoTarget) -
         reason=f"The photos suggest {value}, but not clearly enough to use it.",
         suggestions=tuple(suggestions[:MAX_SUGGESTIONS]),
         evidence=_evidence(value, obs.image_id),
-        expected_answer=_expected(key),
+        expected_answer=_expected(key, template),
         image_id=obs.image_id,
     )
 
 
 def _conflict(
-    key: str, value: str, stored: ResolvedFact, said: str, obs: PhotoObservation
+    key: str,
+    value: str,
+    stored: ResolvedFact,
+    said: str,
+    obs: PhotoObservation,
+    template: CategoryTemplate,
 ) -> PhotoTask:
     label = LABELS[key]
     return PhotoTask(
@@ -603,9 +659,12 @@ def _conflict(
         key=key,
         question=f"Which {label} is right for this product?",
         reason=f"The photos suggest {value}, but the product says {said}.",
-        suggestions=(_stored_suggestion(stored), _ai_suggestion(value, obs.image_id)),
+        suggestions=(
+            _stored_suggestion(stored),
+            _ai_suggestion(template_spelling(key, value, template), obs.image_id),
+        ),
         evidence=_evidence(value, obs.image_id),
-        expected_answer=_expected(key),
+        expected_answer=_expected(key, template),
         image_id=obs.image_id,
     )
 
@@ -622,7 +681,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
             reason=f"The photos seem to show {value} pieces. Please give the number of pieces.",
             suggestions=(),
             evidence=_evidence(value, obs.image_id),
-            expected_answer=_expected("number_of_pieces"),
+            expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},
             image_id=obs.image_id,
         )
     said = canonical("number_of_pieces", stored.resolved)
@@ -635,7 +694,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
         reason=f"The photos seem to show {value} pieces, but the product says {said}.",
         suggestions=(_stored_suggestion(stored),),
         evidence=_evidence(value, obs.image_id),
-        expected_answer=_expected("number_of_pieces"),
+        expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},
         image_id=obs.image_id,
     )
 
@@ -643,6 +702,16 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
 def _rank(task: PhotoTask) -> tuple[int, int]:
     group = "pieces" if task.key in CHECK_ONLY else task.kind
     return (_TASK_ORDER[group], V1_KEYS.index(task.key))
+
+
+def same_as_rejected(key: str, value: str, marker: str) -> bool:
+    """SI9 B5 (CP-D27): `value` is the value the seller rejected for `key`, compared in vocabulary
+    space (the marker may hold a template spelling such as `Regular`); a marker `canonical`
+    cannot read is compared by `fold` only."""
+    said = canonical(key, marker)
+    if said is not None:
+        return said == (canonical(key, value) or value)
+    return fold(marker) == fold(value)
 
 
 def screen(
@@ -653,8 +722,12 @@ def screen(
     images: Sequence[ContextImage],
     facts: ProductFacts,
     required: frozenset[str],
+    rejected: Mapping[str, str],
+    template: CategoryTemplate,
 ) -> PhotoDecision:
-    """Keep only what the module docstring allows; everything else lands in `dropped`."""
+    """Keep only what the module docstring allows; everything else lands in `dropped`. SI9: an
+    observation equal to the key's rejected value (`rejected`, `products.photo_rejections`) is
+    dropped `rejected_before` before any write, question or conflict."""
     by_key = {t.key: t for t in targets}
     run_id = _photo_run(records)
     if run_id is None:
@@ -662,6 +735,7 @@ def screen(
             None, dropped=tuple((_log_key(o.key, by_key), "no_run") for o in observations)
         )
     photos = {image.image_id for image in images if image.slot in PHOTO_SLOTS}
+    listed = _template_keys(template)
     counts = Counter(o.key for o in observations)
     dropped: list[tuple[str, str]] = []
     writes: list[PhotoWrite] = []
@@ -682,6 +756,13 @@ def screen(
             dropped.append((target.key, "bad_image"))
             continue
         key = target.key
+        if key not in CHECK_ONLY and entry not in allowed_for(key, template):
+            dropped.append((key, "not_in_template"))  # SI9 CP-D17: never forced to a near value
+            continue
+        marker = rejected.get(key)
+        if marker is not None and same_as_rejected(key, entry, marker):
+            dropped.append((key, "rejected_before"))
+            continue
         stored = facts.attributes.get(key)
         if key in CHECK_ONLY:
             task = _pieces(entry, stored, obs)
@@ -690,10 +771,14 @@ def screen(
             continue
         if target.mode == "fill":
             if obs.confidence >= target.min_confidence:
-                writes.append(PhotoWrite(key, entry, round(obs.confidence, 2), obs.image_id))
+                # SI9 CP-D25: written in the template's own spelling
+                spelled = template_spelling(key, entry, template)
+                writes.append(PhotoWrite(key, spelled, round(obs.confidence, 2), obs.image_id))
             elif obs.confidence >= ASK_FLOOR and key in required and stored is None:
-                tasks.append(_missing(key, entry, obs, target))
+                tasks.append(_missing(key, entry, obs, target, template))
             continue
+        if key not in listed:
+            continue  # SI9 D9: no question for a key the template does not list
         said = None if stored is None else canonical(key, stored.resolved)
         if (
             stored is not None
@@ -701,7 +786,7 @@ def screen(
             and said != entry
             and obs.confidence >= CONFLICT_FLOOR
         ):
-            tasks.append(_conflict(key, entry, stored, said, obs))
+            tasks.append(_conflict(key, entry, stored, said, obs, template))
     tasks.sort(key=_rank)
     return PhotoDecision(
         run_id,

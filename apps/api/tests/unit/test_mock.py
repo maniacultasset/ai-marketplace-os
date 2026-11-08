@@ -90,8 +90,8 @@ def test_mock_callback_303(client: TestClient) -> None:
 def test_mock_every_op_answers(client: TestClient, spec: dict[str, Any]) -> None:
     ops = _ops(spec)
     assert (
-        len(ops) == 95
-    )  # S3 35, S10 3, S15 2, S16 3, S20 1, S19 4, S21 2, ADR-0019 5, DPP-1 10, ADR-0020 7, ADR-0023 3, SI1 4, SI3 1, SI5 11, SI7 4
+        len(ops) == 97
+    )  # S3 35, S10 3, S15 2, S16 3, S20 1, S19 4, S21 2, ADR-0019 5, DPP-1 10, ADR-0020 7, ADR-0023 3, SI1 4, SI3 1, SI5 11, SI7 4, SI9 2
     for method, template in ops:
         path = template.replace("{marketplace}", "amazon")
         for name in ("product_id", "import_id", "listing_id", "image_id", "job_id", "user_id"):
@@ -107,7 +107,8 @@ def test_mock_every_op_answers(client: TestClient, spec: dict[str, Any]) -> None
 
 
 @pytest.mark.parametrize(
-    "host", ["0.0.0.0", "::", "192.168.1.5", "example.com", "localhost"]  # noqa: S104
+    "host",
+    ["0.0.0.0", "::", "192.168.1.5", "example.com", "localhost"],  # noqa: S104
 )
 def test_mock_refuses_public_host(host: str, capsys: pytest.CaptureFixture[str]) -> None:
     assert mock_main(["--host", host, "--port", "4010", "--spec", str(SPEC)]) == 2

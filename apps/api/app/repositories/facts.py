@@ -167,14 +167,47 @@ class FactWriter(TenantScopedRepository[Product]):
         changed = tuple_(old["value"], old["normalized"], old["source"]).is_distinct_from(
             tuple_(new["value"], new["normalized"], new["source"])
         )
+        values: dict[str, Any] = {
+            "attributes": Product.attributes.op("||")(func.jsonb_build_object(key, new))
+        }
+        if fact.get("source") != "ai":
+            # SI9 B5 (CP-D11): a seller (or any non-ai) value for the key clears its marker
+            values["photo_rejections"] = Product.photo_rejections.op("-")(key)
         stmt = (
             self._scoped_write(
-                update(Product)
-                .where(*self._where(product_id), changed)
-                .values(attributes=Product.attributes.op("||")(func.jsonb_build_object(key, new)))
+                update(Product).where(*self._where(product_id), changed).values(**values)
             )
         ).returning(Product.id)
         return await self._run(product_id, stmt, field)
+
+    async def reject_photo_attribute(self, product_id: uuid.UUID, key: str) -> str | None:
+        """SI9 B5: the reject of an unconfirmed photo value (`ai`, `image:` evidence). One UPDATE
+        removes the Fact and records its value in `photo_rejections[key]`; returns that value,
+        or None when the stored Fact is not such a value (the caller clears it plainly)."""
+        await self._check(product_id, key, _SELLER, "attributes", f"attributes.{key}")
+        old = Product.attributes[key]
+        value = old["value"].astext
+        photo_value = and_(
+            old["source"].astext == "ai",
+            old["confirmed_at"].astext.is_(None),
+            old["evidence_ref"].astext.startswith("image:"),
+            value.is_not(None),
+            func.char_length(value).between(1, 40),
+        )
+        stmt = (
+            self._scoped_write(
+                update(Product)
+                .where(*self._where(product_id), photo_value)
+                .values(
+                    attributes=Product.attributes.op("-")(key),
+                    photo_rejections=Product.photo_rejections.op("||")(
+                        func.jsonb_build_object(key, value)
+                    ),
+                )
+            )
+        ).returning(Product.photo_rejections[key].astext)
+        found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
 
     async def set_photo_attribute(
         self,
@@ -247,7 +280,9 @@ class FactWriter(TenantScopedRepository[Product]):
                 .values(
                     attributes=Product.attributes.op("||")(
                         func.jsonb_build_object(key, old.op("||")(stamp))
-                    )
+                    ),
+                    # SI9 B5 (CP-D11): a confirmed value for the key clears its marker
+                    photo_rejections=Product.photo_rejections.op("-")(key),
                 )
             )
         ).returning(Product.id)

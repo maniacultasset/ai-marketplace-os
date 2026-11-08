@@ -210,3 +210,20 @@ def test_fake_adapter_preview_no_io() -> None:
     assert [p.item_role for p in preview.items] == ["parent", "child", "child"]
     assert preview.items[0].payload["content.title"] == sent.listing.content.title
     assert preview.report.passed
+
+
+async def test_fake_adapter_not_buyable_read() -> None:
+    """SI9 T5: `read_states[sku] = "not_buyable"` reads as on the marketplace, not buyable."""
+    from app.adapters.error_map import ListingRead
+
+    adapter = _fake()
+    sent = item()
+    await adapter.create_listing(sent)
+    adapter.read_states[sent.seller_sku] = "not_buyable"
+    got = await adapter.get_listing(sent.seller_sku)
+    assert isinstance(got, ListingRead)
+    assert (got.marketplace_state, got.not_buyable) == ("inactive", True)
+    adapter.read_states[sent.seller_sku] = "inactive"
+    plain = await adapter.get_listing(sent.seller_sku)
+    assert plain.marketplace_state == "inactive"
+    assert getattr(plain, "not_buyable", False) is False

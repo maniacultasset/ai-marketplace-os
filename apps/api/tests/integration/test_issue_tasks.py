@@ -252,7 +252,12 @@ async def test_a_value_that_does_not_fold_is_asked(
     Pipeline(monkeypatch).overrides["fit"] = "zigzag"
     made = await generated(gen_world)
     assert state(gen_world, made) == ("blocked", "human_task_open")
-    [issue] = [i for i in issues(gen_world, made.listing_id) if i["status"] == "open"]
+    # SI9 B4: the marketplace check reports the same value as a `schema` row too
+    [issue] = [
+        i
+        for i in issues(gen_world, made.listing_id)
+        if i["status"] == "open" and i["source"] == "rules_engine"
+    ]
     assert (issue["field_path"], issue["error_code"]) == ("attributes.fit", "VALUE_NOT_ALLOWED")
     [task] = tasks(gen_world, product_of(gen_world, made))
     assert (task["target_path"], issue["human_task_id"]) == ("facts.attributes.fit", task["id"])

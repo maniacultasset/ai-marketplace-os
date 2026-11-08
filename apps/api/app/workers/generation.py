@@ -73,7 +73,13 @@ from app.services.generation_result import (
     recheck,
     salvage_records,
 )
-from app.services.photo_facts import PHOTO_PROMPT_PREFIX, build_targets, photo_set, screen
+from app.services.photo_facts import (
+    PHOTO_PROMPT_PREFIX,
+    build_targets,
+    photo_read_skip,
+    photo_set,
+    screen,
+)
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.services.seller_facts import seller_overlay
@@ -217,6 +223,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         image_rows = await uow.images.listing_set(listing.product_id)
         critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
+        rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
@@ -235,6 +242,15 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     )
     if targets:
         gctx = gctx.model_copy(update={"photo_targets": targets})
+    # SI9 B7: the read status the saved version records (`read` until the persist knows more)
+    skip = (
+        "not_read"
+        if rules.template is None
+        else photo_read_skip(
+            facts, rules.template, context_images, current_set=sent_set, last_set=seen_set
+        )
+    )
+    photo_read = {"status": skip or ("read" if targets else "not_read"), "written": 0, "asked": 0}
 
     product = for_rules(facts)
     pins = Pins(
@@ -244,6 +260,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         facts_digest=listing_facts_digest(*family),  # SI2 D9: a family pins its children too
     )
     plan_base: dict[str, Any] = {
+        "template": rules.template,  # SI9 CP-D23
         "tenant_id": tenant,
         "job_id": job_id,
         "listing_id": listing.id,
@@ -263,6 +280,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         marketplace=Marketplace(listing.marketplace),
         rules=rules,
         critical_keys=critical,
+        rejections=rejections,  # SI9 B5 (CP-D13): the port's ERROR flags
         product=product,
         facts=facts,
     )
@@ -340,7 +358,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         # listing; the fixed listing is what the version stores. A human edit never gets here (D6)
         fixed = auto_fix(
             trusted.listing,
-            lambda candidate: recheck(candidate, rules, product),
+            lambda candidate: recheck(candidate, rules, product, rejections=rejections),
             FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical),
         )
         trusted = dataclasses.replace(trusted, listing=fixed.listing)
@@ -349,7 +367,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
     photo: dict[str, Any] = {}
-    if targets:  # SI3: screen only a trusted result's observations, only for this run's targets
+    if targets and rules.template is not None:  # SI3: only a trusted result, this run's targets
         decision = screen(
             trusted.result.photo_observations,
             trusted.records,
@@ -357,6 +375,8 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             images=context_images,
             facts=facts,
             required=frozenset(rules.template.required_attributes if rules.template else ()),
+            rejected=rejections,
+            template=rules.template,
         )
         log.info(
             "generation.photo_screen",
@@ -397,7 +417,11 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             result=failed_result,
         )
     version_id = uuid.uuid4()
-    outcome_result: dict[str, Any] = {"listing_version_id": str(version_id), "status": move.to}
+    outcome_result: dict[str, Any] = {
+        "listing_version_id": str(version_id),
+        "status": move.to,
+        "photo_read": photo_read,
+    }
     plan = PersistPlan(
         **plan_base,
         move=move,

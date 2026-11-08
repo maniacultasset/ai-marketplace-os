@@ -10,7 +10,7 @@ import pytest
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
-from .generation_support import GenWorld, gen_world, set_status
+from .generation_support import GenWorld, current_template, gen_world, set_status
 from .products_support import bad_bearer
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -46,6 +46,7 @@ def _clean_version(world: GenWorld, listing_id: uuid.UUID) -> uuid.UUID:
             },
             "attributes": {"color": "blue", "fabric_type": "cotton"},
         },
+        category_template_id=current_template(world),  # SI9 B4: a mapped template
     )
     with world.conn.transaction():
         world.conn.execute("SET LOCAL session_replication_role = replica")

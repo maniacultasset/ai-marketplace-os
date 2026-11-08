@@ -53,6 +53,19 @@ class CategoryTemplateRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def is_mapped(self, marketplace: str, category: str) -> bool:
+        """SI9 recategorize: a current template exists for the pair, and for Amazon it names a
+        product type (an unmapped one is refused at publish, `CATEGORY_NOT_MAPPED`)."""
+        stmt = select(CategoryTemplate.id, CategoryTemplate.product_type).where(
+            CategoryTemplate.marketplace == marketplace,
+            CategoryTemplate.category == category,
+            CategoryTemplate.is_current.is_(True),
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        if row is None:
+            return False
+        return marketplace != "amazon" or bool(row.product_type)
+
     async def current(self, marketplace: str, category: str) -> CurrentTemplate | None:
         stmt = select(
             CategoryTemplate.id,

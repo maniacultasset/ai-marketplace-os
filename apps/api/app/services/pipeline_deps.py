@@ -72,6 +72,7 @@ from app.services.embeddings import (
     embed_query,
     get_embedder,
 )
+from app.services.rejected_values import with_rejections
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
 from app.services.seller_facts import seller_overlay
@@ -240,6 +241,7 @@ class BackendPipelineDeps:
         "_marketplace",
         "_models",
         "_product",
+        "_rejections",
         "_rules",
         "_rules_calls",
         "_spans",
@@ -262,6 +264,7 @@ class BackendPipelineDeps:
         embedder: Embedder | None,
         models: _ModelConfig,
         critical_keys: frozenset[str],
+        rejections: Mapping[str, str],
         attempt: int = 1,
         facts: ProductFacts | None = None,
     ) -> None:
@@ -273,6 +276,7 @@ class BackendPipelineDeps:
         self._marketplace = marketplace
         self._rules = rules
         self._product = product
+        self._rejections: Mapping[str, str] = dict(rejections)
         self._image_reports = dict(image_reports)
         self._embedder = embedder
         self._models = models
@@ -400,8 +404,13 @@ class BackendPipelineDeps:
                 listing = seller_overlay(listing, self._facts, self._rules.template)
             template, product = self._rules.template, self._product
 
+            rejections = self._rejections
+
             def engine(candidate: CanonicalListing) -> ErrorReport:
-                return evaluate(candidate, ruleset, template=template, product=product)
+                report = evaluate(candidate, ruleset, template=template, product=product)
+                # SI9 B5 (CP-D13, CP-D26): only the ERROR flags reach the correction loop, so a
+                # warning can never loop it into corrections_exhausted
+                return with_rejections(report, candidate, rejections, errors_only=True)
 
             # SI4 A8 (§2 fact 1): the fix pass runs on a copy and the fixed copy's verdict is
             # reported, so the pipeline spends no correction attempt on a fixable item; the
@@ -522,6 +531,7 @@ async def build_pipeline_deps(
     marketplace: Marketplace,
     rules: LoadedRules,
     critical_keys: frozenset[str],
+    rejections: Mapping[str, str],
     product: Mapping[str, object] | None = None,
     facts: ProductFacts | None = None,
 ) -> BackendPipelineDeps:
@@ -547,5 +557,6 @@ async def build_pipeline_deps(
         models=_ModelConfig.from_settings(settings),
         critical_keys=critical_keys,
         attempt=attempt,
+        rejections=rejections,
         facts=facts,
     )

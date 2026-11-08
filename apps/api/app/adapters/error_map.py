@@ -178,6 +178,8 @@ class ListingRead(ListingResult):
     errors: Annotated[list[ErrorItem], Field(max_length=MAX_ERROR_ITEMS)] = Field(
         default_factory=list
     )
+    # SI9 B3: on the marketplace (an id exists) but not buyable yet; only the adapter decides it
+    not_buyable: bool = False
 
 
 def read_issue(item: ErrorItem, *, warning: bool) -> ErrorItem:

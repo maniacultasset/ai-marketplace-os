@@ -93,6 +93,7 @@ async def _deps(world: World, conn: Conn, slug: str, **over: Any) -> Any:
         "marketplace": "amazon",
         "rules": LoadedRules(ruleset=ruleset, template=None),
         "critical_keys": frozenset(),
+        "rejections": {},
         **over,
     }
     return await build_pipeline_deps(**values)

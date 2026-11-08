@@ -53,6 +53,7 @@ Q7: dict[str, str] = {
     "products_list": "tenant:read",
     "products_get": "tenant:read",
     "products_update": "product:import",
+    "products_recategorize": "product:import",  # SI9
     "products_bulk": "product:import",
     "imports_get": "tenant:read",
     "imports_rows": "tenant:read",
@@ -70,6 +71,7 @@ Q7: dict[str, str] = {
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",
     "tasks_answer": "product:import",
+    "tasks_close": "marketplace:connect",  # SI9
     "listings_content_patch": "listing:edit",
     "listings_regenerate": "listing:regenerate",
     "listings_retry_fields": "listing:publish",
@@ -141,7 +143,8 @@ def _operation(spec: dict[str, Any], op_id: str) -> dict[str, Any]:
 def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
-    assert len(OPS) == 95
+    # + SI9 two
+    assert len(OPS) == 97
     assert set(OPS) == set(Q7)
 
 

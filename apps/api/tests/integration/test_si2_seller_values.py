@@ -10,6 +10,7 @@ from typing import Any
 import httpx
 import pytest
 
+from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .generation_support import GenWorld, gen_world, make_generating
 from .review_support import OPERATOR, run_job
@@ -33,6 +34,8 @@ async def _product(world: GenWorld, attributes: dict[str, Any]) -> str:
             attributes=attributes,
             mrp=Decimal("1499.00"),
             selling_price=Decimal("999.00"),
+            # SI5 B2 + SI9 B4: the pre-approval check needs a barcode for an Amazon create
+            product_identifier=("ean", f.ean()),
         ),
     )
     return sku

@@ -1,0 +1,251 @@
+"""SI9 T3 (AC1): the committed Amazon error map, `app/db/seed_data/error_map.amazon.json`.
+
+Every row comes from Amazon's published SP-API material (`policy_ref.observed` false, the page in
+`policy_ref.doc`); observed prod codes later arrive as version 2 rows."""
+
+from __future__ import annotations
+
+from typing import Any, Final
+
+import pytest
+from app.adapters.error_map import ErrorMapRow
+from app.cli import ERROR_MAP_AMAZON_PATH
+from app.db.platform_loads import ErrorMapIn, load_error_map_file
+from app.services.auto_fix.policy import Route, route
+from app.services.issues import classify
+from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
+from mkos_schemas.enums import ErrorClass
+from mkos_schemas.errors import ErrorItem
+from tests.adapters.amazon_support import SELLER, amazon_adapter
+from tests.support.fake_marketplace import build_fake
+
+from .test_amazon_adapter import _five
+
+# SP-API Listings Items 2021-08-01 `Issue.categories` (the model's enum table)
+CATEGORIES: Final = frozenset(
+    {
+        "MISSING_ATTRIBUTE",
+        "INVALID_ATTRIBUTE",
+        "INVALID_IMAGE",
+        "MISSING_IMAGE",
+        "QUALIFICATION_REQUIRED",
+    }
+)
+
+
+@pytest.fixture(scope="module")
+def rows() -> list[ErrorMapIn]:
+    return load_error_map_file(ERROR_MAP_AMAZON_PATH)
+
+
+def test_file_parses(rows: list[ErrorMapIn]) -> None:
+    assert rows
+    assert ERROR_MAP_AMAZON_PATH.name == "error_map.amazon.json"
+
+
+def test_every_row_is_a_documented_amazon_row(rows: list[ErrorMapIn]) -> None:
+    for row in rows:
+        assert row.marketplace.value == "amazon", row.raw_value
+        assert row.error_code in ERROR_CODE_META, row.raw_value
+        assert row.seller_action, row.raw_value
+        assert row.fix_action is None and row.auto_fixable is False, row.raw_value
+        assert row.retry_class.value == "user_action", row.raw_value
+        assert row.severity.value == "error", row.raw_value
+        ref = row.policy_ref or {}
+        assert ref.get("source") == "sp-api-docs", row.raw_value
+        assert ref.get("observed") is False, row.raw_value
+        assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
+        assert not row.raw_value.startswith("FAKE"), row.raw_value
+
+
+def test_plain_text_is_plain_language(rows: list[ErrorMapIn]) -> None:
+    """Class-level text that names Amazon and no canonical path: `{field}` would render a path
+    such as `attributes.brand`, and `{marketplace}` the lowercase enum."""
+    for row in rows:
+        assert "{" not in row.plain_text, row.raw_value
+        assert "Amazon" in row.plain_text or "Amazon" in (row.seller_action or ""), row.raw_value
+
+
+def test_keys_unique(rows: list[ErrorMapIn]) -> None:
+    keys = [(r.match_on, r.raw_value, r.version) for r in rows]
+    assert len(keys) == len(set(keys))
+
+
+def test_category_rows_are_sp_api_categories(rows: list[ErrorMapIn]) -> None:
+    categories = {r.raw_value for r in rows if r.match_on == "category"}
+    assert categories == CATEGORIES
+
+
+# ---- SI9 T4 (AC3): the rows through the fake SP-API reach SI4's routes ----
+
+
+_ROW_FIELDS: Final = (
+    "marketplace",
+    "match_on",
+    "raw_value",
+    "version",
+    "error_code",
+    "error_class",
+    "retry_class",
+    "severity",
+    "auto_fixable",
+    "fix_action",
+    "field_hint",
+    "plain_text",
+    "seller_action",
+    "enabled",
+)
+MISSING_TEXT: Final = "Amazon needs a value that this listing does not send."
+
+
+def _rows() -> list[ErrorMapRow]:
+    out = []
+    for r in load_error_map_file(ERROR_MAP_AMAZON_PATH):
+        values = {name: getattr(r, name) for name in _ROW_FIELDS}
+        values["marketplace"] = r.marketplace.value
+        out.append(ErrorMapRow(**values))
+    return out
+
+
+def _issue(
+    code: str, attribute: str | None, message: str = "Bad.", categories: list[str] | None = None
+) -> dict[str, Any]:
+    out: dict[str, Any] = {"code": code, "message": message, "severity": "ERROR"}
+    if attribute is not None:
+        out["attributeNames"] = [attribute]
+    if categories is not None:
+        out["categories"] = categories
+    return out
+
+
+async def _write(issue: dict[str, Any]) -> ErrorItem:
+    app = build_fake()
+    sent = _five()
+    app.state.fake.spapi_issues[sent.seller_sku] = [issue]
+    result = await amazon_adapter(app, rows=_rows()).create_listing(sent)
+    path = "content.title" if issue.get("attributeNames") == ["item_name"] else "listing"
+    error = next(f.error for f in result.fields if f.field == path)
+    assert isinstance(error, ErrorItem)
+    return error
+
+
+async def _read_errors(issue: dict[str, Any]) -> list[ErrorItem]:
+    app = build_fake()
+    adapter = amazon_adapter(app, rows=_rows())
+    sent = _five()
+    await adapter.create_listing(sent)
+    app.state.fake.spapi_items[(SELLER, sent.seller_sku)]["issues"] = [issue]
+    got = await adapter.get_listing(sent.seller_sku, listing_id=sent.listing_id)
+    return list(got.errors)
+
+
+RAW_90220: Final = "'item_name' is required but not supplied."
+
+
+async def test_write_90220_maps_to_missing_attribute() -> None:
+    error = await _write(_issue("90220", "item_name", RAW_90220))
+    assert error.field == "content.title"
+    assert error.error_code is ErrorCode.MISSING_ATTRIBUTE
+    assert error.message == f"{MISSING_TEXT} Marketplace message: {RAW_90220}"
+    assert error.suggestion == "Add the missing value to the product, then send the listing again."
+    assert error.raw_code == "90220"
+    assert error.error_class is ErrorClass.MISSING_DATA
+
+
+async def test_read_90220_maps_the_same() -> None:
+    written = await _write(_issue("90220", "item_name", RAW_90220))
+    (read,) = await _read_errors(_issue("90220", "item_name", RAW_90220))
+    assert (read.field, read.error_code, read.message, read.suggestion, read.raw_code) == (
+        written.field,
+        written.error_code,
+        written.message,
+        written.suggestion,
+        written.raw_code,
+    )
+
+
+async def test_unmapped_code_with_known_category() -> None:
+    error = await _write(_issue("77777", "item_name", categories=["INVALID_ATTRIBUTE"]))
+    assert error.error_code is ErrorCode.VALUE_NOT_ALLOWED
+    assert error.error_class is ErrorClass.INVALID_VALUE
+    assert error.raw_code == "77777"
+
+
+async def test_unmapped_code_with_unknown_category() -> None:
+    error = await _write(_issue("77777", "item_name", "Odd.", categories=["SOMETHING_ELSE"]))
+    assert error.error_code is ErrorCode.MARKETPLACE_UNKNOWN_ERROR
+    assert error.error_class is ErrorClass.UNKNOWN
+    assert error.message == "Odd."
+
+
+@pytest.mark.parametrize("code", ["", "   ", "9" * 200])
+async def test_blank_or_long_code_is_unknown(code: str) -> None:
+    error = await _write(_issue(code, "item_name", "Odd."))
+    assert error.error_code is ErrorCode.MARKETPLACE_UNKNOWN_ERROR
+    assert error.raw_code is None or len(error.raw_code) <= 128
+
+
+async def test_unicode_message_kept() -> None:
+    error = await _write(_issue("90220", "item_name", "शीर्षक आवश्यक है।"))
+    assert error.message.endswith("Marketplace message: शीर्षक आवश्यक है।")
+
+
+async def test_item_level_issue_reads_as_plain_language() -> None:
+    error = await _write(_issue("5665", None, "Brand X.", categories=["QUALIFICATION_REQUIRED"]))
+    assert error.field == "listing"
+    assert error.error_code is ErrorCode.API_REJECTED_PARTIAL
+    assert error.message.startswith("Amazon needs your account to be approved")
+    assert "attributes." not in error.message and "amazon " not in error.message
+
+
+def _mapped(code: str, field: str, categories: list[str]) -> ErrorItem:
+    """An item as the adapter maps it, through the committed rows."""
+    from app.adapters.error_map import ErrorMapper
+
+    return ErrorMapper(_rows()).to_item(
+        raw_code=code, raw_message="Raw.", field=field, categories=categories
+    )
+
+
+@pytest.mark.parametrize(
+    ("code", "field", "categories", "want", "want_route", "want_kind"),
+    [
+        ("90220", "attributes.brand", [], ErrorCode.MISSING_ATTRIBUTE, Route.ASK, "missing_fact"),
+        (
+            "77777",
+            "attributes.color",
+            ["INVALID_ATTRIBUTE"],
+            ErrorCode.VALUE_NOT_ALLOWED,
+            Route.DETERMINISTIC,
+            None,
+        ),
+        (
+            "77777",
+            "listing",
+            ["QUALIFICATION_REQUIRED"],
+            ErrorCode.API_REJECTED_PARTIAL,
+            Route.ASK,
+            "marketplace_error_review",
+        ),
+        ("18027", "images[0]", [], ErrorCode.IMAGE_NON_COMPLIANT, Route.ASK, "image_replacement"),
+    ],
+)
+def test_mapped_codes_reach_si4_routes(
+    code: str,
+    field: str,
+    categories: list[str],
+    want: ErrorCode,
+    want_route: Route,
+    want_kind: str | None,
+) -> None:
+    item = _mapped(code, field, categories)
+    assert item.error_code is want
+    got = route(item, source="amazon_adapter", critical_keys=frozenset())
+    assert got.route is want_route
+    if want_kind is not None:
+        assert got.task_kind == want_kind
+    else:
+        assert got.fix_action is not None and got.fix_action.value == "remap_value"
+    # the stored row's auto_fixable comes from the item and the code metadata (SI4 classify);
+    # the rows set no fix_action (D5), so no Amazon row is shown as auto-fixable
+    assert classify(item, critical_keys=frozenset(), source="amazon_adapter")[2] is None

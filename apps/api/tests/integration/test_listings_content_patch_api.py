@@ -10,7 +10,13 @@ import httpx
 import pytest
 
 from .conftest import LOCAL_HOSTS
-from .generation_support import GenWorld, gen_world, make_generating, set_status
+from .generation_support import (
+    GenWorld,
+    gen_world,
+    make_generating,
+    pin_current_template,
+    set_status,
+)
 from .products_support import bad_bearer
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -32,6 +38,7 @@ def _seeded(world: GenWorld, status: str = "validated") -> tuple[uuid.UUID, uuid
     set_status(world, listing_id, status)
     version = world.listing(listing_id)["current_version_id"]
     assert version is not None
+    pin_current_template(world, version)  # SI9 B4: the demo v1 pins an unmapped template
     return listing_id, version
 
 

@@ -44,8 +44,9 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   `canary` string the control call passes (so a test can prove it is never echoed).
 - Audit JOBS-3: `spapi_body odd_shape` applies the write, then answers its real reply with
   `"issues": 3` (valid JSON the adapter cannot read).
-- S21 (CP15): `spapi_get {sku: buyable|discoverable|inactive|rejected|gone}` sets what a GET of the
-  SKU reads until changed (gone = 404); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
+- S21 (CP15): `spapi_get {sku: buyable|discoverable|inactive|rejected|gone|no_summary|no_asin}` sets
+  what a GET of the SKU reads until changed (gone = 404; SI9: `no_summary` answers `summaries: []`,
+  no product page yet; `no_asin` a summary with no `asin` and an empty status); `POST /__control/reset {"prefix": "<sku prefix>"}` forgets
   the items, issues, GET states and calls of SKUs with that prefix (an e2e run cleans up after
   itself without touching another run's SKUs).
 
@@ -472,7 +473,15 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
         state.spapi_drop_after_write |= {str(sku) for sku in body["spapi_drop_after_write"]}
     gets = body.get("spapi_get")
     if isinstance(gets, dict):
-        states = ("buyable", "discoverable", "inactive", "rejected", "gone")
+        states = (
+            "buyable",
+            "discoverable",
+            "inactive",
+            "rejected",
+            "gone",
+            "no_summary",
+            "no_asin",
+        )
         state.spapi_get.update({k: v for k, v in gets.items() if v in states})
 
 
@@ -658,20 +667,21 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
         issues = [{"code": "90220", "message": "The listing was rejected.", "severity": "ERROR"}]
     statuses: list[str] = (
         []
-        if mode == "inactive"
+        if mode in ("inactive", "no_asin")
         else [status] if status == "DISCOVERABLE" else [status, "DISCOVERABLE"]
     )
+    summary: dict[str, Any] = {
+        "marketplaceId": "A21TJRUUN4KGV",
+        "asin": "B0" + hashlib.sha256("/".join(key).encode()).hexdigest()[:8].upper(),
+        "productType": stored["productType"],
+        "status": statuses,
+    }
+    if mode == "no_asin":
+        del summary["asin"]
     return JSONResponse(
         {
             "sku": key[1],
-            "summaries": [
-                {
-                    "marketplaceId": "A21TJRUUN4KGV",
-                    "asin": "B0" + hashlib.sha256("/".join(key).encode()).hexdigest()[:8].upper(),
-                    "productType": stored["productType"],
-                    "status": statuses,
-                }
-            ],
+            "summaries": [] if mode == "no_summary" else [summary],
             "attributes": stored["attributes"],
             "issues": issues,
         }

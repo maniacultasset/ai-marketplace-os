@@ -73,9 +73,9 @@ async def _generate(
         returned.append(result.listing)
         return result
 
-    def recheck_spy(listing: Any, rules: Any, product: Any) -> Any:
+    def recheck_spy(listing: Any, rules: Any, product: Any, *, rejections: Any) -> Any:
         judged.append(listing)
-        return real_recheck(listing, rules, product)
+        return real_recheck(listing, rules, product, rejections=rejections)
 
     monkeypatch.setattr(generation, "run_listing_pipeline", pipeline_spy)
     monkeypatch.setattr(generation, "recheck", recheck_spy)

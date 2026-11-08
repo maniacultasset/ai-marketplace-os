@@ -91,6 +91,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",
+        # SI9
+        "tasks_close",
+        "products_recategorize",
         # S21
         "listings_publish",
         "listings_retry_fields",

@@ -126,6 +126,27 @@ async def approved(
     return made
 
 
+def before_identifier_rule(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generation and approval as they ran before SI5's identifier rule (set-up only): the same
+    SI9 marketplace check with its IDENTIFIER_MISSING items left out, so a test can approve a
+    bare item and prove the publish-time refusal (the backstop); publish keeps the real check."""
+    from app.services import adapter_check as check
+    from app.services import generation_persist, review
+    from mkos_schemas.codes import ErrorCode
+
+    real = check.adapter_check
+
+    async def pre_rule(*args: Any, **kwargs: Any) -> Any:
+        report = await real(*args, **kwargs)
+        if report is None:
+            return None
+        kept = [e for e in report.errors if e.error_code is not ErrorCode.IDENTIFIER_MISSING]
+        return report.model_copy(update={"errors": kept})
+
+    monkeypatch.setattr(generation_persist, "adapter_check", pre_rule)
+    monkeypatch.setattr(review, "adapter_check", pre_rule)
+
+
 async def post_publish(
     api: Any,
     pw: PubWorld,

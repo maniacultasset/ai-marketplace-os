@@ -665,6 +665,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "products_get": {
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
             "photo_facts": [_PHOTO_FACT],
+            "photo_read": {"status": "read", "at": T1, "written": 1, "asked": 0},
         },
         "brand_profile_get": _BRAND_PROFILE,
         "brand_profile_update": _BRAND_PROFILE,
@@ -677,6 +678,10 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "photo_facts": [{**_PHOTO_FACT, "confirmed": True, "confirmed_at": T1}],
             "product_identifier": {"type": "ean", "value": "4006381333931"},
             "identifier_exemption": False,
+        },
+        "products_recategorize": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "category": "ethnic_wear_kurta_sets",
         },
         "products_bulk": {
             "import_id": IMPORT,
@@ -729,7 +734,21 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ],
             "poll_url": f"/api/v1/jobs/{JOB}",
         },
-        "listings_list": _page([_LISTING]),
+        "listings_list": _page(
+            [
+                _LISTING,
+                {
+                    **_LISTING,
+                    "id": "0b1c2d3e-0000-4000-8000-000000000203",
+                    "product_id": PRODUCT_2,
+                    "status": "published",
+                    "marketplace_state": "inactive",
+                    "approved_version_id": VERSION,
+                    "live_url": "https://www.amazon.in/dp/B0EXAMPLE1",
+                    "external_id": "B0EXAMPLE1",
+                },
+            ]
+        ),
         "listings_get": {**_LISTING, "content": _CONTENT, "validation": _VALIDATION_FAILED_SUMMARY},
         "listings_preview": {
             "schema_version": "2.0.0",
@@ -872,6 +891,18 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "tasks_list": _page([_TASK]),
         "tasks_answer": _FACT_TASK,
+        "tasks_close": {
+            **_TASK,
+            "kind": "marketplace_error_review",
+            "target_path": "account.listing_error",
+            "question": "Review the error Amazon reported for this listing.",
+            "status": "applied",
+            "answered_by_user_id": USER,
+            "answered_at": T1,
+            "applied_at": T1,
+            "resolution": "done",
+            "updated_at": T1,
+        },
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
         "signup_create": {"request_id": SIGNUP, "status": "pending"},

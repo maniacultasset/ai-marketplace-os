@@ -223,7 +223,9 @@ def _bulk(conn: Conn, tenants: list[UUID]) -> None:
         account = f.marketplace_account(conn, tenant, connected_by_user_id=owner)
         listings = [f.listing(conn, tenant, marketplace_account_id=account) for _ in range(100)]
         listing = listings[0]
-        version = f.version(conn, tenant, listing, generated_by_user_id=owner)
+        # version 1, below the bulk's 1001..26000: the factory's default is the worker-wide
+        # counter, which can land on a bulk number of this listing (e.g. 2600, g = 1600)
+        version = f.version(conn, tenant, listing, generated_by_user_id=owner, version=1)
         template = conn.execute("SELECT id FROM category_templates LIMIT 1").fetchone()
         assert template is not None
         job = conn.execute(

@@ -24,19 +24,21 @@ from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
     PhotoFactOut,
+    PhotoReadOut,
     ProductCreate,
     ProductIdentifierOut,
     ProductImageOut,
     ProductOut,
     ProductPage,
     ProductPatch,
+    RecategorizeIn,
     SizeChart,
     SizeChartRow,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
-from app.services import product_edit, products
+from app.services import product_edit, product_recategorize, products
 from app.services.images import CreateUpload
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
@@ -128,6 +130,16 @@ def _out(view: products.ProductView) -> ProductOut:
         created_at=view.created_at,
         updated_at=view.updated_at,
         photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
+        photo_read=(
+            None
+            if view.photo_read is None
+            else PhotoReadOut(
+                status=view.photo_read.status,
+                at=view.photo_read.at,
+                written=view.photo_read.written,
+                asked=view.photo_read.asked,
+            )
+        ),
         product_identifier=(
             None
             if view.product_identifier is None
@@ -246,6 +258,21 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
         else:
             out[name] = value
     return out
+
+
+@route(router, OPS["products_recategorize"])
+async def products_recategorize(
+    product_id: Annotated[UUID, PathParam()],
+    body: RecategorizeIn,
+    principal: CurrentPrincipal,
+    response: Response,
+) -> ProductOut:
+    """Change the category of a product that already has listings. Its unpublished listings take
+    the new category and are superseded until regenerated; a listing the marketplace has seen is
+    never touched (409 INVALID_STATUS_TRANSITION). The same category is 200, nothing written."""
+    view = await product_recategorize.recategorize_product(principal, product_id, body.category)
+    response.headers["ETag"] = view.etag
+    return _out(view)
 
 
 @route(router, OPS["products_update"])

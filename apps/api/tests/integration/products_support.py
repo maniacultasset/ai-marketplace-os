@@ -128,6 +128,8 @@ PRODUCT_FIELDS = frozenset(
         "colourways",
         # SI3: photo-sourced facts the seller can confirm
         "photo_facts",
+        # SI9: the newest photo read (detail only; null on lists)
+        "photo_read",
         # SI5: the barcode and the GTIN exemption
         "product_identifier",
         "identifier_exemption",

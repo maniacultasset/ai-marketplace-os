@@ -144,4 +144,5 @@ def build_adapter_listing(
         unit_facts={f.product_id: seller_facts(f) for f in (main, *children)},
         parent_type_schema=parent_type_schema,
         allow_http_images=allow_http_images,
+        live=source.live,
     )
