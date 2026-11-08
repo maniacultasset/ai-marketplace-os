@@ -9059,3 +9059,12 @@ POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value t
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+# Contract 2.1.0 (SI12 size-chart unit; additive MINOR under the open heading, conductor under the
+# user's V1 delegation, 2026-11-09, packages/schemas/CHANGELOG.md): size_chart_suggestion.chart is
+# now SuggestedSizeChart (unit cm, in or unknown). The field itself is new in the unreleased 2.1.0.
+# Remove these lines once main carries it.
+GET /api/v1/products added `#/components/schemas/SuggestedSizeChart` to the `data/items/size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
+POST /api/v1/products added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `201`
+GET /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
+PATCH /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
+POST /api/v1/products/{product_id}/recategorize added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`

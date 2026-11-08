@@ -4939,7 +4939,12 @@ export interface components {
              */
             password: string;
         };
-        /** SizeChart */
+        /**
+         * SizeChart
+         * @description A saved size chart. The seller always sends the unit: a read never supplies it, and a read
+         *     whose unit is `unknown` must be given `cm` or `in` first (else 422 `VALIDATION_FAILED` at
+         *     `size_chart.unit`).
+         */
         SizeChart: {
             /**
              * Basis
@@ -4950,6 +4955,7 @@ export interface components {
             rows: components["schemas"]["SizeChartRow"][];
             /**
              * Unit
+             * @description Required: `cm` or `in`, chosen by the seller.
              * @enum {string}
              */
             unit: "cm" | "in";
@@ -5000,7 +5006,7 @@ export interface components {
          *     saves (with `size_chart_image_id`); never a fact by itself.
          */
         SizeChartSuggestionOut: {
-            chart?: components["schemas"]["SizeChart"] | null;
+            chart?: components["schemas"]["SuggestedSizeChart"] | null;
             /** Confidence */
             confidence?: number | null;
             /**
@@ -5015,6 +5021,11 @@ export interface components {
              * @enum {string}
              */
             status: "queued" | "reading" | "read" | "unreadable" | "failed" | "unavailable";
+            /**
+             * Unit Source Line
+             * @description The printed line the read unit came from (for example `All measurements in cm`), shown so the seller can confirm the unit; null when `chart.unit` is `unknown`.
+             */
+            unit_source_line?: string | null;
         };
         /**
          * StepUpOut
@@ -5115,6 +5126,25 @@ export interface components {
             /** Data */
             data: components["schemas"]["SubmissionOut"][];
             page: components["schemas"]["PageInfo"];
+        };
+        /**
+         * SuggestedSizeChart
+         * @description SI12: a chart as read from a size-chart photo. `unit` is `unknown` when the photo prints no
+         *     unit, or the read unit could not be backed by a printed line: the seller picks one.
+         */
+        SuggestedSizeChart: {
+            /**
+             * Basis
+             * @enum {string}
+             */
+            basis: "garment" | "body";
+            /** Rows */
+            rows: components["schemas"]["SizeChartRow"][];
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "cm" | "in" | "unknown";
         };
         /** SuggestionsOut */
         SuggestionsOut: {

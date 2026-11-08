@@ -311,10 +311,13 @@ async def size_chart_suggestion(
     ):
         confidence = stored.get("confidence")
         read_at = stored.get("read_at")
+        is_read = stored.get("status") == "read"
+        line = stored.get("unit_source_line") if is_read else None
         return {
             "image_id": chart.image_id,
             "status": stored["status"],
-            "chart": stored.get("chart") if stored.get("status") == "read" else None,
+            "chart": stored.get("chart") if is_read else None,
+            "unit_source_line": line if isinstance(line, str) else None,
             "confidence": confidence if isinstance(confidence, int | float) else None,
             "read_at": datetime.fromisoformat(read_at) if isinstance(read_at, str) else None,
         }

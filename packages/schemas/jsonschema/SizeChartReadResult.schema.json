@@ -608,7 +608,7 @@
       "type": "string"
     },
     "SizeChartReadChart": {
-      "description": "The chart as read: one row per size, keyed by measure name (for example `chest`).",
+      "description": "The chart as read: one row per size, keyed by measure name (for example `chest`).\n\n`unit` is `unknown` when no unit is printed or the read unit is not backed by a printed line;\n`unit_source_line` is that printed line when the unit is `cm` or `in` (null otherwise).",
       "properties": {
         "basis": {
           "enum": [
@@ -640,10 +640,25 @@
         "unit": {
           "enum": [
             "cm",
-            "in"
+            "in",
+            "unknown"
           ],
           "title": "Unit",
           "type": "string"
+        },
+        "unit_source_line": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit Source Line"
         }
       },
       "required": [

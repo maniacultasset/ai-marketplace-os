@@ -101,6 +101,7 @@ async def test_stub_read_stores_the_normalised_chart(
             {"size": "L", "chest": 106, "length": 108},
         ],
     }
+    assert state["unit_source_line"] == "All measurements in cm"
     assert state["confidence"] == 0.9 and state["read_at"]
     assert len(seen) == 1 and seen[0].image.slot == "size_chart"
     assert seen[0].image.image_id == image and seen[0].category == "tshirts"
@@ -167,6 +168,65 @@ async def test_out_of_bounds_answers_are_unreadable(
     assert state is not None
     expected = "failed" if len(rows) > 40 else "unreadable"  # an invalid answer is untrusted
     assert state["status"] == expected and "chart" not in state
+
+
+def _chart_change(**update: Any) -> Any:
+    def change(result: SizeChartReadResult, _r: Any) -> Any:
+        assert result.chart is not None
+        return result.model_copy(update={"chart": result.chart.model_copy(update=update)})
+
+    return change
+
+
+async def test_unknown_unit_is_stored_as_unknown_with_no_line(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # the pipeline could not back a unit: the rows stay a suggestion, the seller picks the unit
+    tenant, p = _product(images_db)
+    image, _ = chart_image(images_db.conn, store, tenant, p)
+    _answer(monkeypatch, _chart_change(unit="unknown", unit_source_line="Sizes in cm"))
+    job = await enqueue_read(tenant, image)
+    await run_image_job(job)
+    state = read_state(images_db.conn, image)
+    assert state is not None and state["status"] == "read"
+    assert state["chart"]["unit"] == "unknown" and len(state["chart"]["rows"]) == 3
+    assert state["unit_source_line"] is None
+
+
+@pytest.mark.parametrize(
+    ("line", "expected"),
+    [
+        ("  Chest   (cm)\n", "Chest (cm)"),
+        ("cm\u200b", None),
+        ("x" * 161, None),
+        (None, None),
+    ],
+    ids=["collapsed", "format_char", "too_long", "missing"],
+)
+async def test_unit_source_line_is_kept_only_when_clean(
+    images_db: JobWorld,
+    store: FakeStorage,
+    monkeypatch: pytest.MonkeyPatch,
+    line: str | None,
+    expected: str | None,
+) -> None:
+    tenant, p = _product(images_db)
+    image, _ = chart_image(images_db.conn, store, tenant, p)
+
+    def change(result: SizeChartReadResult, _r: Any) -> Any:
+        assert result.chart is not None
+        chart = result.chart.model_copy(update={"unit_source_line": line})
+        return result.model_copy(update={"chart": chart})
+
+    _answer(monkeypatch, change)
+    job = await enqueue_read(tenant, image)
+    await run_image_job(job)
+    state = read_state(images_db.conn, image)
+    assert state is not None
+    if line is not None and len(line) > 160:  # the seam model refuses it: an untrusted answer
+        assert state["status"] == "failed"
+        return
+    assert state["status"] == "read" and state["unit_source_line"] == expected
 
 
 async def test_unreadable_answer(

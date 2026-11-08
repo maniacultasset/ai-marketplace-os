@@ -21,6 +21,12 @@ from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, Slug, StrictModel, WireModel
 from mkos_schemas.enums import ImageRole, ImageSlot
+from mkos_schemas.size_chart_read import (
+    MAX_SIZE_CHART_MEASURE,
+    MAX_SIZE_CHART_READ_ROWS,
+    MAX_SIZE_CHART_SIZE_CHARS,
+    MAX_SIZE_CHART_UNIT_LINE_CHARS,
+)
 from pydantic import (
     AfterValidator,
     AwareDatetime,
@@ -50,7 +56,7 @@ MAX_PRODUCT_IMAGES: Final = 50
 MAX_PRODUCT_ATTRIBUTES: Final = 200
 MAX_ATTRIBUTE_TEXT: Final = 2000
 MAX_IMAGE_UPLOADS: Final = 20
-MAX_SIZE_CHART_ROWS: Final = 40
+MAX_SIZE_CHART_ROWS: Final = MAX_SIZE_CHART_READ_ROWS
 
 
 def _no_bom(value: str) -> str:
@@ -124,11 +130,14 @@ _GENDER_IN: Final = (
     "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta "
     "sets and T-shirts."
 )
-Measure = Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)]
+Measure = Annotated[float, Field(gt=0, le=MAX_SIZE_CHART_MEASURE, allow_inf_nan=False)]
+_UNIT_REQUIRED: Final = "Choose the size chart's unit, cm or in, before saving."
 
 
 class SizeChartRow(StrictModel):
-    size: Annotated[NonBlankStr, Field(max_length=20), AfterValidator(_no_nul)]
+    size: Annotated[
+        NonBlankStr, Field(max_length=MAX_SIZE_CHART_SIZE_CHARS), AfterValidator(_no_nul)
+    ]
     chest: Measure | None = None
     waist: Measure | None = None
     hip: Measure | None = None
@@ -139,7 +148,27 @@ class SizeChartRow(StrictModel):
 
 
 class SizeChart(StrictModel):
-    unit: Literal["cm", "in"]
+    """A saved size chart. The seller always sends the unit: a read never supplies it, and a read
+    whose unit is `unknown` must be given `cm` or `in` first (else 422 `VALIDATION_FAILED` at
+    `size_chart.unit`)."""
+
+    unit: Literal["cm", "in"] = Field(description="Required: `cm` or `in`, chosen by the seller.")
+    basis: Literal["garment", "body"]
+    rows: Annotated[list[SizeChartRow], Field(min_length=1, max_length=MAX_SIZE_CHART_ROWS)]
+
+    @field_validator("unit", mode="before")
+    @classmethod
+    def _unit_chosen(cls, value: object) -> object:
+        if value not in ("cm", "in"):
+            raise PydanticCustomError("mkos_invalid", _UNIT_REQUIRED)
+        return value
+
+
+class SuggestedSizeChart(WireModel):
+    """SI12: a chart as read from a size-chart photo. `unit` is `unknown` when the photo prints no
+    unit, or the read unit could not be backed by a printed line: the seller picks one."""
+
+    unit: Literal["cm", "in", "unknown"]
     basis: Literal["garment", "body"]
     rows: Annotated[list[SizeChartRow], Field(min_length=1, max_length=MAX_SIZE_CHART_ROWS)]
 
@@ -387,7 +416,8 @@ class ProductPatch(StrictModel):
     @field_validator("size_chart_image_id")
     @classmethod
     def _image_with_chart(cls, value: UUID | None, info: ValidationInfo) -> UUID | None:
-        if value is not None and info.data.get("size_chart") is None:
+        # a `size_chart` that failed its own validation is absent here and reports alone
+        if value is not None and "size_chart" in info.data and info.data["size_chart"] is None:
             raise PydanticCustomError(
                 "mkos_invalid", "`size_chart_image_id` is sent only with a `size_chart`."
             )
@@ -489,7 +519,16 @@ class SizeChartSuggestionOut(WireModel):
 
     image_id: UUID
     status: SizeChartReadStatus
-    chart: SizeChart | None = None
+    chart: SuggestedSizeChart | None = None
+    unit_source_line: Annotated[str, Field(max_length=MAX_SIZE_CHART_UNIT_LINE_CHARS)] | None = (
+        Field(
+            default=None,
+            description=(
+                "The printed line the read unit came from (for example `All measurements in cm`), "
+                "shown so the seller can confirm the unit; null when `chart.unit` is `unknown`."
+            ),
+        )
+    )
     confidence: float | None = None
     read_at: AwareDatetime | None = None
 

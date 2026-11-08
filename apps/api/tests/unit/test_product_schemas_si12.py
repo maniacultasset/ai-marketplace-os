@@ -272,3 +272,34 @@ def test_read_out_and_requirements() -> None:
         {"category": "tshirts", "amazon": ["mrp"], "flipkart": ["hsn_code"]}
     )
     assert req.flipkart == ["hsn_code"]
+
+
+def test_suggestion_keeps_an_unknown_unit_and_the_line() -> None:
+    chart = {"unit": "unknown", "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+    out = SizeChartSuggestionOut.model_validate(
+        {"image_id": str(uuid.uuid4()), "status": "read", "chart": chart}
+    )
+    assert out.chart is not None and out.chart.unit == "unknown"
+    assert out.unit_source_line is None
+    line = {"unit_source_line": "All measurements in cm"}
+    out = SizeChartSuggestionOut.model_validate(
+        {"image_id": str(uuid.uuid4()), "status": "read", "chart": chart | {"unit": "cm"}} | line
+    )
+    assert out.unit_source_line == "All measurements in cm"
+
+
+@pytest.mark.parametrize("unit", ["unknown", "mm", "", None, "CM"])
+def test_saved_chart_unit_is_chosen(unit: Any) -> None:
+    chart = {"unit": unit, "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+    with pytest.raises(ValidationError) as caught:
+        ProductPatch.model_validate({"size_chart": chart})
+    (error,) = caught.value.errors()
+    assert error["loc"] == ("size_chart", "unit") and error["type"] == "mkos_invalid"
+    assert error["msg"] == "Choose the size chart's unit, cm or in, before saving."
+
+
+def test_saved_chart_unit_has_no_default() -> None:
+    chart = {"basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+    with pytest.raises(ValidationError) as caught:
+        ProductPatch.model_validate({"size_chart": chart})
+    assert caught.value.errors()[0]["type"] == "missing"

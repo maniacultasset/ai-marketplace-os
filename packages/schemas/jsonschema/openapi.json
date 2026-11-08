@@ -7882,6 +7882,7 @@
       },
       "SizeChart": {
         "additionalProperties": false,
+        "description": "A saved size chart. The seller always sends the unit: a read never supplies it, and a read\nwhose unit is `unknown` must be given `cm` or `in` first (else 422 `VALIDATION_FAILED` at\n`size_chart.unit`).",
         "properties": {
           "basis": {
             "enum": [
@@ -7901,6 +7902,7 @@
             "type": "array"
           },
           "unit": {
+            "description": "Required: `cm` or `in`, chosen by the seller.",
             "enum": [
               "cm",
               "in"
@@ -8081,7 +8083,7 @@
           "chart": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/SizeChart"
+                "$ref": "#/components/schemas/SuggestedSizeChart"
               },
               {
                 "type": "null"
@@ -8127,6 +8129,19 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "unit_source_line": {
+            "anyOf": [
+              {
+                "maxLength": 160,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The printed line the read unit came from (for example `All measurements in cm`), shown so the seller can confirm the unit; null when `chart.unit` is `unknown`.",
+            "title": "Unit Source Line"
           }
         },
         "required": [
@@ -8408,6 +8423,44 @@
           "page"
         ],
         "title": "SubmissionPage",
+        "type": "object"
+      },
+      "SuggestedSizeChart": {
+        "description": "SI12: a chart as read from a size-chart photo. `unit` is `unknown` when the photo prints no\nunit, or the read unit could not be backed by a printed line: the seller picks one.",
+        "properties": {
+          "basis": {
+            "enum": [
+              "garment",
+              "body"
+            ],
+            "title": "Basis",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/SizeChartRow"
+            },
+            "maxItems": 40,
+            "minItems": 1,
+            "title": "Rows",
+            "type": "array"
+          },
+          "unit": {
+            "enum": [
+              "cm",
+              "in",
+              "unknown"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "basis",
+          "rows"
+        ],
+        "title": "SuggestedSizeChart",
         "type": "object"
       },
       "SuggestionsOut": {

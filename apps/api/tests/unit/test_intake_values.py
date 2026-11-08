@@ -182,6 +182,27 @@ def test_measure_keys_are_the_dictionary_vocabulary_minus_basis() -> None:
     assert set(MEASURE_KEYS) == set(entry["vocabulary"]) - {"basis"}
 
 
+def test_unknown_unit_only_for_a_read() -> None:
+    chart = _chart([{"size": "S", "chest": 90}], unit="unknown")
+    with pytest.raises(SizeChartError):
+        normalize_size_chart(chart)
+    assert normalize_size_chart(chart, unknown_unit=True)["unit"] == "unknown"
+    with pytest.raises(SizeChartError):
+        normalize_size_chart(_chart([{"size": "S", "chest": 90}], unit="mm"), unknown_unit=True)
+
+
+def test_bounds_are_the_seam_bounds() -> None:
+    # one source for the backend and the pipeline's screening (mkos_schemas.size_chart_read)
+    from app.services import intake_values as iv
+    from mkos_schemas import size_chart_read as seam
+
+    assert iv.MEASURE_KEYS == seam.SIZE_CHART_MEASURE_KEYS
+    assert iv.MAX_SIZE_CHARS == seam.MAX_SIZE_CHART_SIZE_CHARS == 20
+    assert iv.MAX_MEASURE == seam.MAX_SIZE_CHART_MEASURE == 500
+    assert iv.MAX_ROWS == seam.MAX_SIZE_CHART_READ_ROWS == 40
+    assert seam.SIZE_CHART_MEASURE_DECIMALS == 1
+
+
 # ---- states ----
 
 

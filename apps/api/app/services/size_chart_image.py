@@ -18,6 +18,11 @@ from dataclasses import dataclass
 from io import BytesIO
 from typing import Any, Final
 
+from mkos_schemas.size_chart_read import (
+    MAX_SIZE_CHART_READ_ROWS,
+    MAX_SIZE_CHART_SIZE_CHARS,
+    SIZE_CHART_MEASURE_KEYS,
+)
 from PIL import Image, ImageDraw, ImageFont
 
 __all__ = [
@@ -28,11 +33,11 @@ __all__ = [
     "render_size_chart",
 ]
 
-COLUMNS: Final = ("chest", "waist", "hip", "length", "shoulder", "sleeve", "inseam")
+COLUMNS: Final = SIZE_CHART_MEASURE_KEYS
 SIDE: Final = 1500
 MARGIN: Final = 90
-MAX_ROWS: Final = 40  # MAX_SIZE_CHART_ROWS (api/v1/schemas/products.py)
-MAX_SIZE_LABEL: Final = 20
+MAX_ROWS: Final = MAX_SIZE_CHART_READ_ROWS
+MAX_SIZE_LABEL: Final = MAX_SIZE_CHART_SIZE_CHARS
 MAX_FIBRE_NAME: Final = 64
 MAX_FIBRES: Final = 10
 FONT_MAX: Final = 44

@@ -18,6 +18,13 @@ from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.size_chart_read import (
+    MAX_SIZE_CHART_MEASURE,
+    MAX_SIZE_CHART_READ_ROWS,
+    MAX_SIZE_CHART_SIZE_CHARS,
+    SIZE_CHART_MEASURE_DECIMALS,
+    SIZE_CHART_MEASURE_KEYS,
+)
 
 from app.core.errors import InputError
 
@@ -45,13 +52,18 @@ __all__ = [
 MONEY_PATTERN: Final = r"^(0|[1-9][0-9]{0,9})(\.[0-9]{1,2})?$"
 _MONEY: Final = re.compile(MONEY_PATTERN)
 
-# `size_measurements` vocabulary minus `basis` (attribute_dictionary.json; a test pins it)
-MEASURE_KEYS: Final = ("chest", "waist", "hip", "length", "shoulder", "sleeve", "inseam")
+# The seller size-chart bounds come from the seam module (`mkos_schemas.size_chart_read`), so the
+# pipeline screens a read with the same ones. `MEASURE_KEYS` is the `size_measurements` vocabulary
+# minus `basis` (attribute_dictionary.json; a test pins it).
+MEASURE_KEYS: Final = SIZE_CHART_MEASURE_KEYS
 UNITS: Final = frozenset({"cm", "in"})
+# A read whose unit is not backed by a printed line keeps `unknown` (a suggestion only; never saved).
+READ_UNITS: Final = UNITS | {"unknown"}
 BASES: Final = frozenset({"garment", "body"})
-MAX_ROWS: Final = 40
-MAX_SIZE_CHARS: Final = 20
-MAX_MEASURE: Final = 500
+MAX_ROWS: Final = MAX_SIZE_CHART_READ_ROWS
+MAX_SIZE_CHARS: Final = MAX_SIZE_CHART_SIZE_CHARS
+MAX_MEASURE: Final = MAX_SIZE_CHART_MEASURE
+_MEASURE_STEP: Final = Decimal(1).scaleb(-SIZE_CHART_MEASURE_DECIMALS)
 
 # The database's own bounds (DATABASE.md:1108-1112): HSN 4, 6 or 8 ASCII digits; dimensions
 # `numeric(7,2)` > 0; whole grams 1..2,000,000; ISO 3166 alpha-2 (upper-cased). Always `fullmatch`.
@@ -134,7 +146,7 @@ def _measure(value: object) -> int | float:
         raise SizeChartError("a measurement is finite")
     if not number.is_finite() or not (0 < number <= MAX_MEASURE):
         raise SizeChartError(f"a measurement is above 0 and at most {MAX_MEASURE}")
-    if number != number.quantize(Decimal("0.1")):
+    if number != number.quantize(_MEASURE_STEP):
         raise SizeChartError("a measurement has at most one decimal")
     return int(number) if number == number.to_integral_value() else float(number)
 
@@ -148,12 +160,13 @@ def _size(value: object) -> str:
     return size
 
 
-def normalize_size_chart(raw: Mapping[str, Any]) -> dict[str, Any]:
-    """The stored `{unit, basis, rows}` form, or `SizeChartError`."""
+def normalize_size_chart(raw: Mapping[str, Any], *, unknown_unit: bool = False) -> dict[str, Any]:
+    """The stored `{unit, basis, rows}` form, or `SizeChartError`. `unknown_unit` admits the unit
+    `unknown`, only for a read kept as a suggestion: a saved chart is always `cm` or `in`."""
     if set(raw) != {"unit", "basis", "rows"}:
         raise SizeChartError("a size chart has exactly unit, basis and rows")
     unit, basis, rows = raw["unit"], raw["basis"], raw["rows"]
-    if unit not in UNITS:
+    if unit not in (READ_UNITS if unknown_unit else UNITS):
         raise SizeChartError("unit is cm or in")
     if basis not in BASES:
         raise SizeChartError("basis is garment or body")

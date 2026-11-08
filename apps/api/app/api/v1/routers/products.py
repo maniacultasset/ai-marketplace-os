@@ -39,6 +39,7 @@ from app.api.v1.schemas.products import (
     SizeChart,
     SizeChartRow,
     SizeChartSuggestionOut,
+    SuggestedSizeChart,
     SuggestionsOut,
 )
 from app.api.v1.surface import OPS, route
@@ -96,10 +97,20 @@ def _suggestion(found: dict[str, Any] | None) -> SizeChartSuggestionOut | None:
     """SI12: the size-chart read of the live photo; the chart is the normalised stored table."""
     if found is None:
         return None
+    chart = found.get("chart")
     return SizeChartSuggestionOut.model_construct(
         image_id=found["image_id"],
         status=found["status"],
-        chart=_chart(found.get("chart")),
+        chart=(
+            None
+            if chart is None
+            else SuggestedSizeChart.model_construct(
+                unit=chart["unit"],
+                basis=chart["basis"],
+                rows=[SizeChartRow.model_construct(**row) for row in chart["rows"]],
+            )
+        ),
+        unit_source_line=found.get("unit_source_line"),
         confidence=found.get("confidence"),
         read_at=found.get("read_at"),
     )
