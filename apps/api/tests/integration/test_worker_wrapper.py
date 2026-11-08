@@ -233,6 +233,8 @@ async def test_wrapper_crash_reaches_sentry_tagged_with_a_stack(
     assert event["exception"]["values"][-1]["type"] == "KeyError"
     assert event["tags"]["job_kind"] == KIND.value
     assert "request_id" in event["tags"]
+    assert secret not in sentry_events.serialized()  # the message never leaves
+    assert event["exception"]["values"][-1]["stacktrace"]["frames"]
 
 
 async def test_publish_style_failures_alert_every_time(

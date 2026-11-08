@@ -30,8 +30,9 @@ are left, else `dead_letter` + `RETRY_EXHAUSTED`; a shutdown abort (`CancelledEr
 exception class. Log lines carry ids and codes only, never payload or cell values.
 
 A body crash (that last branch) is a code bug, so it is also made debuggable (V1 hardening #6):
-the exception goes to Sentry with `capture_exception` inside the job's tagged isolation scope
-(request id, trace id, job kind; `before_send` still redacts the event), and the `job.body_failed`
+the exception's class and frames go to Sentry with `capture_exception` inside the job's tagged
+isolation scope (request id, trace id, job kind; `before_send` still redacts the event), under
+a fixed message (`crash_for_sentry`: the original message may quote a cell value), and the `job.body_failed`
 line is ERROR with `stack`, the traceback's frames (file, line, function, code) without the
 exception's message, which may quote a cell value. That line is on a logger Sentry's logging
 integration ignores, so one crash is one Sentry issue.
@@ -88,6 +89,20 @@ STACK_FRAMES = 30
 ALERT_EVERY_FAILURE = frozenset({JobKind.LISTING_PUBLISH})
 _rand = secrets.SystemRandom()
 OK_STATUSES = frozenset({"succeeded"})
+
+
+_CRASH_TYPES: dict[str, type[Exception]] = {}
+
+
+def crash_for_sentry(exc: BaseException, name: str) -> Exception:
+    """`exc`'s frames under an exception of the same class name whose message is fixed text, so
+    Sentry groups and shows the crash by type and stack but never sees the original message or
+    its chained causes (an import error can quote a cell value; `before_send` only redacts known
+    secret shapes)."""
+    kind = _CRASH_TYPES.get(name)
+    if kind is None:
+        kind = _CRASH_TYPES[name] = type(name, (Exception,), {"__module__": "job_body"})
+    return kind(f"the job body raised {name}").with_traceback(exc.__traceback__)
 
 
 def crash_stack(exc: BaseException) -> str:
@@ -268,7 +283,8 @@ async def _execute(
             )
             return "dead_letter", None
         name = "TimeoutError" if isinstance(exc, _BodyTimeoutError) else type(exc).__name__
-        sentry_sdk.capture_exception(exc)  # in run_job's tagged isolation scope
+        # in run_job's tagged isolation scope; the message never leaves (it may quote a cell)
+        sentry_sdk.capture_exception(crash_for_sentry(exc, name))
         _crash_log.error(
             "job.body_failed",
             job_run_id=str(job_id),
