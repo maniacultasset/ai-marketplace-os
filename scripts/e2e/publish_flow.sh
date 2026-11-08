@@ -247,6 +247,9 @@ call POST "$api/listings/publish" "$reviewer" "e2e-pub-rev-$run" "$items"
 expect 403
 
 step publish_202
+# SI9: the fake's default GET (DISCOVERABLE + ASIN) reads as on Amazon, not buyable; this flow
+# checks "published, still processing" first, so the SKU has no product page yet
+fake_control "{\"spapi_get\": {\"$prefix-A\": \"no_summary\"}}"
 call POST "$api/listings/publish" "$operator" "e2e-pub-$run" "$items"
 expect 202
 json 'b["items"][0]["http_status"] == 202 and b["items"][0]["listing_status"] == "publishing"' >/dev/null

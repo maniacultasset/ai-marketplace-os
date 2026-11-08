@@ -29,7 +29,7 @@ CONDITION_ATTRIBUTE: Final = "condition_type"
 CONDITION_NEW: Final = "new_new"
 CURRENCY: Final = "INR"
 MAX_MONEY: Final = Decimal("9999999999.99")
-REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin")
+REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin", "brand_name")
 # SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
 MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
 # SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,
@@ -39,6 +39,36 @@ EXEMPTION_ATTRIBUTE: Final = "supplier_declared_has_product_identifier_exemption
 IDENTIFIER_TYPES: Final[Mapping[str, str]] = MappingProxyType(
     {"ean": "ean", "upc": "upc", "gtin": "gtin"}
 )
+
+# SI8 T3: the identity attributes. Believed (names, entry shapes and the audience values) until
+# the real LISTING definitions are stored and `templates diff` checks them (SI8 DL-A).
+BRAND_ATTRIBUTE: Final = "brand"
+MODEL_NUMBER: Final = "model_number"
+PART_NUMBER: Final = "part_number"
+TARGET_GENDER: Final = "target_gender"
+DEPARTMENT: Final = "department"
+AGE_RANGE: Final = "age_range_description"
+AUDIENCE_ATTRIBUTES: Final = (TARGET_GENDER, DEPARTMENT, AGE_RANGE)
+AUDIENCE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType(
+    {
+        gender: MappingProxyType(dict(zip(AUDIENCE_ATTRIBUTES, values, strict=True)))
+        for gender, values in {
+            "women": ("female", "Women", "Adult"),
+            "men": ("male", "Men", "Adult"),
+            "unisex": ("unisex", "Unisex", "Adult"),
+            "girls": ("female", "Girls", "Kid"),
+            "boys": ("male", "Boys", "Kid"),
+            "baby": ("unisex", "Baby", "Baby"),
+        }.items()
+    }
+)
+"""`products.gender` -> the three Amazon audience attributes (SI8 PLAN §2.2; believed, DL-A)."""
+AUDIENCE_PRODUCT_TYPES: Final = frozenset({"KURTA", "SHIRT"})
+"""The apparel product types that send (and need) the audience."""
+TEXT_IDENTITY: Final = frozenset({BRAND_ATTRIBUTE, DEPARTMENT, AGE_RANGE})
+"""The identity attributes whose entries carry `language_tag`."""
+ITEM_NAME_MAX: Final = 200
+"""The child title limit when no stored definition gives `item_name.maxLength` (SI8 T5)."""
 
 # C6: canonical content and keyword paths -> Amazon attributes
 CONTENT_FIELDS: Final[Mapping[str, str]] = MappingProxyType(

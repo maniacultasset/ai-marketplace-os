@@ -31,8 +31,8 @@ def image_refs(body: CanonicalListing) -> dict[uuid.UUID, str]:
     return {i.image_id: f"https://images.example.test/{i.image_id}.jpg" for i in body.images}
 
 
-# SI2 T2: the priced, compliant (SI5: barcoded) seller facts every built unit carries unless the
-# caller passes `unit_facts=`
+# SI2 T2 (+ SI8 T3): the priced, compliant (SI5: barcoded) seller facts every built unit
+# carries unless the caller passes `unit_facts=`
 SELLER_FACTS = SellerFacts(
     mrp=Decimal("999.00"),
     selling_price=Decimal("499.00"),
@@ -41,6 +41,11 @@ SELLER_FACTS = SellerFacts(
     manufacturer_name="Test Mills Pvt Ltd",
     manufacturer_address="1 Mill Road, Surat, GJ, 395003, IN",
     fiber_composition_text="100% Cotton",
+    # SI8 T3: the style identity facts (brand and audience; no style number, so model and part
+    # number fall back to the style SKU)
+    brand_name="Test Brand",
+    gender="women",
+    style_number=None,
     identifier_type="ean",  # SI5 B2: a create needs a barcode or the exemption
     identifier_value="4006381333931",
 )
@@ -224,3 +229,39 @@ def reject(app: Any, fail: Any) -> None:
             names += [c.CONDITION_ATTRIBUTE, c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE]
         for name in names:
             app.state.fake.spapi_reject[name] = (code, text)
+
+
+def colour_family(
+    *, green: bool = False, extra_red: int = 0
+) -> tuple[AdapterListing, dict[str, int]]:
+    """SI8 AC5: a size x colour family whose colourways carry their own images. Style S (main)
+    and Z (size chart); red R1 (main), R2 (and `extra_red` more); black B1 (main); with `green`,
+    a green colourway with no images. Returns the listing and each image's version index."""
+    from mkos_schemas.enums import ImageSlot
+    from mkos_schemas.listing import ImageRef
+
+    names = ["S", "Z", "R1", "B1", "R2", *(f"R{3 + n}" for n in range(extra_red))]
+    slots = {"S": "main", "Z": "size_chart", "R1": "main", "B1": "main"}
+    ids = {name: uuid.uuid4() for name in names}
+    images = [
+        ImageRef(image_id=ids[n], slot=ImageSlot(slots.get(n, "secondary")), position=i)
+        for i, n in enumerate(names)
+    ]
+    body = listing().model_copy(update={"images": images})
+    colours = ["red", "black", *(["green"] if green else [])]
+    rows = [{"size": size, "color": colour} for colour in colours for size in ("M", "L")]
+    sent = amazon_family(body, children=rows)
+    kids = tuple(
+        dataclasses.replace(u, colour_key=u.variant_attributes.get("color")) for u in sent.items
+    )
+    colour_ids = {
+        "red": tuple(ids[n] for n in names if n.startswith("R")),
+        "black": (ids["B1"],),
+    }
+    built = dataclasses.replace(
+        sent,
+        items=kids,
+        colour_image_ids=colour_ids,
+        image_refs={ids[n]: f"https://images.example.test/{n}.jpg" for n in names},
+    )
+    return built, {n: i for i, n in enumerate(names)}

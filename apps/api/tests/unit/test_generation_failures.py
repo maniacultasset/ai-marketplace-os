@@ -35,6 +35,7 @@ def _deps() -> Any:
         embedder=None,
         models=_ModelConfig.from_settings(cfg),
         critical_keys=frozenset(),
+        rejections={},
     )
 
 

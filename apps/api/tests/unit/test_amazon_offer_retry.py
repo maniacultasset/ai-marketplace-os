@@ -121,3 +121,62 @@ async def test_listing_schema_flags_child_not_parent() -> None:
     none = dataclasses.replace(family, product_type_schema=None, parent_type_schema=None)
     assert [e for e in mapping.check(none) if (e.raw_code or "").startswith("ptd:")] == []
     assert json.dumps([e.model_dump(mode="json") for e in errors]).count("Mill Road") == 0
+
+
+# ---- SI8 T4 (AC9; CP-D4): image issues and retries use each item's own slots ----
+
+
+async def test_child_image_issue_fails_that_childs_version_path_only() -> None:
+    from tests.adapters.amazon_support import colour_family
+
+    sent, at = colour_family()
+    red = next(u for u in sent.items if u.variant_attributes == {"size": "M", "color": "red"})
+    app = build_fake()
+    app.state.fake.spapi_issues[red.seller_sku] = [
+        {
+            "code": "18027",
+            "message": "The image is invalid.",
+            "severity": "ERROR",
+            "attributeNames": ["other_product_image_locator_1"],
+            "categories": ["INVALID_ATTRIBUTE"],
+        }
+    ]
+    result = await amazon_adapter(app).create_listing(sent)
+    (item,) = [i for i in result.items if i.seller_sku == red.seller_sku]
+    failed = {f.field for f in item.fields if f.status == "failed"}
+    assert failed == {f"images[{at['R2']}]"}
+    statuses = {f.field: f.status for f in item.fields}
+    assert statuses[f"images[{at['R1']}]"] == "succeeded"
+    assert statuses["images[1]"] == "succeeded"  # Z, the size chart, is this child's slot 2
+
+
+async def test_child_image_retry_patches_its_own_slot() -> None:
+    from tests.adapters.amazon_support import colour_family
+
+    sent, at = colour_family()
+    red = next(u for u in sent.items if u.variant_attributes == {"size": "M", "color": "red"})
+    black = next(u for u in sent.items if u.variant_attributes == {"size": "M", "color": "black"})
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    await adapter.create_listing(sent)
+    seen: list[tuple[str, dict[str, Any]]] = []
+    original = adapter._client.patch
+
+    async def spy(sku: str, body: dict[str, Any]) -> Any:
+        seen.append((sku, body))
+        return await original(sku, body)
+
+    adapter._client.patch = spy
+    path = f"images[{at['R2']}]"
+    await adapter.update_listing(sent, fields={red.seller_sku: [path]})
+    ((sku, body),) = seen
+    assert sku == red.seller_sku
+    assert [(p["op"], p["path"]) for p in body["patches"]] == [
+        ("replace", "/attributes/other_product_image_locator_1")
+    ]
+    assert body["patches"][0]["value"][0]["media_location"].endswith("/R2.jpg")
+    seen.clear()
+    result = await adapter.update_listing(sent, fields={black.seller_sku: [path]})
+    assert seen == []  # black never sent R2: a local skipped result, no PATCH
+    (item,) = result.items
+    assert {f.field: f.status for f in item.fields} == {path: "skipped"}

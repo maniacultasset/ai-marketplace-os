@@ -67,7 +67,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     command.upgrade(cfg, REVISION)
     assert _has_table(scratch_db)
     assert _functiondefs(scratch_db) != before
-    command.upgrade(cfg, "head")  # 0021 sits on top (SI10): `check` compares at the head
+    command.upgrade(cfg, "head")  # 0020, 0019, 0021 sit on top: `check` at the head
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not _has_table(scratch_db)
@@ -83,14 +83,13 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     command.check(cfg)
 
 
-def test_single_head() -> None:
-    """0018 stays on the one line of history (0021 sits on top since SI10)."""
+def test_on_the_single_head_chain() -> None:
     from alembic.script import ScriptDirectory
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
     heads = script.get_heads()
-    assert len(heads) == 1, heads
+    assert len(heads) == 1, heads  # 0020 (SI9), 0019 (SI8), then 0021 (SI10) sit on top
     assert REVISION in {rev.revision for rev in script.walk_revisions("base", heads[0])}
 
 

@@ -28,6 +28,15 @@ class ListingOut(WireModel):
     current_version_id: UUID | None = None
     approved_version_id: UUID | None = None
     live_url: str | None = None
+    external_id: str | None = Field(
+        default=None,
+        max_length=128,
+        description=(
+            "The marketplace's id for the product (the Amazon ASIN), set once the marketplace "
+            "reads it. With status published and marketplace_state inactive the product is on "
+            "the marketplace but not buyable yet."
+        ),
+    )
     status_changed_at: AwareDatetime
     created_at: AwareDatetime
     updated_at: AwareDatetime

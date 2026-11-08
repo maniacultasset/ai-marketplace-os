@@ -265,6 +265,8 @@ reconnected="$(connect_confirm "$owner")"
 [ "$reconnected" = "$account" ] || fail "the reconnect made another account"
 
 step publish_resume_202
+# SI9: no product page yet, so the "published, processing" wait cannot race a not-buyable read
+fake_control "{\"spapi_get\": {\"$prefix-A\": \"no_summary\"}}"
 call POST "$api/listings/publish" "$operator" "e2e-rec-resume-$run" "{\"items\": [{\"listing_id\": \"$first\"}]}"
 expect 202
 json 'b["items"][0]["http_status"] == 202' >/dev/null

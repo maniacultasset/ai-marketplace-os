@@ -119,7 +119,7 @@ async def test_resolve_other_tenant_none(world: Any) -> None:
 async def test_resolve_four_statements(world: Any) -> None:
     acme = world.tenant("acme")
     maker = f.party(world.conn, acme)
-    p = f.product(world.conn, acme, manufacturer_party_id=maker)
+    p = f.product(world.conn, acme, manufacturer_party_id=maker, brand_name="Acme")
     from app.repositories.uow import tenant_uow
 
     async with tenant_uow(acme) as uow:
@@ -363,3 +363,98 @@ async def test_critical_keys_from_the_dictionary(world: Any) -> None:
         keys = await uow.product_facts.critical_keys()
     assert {"fiber_composition", "country_of_origin"} <= keys
     assert "color" not in keys
+
+
+# ---- SI8 T2 (AC1; CP-D1): the brand default ----
+
+
+def _size_child(world: Any, tenant: uuid.UUID, style: uuid.UUID) -> uuid.UUID:
+    child = f.product(
+        world.conn,
+        tenant,
+        "child",
+        parent=style,
+        variant_attributes={"size": "m"},
+        attributes={"size": f.fact(value="M", normalized="m")},
+    )
+    f.cell(
+        world.conn,
+        tenant,
+        style,
+        size_key="m",
+        availability="available",
+        unavailable_reason=None,
+        variant_product_id=child,
+    )
+    return child
+
+
+async def test_brand_default_skips_blank_profile_names(world: Any) -> None:
+    acme = world.tenant("acme")
+    f.brand_profile(world.conn, acme, brand_names=["", "Kuinn"])
+    facts = await _resolve(acme, f.product(world.conn, acme))
+    assert facts is not None and facts.identity.brand_name == "Kuinn"
+
+
+async def test_brand_style_override_wins_and_reaches_its_variant(world: Any) -> None:
+    acme = world.tenant("acme")
+    f.brand_profile(world.conn, acme, brand_names=["Kuinn"])
+    style = f.product(
+        world.conn, acme, "style", variation_theme="size", size_run=["m"], brand_name="Acme Own"
+    )
+    with world.conn.transaction():
+        child = _size_child(world, acme, style)
+    own = await _resolve(acme, style)
+    inherited = await _resolve(acme, child)
+    assert own is not None and own.identity.brand_name == "Acme Own"
+    assert inherited is not None and inherited.identity.brand_name == "Acme Own"
+
+
+async def test_brand_default_empty_profile_uses_the_tenant_name(world: Any) -> None:
+    acme = world.tenant("acme")
+    world.conn.execute("UPDATE tenants SET name = '  Acme Store ' WHERE id = %s", [acme])
+    f.brand_profile(world.conn, acme, brand_names=[])
+    facts = await _resolve(acme, f.product(world.conn, acme))
+    assert facts is not None and facts.identity.brand_name == "Acme Store"
+    no_row = world.tenant("bharat")
+    world.conn.execute("UPDATE tenants SET name = 'Bharat Store' WHERE id = %s", [no_row])
+    facts = await _resolve(no_row, f.product(world.conn, no_row))
+    assert facts is not None and facts.identity.brand_name == "Bharat Store"
+
+
+async def test_brand_default_family_reads_once(world: Any) -> None:
+    acme = world.tenant("acme")
+    f.brand_profile(world.conn, acme, brand_names=["Kuinn"])
+    style = f.product(world.conn, acme, "style", variation_theme="size", size_run=["m"])
+    with world.conn.transaction():
+        _size_child(world, acme, style)
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(acme) as uow:
+        found = await uow.product_facts.resolve_family(style)
+    assert found is not None
+    main, children = found
+    assert [main.identity.brand_name, *(c.identity.brand_name for c in children)] == ["Kuinn"] * 2
+
+
+async def test_brand_default_never_reads_another_tenant(world: Any) -> None:
+    """The acting user is a member of both tenants, so RLS's `tenants_switcher` policy lets the app
+    role see both tenant rows: only the repository's tenant scope keeps B's name and brand names
+    out of A's resolve."""
+    acme, bharat = world.tenant("acme"), world.tenant("bharat")
+    both = world.user("owner@acme.test")
+    world.conn.execute(
+        "INSERT INTO tenant_memberships (tenant_id, user_id, role) VALUES (%s, %s, 'owner')",
+        [bharat, both],
+    )
+    world.conn.execute("UPDATE tenants SET name = 'Acme Store' WHERE id = %s", [acme])
+    world.conn.execute("UPDATE tenants SET name = 'Bharat Store' WHERE id = %s", [bharat])
+    f.brand_profile(world.conn, bharat, brand_names=["Bharat Brand"])
+    p = f.product(world.conn, acme)
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(acme, user_id=both) as uow:
+        facts = await uow.product_facts.resolve(p)
+        choices = await uow.brand_profile.brand_choices()
+    assert facts is not None and facts.identity.brand_name == "Acme Store"
+    assert choices == ("Acme Store",)

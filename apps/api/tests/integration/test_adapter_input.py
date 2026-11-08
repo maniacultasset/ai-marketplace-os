@@ -264,9 +264,7 @@ async def test_adapter_input_colour_key_and_sku_per_child(
     }
 
 
-async def test_adapter_input_colour_image_refs_grouped(
-    products_world: World, auth_db: Conn
-) -> None:
+async def test_adapter_input_colour_image_ids_grouped(products_world: World, auth_db: Conn) -> None:
     from app.services.adapter_input import build_adapter_listing, colour_image_ids
 
     acme = products_world.tenant("acme")
@@ -284,10 +282,7 @@ async def test_adapter_input_colour_image_refs_grouped(
     built = build_adapter_listing(
         source, facts=facts_of(source), image_refs=refs, idempotency_key="k"
     )
-    assert dict(built.colour_image_refs) == {
-        "maroon": (f"image:{maroon}",),
-        "navy blue": (f"image:{main}", f"image:{second}"),
-    }
+    assert dict(built.colour_image_ids) == {"maroon": (maroon,), "navy blue": (main, second)}
 
 
 async def test_adapter_input_colour_images_only_from_approved_version(
@@ -295,8 +290,8 @@ async def test_adapter_input_colour_images_only_from_approved_version(
 ) -> None:
     """Fix round 2 (F2): a colourway image the approved version does not hold (uploaded after
     approval, or never passed the image gate at approval) is never sent; a colourway left
-    with none falls back to the listing's own images."""
-    from app.adapters.flipkart.mapping import unit_images
+    with none sends the style-level images (SI8 T1: never another colour's)."""
+    from app.adapters.base import unit_images
     from app.services.adapter_input import build_adapter_listing, colour_image_ids
 
     acme = products_world.tenant("acme")
@@ -314,10 +309,11 @@ async def test_adapter_input_colour_images_only_from_approved_version(
     built = build_adapter_listing(
         source, facts=facts_of(source), image_refs=refs, idempotency_key="k"
     )
-    assert dict(built.colour_image_refs) == {"navy blue": (f"image:{navy}",)}
-    sent = {i.colour_key: unit_images(built, i) for i in built.items}
-    assert sent["navy blue"] == [f"image:{navy}"]
-    assert sent["maroon"] == [f"image:{style_image}", f"image:{navy}"]
+    assert dict(built.colour_image_ids) == {"navy blue": (navy,)}
+    sent = {i.colour_key: [u.locator for u in unit_images(built, i)] for i in built.items}
+    # the version holds navy as a secondary: the style main leads (CP-D5)
+    assert sent["navy blue"] == [f"image:{style_image}", f"image:{navy}"]
+    assert sent["maroon"] == [f"image:{style_image}"]
 
 
 async def test_adapter_input_deleted_image_excluded(products_world: World, auth_db: Conn) -> None:

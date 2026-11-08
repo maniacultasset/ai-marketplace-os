@@ -220,3 +220,91 @@ async def test_products_create_role_claim_ignored(
     assert response.status_code == 403
     assert response.json()["error"]["type"] == "PERMISSION_DENIED"
     assert counts(auth_db) == (0, 0)
+
+
+# ---- SI8 T9 (AC10; CP-D9): brand and audience on create ----
+
+
+def _named(conn: Conn, world: World, name: str, brand_names: list[str] | None = None) -> None:
+    acme = world.tenant("acme")
+    conn.execute("UPDATE tenants SET name = %s WHERE id = %s", [name, acme])
+    if brand_names is not None:
+        conn.execute(
+            "INSERT INTO brand_profiles (tenant_id, brand_names, provenance) VALUES (%s, %s, '{}')",
+            [acme, brand_names],
+        )
+
+
+def _gender_of(conn: Conn, sku: str) -> tuple[Any, ...] | None:
+    return conn.execute(
+        "SELECT brand_name, gender, provenance ? 'brand_name', provenance ? 'gender' "
+        "FROM products WHERE sku = %s",
+        [sku],
+    ).fetchone()
+
+
+async def test_si8_create_with_a_profile_brand_and_gender(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    _named(auth_db, products_world, "Acme Store", ["Kuinn"])
+    body = site_body("SI8-C-1", brand_name="Kuinn", gender="women")
+    response = await api.post(
+        PRODUCTS, json=body, headers=bearer_for(products_world, "operator@acme.test")
+    )
+    assert response.status_code == 201, response.text
+    out = response.json()
+    assert (out["brand_name"], out["brand_name_inherited"], out["gender"]) == (
+        "Kuinn",
+        False,
+        "women",
+    )
+    assert out["variant_attributes"] == {}
+    assert _gender_of(auth_db, "SI8-C-1") == ("Kuinn", "women", True, True)
+
+
+async def test_si8_create_stores_the_tenant_names_spelling(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    _named(auth_db, products_world, "Acme Store")
+    body = site_body("SI8-C-2", brand_name="  acme STORE ")
+    response = await api.post(
+        PRODUCTS, json=body, headers=bearer_for(products_world, "operator@acme.test")
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["brand_name"] == "Acme Store"
+    assert _gender_of(auth_db, "SI8-C-2") == ("Acme Store", None, True, False)
+
+
+@pytest.mark.parametrize("brand", ["Nike", "Bharat", "Bharat Brand"])
+async def test_si8_create_with_a_brand_not_yours_is_422(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn, brand: str
+) -> None:
+    auth_db.execute(
+        "INSERT INTO brand_profiles (tenant_id, brand_names, provenance) VALUES (%s, %s, '{}')",
+        [products_world.tenant("bharat"), ["Bharat Brand"]],
+    )
+    body = site_body("SI8-C-3", brand_name=brand)
+    response = await api.post(
+        PRODUCTS, json=body, headers=bearer_for(products_world, "operator@acme.test")
+    )
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["type"] == "VALUE_NOT_ALLOWED"
+    assert error["details"][0]["loc"] == ["body", "brand_name"]
+    assert _gender_of(auth_db, "SI8-C-3") is None
+
+
+@pytest.mark.parametrize(
+    "over",
+    [{"gender": "kids"}, {"brand_name": ""}, {"brand_name": "x" * 101}, {"brand_name": "A\x00B"}],
+)
+async def test_si8_create_bad_brand_or_gender_is_422(
+    api: httpx.AsyncClient, products_world: World, over: dict[str, Any]
+) -> None:
+    response = await api.post(
+        PRODUCTS,
+        json=site_body("SI8-C-4", **over),
+        headers=bearer_for(products_world, "operator@acme.test"),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["type"] == "VALIDATION_FAILED"

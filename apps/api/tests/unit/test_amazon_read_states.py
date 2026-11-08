@@ -14,22 +14,40 @@ from .test_amazon_adapter import _five
 
 
 @pytest.mark.parametrize(
-    ("mode", "state", "status"),
+    ("mode", "state", "status", "not_buyable"),
     [
-        ("buyable", "live", "published"),
-        ("discoverable", "processing", "published"),
-        ("inactive", "inactive", "published"),
-        ("rejected", "rejected", "failed"),
+        ("buyable", "live", "published", False),
+        # SI9 B3 (CP-D6): a summary with an ASIN, no BUYABLE and no ERROR is on Amazon, not buyable
+        ("discoverable", "inactive", "published", True),
+        ("inactive", "inactive", "published", True),
+        ("no_asin", "inactive", "published", False),
+        ("no_summary", "processing", "published", False),
+        ("rejected", "rejected", "failed", False),
     ],
 )
-async def test_amazon_get_states(mode: str, state: str, status: str) -> None:
+async def test_amazon_get_states(mode: str, state: str, status: str, not_buyable: bool) -> None:
     app = build_fake()
     adapter = amazon_adapter(app)
     sent = _five()
     await adapter.create_listing(sent)
     app.state.fake.spapi_get[sent.seller_sku] = mode
     got = await adapter.get_listing(sent.seller_sku, listing_id=sent.listing_id)
-    assert (got.marketplace_state, got.status) == (state, status)
+    assert (got.marketplace_state, got.status, got.not_buyable) == (state, status, not_buyable)
+    if mode in ("discoverable", "inactive"):
+        assert got.external_id and got.external_id.startswith("B0")
+    if mode in ("no_asin", "no_summary"):
+        assert got.external_id is None
+
+
+async def test_amazon_discoverable_with_attribute_error_is_partial_not_unbuyable() -> None:
+    issue = {
+        "code": "90220",
+        "message": "Bad title.",
+        "severity": "ERROR",
+        "attributeNames": ["item_name"],
+    }
+    got = await _read([issue])
+    assert (got.marketplace_state, got.not_buyable) == ("partially_live", False)
 
 
 async def test_amazon_get_gone_raises_not_found() -> None:
@@ -49,10 +67,22 @@ async def test_fake_get_control_and_reset_prefix() -> None:
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://fake") as client:
         response = await client.post(
-            "/__control", json={"spapi_get": {"E2E-A": "buyable", "X": "bad"}}
+            "/__control",
+            json={
+                "spapi_get": {
+                    "E2E-A": "buyable",
+                    "E2E-B": "no_summary",
+                    "E2E-C": "no_asin",
+                    "X": "bad",
+                }
+            },
         )
         assert response.status_code == 200
-        assert app.state.fake.spapi_get == {"E2E-A": "buyable"}
+        assert app.state.fake.spapi_get == {
+            "E2E-A": "buyable",
+            "E2E-B": "no_summary",
+            "E2E-C": "no_asin",
+        }
         app.state.fake.spapi_items[("S", "E2E-A")] = {
             "productType": "x",
             "attributes": {},
@@ -281,3 +311,52 @@ async def test_status_sync_takes_every_read_error_from_a_real_read() -> None:
         ("listing", "77777"),
         ("listing", "90220"),
     ]
+
+
+# ---- SI8 fix round 1 (R1-1; CP-D4): a colour child's image slots on a read ----
+
+
+def _image_issue(name: str) -> dict[str, Any]:
+    return {"code": "90220", "message": "Bad image.", "severity": "ERROR", "attributeNames": [name]}
+
+
+async def _read_child(issues: list[Any]) -> tuple[Any, dict[str, int]]:
+    """The AC5 family (S, Z, R1, B1, R2) published to the fake; the Red child read back."""
+    from tests.adapters.amazon_support import SELLER, colour_family
+
+    app = build_fake()
+    adapter = amazon_adapter(app, rows=[_row()])
+    sent, at = colour_family()
+    await adapter.create_listing(sent)
+    (red,) = [
+        u
+        for u in sent.units()
+        if u.item_role == "child" and u.variant_attributes == {"size": "M", "color": "red"}
+    ]
+    app.state.fake.spapi_items[(SELLER, red.seller_sku)]["issues"] = issues
+    return await adapter.get_listing(red.seller_sku, listing_id=sent.listing_id), at
+
+
+async def test_amazon_read_child_image_issue_never_lands_on_the_wrong_image() -> None:
+    """Red sends main=R1, other_1=R2, other_2=Z, so `other_product_image_locator_1` is R2, not
+    images[1] (Z). A read has no version to rebuild the slots from: the issue fails `listing`,
+    and no image path of the child reads as succeeded (a retry of Z would never fix R2)."""
+    got, at = await _read_child([_image_issue("other_product_image_locator_1")])
+    images = {f.field: f.status for f in got.fields if f.field.startswith("images[")}
+    assert images == {}, images
+    assert [e.field for e in got.errors] == ["listing"]
+    assert at["Z"] == 1 and at["R2"] == 4  # the finding's layout: the old index said images[1]
+    assert got.status == "partially_published"
+
+
+async def test_amazon_read_child_text_issue_keeps_its_path() -> None:
+    got, _ = await _read_child([_image_issue("item_name")])
+    assert _field(got, "content.title").status == "failed"
+    assert [e.field for e in got.errors] == ["content.title"]
+
+
+async def test_amazon_read_standalone_image_issue_keeps_its_image_path() -> None:
+    """A standalone sends every image in version order, so slot k is images[k] (unchanged)."""
+    got = await _read([_image_issue("other_product_image_locator_1")], rows=[_row()])
+    assert _field(got, "images[1]").status == "failed"
+    assert [e.field for e in got.errors] == ["images[1]"]

@@ -98,6 +98,18 @@ Money = Annotated[
     AfterValidator(_money),
 ]
 StyleNumber = Annotated[NonBlankStr, Field(max_length=64), AfterValidator(_no_nul)]
+# SI8: the brand a product lists under (one of the tenant's own brand names) and its audience
+BrandName = Annotated[NonBlankStr, Field(max_length=100), AfterValidator(_no_nul)]
+Gender = Literal["women", "men", "unisex", "girls", "boys", "baby"]
+_BRAND_IN: Final = (
+    "SI8: the brand this product lists under, style or standalone level; one of your brand names "
+    "(the store name or a brand profile name; 422 VALUE_NOT_ALLOWED otherwise), stored in that "
+    "name's spelling. Absent: the brand default applies."
+)
+_GENDER_IN: Final = (
+    "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta "
+    "sets and T-shirts."
+)
 Measure = Annotated[float, Field(gt=0, le=500, allow_inf_nan=False)]
 
 
@@ -169,6 +181,8 @@ class ProductCreate(StrictModel):
         description="The product id minted by `POST /images/upload-url`; needs `image_uploads`.",
     )
     style_number: StyleNumber | None = None
+    brand_name: BrandName | None = Field(default=None, description=_BRAND_IN)
+    gender: Gender | None = Field(default=None, description=_GENDER_IN)
     mrp: Money | None = None
     selling_price: Money | None = None
     manufacturer: PartyIn | None = Field(
@@ -203,13 +217,16 @@ def _unique_keys(keys: list[str]) -> list[str]:
 
 
 class ProductPatch(StrictModel):
-    """A JSON merge patch: an absent field is unchanged; `null` clears `style_number`, `mrp`,
-    `selling_price`, `size_chart`, `manufacturer` (back to the inherited party) and an
-    attribute key. `sku` is immutable and not a field."""
+    """A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,
+    `brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,
+    `manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not
+    a field."""
 
     title: ProductTitle | None = None
     category: Slug | None = None
     style_number: StyleNumber | None = None
+    brand_name: BrandName | None = Field(default=None, description=_BRAND_IN)
+    gender: Gender | None = Field(default=None, description=_GENDER_IN)
     mrp: Money | None = None
     selling_price: Money | None = None
     manufacturer: PartyIn | None = None
@@ -244,6 +261,12 @@ class ProductPatch(StrictModel):
             if name in self.model_fields_set and getattr(self, name) is None:
                 raise PydanticCustomError("mkos_invalid", f"`{name}` cannot be null.")
         return self
+
+
+class RecategorizeIn(StrictModel):
+    """SI9: the new category of a product that already has listings (never a published one)."""
+
+    category: Slug
 
 
 class FibreOut(WireModel):
@@ -283,6 +306,17 @@ class PhotoFactOut(WireModel):
     confirmed_at: AwareDatetime | None = None
 
 
+class PhotoReadOut(WireModel):
+    """SI9: the newest photo read of the product (the generation that saved a version).
+    `read` with counts, `unchanged` (same photos as last time), `failed` (the photo call failed,
+    the listing was still saved) or `not_read` (no photo, or nothing left to read)."""
+
+    status: Literal["read", "unchanged", "failed", "not_read"]
+    at: AwareDatetime
+    written: int = Field(ge=0, le=16)
+    asked: int = Field(ge=0, le=16)
+
+
 class ProductOut(WireModel):
     id: UUID
     sku: Sku
@@ -295,6 +329,28 @@ class ProductOut(WireModel):
     created_at: AwareDatetime
     updated_at: AwareDatetime
     style_number: str | None = None
+    brand_name: str | None = Field(
+        default=None,
+        description=(
+            "SI8: on single reads the effective brand (own, style, else the brand default); "
+            "on lists the product's own value."
+        ),
+    )
+    brand_name_inherited: bool = Field(
+        default=False,
+        description=(
+            "SI8: true when neither the product nor its style holds a brand and the brand "
+            "default supplied it. Meaningful on single reads only (false on lists)."
+        ),
+    )
+    gender: Gender | None = Field(
+        default=None,
+        description="SI8: the audience; own or the style's on single reads, own on lists.",
+    )
+    variant_attributes: dict[str, str] = Field(
+        default_factory=dict,
+        description="SI8: a variant's axes (`color`, `size`); `{}` on styles and standalones.",
+    )
     mrp: str | None = Field(default=None, examples=["1299.00"])
     selling_price: str | None = Field(default=None, examples=["999.00"])
     currency: str | None = None
@@ -308,6 +364,9 @@ class ProductOut(WireModel):
     image_details: list[ProductImageOut] = Field(default_factory=list)
     colourways: list[ColourwayOut] = Field(default_factory=list)
     photo_facts: list[PhotoFactOut] = Field(default_factory=list)
+    photo_read: PhotoReadOut | None = Field(
+        default=None, description="The newest photo read; product detail only, null on lists."
+    )
     product_identifier: ProductIdentifierOut | None = Field(
         default=None, description="SI5: the barcode (always null on a style)."
     )

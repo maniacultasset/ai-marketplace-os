@@ -9,6 +9,11 @@ The task then goes `open -> answered -> applied`. The same answer again is 200 w
 row; any other answer to a closed task is 409 `INVALID_STATUS_TRANSITION`. Resuming the listing is
 not automatic: the seller regenerates (SI3 out of scope).
 
+SI9 `close_task` (`POST /tasks/{task_id}/close`, idempotent): the seller closes an account task
+(`marketplace_error_review`, `permission_decision`) as `done` or `dismissed`, with an optional
+note; the resolution is the task's answer (`open -> answered -> applied`) and `TaskOut.resolution`
+shows it. One `human_task.closed` audit row on the account (the note is never audited).
+
 Locks: the product row first, then the task (`FOR UPDATE`), the same order as a product PATCH
 (which locks the product, then cancels its live questions), so the two never deadlock.
 """
@@ -46,8 +51,19 @@ _FIELDS = (
 )  # fmt: skip
 
 
+CLOSABLE: Final = frozenset({"marketplace_error_review", "permission_decision"})
+
+
+def _resolution(row: Any) -> str | None:
+    answer = getattr(row, "answer", None)
+    if row.kind not in CLOSABLE or not isinstance(answer, dict):
+        return None
+    found = answer.get("resolution")
+    return found if found in ("done", "dismissed") else None
+
+
 def task_fields(row: Any) -> dict[str, Any]:
-    return {name: getattr(row, name) for name in _FIELDS}
+    return {**{name: getattr(row, name) for name in _FIELDS}, "resolution": _resolution(row)}
 
 
 async def list_tasks(
@@ -245,6 +261,58 @@ async def answer_task(
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
         row = await _answer(uow, principal, task_id, answer)
+        return 200, _json(task_fields(row))
+
+    _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
+    return stored
+
+
+async def _close(uow: Any, principal: Principal, task_id: uuid.UUID, answer: dict[str, Any]) -> Any:
+    """SI9 T16: `open -> answered -> applied` with the resolution as the answer. The same close
+    again is 200 with the current row; any other close of a closed task is 409."""
+    task = await uow.human_tasks.get_for_update(task_id)
+    if task is None:
+        raise NotFoundError("task_id")
+    if task.kind not in CLOSABLE:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "task_id")
+    if task.status != "open":
+        if task.status in ("answered", "applied") and task.answer == answer:
+            return task
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "human_tasks")
+    if (
+        await uow.human_tasks.answer_and_apply(task.id, answer=answer, user_id=principal.user_id)
+        != 1
+    ):
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "human_tasks")
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action="human_task.closed",
+        entity_type="marketplace_account",
+        entity_id=task.marketplace_account_id,
+        # the account audit keeps `status`/`settings` only: the resolution rides in `reason`
+        after=json.dumps({"status": "applied"}),
+        reason=f"{task.target_path} {answer['resolution']}",
+    )
+    return await uow.human_tasks.get_for_update(task.id)
+
+
+async def close_task(
+    principal: Principal, key: str, path: str, task_id: uuid.UUID, body: Any
+) -> dict[str, Any]:
+    """`POST /tasks/{task_id}/close` (SI9 T16): the route's idempotent transaction, stored under
+    the key. Tenant-scoped through `tenant_uow` (another tenant's task reads as missing)."""
+    from app.services.idempotency import idempotent
+
+    answer: dict[str, Any] = {"resolution": body.resolution}
+    if body.note is not None:
+        answer["note"] = body.note
+    payload = json.dumps(answer, sort_keys=True, ensure_ascii=False).encode()
+
+    async def handler(session: Any) -> tuple[int, dict[str, Any]]:
+        uow = repositories_on(session, principal.tenant_id)
+        row = await _close(uow, principal, task_id, answer)
         return 200, _json(task_fields(row))
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)

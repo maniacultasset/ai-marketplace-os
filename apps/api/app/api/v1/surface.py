@@ -636,6 +636,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               has_body=True, if_match=True, conflict_code=E.STALE_VERSION, etag=True,
               extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
               action=A.PRODUCT_IMPORT),
+    Operation("products_recategorize", "POST", "/products/{product_id}/recategorize", 200,
+              ProductOut, "products",
+              "Change the category of a product that has listings; its unpublished listings "
+              "take the new category and wait for a regenerate (409 when any listing was "
+              "published)", "SI9", path_id="product_id", has_body=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, etag=True,
+              extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
               "Import products from a CSV file", "S13", has_body=True, idempotency=True,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)}), action=A.PRODUCT_IMPORT),
@@ -786,6 +793,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
               extra_codes=MappingProxyType({422: (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY)}),
               action=A.PRODUCT_IMPORT),
+    Operation("tasks_close", "POST", "/tasks/{task_id}/close", 200, TaskOut, "tasks",
+              "Close an account task (marketplace_error_review, permission_decision) as done or "
+              "dismissed", "SI9", path_id="task_id", has_body=True, idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.MARKETPLACE_CONNECT),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),

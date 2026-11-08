@@ -1823,10 +1823,10 @@
   },
   {
    "id": "R03941",
-   "status": "gap",
+   "status": "covered",
    "owner": "backend-db",
-   "ref": "docs/architecture/DATABASE.md:411, 1167",
-   "note": "brand_name stored but nullable; §20 \"Yes\" not enforced by NOT NULL, rule or dictionary flag"
+   "ref": "docs/architecture/DATABASE.md:439, 1178",
+   "note": "SI8: brand required at Amazon create via the own, style, brand profile or tenant-name default (MISSING_ATTRIBUTE at facts.brand_name otherwise); the column stays nullable, the default supplies it"
   },
   {
    "id": "R03949",

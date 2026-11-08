@@ -14,7 +14,10 @@
    `validated|needs_review`, or the version already approved once (CP-D4) → 409
    `INVALID_STATUS_TRANSITION`; a multi-item batch and not `validated` → 409
    `BULK_APPROVE_REQUIRES_VALIDATED`; a blocking image finding → 422 `IMAGE_NON_COMPLIANT`
-   (S17b's gate: an unchecked image blocks, vision only warns); no passed `rules_engine` run
+   (S17b's gate: an unchecked image blocks, vision only warns); a blocking marketplace check on
+   the version (SI9 B4, `adapter_check`: mapping and the stored definition) → 422
+   `VALIDATION_FAILED` with its items, so a stale verdict never approves what the adapter would
+   refuse; no passed `rules_engine` run
    with the currently resolved pins → 409 `STALE_VERSION` (G9); the approver in the contributor
    chain, or not an active reviewer or owner (read `FOR SHARE`) → audit
    `listing.approve_denied`, item 403 `MAKER_CHECKER_VIOLATION`. Then the version's approval
@@ -52,6 +55,7 @@ from app.core.rbac import Principal
 from app.core.request_context import current_request_id
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
+from app.services.adapter_check import adapter_check
 from app.services.ai_credit import Refusal
 from app.services.budget import (
     CREDIT_MESSAGES,
@@ -101,12 +105,14 @@ _MESSAGES: Final[Mapping[ErrorCode, str]] = {
     ErrorCode.AI_CREDIT_EXHAUSTED: CREDIT_MESSAGES["credit_exhausted"],
     ErrorCode.AI_PROVIDER_KEY_INVALID: CREDIT_MESSAGES["key_invalid"],
     ErrorCode.IMAGE_NON_COMPLIANT: "An image blocks the approval.",
+    ErrorCode.VALIDATION_FAILED: "The marketplace check blocks the approval.",
     ErrorCode.INTERNAL_ERROR: "Internal error.",
 }
 _STATUS: Final[Mapping[ErrorCode, int]] = {
     ErrorCode.NOT_FOUND: 404,
     ErrorCode.MAKER_CHECKER_VIOLATION: 403,
     ErrorCode.IMAGE_NON_COMPLIANT: 422,
+    ErrorCode.VALIDATION_FAILED: 422,
     ErrorCode.BUDGET_EXCEEDED: 429,
     ErrorCode.AI_CREDIT_EXHAUSTED: 503,
     ErrorCode.AI_PROVIDER_KEY_INVALID: 503,
@@ -235,6 +241,23 @@ def _image_gate(ctx: _Ctx, listing: Any, version: Any) -> None:
         raise Refused(ErrorCode.IMAGE_NON_COMPLIANT, report)
 
 
+async def _adapter_gate(ctx: _Ctx, listing: Any) -> None:
+    """SI9 B4: the marketplace check on the current version (the one approved); a blocking item
+    refuses the item 422 `VALIDATION_FAILED` with the check's items."""
+    adapter = await adapter_check(ctx.uow, listing.id)
+    if adapter is None or not adapter.blocking:
+        return
+    report = ErrorReport(
+        status="failed",
+        error_code=ErrorCode.VALIDATION_FAILED,
+        retryable=False,
+        errors=list(adapter.errors),
+        request_id=current_request_id(),
+        listing_id=listing.id,
+    )
+    raise Refused(ErrorCode.VALIDATION_FAILED, report)
+
+
 async def _pins_digest(ctx: _Ctx, listing: Any, version: Any) -> bytes:
     """The passed run's `facts_digest` when a run with the current pins passed, else 409."""
     pins = await current_pins(ctx.uow, listing)
@@ -315,6 +338,7 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)  # CP-D4: ALREADY_APPROVED
     bulk_check(ctx.multi, listing.status)
     _image_gate(ctx, listing, version)
+    await _adapter_gate(ctx, listing)
     digest = await _pins_digest(ctx, listing, version)
     if not await _maker_checker(ctx, listing, version):
         return await _deny(ctx, listing.id, listing.status)

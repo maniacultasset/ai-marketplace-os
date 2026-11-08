@@ -184,6 +184,16 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
     is refused by the status guard (LST01), as before SI4; a regenerate is the way out until a
     migration adds the edge.
 
+- **Amazon `VALIDATION_PREVIEW` before approval is deferred (SI9 D10, LOW).** The pre-approval check is the local
+  mapping plus the stored Product Type Definition (`services/adapter_check.py`); Amazon's own preview call needs the
+  marketplace token in a new job path, shares the publish rate limit and needs fake-server support. Trigger: after
+  the first real create shows what the local map and definition check miss.
+- **The Amazon error map is doc-sourced (SI9 D4, LOW).** `error_map.amazon.json` holds codes 90220 and 18027 and the
+  five `Issue.categories` rows from Amazon's public SP-API model (`policy_ref.observed false`); 99010, 8560, 8105,
+  8541, 8542, 8572, 18028, 5665 and 5461 were left out (their help pages need a login) and reach the seller through
+  the category rows or as `MARKETPLACE_UNKNOWN_ERROR`. Replace with observed version 2 rows once the prod issue codes
+  are pulled (checklist §6 item 8).
+
 ## S16 follow-ups
 
 | Where | Gap | Next |

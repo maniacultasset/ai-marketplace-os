@@ -24,19 +24,21 @@ from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
     PhotoFactOut,
+    PhotoReadOut,
     ProductCreate,
     ProductIdentifierOut,
     ProductImageOut,
     ProductOut,
     ProductPage,
     ProductPatch,
+    RecategorizeIn,
     SizeChart,
     SizeChartRow,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
-from app.services import product_edit, products
+from app.services import product_edit, product_recategorize, products
 from app.services.images import CreateUpload
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
@@ -103,6 +105,10 @@ def _out(view: products.ProductView) -> ProductOut:
     fibres = view.fiber_composition
     return ProductOut.model_construct(
         style_number=view.style_number,
+        brand_name=view.brand_name,
+        brand_name_inherited=view.brand_name_inherited,
+        gender=view.gender,  # type: ignore[arg-type]  # the DB CHECK holds the six values
+        variant_attributes=view.variant_attributes,
         mrp=view.mrp,
         selling_price=view.selling_price,
         currency=view.currency,
@@ -128,6 +134,16 @@ def _out(view: products.ProductView) -> ProductOut:
         created_at=view.created_at,
         updated_at=view.updated_at,
         photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
+        photo_read=(
+            None
+            if view.photo_read is None
+            else PhotoReadOut(
+                status=view.photo_read.status,
+                at=view.photo_read.at,
+                written=view.photo_read.written,
+                asked=view.photo_read.asked,
+            )
+        ),
         product_identifier=(
             None
             if view.product_identifier is None
@@ -155,6 +171,8 @@ async def products_create(
             images=tuple(body.images),
             attributes=dict(body.attributes),
             style_number=body.style_number,
+            brand_name=body.brand_name,
+            gender=body.gender,
             mrp=None if body.mrp is None else Decimal(body.mrp),
             selling_price=None if body.selling_price is None else Decimal(body.selling_price),
             manufacturer=None if body.manufacturer is None else party_input(body.manufacturer),
@@ -246,6 +264,21 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
         else:
             out[name] = value
     return out
+
+
+@route(router, OPS["products_recategorize"])
+async def products_recategorize(
+    product_id: Annotated[UUID, PathParam()],
+    body: RecategorizeIn,
+    principal: CurrentPrincipal,
+    response: Response,
+) -> ProductOut:
+    """Change the category of a product that already has listings. Its unpublished listings take
+    the new category and are superseded until regenerated; a listing the marketplace has seen is
+    never touched (409 INVALID_STATUS_TRANSITION). The same category is 200, nothing written."""
+    view = await product_recategorize.recategorize_product(principal, product_id, body.category)
+    response.headers["ETag"] = view.etag
+    return _out(view)
 
 
 @route(router, OPS["products_update"])

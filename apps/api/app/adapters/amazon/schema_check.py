@@ -22,6 +22,8 @@ callable `prepare` is given (C6). The only module that imports `jsonschema_rs` (
   `MAX_SCHEMA_ERRORS` items per payload, then one summary. Output is sorted.
 - A schema that is not prepared, or did not compile, is one SCHEMA_INVALID on `listing`: the
   check fails closed.
+- SI8 T5: `value_max_length(schema, attribute)` is the stored definition's
+  `properties.<attribute>.items.properties.value.maxLength` (a positive int), else None.
 """
 
 from __future__ import annotations
@@ -30,7 +32,7 @@ import json
 import re
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Collection, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from typing import Any, Final
 from uuid import UUID
 
@@ -120,6 +122,7 @@ KEYWORDS: Final[Mapping[str, type[Any]]] = {
 class _Compiled:
     validator: Any
     titles: Mapping[str, str]
+    max_lengths: Mapping[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -146,6 +149,30 @@ def _titles(schema: Mapping[str, Any]) -> dict[str, str]:
     return titles
 
 
+def _max_lengths(schema: Mapping[str, Any]) -> dict[str, int]:
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return {}
+    out: dict[str, int] = {}
+    for name, spec in properties.items():
+        items = spec.get("items") if isinstance(spec, dict) else None
+        props = items.get("properties") if isinstance(items, dict) else None
+        value = props.get("value") if isinstance(props, dict) else None
+        limit = value.get("maxLength") if isinstance(value, dict) else None
+        if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
+            out[str(name)] = limit
+    return out
+
+
+def value_max_length(schema: ProductTypeSchema | None, attribute: str) -> int | None:
+    """The stored definition's `maxLength` for `attribute`'s value; None when there is no
+    schema, it is not prepared or did not compile, or it gives none."""
+    handle = None if schema is None else schema.validator
+    if not isinstance(handle, _Compiled):
+        return None
+    return handle.max_lengths.get(attribute)
+
+
 def compile_schema(schema: Mapping[str, Any]) -> _Compiled | _CompileFailed:
     # shallow: a deeply nested (untrusted) schema must reach the library, which refuses it
     body = {k: v for k, v in schema.items() if k != "$schema"}
@@ -160,7 +187,7 @@ def compile_schema(schema: Mapping[str, Any]) -> _Compiled | _CompileFailed:
         )
     except (ValueError, TypeError, RecursionError) as exc:  # SCHEMA_INVALID by every check
         return _CompileFailed(type(exc).__name__)
-    return _Compiled(validator, _titles(body))
+    return _Compiled(validator, _titles(body), _max_lengths(body))
 
 
 async def prepare(

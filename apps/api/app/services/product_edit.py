@@ -16,11 +16,20 @@ so a lost-response retry is safe (invariant 10). Every write goes through `FactW
 `provenance` (the allow-list; never a party's name or address, CP4).
 
 SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_by`/`_at` on the
-`ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. A seller write of a key
+`ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. SI9 B5: the reject of an
+unconfirmed photo value records the value in `products.photo_rejections[key]`, so the next photo
+read never writes or asks it again; a seller value or a confirmation for the key clears it. The
+same request re-validates the product's `validated|needs_review|approved` listings (skipping one
+another transaction holds), so a listing that still uses the value is flagged at once. A seller write of a key
 cancels any live fact question on it (`superseded`, CP-D11).
 
-Levels: a style-owned field (`style_number`, `size_chart`, an attribute outside the row's
-owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's own or inherited
+SI8: `brand_name` must be one of the tenant's own brand names (`products.checked_brand`, CP-D9;
+422 VALUE_NOT_ALLOWED otherwise) and is stored in that name's spelling; `null` clears it back to
+the brand default. `gender` is one of the six audiences (the schema's `Literal`).
+
+Levels: a style-owned field (`style_number`, `brand_name`, `gender`, `size_chart`, an attribute
+outside the row's owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's
+own or inherited
 price is at most its own or inherited MRP. A style money change is checked against each live
 child: a child that inherits the changed price and goes over its MRP is 422 `selling_price`,
 any other child breach is 422 `mrp`.
@@ -45,6 +54,8 @@ from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import tenant_uow
 from app.services import product_identifier
 from app.services.intake_values import PartyInput
+from app.services.listing_validate import validate_listing
+from app.services.photo_facts import V1_KEYS
 from app.services.product_facts import (
     SIZE_CHART_KEY,
     SIZE_CHART_LEVELS,
@@ -54,7 +65,13 @@ from app.services.product_facts import (
     seller_column_fact,
     size_chart_fact,
 )
-from app.services.products import ProductView, full_view, party_fields, product_etag
+from app.services.products import (
+    ProductView,
+    checked_brand,
+    full_view,
+    party_fields,
+    product_etag,
+)
 
 __all__ = ["ProductChange", "plan_patch", "update_product"]
 
@@ -63,6 +80,8 @@ PATCH_FIELDS: Final = frozenset(
         "title",
         "category",
         "style_number",
+        "brand_name",
+        "gender",
         "mrp",
         "selling_price",
         "manufacturer",
@@ -79,6 +98,9 @@ TYPED: Final[Mapping[str, tuple[str, str, frozenset[str]]]] = {
     "title": ("title", "title", frozenset({"style", "variant", "standalone"})),
     "category": ("category", "category", frozenset({"style", "variant", "standalone"})),
     "style_number": ("style_number", "style_number", frozenset({"style", "standalone"})),
+    # SI8: the brand override and the audience are style-owned (`ck_products_style_owned`)
+    "brand_name": ("brand_name", "brand_name", frozenset({"style", "standalone"})),
+    "gender": ("gender", "gender", frozenset({"style", "standalone"})),
     "mrp": ("mrp", "mrp", frozenset({"style", "variant", "standalone"})),
     "selling_price": (
         "selling_price",
@@ -119,6 +141,16 @@ def _level(row: Any) -> str:
     if row.variation_theme is not None:
         return "style"
     return STANDALONE
+
+
+def is_photo_value(stored: Any) -> bool:
+    """An unconfirmed photo-derived Fact (`ai`, `image:` evidence): what a reject marks."""
+    return (
+        isinstance(stored, Mapping)
+        and stored.get("source") == "ai"
+        and stored.get("confirmed_at") is None
+        and str(stored.get("evidence_ref") or "").startswith("image:")
+    )
 
 
 def _same_fact(stored: Any, new: Mapping[str, Any]) -> bool:
@@ -356,6 +388,11 @@ async def _update_product(
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "manufacturer")
             # decision 16: a product route links the matching party, never rewrites it
             party_id = await uow.parties.match_or_create(party_fields(manufacturer))
+        if patch.get("brand_name") is not None:
+            if level not in TYPED["brand_name"][2]:
+                raise InputError(ErrorCode.FACT_LEVEL_INVALID, "brand_name")
+            # SI8 CP-D9: one of the tenant's own brand names, stored in that name's spelling
+            patch = {**patch, "brand_name": await checked_brand(uow, patch["brand_name"])}
         change = plan_patch(
             row,
             style,
@@ -406,7 +443,16 @@ async def _update_product(
             await uow.facts.clear_typed(row.id, key)
         for key, fact in change.attrs_set.items():
             await uow.facts.set_attribute(row.id, key, fact)
+        rejected: list[str] = []
         for key in change.attrs_clear:
+            # SI9 B5: the reject of an unconfirmed photo value keeps a per-key marker
+            if (
+                key in V1_KEYS
+                and is_photo_value((row.attributes or {}).get(key))
+                and await uow.facts.reject_photo_attribute(row.id, key) is not None
+            ):
+                rejected.append(key)
+                continue
             await uow.facts.clear_attribute(row.id, key)
         stamp = fact_stamp(now)
         confirmed: dict[str, Any] = {}
@@ -451,4 +497,10 @@ async def _update_product(
             after=json.dumps(after, sort_keys=True),
         )
         await uow.session.refresh(row)
+        if rejected:
+            # SI9 B5 (D8): the listings that may still use the rejected value are re-checked in
+            # this request (after the refresh, so the check reads the facts as written), and the
+            # review screen shows "facts changed, regenerate" at once
+            for listing in await uow.listings.reviewable_for_product(row.id):
+                await validate_listing(uow, principal, listing.id, None, on_reject=True)
         return await full_view(uow, row)

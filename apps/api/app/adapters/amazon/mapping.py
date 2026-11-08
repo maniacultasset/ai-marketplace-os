@@ -20,7 +20,8 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   - a bad family (C10) -> VARIATION_INVALID (`variants`);
   - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED;
   - SI5: a sellable item with no barcode and no GTIN exemption -> IDENTIFIER_MISSING (a create
-    only; the update path passes `require_identifier=False`, CP-D14).
+    only; the update path and the preview of a live listing, `AdapterListing.live`, pass
+    `require_identifier=False`, CP-D14).
 - `family_payloads(listing)`: the parent first (content, theme, `parentage_level parent`), then
   each child (content, attributes with its variant values, images, the parent link).
 - `preview(listing)`: what a create would send, per item, and the mapping report.
@@ -44,6 +45,16 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   An image locator must be an https URL (`locator_ok`; `http://` only when the listing allows
   it, the `image:<id>` tag only in a preview). An enum VALUE_NOT_ALLOWED suggests the nearest
   allowed values.
+- SI8: every item (parent, child, standalone) carries `brand` (the effective brand) and
+  `model_number` / `part_number` (the style number, else the style's or standalone's seller SKU);
+  an apparel product type (`AUDIENCE_PRODUCT_TYPES`) also carries `target_gender`, `department`
+  and `age_range_description` from the one `gender` fact (`c.AUDIENCE`). These facts are
+  style-owned, so a problem is reported once per family at `facts.brand_name` / `facts.gender`
+  for every role (CP-D2): no brand, or no gender on apparel, is MISSING_ATTRIBUTE; a gender
+  outside the map is VALUE_NOT_ALLOWED (CP-D15). Every name and value is believed (DL-A).
+- SI8 T5: a child's `item_name` is the family title plus ` - <Colour>, <Size>` (the template's
+  mapped values for the family's axes only; `child_title`), cut to the stored definition's
+  `item_name.maxLength` (else 200) by shortening the title at a word boundary, never the suffix.
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -69,6 +80,7 @@ from app.adapters.amazon import schema_check
 from app.adapters.base import (
     FACT_SPEC_KEYS,
     PRICE_PATHS,
+    STYLE_FACT_KEYS,
     AdapterItem,
     AdapterListing,
     AdapterPreview,
@@ -80,6 +92,7 @@ from app.adapters.base import (
     locator_ok,
     nearest_values,
     submitted_fields,
+    unit_images,
 )
 from app.services.rules_engine.text import submitted_keywords
 
@@ -99,6 +112,9 @@ class MappedItem:
     errors: tuple[ErrorItem, ...] = ()
     paths: tuple[str, ...] = field(default=())
     """Every field path this item answers for: `submitted` + `skipped`, sorted."""
+    image_names: Mapping[str, str] = field(default_factory=dict)
+    """SI8 CP-D4: the Amazon image attribute -> the `images[<version index>]` path it carries,
+    for each image this item sent (a child's slots do not line up with the version index)."""
 
 
 def normalize(value: str) -> str:
@@ -412,6 +428,125 @@ def _fact_attributes(
     return out, sent, errors
 
 
+def _identity_attributes(
+    unit: AdapterItem,
+    product_type: str | None,
+    facts: SellerFacts | None,
+    style_sku: str,
+    marketplace_id: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str], list[ErrorItem]]:
+    """SI8 T3: (Amazon attribute -> entries, the `facts.*` paths sent, errors) for one item's
+    brand, audience and model/part number. Errors are at `facts.<key>` for every role (CP-D2)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    sent: list[str] = []
+    errors: list[ErrorItem] = []
+    brand = None if facts is None else facts.brand_name
+    if brand is None or _is_blank(brand):
+        errors.append(
+            error(
+                "facts.brand_name",
+                ErrorCode.MISSING_ATTRIBUTE,
+                "brand_name is required to list the item on Amazon.",
+            )
+        )
+    else:
+        out[c.BRAND_ATTRIBUTE] = [_entry(brand.strip(), marketplace_id)]
+        sent.append("facts.brand_name")
+    if product_type in c.AUDIENCE_PRODUCT_TYPES:
+        gender = None if facts is None else facts.gender
+        audience = None if gender is None else c.AUDIENCE.get(gender.strip().casefold())
+        if gender is None or _is_blank(gender):
+            errors.append(
+                error(
+                    "facts.gender",
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    "gender is required to list apparel on Amazon; set the product's gender "
+                    "(PATCH /api/v1/products/{product_id}).",
+                )
+            )
+        elif audience is None:
+            shown = gender[:64]
+            errors.append(
+                error(
+                    "facts.gender",
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    f"{shown} is not an audience Amazon apparel takes.",
+                    value=shown,
+                    suggestion="Allowed values include: "
+                    + ", ".join(nearest_values(shown, list(c.AUDIENCE))),
+                )
+            )
+        else:
+            for name in c.AUDIENCE_ATTRIBUTES:
+                out[name] = [_entry(audience[name], marketplace_id, text=name in c.TEXT_IDENTITY)]
+            sent.append("facts.gender")
+    number = None if facts is None else facts.style_number
+    model = number.strip() if number is not None and not _is_blank(number) else style_sku
+    for name in (c.MODEL_NUMBER, c.PART_NUMBER):
+        out[name] = [_entry(model, marketplace_id, text=False)]
+    sent.append("facts.style_number")  # CP-D12: the SKU fallback counts as sent
+    return out, sent, errors
+
+
+_TITLE_TRAIL: Final = ",-\u2013|/"  # comma, hyphen, en dash, bar, slash
+
+
+def child_title(title: str, colour: str | None, size: str | None, limit: int) -> str:
+    """SI8 T5: `title` + ` - <colour>, <size>` (the parts present, in that order), at most
+    `limit` code points. The title is cut (at the last whitespace when the cut lands inside a
+    word; trailing whitespace, `,-|/`, the en dash and combining marks stripped), never the suffix. No part
+    -> the title unchanged; no room for any title -> the title unchanged (the PTD check reports
+    it)."""
+    parts = [p for p in (colour, size) if p]
+    if not parts:
+        return title
+    suffix = " - " + ", ".join(parts)
+    if len(title) + len(suffix) <= limit:
+        return title + suffix
+    room = limit - len(suffix)
+    if room < 1:
+        return title
+    cut = title[:room]  # len(title) > room here
+    if not title[room].isspace() and not cut[-1].isspace():  # the cut lands inside a word
+        space = max((i for i, ch in enumerate(cut) if ch.isspace()), default=-1)
+        if space > 0:
+            cut = cut[:space]
+    cut = _trim(cut)
+    if not cut:
+        cut = _trim(title[:room]) or title[:room]
+    return cut + suffix
+
+
+def _trim(text: str) -> str:
+    while True:
+        before = text
+        text = text.rstrip().rstrip(_TITLE_TRAIL)
+        while text and unicodedata.combining(text[-1]):
+            text = text[:-1]
+        if text == before:
+            return text
+
+
+def _child_title(listing: AdapterListing, unit: AdapterItem, mapped: CategoryTemplate) -> str:
+    title = listing.listing.content.title
+    axes = _axes(listing) or frozenset()
+    shown: dict[str, str | None] = {}
+    for axis in ("color", "size"):
+        value = unit.variant_attributes.get(axis)
+        spec = mapped.specs.get(axis)
+        if axis not in axes or value is None or spec is None or spec.value_type != "enum":
+            shown[axis] = None
+            continue
+        shown[axis] = map_enum(spec, value)  # unmappable -> no part (already VALUE_NOT_ALLOWED)
+    limit = (
+        schema_check.value_max_length(
+            listing.product_type_schema, c.CONTENT_FIELDS["content.title"]
+        )
+        or c.ITEM_NAME_MAX
+    )
+    return child_title(title, shown["color"], shown["size"], limit)
+
+
 def _keywords(listing: CanonicalListing) -> str:
     """The Rules Engine's own joined keyword value, so what is sent is what was checked."""
     return submitted_keywords(listing.keywords)
@@ -512,6 +647,18 @@ def item_payload(
         attributes.setdefault(name, []).extend(entries)
     sent += fact_sent
     errors += fact_errors
+    if mapped is not None and template is not None:
+        style_sku = listing.seller_sku
+        ident, ident_sent, ident_errors = _identity_attributes(
+            unit, template.product_type, facts, style_sku, marketplace_id
+        )
+        attributes.update(ident)
+        sent += ident_sent
+        errors += ident_errors
+    if unit.item_role == "child" and mapped is not None:
+        attributes[c.CONTENT_FIELDS["content.title"]] = [
+            _entry(_child_title(listing, unit, mapped), marketplace_id)
+        ]
     if unit.item_role != "parent":
         offer, offer_errors = _offer(unit, facts, marketplace_id)
         errors += offer_errors
@@ -523,11 +670,13 @@ def item_payload(
     errors += barcode_errors
     skipped += list(fact_paths(unit))
 
+    image_names: dict[str, str] = {}
+    skipped += [f"images[{i}]" for i in range(len(body.images))]  # the ones it does not send
     if unit.item_role != "parent":
-        for index, image in enumerate(body.images):
-            path = f"images[{index}]"
-            locator = listing.image_refs.get(image.image_id)
-            if index >= c.MAX_IMAGES or not locator:
+        # SI8 T4: a colour child sends its own colourway's images, then the style-level ones
+        for position, one in enumerate(unit_images(listing, unit)):
+            path, locator = f"images[{one.index}]", one.locator
+            if position >= c.MAX_IMAGES or not locator:
                 skipped.append(path)
                 continue
             if not locator_ok(locator, preview=preview, allow_http=listing.allow_http_images):
@@ -540,11 +689,10 @@ def item_payload(
                 )
                 skipped.append(path)
                 continue
-            name = c.MAIN_IMAGE if index == 0 else c.OTHER_IMAGES[index - 1]
+            name = c.MAIN_IMAGE if position == 0 else c.OTHER_IMAGES[position - 1]
             attributes[name] = [{"media_location": locator, "marketplace_id": marketplace_id}]
+            image_names[name] = path
             sent.append(path)
-    else:
-        skipped += [f"images[{i}]" for i in range(len(body.images))]
 
     axes = _axes(listing)
     if unit.item_role == "parent" and axes is not None and axes in c.AMAZON_THEMES:
@@ -576,7 +724,21 @@ def item_payload(
         skipped=tuple(sorted(set(skipped) - set(sent))),
         errors=tuple(errors),
         paths=tuple(sorted(set(sent) | set(skipped))),
+        image_names=image_names,
     )
+
+
+IMAGE_NAMES: Final = frozenset({c.MAIN_IMAGE, *c.OTHER_IMAGES})
+
+
+def item_index(
+    index: Mapping[str, tuple[str, ...]], item: MappedItem
+) -> Mapping[str, tuple[str, ...]]:
+    """SI8 CP-D4: `index` for one item: the listing-wide image rows replaced by the image
+    attributes this item sent, each feeding its own `images[<version index>]` path."""
+    out = {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
+    out.update({name: (path,) for name, path in item.image_names.items()})
+    return dict(sorted(out.items()))
 
 
 def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, ...]]:
@@ -594,6 +756,12 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     # fails `listing` and a price retry patches the offer only
     index[c.OFFER_ATTRIBUTE] = set(PRICE_PATHS)
     index[c.MANUFACTURER_CONTACT] = {"facts.manufacturer"}
+    # SI8: the style identity facts
+    index[c.BRAND_ATTRIBUTE] = {"facts.brand_name"}
+    for name in c.AUDIENCE_ATTRIBUTES:
+        index[name] = {"facts.gender"}
+    index[c.MODEL_NUMBER] = {"facts.style_number"}
+    index[c.PART_NUMBER] = {"facts.style_number"}
     if template is not None:
         for key, spec in template.specs.items():
             if spec.marketplace_field:
@@ -664,8 +832,8 @@ def build(
     """Every item's mapping and every blocking error (`check`), in item order. `schema=False`
     leaves out the stored-definition check: the update path (PATCH) is never blocked by it.
     `preview=True` (only from `preview()`) lets the opaque `image:<id>` tags through.
-    `require_identifier=False` (only the update path, CP-D14) does not refuse an item with no
-    barcode and no exemption."""
+    `require_identifier=False` (the update path, CP-D14, and the preview of a live listing, whose
+    next send is an update) does not refuse an item with no barcode and no exemption."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -725,6 +893,13 @@ def build(
             if marker not in seen_values:
                 seen_values.add(marker)
                 errors.append(problem)
+    # SI8: a style fact the adapter already reported missing is not reported again by the schema
+    style_paths = {f"facts.{k}" for k in STYLE_FACT_KEYS}
+    seen |= {
+        e.field
+        for e in errors
+        if e.error_code is ErrorCode.MISSING_ATTRIBUTE and e.field in style_paths
+    }
     if schema:
         errors += _schema_errors(listing, items, template, seen)
     return items, errors
@@ -764,7 +939,8 @@ def _schema_errors(
         if schema is None:
             continue
         attributes = item.payload.get("attributes") or {}
-        for problem in schema_check.check_item(attributes, schema, index, reported=reported):
+        own = item_index(index, item)
+        for problem in schema_check.check_item(attributes, schema, own, reported=reported):
             marker = (problem.field, problem.error_code.value, problem.raw_code, problem.message)
             if marker not in markers:
                 markers.add(marker)
@@ -796,7 +972,9 @@ def report_for(errors: Sequence[ErrorItem], listing: AdapterListing) -> ErrorRep
 def preview(
     listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID
 ) -> AdapterPreview:
-    items, errors = build(listing, marketplace_id=marketplace_id, preview=True)
+    items, errors = build(
+        listing, marketplace_id=marketplace_id, preview=True, require_identifier=not listing.live
+    )
     template = listing.template
     product_type = template.product_type if template is not None and is_mapped(template) else None
     return AdapterPreview(

@@ -443,6 +443,7 @@ def test_bootstrap_image_migrate_leg_runs_twice_and_loads_nothing_new(repo_root:
         # whole-line patterns: each loader's own no-op counts, never another line's
         r"'^rules load: ok \(0 inserted, [0-9]+ unchanged, 0 toggled\)$'",
         r"'^templates load: ok \(0 inserted, [0-9]+ unchanged, 0 promoted\)$'",
+        "errors load: ok (",
     ):
         assert line in leg, line
     assert 'grep -Eq -- "$want_line"' in leg

@@ -41,6 +41,7 @@ from mkos_schemas.jobs import AgentBlockStatus, GenerationContext, GenerationRes
 from mkos_schemas.listing import CanonicalListing
 from pydantic import ValidationError
 
+from app.services.rejected_values import with_rejections
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
 
@@ -205,14 +206,30 @@ def _internal(listing: CanonicalListing) -> ErrorReport:
 
 
 def recheck(
-    listing: CanonicalListing, rules: LoadedRules, product: Mapping[str, object] | None
+    listing: CanonicalListing,
+    rules: LoadedRules,
+    product: Mapping[str, object] | None,
+    *,
+    rejections: Mapping[str, str],
 ) -> ErrorReport:
     """The backend's own Rules Engine run on the result. An engine refusal is a failed report
-    (fail closed), never a pass."""
+    (fail closed), never a pass. SI9 B5: `rejections` (the product's rejected photo values, no
+    default so no caller drops the check by omission) adds the "facts changed, regenerate"
+    items (`rejected_values`), ERRORs and WARNINGs."""
     try:
-        return evaluate(listing, rules.ruleset, template=rules.template, product=product)
+        report = evaluate(listing, rules.ruleset, template=rules.template, product=product)
     except Exception:  # the engine raises for an out-of-scope listing or an unsafe regex
         return _internal(listing)
+    return with_rejections(report, listing, rejections)
+
+
+def escalate(move: Move, adapter: ErrorReport | None) -> Move:
+    """SI9 B4 (CP-D1, CP-D3): a blocking marketplace check turns a clean or warning outcome into
+    `blocked/corrections_exhausted` (no `generating → blocked/validation_errors` edge exists;
+    a question then makes it `human_task_open`). An adapter warning changes nothing."""
+    if adapter is not None and adapter.blocking and move in (VALIDATED, NEEDS_REVIEW):
+        return BLOCKED
+    return move
 
 
 def map_outcome(

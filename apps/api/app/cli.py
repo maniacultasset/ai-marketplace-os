@@ -47,11 +47,13 @@ file ("bump version", exit 1, nothing written), and so does a new id on a stored
 turn it off with `"enabled": false`. Each write is audited with a NULL tenant. An invalid file
 exits 1, a missing one 2. Both loaders hold the migration advisory lock for their transaction.
 
-The deploy's migrate job (`APP_ROLE=migrate`) runs `db migrate`, `dictionary sync`, `rules load`
-and `templates load`, in that order and with no path: rules before templates, because generation
-is gated on a current template only, so a failed rules load leaves no category generatable.
+The deploy's migrate job (`APP_ROLE=migrate`) runs `db migrate`, `dictionary sync`, `rules load`,
+`templates load` and `errors load`, in that order and with no path: rules before templates, because
+generation is gated on a current template only, so a failed rules load leaves no category
+generatable.
 
-`errors load --file PATH` (S20 T4) loads a JSON list of `marketplace_error_map` rows as `migrator`,
+`errors load [--file PATH]` (S20 T4; SI9: default `app/db/seed_data/error_map.amazon.json`, the
+Amazon rows taken from Amazon's published SP-API material) loads a JSON list of `marketplace_error_map` rows as `migrator`,
 in one transaction: a stored key with the same content is a no-op, one that differs only in
 `enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
 written); each write is audited with a NULL tenant. An invalid file exits 1, a missing one 2.
@@ -60,7 +62,7 @@ written); each write is audited with a NULL tenant. An invalid file exits 1, a m
 no tenant row: the S9 platform rows (templates, NULL-tenant rules, the dictionary), the Amazon
 category mappings, and the error map (default: the local fake fixture). Like `seed` it runs only
 under `APP_ENV=local` (exit 3); staging and production use the migrate job's `rules load` and
-`templates load`, and `errors load` once observed error-map rows exist.
+`templates load` and `errors load`.
 
 `jobs dead-letter list [--tenant SLUG] [--limit 1..500]` and `jobs requeue <job_id> --staff-email E
 --reason R` are the staff dead-letter tools (S13 PLAN D2; DATABASE.md:312; BACKEND-ARCHITECTURE
@@ -206,6 +208,9 @@ RULES_SEED_PATH: Final = _rules_seed_path(Path(__file__).resolve())
 # The local fake error map (S20 D7): `FAKE-` codes only; seed and `platform load` read it. It ships
 # in the image (app/db/seed_data), so the image's local-only `seed` role can load it too.
 ERROR_MAP_FAKE_PATH: Final = Path(__file__).resolve().parent / "db/seed_data/error_map.fake.json"
+ERROR_MAP_AMAZON_PATH: Final = (
+    Path(__file__).resolve().parent / "db/seed_data/error_map.amazon.json"
+)
 # The platform templates the migrate job loads (`templates load` with no `--file`); generated from
 # `seed_ops.platform_template_loads()`, and it ships in the image too.
 PLATFORM_TEMPLATES_PATH: Final = (
@@ -1436,7 +1441,7 @@ def build_parser() -> argparse.ArgumentParser:
     errors = groups.add_parser("errors", help="the marketplace error map (migrator)")
     errors_commands = errors.add_subparsers(dest="command", required=True)
     errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
-    errors_load.add_argument("--file", type=Path, required=True)
+    errors_load.add_argument("--file", type=Path, default=None)
     images = groups.add_parser("images", help="image copies (SI1, staff)")
     images_commands = images.add_subparsers(dest="command", required=True)
     unpublish = images_commands.add_parser(
@@ -1485,6 +1490,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             return EXIT_NO_FILE
         return asyncio.run(run_platform_load(args.error_map))
     if args.group == "errors":
+        # resolved at call time, so the default is the module constant as it stands
+        args.file = args.file or ERROR_MAP_AMAZON_PATH
         if not args.file.is_file():
             sys.stderr.write("errors load: no such file\n")
             return EXIT_NO_FILE

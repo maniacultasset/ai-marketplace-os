@@ -21,7 +21,8 @@ the failure as a third element (e.g. `RATE_LIMITED` for a retryable field failur
 stays `MARKETPLACE_UNKNOWN_ERROR`); `raise_next` (errors raised by the next mutating calls, in
 order, before anything is applied); `raise_after_write` (one error raised after the next
 mutating call was applied: an ambiguous answer); `calls` (every mutating call: operation and
-{seller_sku: paths}); and `read_states` (what `get_listing` reads per SKU, or `gone`).
+{seller_sku: paths}); and `read_states` (what `get_listing` reads per SKU, or `gone`, or SI9's
+`not_buyable`: `inactive` with `ListingRead.not_buyable`).
 """
 
 from __future__ import annotations
@@ -57,7 +58,9 @@ from app.adapters.base import (
     fields_by_sku,
     submitted_fields,
 )
+from app.adapters.error_map import ListingRead
 
+NOT_BUYABLE: Final = "not_buyable"
 SOURCES: Final[Mapping[Marketplace, ErrorSource]] = {
     Marketplace.AMAZON: ErrorSource.AMAZON_ADAPTER,
     Marketplace.FLIPKART: ErrorSource.FLIPKART_ADAPTER,
@@ -274,14 +277,22 @@ class FakeAdapter(MarketplaceAdapter):
         if seller_sku not in self._store or forced == "gone":
             raise ListingNotFound(seller_sku)
         stored = self._store[seller_sku]
+        body = {
+            "listing_id": stored.listing_id,
+            "marketplace": self.marketplace,
+            "external_id": f"fake-{seller_sku}",
+            "status": stored.status,
+            "idempotency_key": f"get:{seller_sku}",
+            "fields": [FieldResult(field=f, status="succeeded") for f in sorted(stored.values)],
+        }
+        if forced == NOT_BUYABLE:
+            # SI9 B3: on the marketplace, not buyable yet (what the Amazon reader decides)
+            return ListingRead.model_validate(
+                {**body, "marketplace_state": MarketplaceState.INACTIVE, "not_buyable": True}
+            )
         return ListingResult.model_validate(
             {
-                "listing_id": stored.listing_id,
-                "marketplace": self.marketplace,
-                "external_id": f"fake-{seller_sku}",
-                "status": stored.status,
-                "idempotency_key": f"get:{seller_sku}",
-                "fields": [FieldResult(field=f, status="succeeded") for f in sorted(stored.values)],
+                **body,
                 "marketplace_state": stored.state if forced is None else MarketplaceState(forced),
             }
         )

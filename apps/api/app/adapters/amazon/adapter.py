@@ -20,8 +20,10 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
   to every path feeding it, so the full value is sent and each path is reported (C6).
 - `publish_listing` is `create_listing`: Listings Items PUT is create-or-replace (C11, DW1).
 - `get_listing` (S21 CP6): BUYABLE -> live; an item-level ERROR issue and no BUYABLE -> rejected;
-  attribute ERROR issues -> partially live (S20); neither BUYABLE nor DISCOVERABLE -> inactive; else
-  processing; 404 -> `ListingNotFound`.
+  attribute ERROR issues -> partially live (S20); a summary with an ASIN and none of those ->
+  inactive with `not_buyable` (SI9 B3: Amazon has the product page, the offer or stock is missing;
+  DISCOVERABLE-only and an empty status alike); a summary without an ASIN and no DISCOVERABLE ->
+  inactive; else (no summary yet) processing; 404 -> `ListingNotFound`.
 - Reply shape (audit JOBS-3): a 200 reply whose structure cannot be read (not an object, `status`
   not a string, `issues`/`summaries`/`summaries[].status` not lists, a summary not an object,
   `attributes` not an object) is `MarketplaceAmbiguous` after a write (read before any resend)
@@ -48,10 +50,12 @@ from app.adapters.amazon import constants as c
 from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
+    IMAGE_NAMES,
     MappedItem,
     build,
     error,
     is_mapped,
+    item_index,
     preview,
     reverse_index,
 )
@@ -393,7 +397,12 @@ class AmazonAdapter(MarketplaceAdapter):
             self._sink.put(one.unit.seller_sku, "put", response.raw)
             try:
                 outcome = self._outcome(
-                    response, one, index, one.paths, one.submitted, party_secrets(item)
+                    response,
+                    one,
+                    item_index(index, one),
+                    one.paths,
+                    one.submitted,
+                    party_secrets(item),
                 )
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
@@ -432,12 +441,13 @@ class AmazonAdapter(MarketplaceAdapter):
         applied = 0
         ordered = [m for m in mapped if m.unit.seller_sku in per_sku]
         for position, one in enumerate(ordered):
-            scope = _expand(per_sku[one.unit.seller_sku], index, one.paths)
+            own = item_index(index, one)  # SI8 CP-D4: this item's own image slots
+            scope = _expand(per_sku[one.unit.seller_sku], own, one.paths)
             blocked = {e.field: e for e in errors if e.field in scope}
             names = sorted(
                 {
                     name
-                    for name, feeds in index.items()
+                    for name, feeds in own.items()
                     if name in one.payload["attributes"]
                     and any(p in scope and p not in blocked for p in feeds)
                 }
@@ -460,7 +470,9 @@ class AmazonAdapter(MarketplaceAdapter):
                     raise type(exc)(exc.report, completed=()) from None
                 results.append(self._failed_item(one.unit, sent, exc.report))
                 results += [
-                    self._skipped_item(m.unit, _expand(per_sku[m.unit.seller_sku], index, m.paths))
+                    self._skipped_item(
+                        m.unit, _expand(per_sku[m.unit.seller_sku], item_index(index, m), m.paths)
+                    )
                     for m in ordered[position + 1 :]
                 ]
                 return self._result(
@@ -471,7 +483,7 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
             try:
-                outcome = self._outcome(response, one, index, scope, sent, party_secrets(item))
+                outcome = self._outcome(response, one, own, scope, sent, party_secrets(item))
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}
@@ -498,7 +510,7 @@ class AmazonAdapter(MarketplaceAdapter):
             summaries, summary, states, attributes, issues = _read_listing(response.json)
         except _UnreadableReplyError:
             raise _unavailable("Amazon returned a listing it could not read.") from None
-        index = reverse_index(None)
+        index = _read_index(attributes)
         paths = sorted({p for name in attributes for p in index.get(name, ()) if p != "variants"})
         open_errors = [
             i
@@ -510,18 +522,22 @@ class AmazonAdapter(MarketplaceAdapter):
         # an ERROR issue naming attributes is a partial item (S20 contract: a partial create reads
         # back partially live); one naming none refuses the item as a whole
         item_errors = [i for i in open_errors if not _names(i.get("attributeNames"))]
+        asin = summary.get("asin")
         status = "published"
+        not_buyable = False
         if c.BUYABLE in states:
             state = MarketplaceState.LIVE
         elif item_errors:
             status, state = "failed", MarketplaceState.REJECTED
         elif open_errors:
             status, state = "partially_published", MarketplaceState.PARTIALLY_LIVE
+        elif asin:
+            # SI9 B3: the product page exists, the offer or stock does not
+            state, not_buyable = MarketplaceState.INACTIVE, True
         elif summaries and c.DISCOVERABLE not in states:
             state = MarketplaceState.INACTIVE
         else:
             state = MarketplaceState.PROCESSING
-        asin = summary.get("asin")
         read_fields, read_errors = self._read_fields(paths, issues, index)
         return ListingRead(
             listing_id=listing_id or NO_LISTING_ID,
@@ -533,6 +549,7 @@ class AmazonAdapter(MarketplaceAdapter):
             errors=read_errors,
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
+            not_buyable=not_buyable,
         )
 
     def _read_fields(
@@ -592,6 +609,42 @@ def _unavailable(message: str) -> MarketplaceUnavailable:
             None,
         )
     )
+
+
+def _is_child(attributes: Mapping[str, Any]) -> bool:
+    """The read item is a variation child: its `parentage_level` says `child`, or it names a
+    parent SKU (a child always sends both; mapping `family_payloads`)."""
+    if c.RELATIONSHIP_ATTRIBUTE in attributes:
+        return True
+    levels = attributes.get(c.PARENTAGE_ATTRIBUTE)
+    return isinstance(levels, list) and any(
+        isinstance(one, dict) and str(one.get("value", "")).casefold() == "child" for one in levels
+    )
+
+
+def _theme_has_colour(attributes: Mapping[str, Any]) -> bool:
+    """True unless the read's `variation_theme` names a theme with no COLOR axis."""
+    themes = attributes.get(c.THEME_ATTRIBUTE)
+    names = [
+        str(one.get("name", "")).upper()
+        for one in (themes if isinstance(themes, list) else [])
+        if isinstance(one, dict)
+    ]
+    return not names or any("COLOR" in name.split("/") for name in names)
+
+
+def _read_index(attributes: Mapping[str, Any]) -> Mapping[str, tuple[str, ...]]:
+    """The read-back index. `reverse_index(None)` reads image slot k as `images[k]`, which holds
+    for a standalone (every image, version order). A colour child's slots carry its own
+    colourway's images first (SI8 T4, CP-D4), and a read has no version to rebuild them from, so
+    a child's read drops the image rows: an image issue fails `listing` and no image path reads
+    as succeeded, never a wrong `images[k]` (SI8 fix round 1, R1-1). A child whose theme has no
+    COLOR axis (e.g. `SIZE`) sends every image in version order, so it keeps the image rows; a
+    child with no readable theme drops them."""
+    index = reverse_index(None)
+    if not _is_child(attributes) or not _theme_has_colour(attributes):
+        return index
+    return {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
 
 
 def _read_listing(

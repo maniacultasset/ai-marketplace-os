@@ -123,6 +123,7 @@ name = app.services.photo_facts is pure
 type = forbidden
 source_modules =
     app.services.photo_facts
+    app.services.rejected_values
 forbidden_modules =
     app.api
     app.db

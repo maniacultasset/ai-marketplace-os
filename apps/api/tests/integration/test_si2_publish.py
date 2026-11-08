@@ -3,7 +3,6 @@ through `AmazonAdapter` and the SP-API client against the in-process fake market
 
 from __future__ import annotations
 
-import json
 import uuid
 from decimal import Decimal
 from typing import Any
@@ -13,8 +12,8 @@ import pytest
 
 from .conftest import LOCAL_HOSTS
 from .failure_support import RETRYABLE_CODE, AmzWorld, amz
-from .publish_support import approved, post_publish, publish_one, retry, run_job
-from .review_support import OPERATOR
+from .publish_support import approved, publish_one, retry, run_job
+from .review_support import OPERATOR, REVIEWER, Made, generated
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["amz"]
@@ -75,33 +74,50 @@ async def test_offer_and_facts_reach_amazon(api: httpx.AsyncClient, amz: AmzWorl
     assert {"facts.mrp", "facts.selling_price", "facts.manufacturer"} <= fields
 
 
-async def test_missing_selling_price_never_sent(api: httpx.AsyncClient, amz: AmzWorld) -> None:
-    sku = await _product(amz, mrp=Decimal("1499.00"))  # SI1 does not require a price
-    made = await approved(amz.pub, sku=sku)
-    item = await publish_one(api, amz.pub, made)
-    await _run(item["job_id"])
-    assert amz.writes() == 0
-    job = amz.pub.job(item["job_id"])
-    assert job["status"] != "succeeded"
-    text = json.dumps(job.get("error_report_json") or job.get("error_json") or {}, default=str)
+def _schema_issues(amz: AmzWorld, listing_id: uuid.UUID) -> set[tuple[str, str]]:
     rows = amz.pub.rows(
-        "SELECT error_json FROM publish_field_results WHERE listing_id = %s", [made.listing_id]
+        "SELECT field_path, error_code FROM listing_issues WHERE listing_id = %s "
+        "AND source = 'schema'",
+        [listing_id],
     )
-    text += json.dumps([r[0] for r in rows], default=str)
-    assert "facts.selling_price" in text and "MISSING_ATTRIBUTE" in text
+    return {(field, code) for field, code in rows}
 
 
-async def test_missing_mrp_refused_by_si1_at_the_request(
-    api: httpx.AsyncClient, amz: AmzWorld
-) -> None:
+async def _refused_approve(amz: AmzWorld, made: Made) -> int:
+    from app.repositories.uow import tenant_uow
+    from app.services.review import ReviewItem, approve_batch
+
+    principal = amz.world.principal(REVIEWER)
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        outcome = await approve_batch(
+            uow,
+            principal,
+            [ReviewItem(made.listing_id, made.version_id, "approve")],
+            http_key=str(uuid.uuid4()),
+        )
+    return outcome.items[0].http_status
+
+
+async def test_missing_selling_price_never_sent(api: httpx.AsyncClient, amz: AmzWorld) -> None:
+    """SI9 B4: the marketplace check before approval sees the missing offer price, so the
+    listing is blocked at generation, never approved, and nothing reaches Amazon."""
+    sku = await _product(amz, mrp=Decimal("1499.00"))  # SI1 does not require a price
+    made = await generated(amz.world, sku=sku)
+    assert amz.pub.listing(made.listing_id)["status"] == "blocked"
+    assert ("facts.selling_price", "MISSING_ATTRIBUTE") in _schema_issues(amz, made.listing_id)
+    assert await _refused_approve(amz, made) == 409
+    assert amz.writes() == 0
+
+
+async def test_missing_mrp_blocked_before_approval(api: httpx.AsyncClient, amz: AmzWorld) -> None:
+    """SI9 B4: a unit without MRP is blocked by the marketplace check at generation (the SI1 D8
+    refusal at the publish request stays, `test_publish_mrp_required.py`); the preview shows
+    the same item."""
     sku = await _product(amz, selling_price=Decimal("999.00"))
-    made = await approved(amz.pub, sku=sku)
-    response = await post_publish(api, amz.pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
-    (refused,) = response.json()["items"]
-    assert refused["http_status"] == 409
-    (error,) = refused["error"]["errors"]
-    # SI1 D8 as built reports at `facts.mrp` (the plan said `product.commercial.mrp`)
-    assert (error["error_code"], error["field"]) == ("CRITICAL_FACT_MISSING", "facts.mrp")
+    made = await generated(amz.world, sku=sku)
+    assert amz.pub.listing(made.listing_id)["status"] == "blocked"
+    assert ("facts.mrp", "MISSING_ATTRIBUTE") in _schema_issues(amz, made.listing_id)
+    assert await _refused_approve(amz, made) == 409
     assert amz.writes() == 0
     preview = await api.get(
         f"/api/v1/listings/{made.listing_id}/preview", headers=amz.world.headers(OPERATOR)

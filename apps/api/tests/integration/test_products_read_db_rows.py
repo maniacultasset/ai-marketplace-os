@@ -14,7 +14,7 @@ import pytest
 
 from .auth_support import World
 from .conftest import LOCAL_HOSTS
-from .products_support import PRODUCTS, Conn, bearer_for
+from .products_support import PRODUCTS, Conn, as_listed, bearer_for
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
@@ -81,5 +81,5 @@ async def test_one_db_valid_row_does_not_break_the_tenant_list(
 
     one = await api.get(f"{PRODUCTS}/{product_id}", headers=headers)
     assert one.status_code == 200, one.text
-    assert one.json() == row
+    assert as_listed(one.json()) == row  # SI8: lists show the own brand (CP-D8)
     assert (row["sku"], row["title"], row["attributes"]) == (sku, title, expected)

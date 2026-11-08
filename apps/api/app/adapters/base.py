@@ -26,6 +26,10 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
   `nearest_values` are the pure helpers both adapters share. `party_secrets(listing)` lists the
   manufacturer strings an issue text must never carry, and `issue_text` replaces any issue on a
   manufacturer attribute with a fixed text (DPDP, `db/models/facts.py:88`).
+- SI8: `SellerFacts` also carry the style-owned identity facts (`brand_name`, `gender`,
+  `style_number`; `STYLE_FACT_KEYS`), reported at `facts.<key>` for every role. `unit_images`
+  is the one rule for which version images an item sends: a colour child sends its own
+  colourway's images (main first), then the style-level images, never another colourway's.
 """
 
 from __future__ import annotations
@@ -45,7 +49,7 @@ from typing import Any, Final, Literal, Protocol, get_args
 from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass
+from mkos_schemas.enums import ErrorSource, ImageSlot, Marketplace, RetryClass
 from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import CategoryTemplate
 from mkos_schemas.listing import CanonicalListing
@@ -62,6 +66,9 @@ DIGEST_BYTES: Final = 32
 _EMPTY: Final[Mapping[Any, Any]] = MappingProxyType({})
 FACT_SPEC_KEYS: Final = ("country_of_origin", "fiber_composition", "manufacturer")
 """The seller facts an adapter maps through the template spec of the same canonical key."""
+STYLE_FACT_KEYS: Final = ("brand_name", "gender", "style_number")
+"""SI8: the style-owned identity facts every item answers for at `facts.<key>` (a child's are
+always its style's, `ck_products_style_owned`)."""
 PRICE_PATHS: Final = ("facts.mrp", "facts.selling_price")
 _CENT: Final = Decimal("0.01")
 _HUNDRED: Final = Decimal(100)
@@ -83,6 +90,12 @@ class SellerFacts:
     manufacturer_address: str | None = field(default=None, repr=False)
     fiber_composition_text: str | None = None
     fiber_composition_parts: object | None = None
+    brand_name: str | None = None
+    """SI8: the effective brand (own, style, brand profile, tenant name)."""
+    gender: str | None = None
+    """SI8: the audience (`products.gender`, style-owned)."""
+    style_number: str | None = None
+    """SI8: the style number (style-owned)."""
     # SI5 B1: the item's barcode (`products.identifier_*`), or the seller's GTIN exemption
     identifier_type: str | None = None
     identifier_value: str | None = None
@@ -174,9 +187,9 @@ class AdapterListing:
     template: AdapterTemplate | None = None
     attempt: int = 1
     image_refs: Mapping[UUID, str] = field(default_factory=lambda: _EMPTY)
-    colour_image_refs: Mapping[str, tuple[str, ...]] = field(default_factory=lambda: _EMPTY)
-    """colour_key -> the image locators of that colourway (S22 C1), in slot order; a family
-    whose colourways carry images fans them out to each child of the colour."""
+    colour_image_ids: Mapping[str, tuple[UUID, ...]] = field(default_factory=lambda: _EMPTY)
+    """colour_key -> the ids of that colourway's images found in the version (S22 C1; SI8
+    CP-D6); `unit_images` sends each child its own colour's images plus the style-level ones."""
     product_type_schema: ProductTypeSchema | None = None
     """DW2: the stored Amazon definition to check each item against; None = no check (AC10).
     SI2: the `LISTING` definition, for sellable items (standalone, child)."""
@@ -186,6 +199,10 @@ class AdapterListing:
     """SI2: the `LISTING_PRODUCT_ONLY` definition, for a family's parent; None = no check."""
     allow_http_images: bool = False
     """SI2: let an `http://` image locator through (APP_ENV=local only; the caller sets it)."""
+    live: bool = False
+    """SI9 B4 with SI5 CP-D14: the listing has a published version, so its next full send is an
+    update; a preview or check of it does not refuse an item with no barcode (an update never
+    does), so the pre-approval check agrees with what publish will send."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt
@@ -197,8 +214,8 @@ class AdapterListing:
         object.__setattr__(self, "image_refs", MappingProxyType(dict(self.image_refs)))
         object.__setattr__(
             self,
-            "colour_image_refs",
-            MappingProxyType({k: tuple(v) for k, v in self.colour_image_refs.items()}),
+            "colour_image_ids",
+            MappingProxyType({k: tuple(v) for k, v in self.colour_image_ids.items()}),
         )
         object.__setattr__(self, "unit_facts", MappingProxyType(dict(self.unit_facts)))
         _check_items(self.seller_sku, self.items)
@@ -473,10 +490,61 @@ def nearest_values(value: str, allowed: Sequence[str], n: int = 5) -> list[str]:
     return list(allowed)[:n]
 
 
+@dataclass(frozen=True)
+class UnitImage:
+    """One image an item sends: its position in the version's `images` (the `images[<i>]` path)
+    and its locator (None when the image has none)."""
+
+    index: int
+    locator: str | None
+
+
+def unit_images(listing: AdapterListing, unit: AdapterItem) -> tuple[UnitImage, ...]:
+    """The version images one item sends, in send order (SI8 T1; pure, no cut: each adapter
+    cuts at its own maximum).
+
+    - Not a child, or a child with no colourway key: every version image, in order.
+    - A colour child: `own` = its colourway's images (`colour_image_ids`) in version order with
+      the `main` slot first; `style` = the images in no colourway at all.
+      - `own` empty: `style`, the style main included;
+      - `own` with a main: `own`, then `style` without its `main` images;
+      - `own` without a main (CP-D5): the style `main` images, then `own`, then the rest.
+    - Never an image of another colourway; each image at most once.
+    """
+    images = listing.listing.images
+    refs = listing.image_refs
+    if unit.item_role != "child" or unit.colour_key is None:
+        return tuple(UnitImage(i, refs.get(img.image_id)) for i, img in enumerate(images))
+    own_ids = set(listing.colour_image_ids.get(unit.colour_key, ()))
+    coloured = {i for ids in listing.colour_image_ids.values() for i in ids}
+    own = sorted(
+        (i for i, img in enumerate(images) if img.image_id in own_ids),
+        key=lambda i: images[i].slot is not ImageSlot.MAIN,
+    )
+    style = [i for i, img in enumerate(images) if img.image_id not in coloured]
+    style_main = [i for i in style if images[i].slot is ImageSlot.MAIN]
+    style_rest = [i for i in style if images[i].slot is not ImageSlot.MAIN]
+    if not own:
+        order = style
+    elif images[own[0]].slot is ImageSlot.MAIN:
+        order = own + style_rest
+    else:
+        order = style_main + own + style_rest
+    seen: set[UUID] = set()
+    out: list[UnitImage] = []
+    for i in order:
+        image_id = images[i].image_id
+        if image_id in seen:
+            continue
+        seen.add(image_id)
+        out.append(UnitImage(i, refs.get(image_id)))
+    return tuple(out)
+
+
 def fact_paths(unit: AdapterItem) -> tuple[str, ...]:
-    """The `facts.*` paths one item answers for: the compliance facts for every item, the
-    price paths for a sellable one (standalone, child)."""
-    paths = {f"facts.{k}" for k in FACT_SPEC_KEYS}
+    """The `facts.*` paths one item answers for: the compliance and style identity facts for
+    every item, the price paths for a sellable one (standalone, child)."""
+    paths = {f"facts.{k}" for k in (*FACT_SPEC_KEYS, *STYLE_FACT_KEYS)}
     if unit.item_role != "parent":
         paths |= set(PRICE_PATHS)
     return tuple(sorted(paths))

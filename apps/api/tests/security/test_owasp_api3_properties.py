@@ -65,6 +65,8 @@ BUSINESS_OPS = frozenset(
         "products_get",
         "products_list",
         "products_update",
+        # SI9: recategorize answers the same `ProductOut`
+        "products_recategorize",
     }
 )
 TOKEN_KEYS = frozenset({"access_token", "refresh_token"})

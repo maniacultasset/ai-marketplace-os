@@ -168,9 +168,12 @@ SELLER_PRICED: dict[str, Any] = {
 def seller_product(conn: Conn, tenant_id: UUID, kind: str = "standalone", **columns: Any) -> UUID:
     """SI2: a product the adapters can publish: priced, with a country, the seller's colour and
     fabric (standalone) and the tenant's brand-default manufacturer; since SI5 a sellable one
-    (not a style) has an EAN. Columns override."""
+    (not a style) has an EAN. SI8: a style or standalone also gets `gender` women (a child never
+    does: `ck_products_style_owned`); the brand resolves to the tenant name. Columns override."""
     ensure_brand_manufacturer(conn, tenant_id)
     defaults: dict[str, Any] = dict(SELLER_PRICED)
+    if kind != "child":
+        defaults["gender"] = "women"
     if kind != "style":
         defaults.update(barcoded())
     if kind == "standalone":

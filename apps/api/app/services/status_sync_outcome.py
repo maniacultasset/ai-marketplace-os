@@ -7,7 +7,7 @@ no longer submitted (a later publish owns it), else applies `sync_decision`: the
 columns, and either an event (`sync` only when a state changed, so the daily reconciliation stays
 off the last-activity index) or a status move, and the open submission's settlement, all in one
 transaction. `count_failed_poll` is the terminal hook's part: a dead-lettered sync job still
-counts its poll and reschedules (or exhausts).
+counts its poll and reschedules (or exhausts; SI9: a not-buyable listing never exhausts).
 """
 
 from __future__ import annotations
@@ -26,7 +26,14 @@ from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.services.issues import adapter_source, dedupe_key, sync_issues
-from app.services.status_sync import DAILY, ItemRead, SyncDecision, next_slot, sync_decision
+from app.services.status_sync import (
+    DAILY,
+    MAX_POLLS,
+    ItemRead,
+    SyncDecision,
+    next_slot,
+    sync_decision,
+)
 from app.workers.registry import Outcome
 
 log = get_logger(__name__)
@@ -182,11 +189,13 @@ async def apply_sync(
             values["live_version_id"] = version
             values["live_confirmed_at"] = DbNow()
         url = row.live_url
-        if state == "live" and url is None:  # the adapter builds it (DATABASE.md:757)
+        # SI9 B3: a not-buyable read has a product page too, so it gets its url and id
+        on_marketplace = state == "live" or (read.not_buyable and state == "inactive")
+        if on_marketplace and url is None:  # the adapter builds it (DATABASE.md:757)
             url = live_url(listing.marketplace, external)
             if url is not None:
                 values["live_url"] = url
-        if row.item_role in ("standalone", "parent") and state == "live":
+        if row.item_role in ("standalone", "parent") and on_marketplace:
             root_url, root_external = url, external
         await uow.listing_items.write_state(row.id, job_id=job_id, **values)
     merged, item_ids, scope = _merged_reads(listing, reads, rows)
@@ -209,6 +218,12 @@ async def apply_sync(
             columns["external_id"] = root_external
         if listing.live_confirmed_at is None or listing.live_version_id != version:
             columns["live_confirmed_at"] = DbNow()
+    elif decision.not_buyable:
+        # CP-D7: the url and the ASIN only; live_version_id / live_confirmed_at wait for live
+        if root_url is not None and listing.live_url is None:
+            columns["live_url"] = root_url
+        if root_external is not None and listing.external_id is None:
+            columns["external_id"] = root_external
     if decision.listing_to is not None and decision.event is not None:
         columns["next_sync_at"] = None
         await uow.listings.move(
@@ -245,6 +260,17 @@ async def count_failed_poll(session: Any, job: JobRun, outcome: Outcome | None) 
         return
     if listing.marketplace_state in ("live", "partially_live"):
         await uow.listings.set_columns(listing.id, next_sync_at=DbNow(DAILY))
+        return
+    if listing.marketplace_state == "inactive":
+        # SI9 B3 (CP-D9): published + inactive is the not-buyable state: count up to the 9th
+        # poll, then daily; never exhausted
+        if listing.sync_poll_count < MAX_POLLS:
+            count = listing.sync_poll_count + 1
+            await uow.listings.set_columns(
+                listing.id, sync_poll_count=count, next_sync_at=DbNow(next_slot(count) or DAILY)
+            )
+        else:
+            await uow.listings.set_columns(listing.id, next_sync_at=DbNow(DAILY))
         return
     count = listing.sync_poll_count + 1
     gap = next_slot(count)

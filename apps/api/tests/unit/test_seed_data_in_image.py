@@ -5,14 +5,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[4]
 
 
-def test_error_map_fake_ships_in_the_image() -> None:
-    from app.cli import ERROR_MAP_FAKE_PATH
+@pytest.mark.parametrize("name", ["ERROR_MAP_FAKE_PATH", "ERROR_MAP_AMAZON_PATH"])
+def test_error_map_ships_in_the_image(name: str) -> None:
+    from app import cli
 
-    assert ERROR_MAP_FAKE_PATH.is_file()
-    relative = ERROR_MAP_FAKE_PATH.resolve().relative_to(REPO).as_posix()
+    path: Path = getattr(cli, name)
+    assert path.is_file()
+    relative = path.resolve().relative_to(REPO).as_posix()
     assert relative.startswith("apps/api/app/"), relative
     ignored = [
         line.strip().rstrip("/")

@@ -176,6 +176,19 @@ def test_fact_paths_by_role() -> None:
     assert list(alone) == sorted(alone)
 
 
+def test_fact_paths_cover_style_identity_for_every_role() -> None:
+    """SI8 T1 (CP-D2): brand, gender and style number are style-owned and reported at
+    `facts.<key>` for every role, a child included."""
+    pid = uuid.uuid4()
+    style = {"facts.brand_name", "facts.gender", "facts.style_number"}
+    for unit in (
+        AdapterItem(pid, "S", "parent"),
+        AdapterItem(pid, "S-1", "child", {"size": "S"}),
+        AdapterItem(pid, "S", "standalone"),
+    ):
+        assert style <= set(fact_paths(unit))
+
+
 def test_unit_facts_read_only_and_repr_has_no_address() -> None:
     body = sample_listing()
     facts = SellerFacts(
