@@ -128,7 +128,7 @@ def sync_decision(
         agg = "processing" if agg in ("removed", "not_submitted") else agg
         if agg in ("live", "partially_live"):
             return SyncDecision(items, agg, poll_count=poll_count, next_in=DAILY, stamp_live=True)
-        count = poll_count + 1
+        count = min(poll_count + 1, MAX_POLLS)
         return SyncDecision(items, agg, counted=True, poll_count=count, next_in=next_slot(count))
     if agg in ("live", "partially_live"):
         return SyncDecision(
@@ -165,7 +165,8 @@ def sync_decision(
         )
     # still waiting (processing / pending_review / never seen): a counted poll
     agg = agg if agg in WAITING else "processing"
-    count = poll_count + 1
+    # clamped: a not-buyable or live listing may already sit at 9 (the 0..9 CHECK)
+    count = min(poll_count + 1, MAX_POLLS)
     if count >= MAX_POLLS:
         return SyncDecision(
             items,

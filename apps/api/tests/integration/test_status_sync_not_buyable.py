@@ -177,3 +177,18 @@ async def test_refresh_status_and_external_id_on_get(api: httpx.AsyncClient, pub
     assert (body["status"], body["marketplace_state"]) == ("published", "inactive")
     assert body["external_id"] == pub.listing(made.listing_id)["external_id"]
     assert body["live_url"].startswith("https://")
+
+
+async def test_not_buyable_at_nine_then_processing_blocks(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    made = await _not_buyable(api, pub)
+    pub.conn.execute("UPDATE listings SET sync_poll_count = 9 WHERE id = %s", [made.listing_id])
+    pub.fake.read_states[_sku(pub, made.listing_id)] = "processing"
+    await _sync(pub, made.listing_id)
+    row = pub.listing(made.listing_id)
+    assert (row["status"], row["status_reason"], row["sync_poll_count"]) == (
+        "blocked",
+        "marketplace_action_required",
+        9,
+    )

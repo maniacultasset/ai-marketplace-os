@@ -256,3 +256,19 @@ def test_plain_inactive_or_removed_still_blocks(read: ItemRead) -> None:
         "marketplace_action_required",
         "error",
     )
+
+
+@pytest.mark.parametrize("current", ["inactive", "live"])
+def test_waiting_read_after_nine_polls_exhausts_within_check(current: str) -> None:
+    # a not-buyable (or later live) listing parked at 9 that then reads processing
+    d = _decide(
+        [ItemRead("S1", "processing")], current=current, polls=MAX_POLLS, previous={"S1": current}
+    )
+    assert (d.event, d.listing_to, d.poll_count) == ("sync_exhausted", "blocked", MAX_POLLS)
+
+
+def test_partial_after_nine_polls_stays_within_check() -> None:
+    d = _decide(
+        [ItemRead("S1", "processing")], status="failed", reason="publish_partial", polls=MAX_POLLS
+    )
+    assert d.poll_count <= MAX_POLLS
