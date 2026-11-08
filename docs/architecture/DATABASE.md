@@ -551,7 +551,7 @@ Std tenant + `updated_at`. A proposed product image, never read by the `images` 
 | source_hash / generator_key | text | sha256 hex of the source's clean copy (or of the size chart and fabric); what made it (`fix/v1`, `size_chart/v1`, `white_background\|<model>\|<prompt version>`), 1-200 |
 | storage_key? / mime_type? / width_px? / height_px? | text / text / int / int | `<tenant>/<product>/candidates/<candidate_id>.jpg`, `image/jpeg`; set for `ready`, `accepted`, `rejected` (`ck_image_candidates_stored`) |
 | fidelity_json? / served_provider? | jsonb / text | `{mask_iou, colour_distance, agreement, hole_share}`; the provider the gateway reports (1-64) |
-| agent_run_id? / cost_usd / job_id? | uuid / numeric(12,6) / uuid | → agent_runs; ≥ 0 DEFAULT 0; the job that owns the row, **no FK** (job rows are pruned) |
+| agent_run_id? / cost_usd / job_id? | uuid / numeric(12,6) / uuid | the model run, soft reference, **no FK** (`agent_runs` is pruned at 13 months); ≥ 0 DEFAULT 0; the job that owns the row, **no FK** (job rows are pruned) |
 | accepted_image_id? / created_by? / decided_by? / decided_at? | uuid / uuid / uuid / timestamptz | → images, set if and only if `accepted`; → tenant_memberships |
 
 **Indexes:** `uq_image_candidates_cache UNIQUE (tenant_id, product_id, kind, source_hash, generator_key) WHERE NOT (status = 'failed' AND failure_reason IN ('model_failed','credit_used_up','budget','source_changed'))` (the cache: one paid call per source; the retryable failures stay outside it, and a create retires an open cached row made from another image with the same pixels); `(tenant_id, product_id, created_at DESC)`; `(tenant_id, created_at)` (the daily AI count and the retention scan).

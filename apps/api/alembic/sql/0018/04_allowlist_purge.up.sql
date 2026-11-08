@@ -1,7 +1,7 @@
 -- 0018/04_allowlist_purge.up.sql
 -- SI7: audit_allowlist is 0017's body plus the image_candidate entity (kind and status only);
--- purge_tenant_order() is 0017's array with image_candidates first, ahead of agent_runs and
--- images, which it references.
+-- purge_tenant_order() is 0017's array with image_candidates first, ahead of the images it
+-- references (and of agent_runs, which it names by soft reference).
 CREATE OR REPLACE FUNCTION public.audit_allowlist(p_entity_type text) RETURNS text[]
   LANGUAGE plpgsql IMMUTABLE PARALLEL SAFE
   SET search_path = pg_catalog, public, pg_temp

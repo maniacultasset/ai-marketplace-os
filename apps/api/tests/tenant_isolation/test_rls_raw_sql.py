@@ -35,6 +35,7 @@ TENANT_COLUMN: dict[str, str] = {
     "business_parties": "tenant_id",
     "human_tasks": "tenant_id",
     "idempotency_keys": "tenant_id",
+    "image_candidates": "tenant_id",  # 0018 (ADR-0030)
     "images": "tenant_id",
     "import_rows": "tenant_id",
     "imports": "tenant_id",

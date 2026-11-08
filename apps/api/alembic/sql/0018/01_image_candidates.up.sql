@@ -1,7 +1,9 @@
 -- 0018/01_image_candidates.up.sql
 -- SI7 (ADR-0030 proposed): a proposed product image (a white-background edit, a deterministic
 -- re-frame or a size-chart render). It becomes an `images` row only when the seller accepts it.
--- `job_id` has no FK (job rows are pruned); the cache index leaves out the retryable failures, so
+-- `job_id` and `agent_run_id` have no FK: job rows are pruned at 90 days and the append-only
+-- `agent_runs` at 13 months, while a candidate lives with its product (DATABASE.md "a row kept
+-- longer never holds a hard FK to a row pruned sooner"). The cache index leaves out the retryable failures, so
 -- a seller can try again after an outage, a refused budget or a source that changed or went away
 -- (`source_changed`), never after a verdict on the pixels.
 CREATE TABLE public.image_candidates (
@@ -42,8 +44,6 @@ CREATE TABLE public.image_candidates (
     REFERENCES public.product_colourways (id, style_product_id) ON DELETE RESTRICT,
   CONSTRAINT fk_image_candidates_source_image_id FOREIGN KEY (tenant_id, source_image_id)
     REFERENCES public.images (tenant_id, id),
-  CONSTRAINT fk_image_candidates_agent_run_id FOREIGN KEY (tenant_id, agent_run_id)
-    REFERENCES public.agent_runs (tenant_id, id),
   CONSTRAINT fk_image_candidates_accepted_image_id FOREIGN KEY (tenant_id, accepted_image_id)
     REFERENCES public.images (tenant_id, id),
   CONSTRAINT fk_image_candidates_created_by FOREIGN KEY (tenant_id, created_by)

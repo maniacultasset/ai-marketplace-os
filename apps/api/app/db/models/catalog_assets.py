@@ -207,7 +207,6 @@ class ImageCandidate(TenantScoped, Base):
             name=conv("fk_image_candidates_colourway_id_product_id"),
         ),
         to_row("image_candidates", "source_image_id", "images"),
-        to_row("image_candidates", "agent_run_id", "agent_runs"),
         to_row("image_candidates", "accepted_image_id", "images"),
         to_membership("image_candidates", "created_by"),
         to_membership("image_candidates", "decided_by"),
@@ -247,6 +246,7 @@ class ImageCandidate(TenantScoped, Base):
     height_px: Mapped[int | None] = mapped_column(Integer)
     fidelity_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     served_provider: Mapped[str | None] = mapped_column(Text)
+    # soft reference, no FK: agent_runs is pruned at 13 months, a candidate lives with its product
     agent_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 6), server_default=text("0"))
     job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
