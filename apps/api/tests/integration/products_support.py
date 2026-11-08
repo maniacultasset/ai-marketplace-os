@@ -144,6 +144,7 @@ PRODUCT_FIELDS = frozenset(
         "country_of_origin",
         "field_sources",
         "suggestions",
+        "size_chart_read_enabled",
         "size_chart_suggestion",
     }
 )
