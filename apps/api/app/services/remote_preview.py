@@ -101,9 +101,18 @@ def preview_key(
     return hashlib.sha256(raw.encode("ascii")).hexdigest()
 
 
-def open_rows_digest(keys: list[str]) -> bytes:
-    """The open pre-check ERROR rows a fresh job is asked to re-judge (fix round 2)."""
-    return hashlib.sha256("\n".join(sorted(keys)).encode("utf-8")).digest()
+def after_key(basis: str, latest_id: uuid.UUID) -> str:
+    """The key of a fresh job for inputs `basis` asked after the version's newest preview
+    `latest_id` (fix round 3): two requests after the same newest job enqueue one."""
+    raw = f"preview-after:{basis}:{latest_id}"
+    return hashlib.sha256(raw.encode("ascii")).hexdigest()
+
+
+def _basis_of(job: JobRun) -> str | None:
+    """The inputs key a preview judged: its payload's `basis`, or its own key (before round 3)."""
+    payload = job.payload_json if isinstance(job.payload_json, dict) else {}
+    basis = payload.get("basis")
+    return basis if isinstance(basis, str) else job.idempotency_key
 
 
 def replay_disagrees(verdict: str, open_keys: list[str]) -> bool:
@@ -154,28 +163,25 @@ async def request_preview(
     repairs = await uow.listing_repairs.live_for_listing(listing.id)
     family = await uow.product_facts.resolve_family(listing.product_id)
     facts = b"" if family is None else listing_facts_digest(*family)
-    key = preview_key(listing.id, version_id, repair_set_digest(repairs), facts)
-    enqueued = await _enqueue(uow, listing, version_id, trigger, key)
-    if enqueued is None:
-        return None
-    if not enqueued.created:  # the same version, repairs and facts were judged already
-        verdict = replayed_check(enqueued.job)
+    basis = preview_key(listing.id, version_id, repair_set_digest(repairs), facts)
+    latest = await uow.job_runs.latest_preview(listing.id, version_id)
+    if latest is not None and _basis_of(latest) == basis:
+        verdict = replayed_check(latest)
         open_keys = await _open_preview_keys(uow, listing.id, version_id)
-        if verdict not in ("clean", "issues") or not replay_disagrees(verdict, open_keys):
+        if verdict in ("clean", "issues") and not replay_disagrees(verdict, open_keys):
+            # the newest verdict judged these very inputs and matches the open rows: a replay
             await uow.listings.set_remote_check(listing.id, version_id, verdict)
             return None
-        # the replay contradicts the open rows (A -> B -> A facts): ask again, keyed on them
-        key = preview_key(
-            listing.id, version_id, repair_set_digest(repairs), facts + open_rows_digest(open_keys)
-        )
-        enqueued = await _enqueue(uow, listing, version_id, trigger, key)
-        if enqueued is None:
-            return None
-        if not enqueued.created:
-            await uow.listings.set_remote_check(
-                listing.id, version_id, replayed_check(enqueued.job)
-            )
-            return None
+    # fix round 3: first ask, or the inputs changed since the newest verdict (A -> B -> A -> B),
+    # or that verdict did not hold: a fresh job, keyed after the newest one so a double request
+    # still enqueues one
+    key = basis if latest is None else after_key(basis, latest.id)
+    enqueued = await _enqueue(uow, listing, version_id, trigger, key, basis)
+    if enqueued is None:
+        return None
+    if not enqueued.created:  # a concurrent request enqueued this very job
+        await uow.listings.set_remote_check(listing.id, version_id, replayed_check(enqueued.job))
+        return None
     await uow.listings.set_remote_check(listing.id, version_id, "pending")
     log.info(
         "preview.requested",
@@ -187,7 +193,12 @@ async def request_preview(
 
 
 async def _enqueue(
-    uow: TenantUnitOfWork, listing: Any, version_id: uuid.UUID, trigger: Trigger, key: str
+    uow: TenantUnitOfWork,
+    listing: Any,
+    version_id: uuid.UUID,
+    trigger: Trigger,
+    key: str,
+    basis: str,
 ) -> Enqueued | None:
     """The preview job insert in a SAVEPOINT; None when a sync job went live meanwhile (the
     check is left `pending`, and that job's terminal enqueues this one)."""
@@ -200,7 +211,11 @@ async def _enqueue(
         job_key=key,
         payload=dump(
             StatusSyncPayload(
-                listing_id=listing.id, op="preview", version_id=version_id, trigger=trigger
+                listing_id=listing.id,
+                op="preview",
+                version_id=version_id,
+                trigger=trigger,
+                basis=basis,
             )
         ),
     )

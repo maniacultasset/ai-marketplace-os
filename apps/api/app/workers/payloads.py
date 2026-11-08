@@ -44,11 +44,14 @@ class StatusSyncPayload(_Payload):
     op: SyncOp = "sync"
     version_id: UUID | None = None
     trigger: SyncTrigger = "system"
+    # fix round 3: a preview's inputs key (version, repairs, seller facts); a replay is taken
+    # only from the version's newest preview, and only when this matches
+    basis: str | None = None
 
 
 # SI11 keys left out at their default, so every payload written before SI11 (and every user job
 # since) stays byte-equal: an older worker, the fixtures and the job keys see no change.
-_OMIT_AT_DEFAULT = frozenset({"trigger", "op", "version_id"})
+_OMIT_AT_DEFAULT = frozenset({"trigger", "op", "version_id", "basis"})
 
 
 def dump(payload: _Payload) -> dict[str, Any]:

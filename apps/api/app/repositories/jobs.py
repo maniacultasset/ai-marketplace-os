@@ -520,6 +520,22 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def latest_preview(self, listing_id: uuid.UUID, version_id: uuid.UUID) -> JobRun | None:
+        """The newest marketplace dry run (`listing_status_sync`, `op = "preview"`) of one
+        listing version (SI11 fix round 3)."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.listing_id == listing_id,
+                JobRun.kind == JobKind.LISTING_STATUS_SYNC.value,
+                JobRun.payload_json["op"].astext == "preview",
+                JobRun.payload_json["version_id"].astext == str(version_id),
+            )
+            .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def user_request_wait_s(
         self, listing_id: uuid.UUID, kind: JobKind, seconds: int
     ) -> int | None:

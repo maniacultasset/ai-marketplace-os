@@ -101,13 +101,15 @@ async def validate_listing(
                 canonical.images,
                 template=check.template,
             )
-        elif current and await uow.resolution.has_open_preview_error(listing.id, version.id):
-            # fix round 2: facts restored to ones already judged (A -> B -> A) bring back equal
-            # pins while B's pre-check ERROR is open: ask the marketplace again (from
-            # `blocked/validation_errors` too), so its verdict closes or keeps that row
+        elif current:
+            # fix rounds 2-3: facts restored to ones already judged (A -> B -> A -> B) bring
+            # back equal pins, yet the newest pre-check judged other facts. request_preview
+            # replays only a verdict on these very inputs, else asks the marketplace again
+            # (from `blocked/validation_errors` too while a pre-check ERROR is open)
             from app.services.remote_preview import request_preview
 
-            await request_preview(uow, listing, version.id, recheck=True)
+            recheck = await uow.resolution.has_open_preview_error(listing.id, version.id)
+            await request_preview(uow, listing, version.id, recheck=recheck)
         return summary_of([same])
     # only the current version's issues are the listing's inbox (a past version's run is history)
     run = await insert_run(uow, listing, version.id, check, cause="revalidate" if current else None)
