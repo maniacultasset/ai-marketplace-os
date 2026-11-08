@@ -119,10 +119,26 @@ VARIATION_ATTRIBUTES: Final = (THEME_ATTRIBUTE, PARENTAGE_ATTRIBUTE, RELATIONSHI
 # from the published Listings Items quotas (5 req/s burst 10); 1/s is the safe start. DW1.
 # SI11: `put_preview` (VALIDATION_PREVIEW) has its own bucket: Amazon publishes a separate, larger
 # preview quota (20 req/s per app, F:60); 1/s per account is the safe start.
-OPERATIONS: Final = ("put", "patch", "get", "put_preview")
+# SI13 (CP-D15): `catalog_search` (Catalog Items 2022-04-01 searchCatalogItems; Amazon publishes
+# 2 req/s) and `restrictions_get` (Listings Restrictions 2021-08-01 getListingsRestrictions; Amazon
+# publishes 5 req/s) start at 1/s per account, the read-only pre-check inside the dry-run job.
+OPERATIONS: Final = ("put", "patch", "get", "put_preview", "catalog_search", "restrictions_get")
 RATES: Final[Mapping[str, int]] = MappingProxyType(
-    {"put": 1, "patch": 1, "get": 1, "put_preview": 1}
+    {
+        "put": 1,
+        "patch": 1,
+        "get": 1,
+        "put_preview": 1,
+        "catalog_search": 1,
+        "restrictions_get": 1,
+    }
 )
+CATALOG_API_VERSION: Final = "2022-04-01"
+CATALOG_PATH: Final = f"/catalog/{CATALOG_API_VERSION}/items"
+RESTRICTIONS_PATH: Final = f"/listings/{API_VERSION}/restrictions"
+CATALOG_MAX_IDENTIFIERS: Final = 20  # searchCatalogItems takes up to 20 identifiers per call
+CATALOG_INCLUDED: Final = "summaries,identifiers"
+RESTRICTION_CONDITION: Final = "new_new"
 
 # The issue severities and the summary states SP-API answers with.
 ACCEPTED: Final = "ACCEPTED"

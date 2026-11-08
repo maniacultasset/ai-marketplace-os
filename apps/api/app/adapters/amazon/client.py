@@ -35,7 +35,7 @@ import json
 import random
 import re
 import time
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, Literal, Protocol
 from urllib.parse import quote, urlencode
@@ -75,6 +75,11 @@ PTD_DENIED: Final = "The Amazon app may not read product type definitions for th
 UNSAFE_SKUS: Final = frozenset({".", ".."})
 GET_INCLUDED: Final = "summaries,attributes,issues"
 PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
+# SI13: the read-only pre-check routes. Only ASCII digits for a barcode and an upper-case ASIN, so
+# no other character (a full-width digit, a separator, a slash) ever reaches a query string.
+BARCODE_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
+ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
+CATALOG_DENIED: Final = "The Amazon account did not grant the Product Listing role to this app."
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
 _BEFORE_SEND: Final = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
 
@@ -217,7 +222,52 @@ class SpApiClient:
         """DW2: a read of the Product Type Definitions API (`app.adapters.amazon.definitions`)."""
         return await self._call(self._ptd_route(operation, product_type, query), None)
 
+    async def search_catalog(
+        self,
+        identifiers: Sequence[str],
+        identifiers_type: Literal["EAN", "UPC", "GTIN"],
+    ) -> SpApiResponse:
+        """SI13: searchCatalogItems by barcode (at most 20). Sends only the barcodes, their type
+        and the marketplace; refused before the limiter or a token when any value is not a
+        plain 8-14 digit barcode."""
+        values = list(identifiers) if not isinstance(identifiers, str) else []
+        if not values or len(values) > c.CATALOG_MAX_IDENTIFIERS:
+            raise ValueError("1 to 20 barcodes per search")
+        if not all(isinstance(v, str) and BARCODE_RE.fullmatch(v) for v in values):
+            raise ValueError("refused barcode")
+        if identifiers_type not in ("EAN", "UPC", "GTIN"):
+            raise ValueError("refused identifier type")
+        query = {
+            "identifiers": ",".join(values),
+            "identifiersType": identifiers_type,
+            "marketplaceIds": self._marketplace_id,
+            "includedData": c.CATALOG_INCLUDED,
+        }
+        return await self._call(self._read_route("catalog_search", c.CATALOG_PATH, query), None)
+
+    async def get_restrictions(self, asin: str) -> SpApiResponse:
+        """SI13: getListingsRestrictions for one ASIN and this seller (condition new)."""
+        if not isinstance(asin, str) or not ASIN_RE.fullmatch(asin):
+            raise ValueError("refused ASIN")
+        if self._seller is None:
+            raise ValueError("seller_id is required")
+        query = {
+            "asin": asin,
+            "sellerId": self._seller,
+            "marketplaceIds": self._marketplace_id,
+            "conditionType": c.RESTRICTION_CONDITION,
+        }
+        route = self._read_route("restrictions_get", c.RESTRICTIONS_PATH, query)
+        return await self._call(route, None)
+
     # ---- internals ----
+
+    def _read_route(self, operation: str, path: str, query: Mapping[str, str]) -> _Route:
+        """A GET with no body (`write=False`), checked raw-path-exact as every other route."""
+        raw = f"{path}?{urlencode(dict(query), safe='')}"
+        return _Route(
+            operation, "GET", path, self._endpoint + raw, raw.encode("ascii"), False, CATALOG_DENIED
+        )
 
     def _item_route(
         self, operation: str, method: str, sku: str, *, preview: bool = False
