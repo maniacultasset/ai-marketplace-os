@@ -187,10 +187,11 @@ alert rules (new issue, regression) are set in Sentry's UI by the on-call engine
 
 ## Restore the database (point-in-time recovery)
 
-PITR keeps `SQL_PITR_DAYS` (7) of logs. Restore into a new instance, never over the live one:
+PITR keeps `SQL_PITR_DAYS` (7) of logs. Restore into a new instance, never over the live one
+(the prod commands, the checks and the drill: `INCIDENTS.md` "Restore the database"):
 ```bash
-gcloud sql instances clone aimos-db aimos-db-restore --point-in-time=2026-10-11T08:00:00Z \
-  --project=aimos-staging
+gcloud sql instances clone aimos-db aimos-db-restore --point-in-time=<YYYY-MM-DDTHH:MM:SSZ> \
+  --project=aimos-prod   # or aimos-staging
 ```
 Check the clone through `cloud-sql-proxy` as `app_ro`. The roles and their passwords come with the
 clone. To switch over:
@@ -221,15 +222,15 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
 
 ## Known limitations
 
-- **Prod generation waits for the AI team's package.** `APP_ENV=production` with
-  `APP_ROLE=worker` refuses `mkos-pipeline-stub` at boot (`app/core/config.py`), so `prod.env` ships
-  `WORKER_ENABLED=false` and an empty `PIPELINE_REF`. Turn the worker on only after a build with
-  `PIPELINE_REF` (see "The real pipeline").
-- **Marketplace tokens need the Cloud KMS wrapper.** Outside local, `app/core/crypto.py` raises
-  `NotImplementedError` until the wrapper lands. The key and its IAM are ready, but connecting a
-  store fails in staging and prod until then.
-- **Ingress is the Cloud Run URL.** ADR-0001's load balancer (prod) and Firebase rewrite (staging)
-  are not built. Set `API_PUBLIC_URL` when they are.
+- **The prod worker is on.** `prod.env` ships `WORKER_ENABLED=true` with a pinned `PIPELINE_REF`
+  (the AI team's `mkos-pipeline`); a production worker still refuses `mkos-pipeline-stub` at boot,
+  and `deploy.sh` refuses `WORKER_ENABLED=true` in production without `PIPELINE_REF`. A worker
+  that is not running is an incident (`INCIDENTS.md`), not the expected state.
+- **Ingress is Cloudflare in front of run.app** (`EDGE_PROVIDER=cloudflare`, ADR-0025,
+  `EDGE-CLOUDFLARE.md`) at `https://api.kuinn.in`, with `ORIGIN_AUTH=enforce`. The load balancer
+  and Cloud Armor path (`EDGE-CUTOVER.md`) waits for quota.
+- **Alerts need `ALERT_EMAIL`.** It is blank in `prod.env` until the owner fills it in and runs
+  `edge alerts` ("Alerts and Slack" above); until then only Sentry sees failures.
 - **Worker pool on gcloud 587.** Its bundled Python cannot load `run worker-pools deploy` (no
   `grpc`), so `deploy` detects that and applies the same settings with
   `run worker-pools replace <yaml>`. A Cloud Run service is not a fallback: the worker binds no
