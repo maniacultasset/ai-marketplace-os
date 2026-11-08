@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from tests.adapters.amazon_support import SELLER, amazon_adapter, colour_family
+from tests.adapters.amazon_support import SELLER, amazon_adapter, amazon_family, colour_family
 from tests.support.fake_marketplace import build_fake
 
 from .test_amazon_read_states import _row
@@ -59,3 +59,20 @@ async def test_child_detected_by_parentage_alone_any_case() -> None:
     stored["issues"] = [_issue("other_product_image_locator_1")]
     got = await adapter.get_listing(child.seller_sku, listing_id=sent.listing_id)
     assert [e.field for e in got.errors] == ["listing"]
+
+
+async def test_size_only_child_keeps_image_slots() -> None:
+    """A child of a family with no colour axis sends every version image in order
+    (`unit_images`), so its image slot k still reads as `images[k]`."""
+    app = build_fake()
+    adapter = amazon_adapter(app, rows=[_row()])
+    sent = amazon_family(theme="size", children=[{"size": "S"}, {"size": "M"}])
+    assert len(sent.listing.images) >= 2
+    await adapter.create_listing(sent)
+    child = next(u for u in sent.units() if u.item_role == "child")
+    app.state.fake.spapi_items[(SELLER, child.seller_sku)]["issues"] = [
+        _issue("other_product_image_locator_1")
+    ]
+    got = await adapter.get_listing(child.seller_sku, listing_id=sent.listing_id)
+    assert [e.field for e in got.errors] == ["images[1]"]
+    assert "images[0]" in {f.field for f in got.fields}
