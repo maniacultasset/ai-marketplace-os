@@ -870,7 +870,13 @@ def test_deploy_refuses_when_the_mfa_key_is_missing(toolkit: Path, tmp_path: Pat
 
 # ---- DPP 1.7: the daily maintenance job and its scheduler ----
 
-MAINT_SECRET_NAMES = {"DATABASE_URL", "ALEMBIC_DATABASE_URL", "S3_ACCESS_KEY", "S3_SECRET_KEY"}
+MAINT_SECRET_NAMES = {
+    "DATABASE_URL",
+    "ALEMBIC_DATABASE_URL",
+    "S3_ACCESS_KEY",
+    "S3_SECRET_KEY",
+    "SENTRY_DSN",
+}
 
 
 def _secret_grants(out: str, account: str) -> set[str]:

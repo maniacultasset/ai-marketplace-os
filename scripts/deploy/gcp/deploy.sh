@@ -40,8 +40,9 @@ MIGRATE_SECRETS="ALEMBIC_DATABASE_URL"
 DB_INIT_SECRETS="POSTGRES_PASSWORD APP_RW_PASSWORD APP_RO_PASSWORD MIGRATOR_PASSWORD"
 OPS_SECRETS="ALEMBIC_DATABASE_URL"
 # The daily maintenance job (DPP 1.7): app_rw for retention, migrator for the account purge, the
-# HMAC pair for the submission and image object deletes.
-MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY"
+# HMAC pair for the submission and image object deletes, and Sentry, so a failed step or an
+# incomplete purge raises an error event.
+MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
@@ -1207,7 +1208,7 @@ kms_guard() {
 
 # IMAGE URL: the daily maintenance job on this release's image, and its Cloud Scheduler trigger
 # (DPP 1.7, 2.1). The job runs `python -m app.workers.maintenance` as SA_MAINT (Cloud SQL client and
-# its four secrets only) under the shell role, so it needs no worker. SA_SCHED may only run this
+# its five secrets only) under the shell role, so it needs no worker. SA_SCHED may only run this
 # one job (roles/run.invoker on the job). The run is idempotent: a retry or a second run deletes
 # nothing twice. `setup` enables the Cloud Scheduler API and creates both accounts.
 deploy_maintenance() {
