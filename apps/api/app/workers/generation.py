@@ -62,7 +62,7 @@ from mkos_schemas.jobs import AgentBlockStatus
 from app.adapters.storage import get_storage
 from app.core.config import get_settings
 from app.core.logging import get_logger
-from app.core.resolved_facts import facts_digest, for_rules
+from app.core.resolved_facts import for_rules, listing_facts_digest
 from app.repositories.uow import tenant_uow
 from app.services.ai_credit import REASON_CODE, EmbedRefusal, classify_refusal
 from app.services.auto_fix.apply import auto_fix
@@ -81,6 +81,7 @@ from app.services.generation_result import (
 from app.services.photo_facts import PHOTO_PROMPT_PREFIX, build_targets, photo_set, screen
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.rules_loader import RuleLoadError, load_rules
+from app.services.seller_facts import seller_overlay
 from app.workers import budget
 from app.workers.errors import JobFailed
 from app.workers.registry import JobContext, Outcome, register
@@ -258,9 +259,10 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 "The rules could not be loaded.",
                 zero_reservation=True,
             ) from None
-        facts = await uow.product_facts.resolve(listing.product_id)
-        if facts is None:
+        family = await uow.product_facts.resolve_family(listing.product_id)
+        if family is None:
             raise _fail(ctx, ErrorCode.NOT_FOUND, "The product is gone.", zero_reservation=True)
+        facts = family[0]
         try:
             gctx = await build_context(
                 uow,
@@ -304,7 +306,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         rules_version=rules.ruleset.rules_version,
         template_id=rules.template_id,
         template_version=rules.template_version,
-        facts_digest=facts_digest(facts),
+        facts_digest=listing_facts_digest(*family),  # SI2 D9: a family pins its children too
     )
     plan_base: dict[str, Any] = {
         "tenant_id": tenant,
@@ -327,6 +329,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         rules=rules,
         critical_keys=critical,
         product=product,
+        facts=facts,
     )
     try:
         result = await run_listing_pipeline(gctx, deps)
@@ -385,6 +388,8 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         # CP15: the backend pins the version's images before the re-check, so the stored
         # re-check judged the images the version holds (a pipeline value is replaced)
         pinned = trusted.listing.model_copy(update={"images": order_for_listing(image_rows)})
+        # SI2 T16 (D5): the version stores, and the re-check judges, the seller's factual values
+        pinned = seller_overlay(pinned, facts, rules.template)
         trusted = dataclasses.replace(trusted, listing=pinned)
     attempts_used = len(deps.rules_calls)
     if attempts_used != trusted.result.attempts_used:
@@ -426,7 +431,13 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             tasks=len(decision.tasks),
             dropped=[reason for _key, reason in decision.dropped],
         )
-        photo = {"photo": decision, "pre_facts": facts, "seen_set": seen_set, "sent_set": sent_set}
+        photo = {
+            "photo": decision,
+            "pre_facts": facts,
+            "pre_children": family[1],
+            "seen_set": seen_set,
+            "sent_set": sent_set,
+        }
     if not move.saves_version:
         failed_result: dict[str, Any] = {}
         plan = PersistPlan(

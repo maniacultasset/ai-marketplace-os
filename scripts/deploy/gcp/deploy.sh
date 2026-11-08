@@ -218,6 +218,27 @@ LLM_PROVIDER="${LLM_PROVIDER:-openai}"
 LLM_MODEL_DEFAULT="${LLM_MODEL_DEFAULT-}"
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
+# SI7 (ADR-0030): the AI white-background edit. Off by default; the api answers 422 and hides the
+# button while it is off, and the worker makes the call, only through OpenRouter. Blank values keep
+# the Settings defaults (google/gemini-2.5-flash-image, 10 edits per tenant per day, half the
+# platform cap).
+IMAGE_EDIT_ENABLED="${IMAGE_EDIT_ENABLED:-false}"
+LLM_MODEL_IMAGE_EDIT="${LLM_MODEL_IMAGE_EDIT-}"
+IMAGE_EDIT_TENANT_DAILY_LIMIT="${IMAGE_EDIT_TENANT_DAILY_LIMIT-}"
+IMAGE_EDIT_PLATFORM_DAILY_SHARE="${IMAGE_EDIT_PLATFORM_DAILY_SHARE-}"
+case "$IMAGE_EDIT_ENABLED" in
+  true | false) ;;
+  *) die "IMAGE_EDIT_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
+if [ "$IMAGE_EDIT_ENABLED" = "true" ] && [ "$LLM_GATEWAY" != "openrouter" ]; then
+  die "IMAGE_EDIT_ENABLED=true needs LLM_GATEWAY=openrouter: the worker refuses it otherwise (in $ENV_NAME.env)"
+fi
+# SI5: the per-tenant request rate on the api (blank: the Settings default, 120 a minute)
+RATE_LIMIT_PER_TENANT_PER_MIN="${RATE_LIMIT_PER_TENANT_PER_MIN-}"
+if [ -n "$RATE_LIMIT_PER_TENANT_PER_MIN" ] &&
+  ! printf '%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN" | grep -Eqx '[1-9][0-9]{0,5}'; then
+  die "RATE_LIMIT_PER_TENANT_PER_MIN must be a whole number of requests a minute (in $ENV_NAME.env)"
+fi
 if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
   die "PIPELINE_REF must be a full 40-character lowercase commit sha (in $ENV_NAME.env)"
 fi
@@ -953,6 +974,9 @@ app_env() {
   fi
   # ADR-0025: the origin guard's switch, on the api only
   [ "$role" != "api" ] || printf 'ORIGIN_AUTH\t%s\n' "$ORIGIN_AUTH"
+  # SI5: the per-tenant rate, on the api only (the worker serves no HTTP), when set
+  [ "$role" != "api" ] || [ -z "$RATE_LIMIT_PER_TENANT_PER_MIN" ] ||
+    printf 'RATE_LIMIT_PER_TENANT_PER_MIN\t%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN"
   # ADR-0024: the gateway, provider and model, on the worker only (the one role that calls a model)
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
@@ -965,6 +989,15 @@ app_env() {
       [ -z "$LLM_DAILY_BUDGET_USD" ] || printf 'LLM_DAILY_BUDGET_USD\t%s\n' "$LLM_DAILY_BUDGET_USD"
       [ -z "$LLM_TENANT_DAILY_BUDGET_USD" ] ||
         printf 'LLM_TENANT_DAILY_BUDGET_USD\t%s\n' "$LLM_TENANT_DAILY_BUDGET_USD"
+      # SI7: the image-edit switch, model and limits, so the api's create check and the worker's
+      # reservation use one switch and one limit, and the api keys and labels candidates by the
+      # model the worker calls
+      printf 'IMAGE_EDIT_ENABLED\t%s\n' "$IMAGE_EDIT_ENABLED"
+      [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
+      [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
+        printf 'IMAGE_EDIT_TENANT_DAILY_LIMIT\t%s\n' "$IMAGE_EDIT_TENANT_DAILY_LIMIT"
+      [ -z "$IMAGE_EDIT_PLATFORM_DAILY_SHARE" ] ||
+        printf 'IMAGE_EDIT_PLATFORM_DAILY_SHARE\t%s\n' "$IMAGE_EDIT_PLATFORM_DAILY_SHARE"
       ;;
   esac
   # DPP-1 (ADR-0021): the MFA switch and its key, on the api only (the worker refuses the key)

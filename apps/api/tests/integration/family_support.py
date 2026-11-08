@@ -28,6 +28,14 @@ def family(
     **style_columns: Any,
 ) -> tuple[UUID, dict[str, UUID]]:
     """(style id, {child sku: child id}); child SKUs are `<sku>-<SIZE>-<n>` per colour n."""
+    # SI2 T2: a priced style (with the seller's fabric) the children inherit from, and the
+    # tenant's brand-default manufacturer, unless the caller says otherwise
+    priced = {
+        **f.SELLER_PRICED,
+        "attributes": {"fabric_type": f.fact(value="cotton")},
+    }
+    style_columns = {**priced, **style_columns}
+    f.ensure_brand_manufacturer(conn, tenant_id)
     with conn.transaction():
         style = f.product(conn, tenant_id, "style", sku=sku, size_run=list(sizes), **style_columns)
         children: dict[str, UUID] = {}
@@ -46,6 +54,7 @@ def family(
                     category=style_columns.get("category", "t_shirts"),
                     variant_attributes={"size": size, "color": colour},
                     attributes={"size": f.fact(value=size.upper(), normalized=size)},
+                    **f.barcoded(),  # SI5 B2: an Amazon create needs each child's barcode
                 )
                 conn.execute(INSERT_CELL, (tenant_id, style, colourway, size, child))
                 children[child_sku] = child

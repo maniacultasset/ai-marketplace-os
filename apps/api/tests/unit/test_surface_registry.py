@@ -20,7 +20,7 @@ from mkos_schemas.codes import ErrorCode
 # The frozen list (PLAN D1): 35 operations at S3 plus S10's switch and members (38), no
 # dead-letter path. Later steps add ops as
 # "merged literal + N" (S10 38, S15 40, S16 43, S19 47, S20 48, S21 50, ADR-0019 55, DPP-1 65,
-# ADR-0020 72, SI1 79, SI3 80).
+# ADR-0020 72, SI1 79, SI3 80, SI5 91).
 FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_login", "POST", "/auth/login"),
     ("auth_refresh", "POST", "/auth/refresh"),
@@ -38,6 +38,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_mfa_recovery_codes", "POST", "/auth/mfa/recovery-codes"),
     ("auth_mfa_step_up", "POST", "/auth/mfa/step-up"),
     ("auth_password_change", "POST", "/auth/password"),
+    # SI5: the copied reset link's redeem (80 + 1)
+    ("auth_password_reset", "POST", "/auth/password/reset"),
     # ADR-0020: Google sign-in (65 + 7, with signup_google below)
     ("auth_google_config", "GET", "/auth/google/config"),
     ("auth_google_start", "GET", "/auth/google/start"),
@@ -51,6 +53,14 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("auth_devices_sign_out_all", "POST", "/auth/devices/sign-out-all"),
     ("members_list", "GET", "/members"),
     ("members_patch", "PATCH", "/members/{user_id}"),
+    # SI5: reset links and team invites (+ 7)
+    ("members_password_reset", "POST", "/members/{user_id}/password-reset"),
+    ("invites_create", "POST", "/invites"),
+    ("invites_list", "GET", "/invites"),
+    ("invites_revoke", "POST", "/invites/{invite_id}/revoke"),
+    ("invites_lookup", "POST", "/invites/lookup"),
+    ("invites_accept", "POST", "/invites/accept"),
+    ("invites_join", "POST", "/invites/join"),
     ("tenants_me", "GET", "/tenants/me"),
     # S16: the profile update, the document list and delete (40 + 3)
     ("tenants_me_update", "PATCH", "/tenants/me"),
@@ -95,6 +105,10 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_report", "GET", "/images/{image_id}/report"),
     # SI1: the image delete (78 + 1)
     ("images_delete", "DELETE", "/images/{image_id}"),
+    ("image_candidates_create", "POST", "/products/{product_id}/image-candidates"),
+    ("image_candidates_list", "GET", "/products/{product_id}/image-candidates"),
+    ("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept"),
+    ("image_candidates_reject", "POST", "/image-candidates/{candidate_id}/reject"),
     ("rules_list", "GET", "/rules"),
     ("rules_dry_run", "POST", "/rules/dry-run"),
     ("jobs_get", "GET", "/jobs/{job_id}"),
@@ -114,7 +128,11 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
     ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
     ("admin_signup_requests_reject", "POST", "/admin/signup-requests/{request_id}/reject"),
-    # SI10: the platform admin's AI credit card (80 + 2)
+    # SI5: trial recovery (+ 3)
+    ("admin_tenants_list", "GET", "/admin/tenants"),
+    ("admin_tenants_activate", "POST", "/admin/tenants/{target_tenant_id}/activate"),
+    ("admin_tenants_extend_trial", "POST", "/admin/tenants/{target_tenant_id}/extend-trial"),
+    # SI10: the platform admin's AI credit card (95 + 2)
     ("admin_ai_credit_get", "GET", "/admin/ai-credit"),
     ("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume"),
 )
@@ -123,7 +141,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 82
+    assert len(FROZEN) == 97
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -251,6 +269,9 @@ D9_IDEMPOTENT = {
     "issues_dismiss",  # S19
     "listings_refresh_status",  # S21
     "tasks_answer",  # SI3
+    "image_candidates_create",  # SI7
+    "image_candidates_accept",  # SI7
+    "image_candidates_reject",  # SI7
 }
 
 
@@ -298,6 +319,10 @@ def test_public_ops() -> None:
         "auth_google_complete",
         "auth_google_link",
         "signup_google",
+        # SI5: the copied links (the token is checked in the service)
+        "invites_lookup",
+        "invites_accept",
+        "auth_password_reset",
     }
 
 
@@ -317,6 +342,8 @@ STEP_UP = {
     "auth_mfa_recovery_codes": "any",
     "marketplaces_accounts_revoke": "otp",
     "auth_google_unlink": "any",  # ADR-0020
+    "invites_create": "any",  # SI5
+    "members_password_reset": "otp",  # SI5: a reset link needs a TOTP code
 }
 # ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
 # dropped it (still platform-admin only) and the window is 30 minutes
@@ -355,7 +382,7 @@ def test_step_up_ops_declare_403_codes() -> None:
 
 
 # ADR-0020: the Google JSON steps (401 for a bad handle or the generic failure, 501 when off)
-GOOGLE_JSON = {"auth_google_complete", "auth_google_link", "signup_google"}
+GOOGLE_JSON = {"auth_google_complete", "auth_google_link", "signup_google", "invites_accept"}
 
 
 def test_google_ops_declare_their_codes() -> None:
@@ -405,8 +432,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_82_operations() -> None:
-    assert len(OPS) == 82
+def test_97_operations() -> None:
+    assert len(OPS) == 97
 
 
 def test_error_codes_per_d2() -> None:
@@ -424,6 +451,10 @@ def test_error_codes_per_d2() -> None:
         "listings_preview": (E.LISTING_BUSY,),
         "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        # SI7: a candidate taken over by another job, or decided already
+        "image_candidates_create": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -441,6 +472,12 @@ def test_error_codes_per_d2() -> None:
         # ADR-0019: approving a rejected request, or rejecting an approved one
         "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
         "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),
+        # SI5: an accepted invite, an existing account or membership, an offboarded tenant
+        "invites_revoke": (E.INVALID_STATUS_TRANSITION,),
+        "invites_accept": (E.INVALID_STATUS_TRANSITION,),
+        "invites_join": (E.INVALID_STATUS_TRANSITION,),
+        "admin_tenants_activate": (E.INVALID_STATUS_TRANSITION,),
+        "admin_tenants_extend_trial": (E.INVALID_STATUS_TRANSITION,),
     }
     # SI10: generate and regenerate also answer a daily cap (429) and the platform AI pause (503)
     ai_admission = {"listings_generate", "listings_regenerate"}
@@ -479,6 +516,13 @@ def test_error_codes_per_d2() -> None:
             "admin_signup_requests_approve",
             "admin_signup_requests_reject",
             "auth_devices_remove",
+            # SI5: a platform admin's unknown tenant, and the copied links' one generic refusal
+            "admin_tenants_activate",
+            "admin_tenants_extend_trial",
+            "invites_lookup",
+            "invites_accept",
+            "invites_join",
+            "auth_password_reset",
         }
         if "not_found" in c or platform_404:
             assert codes[404] == (E.NOT_FOUND,), op.op_id
@@ -510,7 +554,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI10",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI10",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

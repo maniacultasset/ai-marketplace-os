@@ -15,7 +15,7 @@ in one transaction (`sql/0021/01_*`):
 Downgrade (local and CI only) drops the function, the table and the guard function.
 
 Revision ID: 0021_ai_credit_state
-Revises: 0015_image_public_copies
+Revises: 0018_image_generation
 Create Date: 2026-11-07
 
 """
@@ -29,8 +29,8 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0021_ai_credit_state"
-# The single head on main at build time; re-chained at merge after 0016-0020 land.
-down_revision: str | Sequence[str] | None = "0015_image_public_copies"
+# The single head on main at merge time (0019 and 0020 are not on main yet).
+down_revision: str | Sequence[str] | None = "0018_image_generation"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

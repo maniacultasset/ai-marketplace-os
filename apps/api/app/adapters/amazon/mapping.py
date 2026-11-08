@@ -18,7 +18,9 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   - a required attribute missing or blank -> MISSING_ATTRIBUTE;
   - an unmappable enum -> VALUE_NOT_ALLOWED;
   - a bad family (C10) -> VARIATION_INVALID (`variants`);
-  - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED.
+  - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED;
+  - SI5: a sellable item with no barcode and no GTIN exemption -> IDENTIFIER_MISSING (a create
+    only; the update path passes `require_identifier=False`, CP-D14).
 - `family_payloads(listing)`: the parent first (content, theme, `parentage_level parent`), then
   each child (content, attributes with its variant values, images, the parent link).
 - `preview(listing)`: what a create would send, per item, and the mapping report.
@@ -31,6 +33,18 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   A definition for another product type is not used (one SCHEMA_INVALID warning); none at all
   changes nothing (AC10).
 
+- SI2: each sellable item (standalone, child) carries the seller's offer (`purchasable_offer`
+  with `our_price` and `maximum_retail_price`, `condition_type new_new`) under requirements
+  `LISTING`; a parent stays `LISTING_PRODUCT_ONLY`. The seller facts `country_of_origin`,
+  `fiber_composition` and `manufacturer` (plus `manufacturer_contact_information`) go through
+  the template spec of the same key, at `facts.<key>` (`variants[<sku>].facts.<key>` for a
+  child). A missing price, MRP, manufacturer or country is MISSING_ATTRIBUTE; a price above the
+  MRP is PRICE_ABOVE_MRP; any other currency than INR, or a price out of range, is
+  VALUE_NOT_ALLOWED. Messages name the field only: the manufacturer's address is never echoed.
+  An image locator must be an https URL (`locator_ok`; `http://` only when the listing allows
+  it, the `image:<id>` tag only in a preview). An enum VALUE_NOT_ALLOWED suggests the nearest
+  allowed values.
+
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
 """
@@ -40,6 +54,7 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Final
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
@@ -52,11 +67,18 @@ from mkos_schemas.paths import is_valid_field_path
 from app.adapters.amazon import constants as c
 from app.adapters.amazon import schema_check
 from app.adapters.base import (
+    FACT_SPEC_KEYS,
+    PRICE_PATHS,
     AdapterItem,
     AdapterListing,
     AdapterPreview,
     AdapterTemplate,
     PreviewItem,
+    SellerFacts,
+    composition_text,
+    fact_paths,
+    locator_ok,
+    nearest_values,
     submitted_fields,
 )
 from app.services.rules_engine.text import submitted_keywords
@@ -96,6 +118,7 @@ def error(
     *,
     value: str | None = None,
     severity: Severity = Severity.ERROR,
+    suggestion: str | None = None,
 ) -> ErrorItem:
     meta = ERROR_CODE_META[code]
     return ErrorItem(
@@ -104,6 +127,7 @@ def error(
         severity=severity,
         message=message,
         value_submitted=value,
+        suggestion=suggestion,
         source=ErrorSource.AMAZON_ADAPTER,
         retryable=meta.retry_class in _RETRYABLE,
         marketplace=Marketplace.AMAZON,
@@ -118,6 +142,16 @@ def sku_path(unit: AdapterItem) -> str:
         path = f"variants[{unit.seller_sku}]"
         return path if is_valid_field_path(path) else "variants"
     return "listing"
+
+
+def fact_path(unit: AdapterItem, key: str) -> str:
+    """Where a seller-fact problem is reported: `facts.<key>`, or `variants[<sku>].facts.<key>`
+    for a child (falling back to `facts.<key>` when the SKU makes no legal path)."""
+    if unit.item_role == "child":
+        path = f"variants[{unit.seller_sku}].facts.{key}"
+        if is_valid_field_path(path):
+            return path
+    return f"facts.{key}"
 
 
 # ---- values ----
@@ -184,6 +218,7 @@ def _attribute_entries(
                     ErrorCode.VALUE_NOT_ALLOWED,
                     f"{shown} is not an allowed Amazon value for {key}.",
                     value=shown,
+                    suggestion=_suggest(spec, shown),
                 )
             entries.append(_entry(mapped, marketplace_id))
         elif spec.value_type in ("number", "measurement"):
@@ -211,6 +246,170 @@ def _attribute_entries(
         else:
             entries.append(_entry(str(one), marketplace_id))
     return entries, None
+
+
+def _suggest(spec: AttributeSpec, value: str) -> str | None:
+    if not spec.allowed_values:
+        return None
+    return "Allowed values include: " + ", ".join(nearest_values(value, spec.allowed_values))
+
+
+# ---- SI2: the offer and the seller-fact attributes ----
+
+
+def _money_error(unit: AdapterItem, key: str, amount: Decimal) -> ErrorItem | None:
+    if amount <= 0 or amount > c.MAX_MONEY:
+        return error(
+            fact_path(unit, key),
+            ErrorCode.VALUE_NOT_ALLOWED,
+            f"{key} must be above 0 and at most {c.MAX_MONEY}.",
+            value=str(amount),
+        )
+    return None
+
+
+def _offer(
+    unit: AdapterItem, facts: SellerFacts | None, marketplace_id: str
+) -> tuple[dict[str, Any] | None, list[ErrorItem]]:
+    """A sellable item's offer attributes, or None and the errors that keep it out."""
+    errors: list[ErrorItem] = []
+    mrp = None if facts is None else facts.mrp
+    price = None if facts is None else facts.selling_price
+    for key, amount in (("mrp", mrp), ("selling_price", price)):
+        if amount is None:
+            errors.append(
+                error(
+                    fact_path(unit, key),
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    f"{key} is required to list the item for sale on Amazon.",
+                )
+            )
+        elif (problem := _money_error(unit, key, amount)) is not None:
+            errors.append(problem)
+    currency = c.CURRENCY if facts is None or facts.currency is None else facts.currency
+    if currency.strip().casefold() != c.CURRENCY.casefold():
+        errors.append(
+            error(
+                fact_path(unit, "currency"),
+                ErrorCode.VALUE_NOT_ALLOWED,
+                f"currency must be {c.CURRENCY} on Amazon.in.",
+                value=currency[:64],
+            )
+        )
+    if not errors and mrp is not None and price is not None and price > mrp:
+        errors.append(
+            error(
+                fact_path(unit, "selling_price"),
+                ErrorCode.PRICE_ABOVE_MRP,
+                "selling_price must not be above mrp.",
+                value=str(price),
+            )
+        )
+    if errors or mrp is None or price is None:
+        return None, errors
+    offer = {
+        "marketplace_id": marketplace_id,
+        "currency": c.CURRENCY,
+        c.OUR_PRICE: [{"schedule": [{"value_with_tax": float(price)}]}],
+        c.MRP_FIELD: [{"schedule": [{"value_with_tax": float(mrp)}]}],
+    }
+    return {
+        c.OFFER_ATTRIBUTE: [offer],
+        c.CONDITION_ATTRIBUTE: [{"value": c.CONDITION_NEW, "marketplace_id": marketplace_id}],
+    }, []
+
+
+def _identifier(
+    unit: AdapterItem, facts: SellerFacts | None, marketplace_id: str, *, require: bool
+) -> tuple[dict[str, Any], list[ErrorItem]]:
+    """SI5 B2 (PLAN §2.7-2.8): a sellable item's barcode, else its GTIN exemption. With
+    neither, a create (`require`) is IDENTIFIER_MISSING: the message names the SKU, never a
+    value. An update of a live item is not refused (CP-D14). A parent sends neither."""
+    if unit.item_role == "parent":
+        return {}, []
+    id_type = None if facts is None else c.IDENTIFIER_TYPES.get(facts.identifier_type or "")
+    value = None if facts is None else facts.identifier_value
+    if id_type is not None and value is not None and value.strip():
+        entry = {"type": id_type, "value": value, "marketplace_id": marketplace_id}
+        return {c.EXTERNAL_ID_ATTRIBUTE: [entry]}, []
+    if facts is not None and facts.identifier_exempt:
+        return {c.EXEMPTION_ATTRIBUTE: [{"value": True, "marketplace_id": marketplace_id}]}, []
+    if not require:
+        return {}, []
+    message = (
+        f"Amazon needs a barcode (EAN, UPC or GTIN) for {unit.seller_sku}, or mark it GTIN-exempt"
+        " if Amazon approved an exemption for your brand."
+    )
+    return {}, [error(fact_path(unit, "identifier"), ErrorCode.IDENTIFIER_MISSING, message)]
+
+
+def _fact_attributes(
+    unit: AdapterItem,
+    mapped: CategoryTemplate | None,
+    facts: SellerFacts | None,
+    marketplace_id: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str], list[ErrorItem]]:
+    """(Amazon attribute -> entries, the `facts.*` paths sent, errors) for one item's seller
+    facts. Each goes through the pinned template's spec of the same key; a missing manufacturer
+    or country is MISSING_ATTRIBUTE whatever the template version (D6)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    sent: list[str] = []
+    errors: list[ErrorItem] = []
+    if mapped is None:
+        return out, sent, errors
+    for key in FACT_SPEC_KEYS:
+        path = fact_path(unit, key)
+        value: str | None
+        if key == "country_of_origin":
+            value = None if facts is None else facts.country_of_origin
+        elif key == "manufacturer":
+            value = None if facts is None else facts.manufacturer_name
+        else:
+            try:
+                value = (
+                    None
+                    if facts is None
+                    else composition_text(
+                        facts.fiber_composition_text, facts.fiber_composition_parts
+                    )
+                )
+            except ValueError:
+                errors.append(
+                    error(
+                        path,
+                        ErrorCode.VALUE_NOT_ALLOWED,
+                        "fiber_composition must list each fibre with a percent, adding up to 100.",
+                    )
+                )
+                continue
+        if key in ("manufacturer", "country_of_origin") and _is_blank(value):
+            errors.append(
+                error(
+                    path,
+                    ErrorCode.MISSING_ATTRIBUTE,
+                    f"{key} is required to list the item on Amazon.",
+                )
+            )
+            continue
+        if value is None or _is_blank(value) or _unsupported(mapped, key):
+            continue
+        spec = mapped.specs[key]
+        shown = None if key == "manufacturer" else value
+        entries, problem = _attribute_entries(key, spec, value, marketplace_id, path)
+        if problem is not None:
+            if shown is None:  # never echo a party value
+                problem = problem.model_copy(update={"value_submitted": None, "suggestion": None})
+            errors.append(problem)
+            continue
+        if not entries:
+            continue
+        out.setdefault(str(spec.marketplace_field), []).extend(entries)
+        sent.append(f"facts.{key}")
+        if key == "manufacturer" and facts is not None:
+            address = (facts.manufacturer_address or "").strip()
+            contact = f"{value}, {address}" if address else value
+            out[c.MANUFACTURER_CONTACT] = [_entry(contact, marketplace_id)]
+    return out, sent, errors
 
 
 def _keywords(listing: CanonicalListing) -> str:
@@ -258,6 +457,8 @@ def item_payload(
     template: AdapterTemplate | None,
     *,
     marketplace_id: str = DEFAULT_MARKETPLACE_ID,
+    preview: bool = False,
+    require_identifier: bool = True,
 ) -> MappedItem:
     body = listing.listing
     attributes: dict[str, Any] = {}
@@ -305,11 +506,38 @@ def item_payload(
         attributes.setdefault(str(spec.marketplace_field), []).extend(entries)
         sent.append(path)
 
+    facts = listing.unit_facts.get(unit.product_id)
+    extra, fact_sent, fact_errors = _fact_attributes(unit, mapped, facts, marketplace_id)
+    for name, entries in extra.items():
+        attributes.setdefault(name, []).extend(entries)
+    sent += fact_sent
+    errors += fact_errors
+    if unit.item_role != "parent":
+        offer, offer_errors = _offer(unit, facts, marketplace_id)
+        errors += offer_errors
+        if offer is not None:
+            attributes.update(offer)
+            sent += list(PRICE_PATHS)
+    barcode, barcode_errors = _identifier(unit, facts, marketplace_id, require=require_identifier)
+    attributes.update(barcode)
+    errors += barcode_errors
+    skipped += list(fact_paths(unit))
+
     if unit.item_role != "parent":
         for index, image in enumerate(body.images):
             path = f"images[{index}]"
             locator = listing.image_refs.get(image.image_id)
             if index >= c.MAX_IMAGES or not locator:
+                skipped.append(path)
+                continue
+            if not locator_ok(locator, preview=preview, allow_http=listing.allow_http_images):
+                errors.append(
+                    error(
+                        path,
+                        ErrorCode.VALUE_NOT_ALLOWED,
+                        "Each image must be a public https link.",
+                    )
+                )
                 skipped.append(path)
                 continue
             name = c.MAIN_IMAGE if index == 0 else c.OTHER_IMAGES[index - 1]
@@ -336,7 +564,9 @@ def item_payload(
 
     payload: Payload = {
         "productType": template.product_type if mapped is not None and template else None,
-        "requirements": c.REQUIREMENTS,
+        "requirements": (
+            c.REQUIREMENTS_PARENT if unit.item_role == "parent" else c.REQUIREMENTS_SELLABLE
+        ),
         "attributes": {k: attributes[k] for k in sorted(attributes)},
     }
     return MappedItem(
@@ -360,10 +590,15 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
         index[name] = {f"images[{i}]"}
     for name in c.VARIATION_ATTRIBUTES:
         index[name] = {"variants"}
+    # SI2: the offer feeds the two price paths; `condition_type` is left out, so an issue on it
+    # fails `listing` and a price retry patches the offer only
+    index[c.OFFER_ATTRIBUTE] = set(PRICE_PATHS)
+    index[c.MANUFACTURER_CONTACT] = {"facts.manufacturer"}
     if template is not None:
         for key, spec in template.specs.items():
             if spec.marketplace_field:
-                index.setdefault(spec.marketplace_field, set()).add(f"attributes.{key}")
+                path = f"facts.{key}" if key in FACT_SPEC_KEYS else f"attributes.{key}"
+                index.setdefault(spec.marketplace_field, set()).add(path)
     return {name: tuple(sorted(paths)) for name, paths in sorted(index.items())}
 
 
@@ -419,10 +654,18 @@ def _family_errors(listing: AdapterListing, template: CategoryTemplate | None) -
 
 
 def build(
-    listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID, schema: bool = True
+    listing: AdapterListing,
+    *,
+    marketplace_id: str = DEFAULT_MARKETPLACE_ID,
+    schema: bool = True,
+    preview: bool = False,
+    require_identifier: bool = True,
 ) -> tuple[list[MappedItem], list[ErrorItem]]:
     """Every item's mapping and every blocking error (`check`), in item order. `schema=False`
-    leaves out the stored-definition check: the update path (PATCH) is never blocked by it."""
+    leaves out the stored-definition check: the update path (PATCH) is never blocked by it.
+    `preview=True` (only from `preview()`) lets the opaque `image:<id>` tags through.
+    `require_identifier=False` (only the update path, CP-D14) does not refuse an item with no
+    barcode and no exemption."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -436,7 +679,14 @@ def build(
         )
     errors += _family_errors(listing, mapped)
     items = [
-        item_payload(listing, unit, template, marketplace_id=marketplace_id)
+        item_payload(
+            listing,
+            unit,
+            template,
+            marketplace_id=marketplace_id,
+            preview=preview,
+            require_identifier=require_identifier,
+        )
         for unit in listing.units()
     ]
     for unit in listing.units():
@@ -486,24 +736,33 @@ def _schema_errors(
     template: AdapterTemplate | None,
     reported: set[str],
 ) -> list[ErrorItem]:
-    """DW2: each item against the stored definition; schema errors have their own dedupe."""
-    schema = listing.product_type_schema
-    if schema is None or template is None or not template.product_type:
+    """DW2: each item against the stored definition; schema errors have their own dedupe. SI2:
+    a parent is checked against `parent_type_schema` (PRODUCT_ONLY), every other item against
+    `product_type_schema` (LISTING); each is skipped when None (AC10)."""
+    if template is None or not template.product_type:
         return []
-    if schema.product_type != template.product_type:
-        return [
-            error(
-                "listing",
-                ErrorCode.SCHEMA_INVALID,
-                f"The stored Amazon schema is for {schema.product_type}, not "
-                f"{template.product_type}; the listing was not checked against it.",
-                severity=Severity.WARNING,
-            )
-        ]
-    index = reverse_index(template.template)
     found: list[ErrorItem] = []
+    for stored in (listing.product_type_schema, listing.parent_type_schema):
+        if stored is not None and stored.product_type != template.product_type:
+            return [
+                error(
+                    "listing",
+                    ErrorCode.SCHEMA_INVALID,
+                    f"The stored Amazon schema is for {stored.product_type}, not "
+                    f"{template.product_type}; the listing was not checked against it.",
+                    severity=Severity.WARNING,
+                )
+            ]
+    index = reverse_index(template.template)
     markers: set[tuple[str, str, str | None, str]] = set()
     for item in items:
+        schema = (
+            listing.parent_type_schema
+            if item.unit.item_role == "parent"
+            else listing.product_type_schema
+        )
+        if schema is None:
+            continue
         attributes = item.payload.get("attributes") or {}
         for problem in schema_check.check_item(attributes, schema, index, reported=reported):
             marker = (problem.field, problem.error_code.value, problem.raw_code, problem.message)
@@ -537,7 +796,7 @@ def report_for(errors: Sequence[ErrorItem], listing: AdapterListing) -> ErrorRep
 def preview(
     listing: AdapterListing, *, marketplace_id: str = DEFAULT_MARKETPLACE_ID
 ) -> AdapterPreview:
-    items, errors = build(listing, marketplace_id=marketplace_id)
+    items, errors = build(listing, marketplace_id=marketplace_id, preview=True)
     template = listing.template
     product_type = template.product_type if template is not None and is_mapped(template) else None
     return AdapterPreview(

@@ -339,3 +339,18 @@ async def test_si3_photo_bytes_never_logged(
         for image in images:
             for start in range(0, len(image.data_b64) - 48, 97):
                 assert image.data_b64[start : start + 48] not in text, name
+
+
+def test_si7_image_bytes_and_preview_urls_never_logged(log_lines: Any) -> None:
+    """SI7 (AC13): a dict carrying `image_b64` and `preview_url` is logged with neither value."""
+    from app.core.logging import get_logger
+
+    capture = log_lines()
+    canary = f"CANARYzq9{secrets.token_hex(8)}"
+    payload = {
+        "candidate": {"image_b64": f"iVBOR{canary}", "preview_url": f"https://x/{canary}"},
+        "status": "ready",
+    }
+    get_logger("app.tests.si7").info("image_candidate.dump", payload=payload)
+    text = capture.text()
+    assert canary not in text and "image_candidate.dump" in text

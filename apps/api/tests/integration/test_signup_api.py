@@ -440,7 +440,7 @@ async def test_approve_creates_trial_tenant_owner_and_audit(
     assert body["status"] == "approved" and body["decided_at"] is not None
     tenant_id = body["tenant_id"]
     tenant = auth_db.execute(
-        "SELECT name, slug, status, trial_ends_at > now() + interval '13 days' FROM tenants "
+        "SELECT name, slug, status, trial_ends_at > now() + interval '29 days' FROM tenants "
         "WHERE id = %s",
         [tenant_id],
     ).fetchone()
@@ -460,6 +460,21 @@ async def test_approve_creates_trial_tenant_owner_and_audit(
     for action in ("tenant.created", "membership.created", "signup.approved"):
         [audit] = audit_rows(auth_db, action)
         assert str(audit[0]) == tenant_id and audit[1] == "staff" and audit[3] == ADMIN, action
+
+
+async def test_approve_default_trial_is_30_days(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """SI5 (ADR-0029, AC14): an approval without `trial_days` gives a 30-day trial."""
+    request_id = await _pending(api)
+    response = await _approve(api, world, request_id)
+    assert response.status_code == 200, response.text
+    row = auth_db.execute(
+        "SELECT abs(extract(epoch FROM trial_ends_at - (now() + interval '30 days'))) < 60 "
+        "FROM tenants WHERE id = %s",
+        [response.json()["tenant_id"]],
+    ).fetchone()
+    assert row == (True,)
 
 
 async def test_approved_owner_logs_in_and_onboards(api: httpx.AsyncClient, world: World) -> None:

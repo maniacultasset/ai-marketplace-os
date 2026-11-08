@@ -1,6 +1,7 @@
-"""The platform admin's sign-up queue (ADR-0019): list, approve and reject; and the AI credit
-card (SI10): read and Resume. Platform admins only (`users.is_platform_admin`, checked on every
-request); everyone else is 403."""
+"""The platform admin's sign-up queue (ADR-0019): list, approve and reject; (SI5, ADR-0029) the
+tenant list with trial recovery: activate and extend-trial; and the AI credit card (SI10): read
+and Resume. Platform admins only (`users.is_platform_admin`, checked on every request); everyone
+else is 403."""
 
 from __future__ import annotations
 
@@ -21,10 +22,16 @@ from app.api.v1.schemas.signup import (
     SignupRequestOut,
     SignupRequestPage,
 )
+from app.api.v1.schemas.tenants import (
+    TenantActivate,
+    TenantAdminOut,
+    TenantAdminPage,
+    TenantExtendTrial,
+)
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
-from app.services import ai_credit_admin, signup
+from app.services import ai_credit_admin, signup, tenant_admin
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -81,7 +88,7 @@ async def admin_signup_requests_approve(
     principal: CurrentPrincipal,
     body: Annotated[SignupApprove | None, Body()] = None,
 ) -> SignupRequestOut:
-    """Create the brand's tenant (status `trial`, `trial_days` default 14, a unique slug from
+    """Create the brand's tenant (status `trial`, `trial_days` default 30, a unique slug from
     the brand name) and its owner membership, exactly as the staff `tenant create` does. The
     owner then logs in normally. Approving an approved request answers it again; a rejected
     one is 409 `INVALID_STATUS_TRANSITION`; an unknown id is 404."""
@@ -110,6 +117,62 @@ async def admin_signup_requests_reject(
             raise
         raise _decision_error(exc) from None
     return _out(row)
+
+
+TenantStatusFilter = Literal["trial", "active", "suspended", "offboarded"]
+
+
+def _tenant_out(row: tenant_admin.TenantAdminRow) -> TenantAdminOut:
+    return TenantAdminOut.model_validate(
+        {
+            "id": row.id,
+            "name": row.name,
+            "slug": row.slug,
+            "status": row.status,
+            "trial_ends_at": row.trial_ends_at,
+            "created_at": row.created_at,
+        }
+    )
+
+
+@route(router, OPS["admin_tenants_list"])
+async def admin_tenants_list(
+    principal: CurrentPrincipal,
+    page: Annotated[PageParams, Depends()],
+    status: Annotated[TenantStatusFilter | None, Query(description="Only this status.")] = None,
+) -> TenantAdminPage:
+    """Every tenant, newest first, with its status and trial end (platform admins)."""
+    found = await tenant_admin.list_tenants(
+        principal, status=status, limit=page.limit, after=page.after
+    )
+    last = found.items[-1] if found.items else None
+    next_cursor = encode_cursor(last.created_at, last.id) if found.has_more and last else None
+    return TenantAdminPage(
+        data=[_tenant_out(r) for r in found.items],
+        page=PageInfo(next_cursor=next_cursor, has_more=found.has_more, limit=page.limit),
+    )
+
+
+@route(router, OPS["admin_tenants_activate"])
+async def admin_tenants_activate(
+    target_tenant_id: UUID, body: TenantActivate, principal: CurrentPrincipal
+) -> TenantAdminOut:
+    """A trial or suspended tenant becomes active (its members sign in again; no session is
+    restored). Active already: the same row. Offboarded: 409. Unknown: 404. Audited with the
+    reason as staff, with your email."""
+    row = await tenant_admin.activate(principal, target_tenant_id, reason=body.reason)
+    return _tenant_out(row)
+
+
+@route(router, OPS["admin_tenants_extend_trial"])
+async def admin_tenants_extend_trial(
+    target_tenant_id: UUID, body: TenantExtendTrial, principal: CurrentPrincipal
+) -> TenantAdminOut:
+    """A trial ends `days` later (from its end, or from now when that has passed); a tenant
+    suspended because its trial ran out returns to `trial`, ending in `days`. Any other state,
+    a tenant suspended by staff included, is 409. Audited with the reason."""
+    row = await tenant_admin.extend(principal, target_tenant_id, days=body.days, reason=body.reason)
+    return _tenant_out(row)
 
 
 def _usd(value: Decimal | None) -> str | None:

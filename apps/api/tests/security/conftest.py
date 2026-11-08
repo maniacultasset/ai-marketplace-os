@@ -17,6 +17,7 @@ Helpers:
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import uuid
 from collections.abc import Iterable
@@ -156,6 +157,18 @@ def _side(conn: Any, world: World, slug: str) -> Side:
     import_id = ops_support.import_run(conn, seed, filename=f"{canary}.csv", job_id=import_job)
     ops_support.import_row(conn, t, import_id)
     image_id = f.image(conn, t, product_id)
+    # SI7: the live main with a clean copy (a candidate's source) and a ready candidate of it
+    source_image_id = f.image(
+        conn,
+        t,
+        product_id,
+        slot="main",
+        clean_content_hash=uuid.uuid4().hex * 2,
+        clean_mime_type="image/png",
+    )
+    candidate_id = f.image_candidate(
+        conn, t, product_id, source_image_id, status="ready", storage_key=f"{canary}-candidate"
+    )
     document_id = f.brand_document(conn, t, created_by=owner, filename=f"{canary}.pdf")
     issue_id = f.listing_issue(conn, t, listing_id, message=f"{canary} issue")
     # SI3: an open photo colour question on the product, answerable by the registry's valid
@@ -169,6 +182,17 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         reason=f"{canary} The photos suggest maroon, but not clearly enough to use it.",
         expected_answer={"kind": "enum", "allowed_values": ["black", "maroon", "navy blue"]},
     )
+    # SI5 (ADR-0029): a pending invite of the tenant (the revoke op's path id)
+    invite_id = f.insert(
+        conn,
+        "invitations",
+        tenant_id=t,
+        email=f"invitee-{slug}@x.test",
+        role="reviewer",
+        token_hash=hashlib.sha256(f"invite-{canary}".encode()).digest(),
+        invited_by_user_id=owner,
+        expires_at="2099-01-01T00:00:00Z",
+    )
     ids: dict[str, Any] = {
         "product_id": product_id,
         "account_id": account_id,
@@ -177,9 +201,12 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         "job_id": job_id,
         "import_id": import_id,
         "image_id": image_id,
+        "source_image_id": source_image_id,
+        "candidate_id": candidate_id,
         "document_id": document_id,
         "issue_id": issue_id,
         "task_id": task_id,
+        "invite_id": invite_id,
         "user_id": operator,
         "target_tenant_id": t,
         "storage_prefix": f"{t}/images/",
@@ -253,7 +280,7 @@ def call_for(op: Operation, world: World2, slug: str) -> Call:
             # DPP-1 (ADR-0021): a wrong current password is a 422 by design, so the valid call
             # carries the seeded caller's real one
             body["current_password"] = PASSWORD
-        for name in ("product_id", "listing_id", "target_tenant_id"):
+        for name in ("product_id", "listing_id", "target_tenant_id", "source_image_id"):
             if name in body:
                 body[name] = str(side.ids[name])
         if "items" in body:

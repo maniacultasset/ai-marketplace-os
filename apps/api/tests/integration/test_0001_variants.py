@@ -383,6 +383,8 @@ def test_0001_unique_keys_on_tenant_tables_include_tenant_id(db: Conn) -> None:
           AND i.relname <> 'uq_product_colourways_id_style_product_id'
           -- global by design (pre-login accept lookup); the value is a sha256 of 32 random bytes
           AND i.relname <> 'uq_invitations_token_hash'
+          -- 0017 (ADR-0029): the reset link, found by hash the same way before its tenant
+          AND i.relname <> 'uq_password_reset_links_token_hash'
           -- the same for 0003's refresh token and OAuth state: found by hash before any
           -- tenant is known (the callback carries no JWT), each a sha256 of a random secret
           AND i.relname <> 'uq_refresh_tokens_token_hash'

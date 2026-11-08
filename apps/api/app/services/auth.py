@@ -209,8 +209,12 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
-def _enforcing() -> bool:
+def enforcing() -> bool:
+    """`MFA_ENFORCEMENT=all` (the SI5 reset links exist only then)."""
     return get_settings().mfa_enforcement == "all"
+
+
+_enforcing = enforcing
 
 
 def _ordered(methods: set[str] | frozenset[str]) -> list[AuthMethod]:
@@ -852,8 +856,9 @@ async def expired_password(
         )
 
 
-async def _new_password_refusal(session: Any, user: UserRow, new_password: str) -> Refusal | None:
-    """The set-time rules: the DPP composition and name rules, then none of the last 10."""
+async def new_password_refusal(session: Any, user: UserRow, new_password: str) -> Refusal | None:
+    """The set-time rules: the DPP composition and name rules, then none of the last 10 (also
+    the SI5 reset-link redeem)."""
     breaches = password_policy.check(new_password, email=user.email, display_name=user.display_name)
     if breaches:
         return Refusal("policy", breaches)
@@ -863,7 +868,8 @@ async def _new_password_refusal(session: Any, user: UserRow, new_password: str) 
     return None
 
 
-async def _store_password(session: Any, user: UserRow, new_password: str) -> None:
+async def store_password(session: Any, user: UserRow, new_password: str) -> None:
+    """The old hash into the history (the last 10 kept), then the new one, not must-change."""
     history = PasswordHistoryRepository(session)
     if user.hashed_password:
         await history.push(user.id, user.hashed_password)
@@ -871,6 +877,10 @@ async def _store_password(session: Any, user: UserRow, new_password: str) -> Non
     await UserRepository(session).set_password(
         user.id, await off_loop(hash_password, new_password), must_change=False
     )
+
+
+_new_password_refusal = new_password_refusal
+_store_password = store_password
 
 
 # ---- the bearer MFA routes (DPP-1: /auth/mfa/*, /auth/password, /auth/security) ----

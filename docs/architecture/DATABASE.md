@@ -290,12 +290,35 @@ The only way a membership is created in v1. Std tenant + `updated_at`. Reliable 
 | Column | Type | Tag | Notes |
 |---|---|---|---|
 | email / role | text | Proposed / ADR-0006 | email lowercased and trimmed; one of the 4 roles |
-| token_hash | bytea | ADR-0006 | sha256 of 32 random bytes; UNIQUE; the raw token exists only in the email |
-| invited_by_user_id / expires_at | uuid? / timestamptz | Proposed / ADR-0006 | → m (NULL = staff); TTL is open decision 6 |
+| token_hash | bytea | ADR-0006 | sha256 of 32 random bytes; UNIQUE; the raw token exists only in the copied link (v1, ADR-0029) or the email (later) |
+| invited_by_user_id / expires_at | uuid? / timestamptz | Proposed / ADR-0006 | → m (NULL = staff); 7 days (ADR-0029, open decision 6 for v1) |
 | accepted_at, accepted_user_id, revoked_at | timestamptz?, uuid? | Proposed | `accepted_user_id` → `users(id)`; accepted and revoked are exclusive |
 
 - **Status is derived,** not stored. **One pending invite per email:** partial `UNIQUE (tenant_id, email)` while pending; re-inviting revokes the old row.
 - **RLS:** standard, plus a SELECT on `token_hash = app_token_hash()` for the pre-login accept step.
+- **SI5 (ADR-0029):** an owner or admin creates one (only an owner invites an owner) and copies the link
+  `<dashboard>/invite#token=<token>`; accept creates the account (a password, or Google when the verified email matches)
+  and the membership in one transaction with the row locked; a signed-in person with the email joins. Every refusal is
+  one generic 404. Audit `invitation.created|revoked|accepted` keeps `role` only.
+
+#### `password_reset_links` — [Decided, ADR-0029 proposed] new; placed in 0017
+A copied, single-use password reset link for a member (SI5). Std tenant table, no `updated_at`.
+
+| Column | Type | Tag | Notes |
+|---|---|---|---|
+| user_id / issued_by_user_id | uuid / uuid | ADR-0029 | each → m (`(tenant_id, user_id)` → `tenant_memberships`) |
+| token_hash | bytea | ADR-0029 | sha256 of 32 random bytes; UNIQUE, 32 bytes; the raw token exists only in the copied link |
+| expires_at | timestamptz | ADR-0029 | at most `created_at + 24 hours` (CHECK) |
+| used_at, revoked_at | timestamptz? | ADR-0029 | exclusive (CHECK); a new link revokes the open one |
+
+- **One live link per member:** partial `UNIQUE (tenant_id, user_id) WHERE used_at IS NULL AND revoked_at IS NULL`.
+- **RLS:** standard, plus `password_reset_links_hash` (SELECT on `token_hash = app_token_hash()`) for the public redeem.
+- **Privileges:** app_rw has no TRUNCATE, UPDATE only `used_at, revoked_at`, and DELETE for the retention prune; the
+  read-only roles never read `token_hash`.
+- **Eligibility (enforced in the service):** a member of this tenant only, active, with a password and a confirmed TOTP,
+  not a platform admin, not the issuer, an owner only by an owner, and only under `MFA_ENFORCEMENT=all`; redemption
+  re-checks it and that the issuer still holds the role. Retention: 30 days after it closed. `redact_user` deletes the
+  user's links; `purge_tenant` covers the table.
 
 #### `refresh_tokens` — [Canon 0003] + [Proposed, follows ADR-0006] membership FK + [Proposed] family
 Std tenant.
@@ -514,8 +537,24 @@ Std tenant + `updated_at`. URLs are signed at read time; the site's `s3_url` ([9
 | clean_content_hash?, clean_mime_type? | text / text | SI1 (0015) | the EXIF-free derivative in the private bucket (`<tenant>/<product>/derived/<image>/clean.<jpg\|png>`, plus `vision.jpg` for the model; `metadata.vision = {w, h}`); sha256 hex and `image/jpeg\|image/png`, set together (`ck_images_clean_pair`) |
 | public_id?, public_written_at? | text / timestamptz | SI1 (0015) | the public copy's name, 26 lowercase base32 characters, partial UNIQUE `images_public_id_uq` across tenants; needs the clean pair unless the row is deleted (a tombstone, CP16); `public_written_at` needs `public_id`. `images_public_delete_guard` (BEFORE DELETE, GRD01) refuses a row delete while `public_id` is set, so a tenant purge runs only after `images unpublish --tenant` |
 | position, source_url?, content_hash?, mime_type?, width_px?, height_px?, bytes? | mixed | Proposed | typed columns are authoritative over `metadata`; `source_url` makes re-imports idempotent |
+| origin, parent_image_id?, candidate_id? | text / uuid / uuid | SI7 (0018) | write-once provenance (`images_provenance_guard`, GRD01; only the parent FK's SET NULL passes): `origin` `seller\|generated\|rendered` DEFAULT `'seller'` (`generated` = an accepted AI white-background candidate, `rendered` = an accepted fix or size-chart candidate); `parent_image_id` → images `(tenant_id, parent_image_id)` ON DELETE SET NULL (parent_image_id), the photo it was made from; `candidate_id` names the accepted `image_candidates` row, **no FK** (CP-D3: an FK both ways leaves no purge order); `ck_images_origin_candidate` `(origin = 'seller') = (candidate_id IS NULL)`. `metadata.border` `{uniform, near_white, colour}` is written with the clean copy (the product read's `fixes`) |
 
 **Indexes:** `(product_id) WHERE deleted_at IS NULL`; `(tenant_id, status)`; `(tenant_id, colourway_id) WHERE colourway_id IS NOT NULL`; [Fix] `images_one_main UNIQUE (product_id, colourway_id) NULLS NOT DISTINCT WHERE slot='main' AND deleted_at IS NULL` (rev 1's `UNIQUE (product_id)` allowed a 3-colour style only one main image); [Proposed] `UNIQUE (tenant_id, storage_key)`, so two rows never own one object. Finer publishable roles (detail vs back vs side as distinct values) stay G12 (open decision 25).
+
+#### `image_candidates` — [SI7, ADR-0030 proposed] (0018)
+Std tenant + `updated_at`. A proposed product image, never read by the `images` readers: it becomes an `images` row only when the seller accepts it (a new listing version another user approves is then the only way it reaches a marketplace). ENABLE + FORCE RLS with the 0005 template; app_rw updates only the outcome columns (`kind`, `source_hash`, the key and the source are write-once); the read-only roles read every column but `source_hash` (§8.2 secret pattern). Purged first in `purge_tenant_order()`; rows older than 30 days that were never accepted are deleted with their objects by the daily retention.
+
+| Column | Type | Notes |
+|---|---|---|
+| product_id / colourway_id? / source_image_id? | uuid | → products, product_colourways (as `images`), images; `ck_image_candidates_source` `(kind = 'size_chart') = (source_image_id IS NULL)` |
+| kind / status / failure_reason? | text | `white_background\|fix\|size_chart`; `queued\|ready\|failed\|accepted\|rejected` DEFAULT `queued`; `fidelity\|not_white\|too_small\|source_unusable\|no_size_chart\|model_failed\|credit_used_up\|budget\|source_changed`, set if and only if `failed` (`source_changed`: the source was replaced, deleted or edited before the candidate could be made or accepted) |
+| source_hash / generator_key | text | sha256 hex of the source's clean copy (or of the size chart and fabric); what made it (`fix/v1`, `size_chart/v1`, `white_background\|<model>\|<prompt version>`), 1-200 |
+| storage_key? / mime_type? / width_px? / height_px? | text / text / int / int | `<tenant>/<product>/candidates/<candidate_id>.jpg`, `image/jpeg`; set for `ready`, `accepted`, `rejected` (`ck_image_candidates_stored`) |
+| fidelity_json? / served_provider? | jsonb / text | `{mask_iou, colour_distance, agreement, hole_share}`; the provider the gateway reports (1-64) |
+| agent_run_id? / cost_usd / job_id? | uuid / numeric(12,6) / uuid | the model run, soft reference, **no FK** (`agent_runs` is pruned at 13 months); ≥ 0 DEFAULT 0; the job that owns the row, **no FK** (job rows are pruned) |
+| accepted_image_id? / created_by? / decided_by? / decided_at? | uuid / uuid / uuid / timestamptz | → images, set if and only if `accepted`; → tenant_memberships |
+
+**Indexes:** `uq_image_candidates_cache UNIQUE (tenant_id, product_id, kind, source_hash, generator_key) WHERE NOT (status = 'failed' AND failure_reason IN ('model_failed','credit_used_up','budget','source_changed'))` (the cache: one paid call per source; the retryable failures stay outside it, and a create retires an open cached row made from another image with the same pixels); `(tenant_id, product_id, created_at DESC)`; `(tenant_id, created_at)` (the daily AI count and the retention scan).
 
 #### `rules` — [Site] [06]/[70]/[93] + [Canon A§4] + [Fix KI-B key, versions] + [Proposed #4]
 Created in 0002 together with `CREATE SEQUENCE rules_revision_seq AS integer` (shared with the dictionary, §5.6).
@@ -573,6 +612,7 @@ Created in 0002 together with `CREATE SEQUENCE rules_revision_seq AS integer` (s
 - **`CategoryTemplate`** wire model (MINOR, three leads, §11.2 row 23) + `for_generation()`, which strips `marketplace_field` and `value_map` so the AI emits canonical values only; adapters apply `value_map` (inv. 4, T49).
 - **Guard [0004]:** content immutable, only `is_current` changes, no DELETE (validation runs pin rows forever). Promotion = two ordered UPDATEs in one transaction (a partial unique index can't be deferred). Writes: migrator `app.cli templates load|refresh|promote`, audited with a NULL tenant; refresh policy is T53.
 - **Seed [Fix KI-C; apparel per the BRD scope]:** `tshirts` (the BRD §21 walkthrough product, L2092-2144, and a `category_attributes` group) and `ethnic_wear_kurta_sets` (the site's own example, L8380, L9647), for both marketplaces, `source='manual'`, version 1, current. Rev 2's `home_decor_lamps` was left out of this first seed (no site page mentions it and the BRD scope is apparel); A2 adds it by user decision (PLAN decision 6, lamps at launch with believed names), see **[A2] Lamp mappings** below. Q7 still names the launch pair. **[S20] Amazon mappings:** `seed` (through `app.cli platform load`) adds Amazon `ethnic_wear_kurta_sets` **version 2** (product type `KURTA`, `marketplace_field` and `value_map` per spec, the three variation themes) and promotes it with the two ordered UPDATEs after the demo listing is written, so KURTA-001 stays pinned to version 1; Amazon `tshirts` (`SHIRT`) is version 1, current. Version 1 rows carry no `marketplace_field`, so the adapter reads them as unmapped (CATEGORY_NOT_MAPPED). Field names and values are believed until DW1/DW2 (sandbox, PTD); checkable by `templates diff` since DW2, corrected at DW2-P. **[S22] Flipkart mappings:** the same path adds Flipkart `ethnic_wear_kurta_sets` **version 2** (vertical `kurta`, `marketplace_field` per spec, e.g. `color` → `Colour` with `navy blue` → `Navy Blue`, the three variation themes), promoted the same way, and Flipkart `tshirts` (`t_shirt`) version 1, current; Flipkart names are believed until DW1/DW2 (T127); checkable by `templates diff` since DW2, corrected at DW2-P. The demo seed pins acme's Flipkart KURTA-001 and KURTA-FAM-01 listings to it. Without them every CSV row fails with `CATEGORY_NOT_MAPPED`. **[A2] Lamp mappings:** the same path adds `home_decor_lamps` **version 2** on both marketplaces (Amazon `LAMP`, Flipkart vertical `table_lamp`), promoted over S9's empty version 1, or over nothing where version 1 was never loaded (prod). Both require `color` and `product_dimensions`, as the lamp RuleSets do; the variation theme is colour only; the lamp keys are the dictionary's `lamp_type`, `lamp_material`, `shade_material` and `light_source_type` (`lamp_material`, not `material`, which is `fabric_type`'s input alias). Names are believed until DW1/DW2; checkable by `templates diff` since DW2, corrected at DW2-P. `product_dimensions` goes out as one text value (`item_dimensions` on Amazon, `Dimensions` on Flipkart) although the dictionary declares it a measure in cm; Amazon's dimension attributes are likely structured (length, width and height, each with a value and a unit), so DW2 must confirm the shape as well as the name, and a structured shape needs a multi-part measurement in the adapter first. Replaces rev 1's `version, enabled, UNIQUE … WHERE enabled`.
+- **SI2 seed versions:** Amazon `ethnic_wear_kurta_sets` v3 and `tshirts` v2, Flipkart kurta v3 and `t_shirt` v2 (promoted over the earlier versions, which stay as they are). They widen the colour and fabric lists and value maps, send the canonical `fabric_type` as Amazon `material`, and add three optional seller-fact specs the adapter feeds from the product's facts at `facts.<key>`, never from AI attributes: `fiber_composition` (Amazon `fabric_type`, Flipkart `Fabric Composition`), `manufacturer` (Amazon `manufacturer`, Flipkart `Manufacturer Details`) and an enum `country_of_origin` (Amazon ISO codes, Flipkart English names). Price and MRP are adapter constants (the Amazon offer, the Flipkart `price` block), not specs.
 
 #### `product_type_definitions` — [DW2] Amazon Product Type Definitions (T53); 0014
 Platform-global like `category_templates` (no `tenant_id`, no RLS); SELECT for `app_rw`, `app_ro` and `app_platform_ro`, and `REVOKE INSERT, UPDATE, DELETE, TRUNCATE FROM app_rw`. Written only by the migrator's `app.cli templates refresh` and `templates promote-definition` (`app/db/ptd_loads.py`), under the migration lock, audited `product_type_definition.stored|promoted` as `staff` with a NULL tenant. The fetch runs under the platform-owned SP-API authorization (`AMAZON_PLATFORM_REFRESH_TOKEN`, CLI job only), never a tenant token.
@@ -1029,7 +1069,7 @@ Both std tenant. `imports` backs `ImportReport` (rename `ImportReport.batch_id` 
 | import_rows.raw_row / status | jsonb / text | Proposed | cells as uploaded (untrusted; unmapped columns stay here with a warning; holds party contact cells, so no SELECT for `app_ro`/`app_platform_ro`, §8.1); `pending\|imported\|failed` |
 | import_rows.product_id / error_report_json / job_id | uuid? / jsonb? / uuid? | Proposed | product → SET NULL (product_id) (exception); source `schema` or `rules_engine` |
 
-- **Headers** are the BRD master names verbatim (Appendix A.6); ADR-0007's `parent_sku` and the scaffold's `mrp_inr`, `price_inr`, `weight_grams` are aliases (`attribute_definitions.input_aliases`).
+- **Headers** are the BRD master names verbatim (Appendix A.6); ADR-0007's `parent_sku` and the scaffold's `mrp_inr`, `price_inr`, `weight_grams` are aliases (`attribute_definitions.input_aliases`). SI5 (ADR-0029 context, PLAN D15) adds one barcode column instead of the `product_identifier_type` / `product_identifier` pair: `ean`, `upc` or `gtin` (the header names the type) or `barcode` (the type from the length: 12 upc, 8 or 13 ean, 14 gtin), and `identifier_exemption` (`yes`/`no`, `true`/`false`, `y`/`n`, `1`/`0`); a style row's exemption reaches its children that give neither. Two barcode columns, a pair plus an alias, or a barcode plus `yes` is `CROSS_FIELD_MISMATCH`; the type's length applies to every barcode column (`IDENTIFIER_INVALID`).
 - **Pass 1** upserts style rows (their title, brand and classification must agree across child rows), matches or creates `business_parties` on `dedupe_key`, creates colourways; **pass 2** writes children, facts through the FactWriter (§5.6) and matrix cells (T17). "Failed rows re-runnable" (L5036).
 - **Cells that don't map 1:1 [Proposed; nothing is invented, L765, L941]:**
   - `manufacturer_name` + `manufacturer_address` (one free-text cell, L1614): the raw address goes into `address_line1` unchanged and into `provenance.manufacturer.value`; `postal_code`, `state_code` and `city` are filled only when parsing is unambiguous (e.g. exactly one trailing 6-digit PIN). The party is matched on `dedupe_key`.
@@ -1845,6 +1885,8 @@ This needs a Canon PR (A§25) first. The Day 3–12 targets have slipped; the Te
 | `0012_google_signin` | **[Google sign-in]** `users.google_sub` (partial unique index `uq_users_google_sub`, built CONCURRENTLY) and `users_credential_guard` (only migrator writes `google_sub`, `auth_provider`, `email_verified_at`); `signup_requests.verified_via` (`google` or NULL, set once at insert); `mfa_challenges.link_google_sub` (a link that waits for the password sign-in to finish) and `ck_mfa_challenges_amr` accepting `fed`; the platform table `login_flows` under forced RLS keyed on `app.token_hash` (§5.1); the definers `app_google_user`, `app_create_google_applicant`, `app_link_google_sub`, `app_unlink_google_sub`, `app_prune_login_flows`; `redact_user` and `purge_tenant` redefined to clear `google_sub` and the user's flows (§9) | [Decided by the user, 2026-10-30; ADR-0020 proposed] |
 | `0013_trusted_devices` | **[Trusted browsers]** the platform table `trusted_devices` under forced RLS keyed on `app.user_id` (§5.1) with `trusted_devices_guard` (the admin 7-day cap, token-only updates, `prev_token_hash` on rotation); `mfa_challenges.trust_device`; `refresh_tokens.device_id` and `device_auth_at`; the definer `app_prune_trusted_devices`; `redact_user` and `purge_tenant` redefined to delete the user's trusted browsers (§9) | [Decided by the user, 2026-10-30; ADR-0023 proposed] |
 | `0014_product_type_definitions` | **[DW2]** the platform table `product_type_definitions` (§5.2): SELECT only for the app roles, `product_type_definitions_guard` (content immutable, only `is_current` moves, no DELETE), `ptd_version_key` and `ptd_one_current`; `audit_allowlist` gains `product_type_definition` | [Ledger claim approved by the user, 2026-11-03] |
+| `0018_image_generation` | **[SI7, ADR-0030 proposed]** the tenant table `image_candidates` (§5.2) with the partial cache index and RLS; `images` write-once provenance (`origin`, `parent_image_id`, `candidate_id`, `images_provenance_guard`); `ck_job_runs_entity_type` gains `image_candidate` (NOT VALID, then VALIDATE); `audit_allowlist('image_candidate')` = `{kind, status}`; `purge_tenant_order()` deletes `image_candidates` first. Chained on the single head at build (`0015_image_public_copies`; re-chained at merge after 0016/0017) |
+| `0021_ai_credit_state` | **[SI10]** the platform table `ai_credit_state` (one seeded row, §`ai_credit_state` above) under RLS ENABLE + FORCE with column UPDATE for app_rw; `ai_credit_state_guard` (GRD01 unless migrator, a superuser or a platform admin acting as itself); `app_ai_credit_auto_clear(numeric)`, the worker's SECURITY DEFINER clear. Chained on `0018_image_generation`, the single head on `main` at the 2026-11-08 merge (re-chained from `0015_image_public_copies`) |
 
 ```mermaid
 flowchart LR
@@ -1984,9 +2026,9 @@ Rows marked **→ Tn** moved to TEAM-QUESTIONS and are built on its Default.
 | 3 | Hosting leftovers: `GRANT … WITH INHERIT FALSE, SET TRUE` and the non-superuser bootstrap on Cloud SQL (local half answered by the S5 mimic (`make bootstrap`); staging confirms); HA; backup-export location; staging `max_connections` | user |
 | 4 | Audit retention (24 mo?), offboarding grace (30 d?), DPDP log minimum, erasure of a sole proprietor's party data (incl. its copies in `import_rows` and `human_tasks`, §9) | user + counsel |
 | 5 | `tenants.plan` vocabulary; what happens at `trial_ends_at` | client |
-| 6 | Invitation TTL; transactional email provider | user |
+| 6 | Invitation TTL; transactional email provider (**v1 answered by ADR-0029:** 7-day invites, 24-hour reset links, copied links until a provider exists) | user |
 | 7 | `reject` semantics → **T40**; statuses → **T12** | client |
-| 8 | Who can invite or promote an owner; ownership transfer; password reset in v1 | user |
+| 8 | Who can invite or promote an owner; ownership transfer; password reset in v1 (**v1 answered by ADR-0029:** owner and admin invite, only an owner invites or resets an owner; reset links for sole-tenant members with a confirmed TOTP; ownership transfer stays open) | user |
 | 9 | Run the local app as `app_rw` (new env names) | Tech Lead |
 | 10 | Per-request membership check; regenerating makes you the maker; contributor chain; the answerer is the maker (**T51**) | user |
 | 11 | Does "max 3" count corrections (attempt 1..4) or all attempts (1..3)? (S18 default, D8: at most 3 `validate_rules` port calls; a 4th gets `INTERNAL_ERROR`; the backend re-check is attempt n+1 ≤ 4) | AI team |

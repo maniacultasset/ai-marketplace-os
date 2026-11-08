@@ -99,7 +99,7 @@ def _published(db: Conn, tenant_id: UUID | None = None) -> Any:
 
 def _world(db: Conn) -> tuple[UUID, UUID]:
     """Tenant A: the full 0002 + 0003 graph (built with the submission and item guards off for
-    that set-up only), a published listing, a brand profile, a cell, an invitation and an audit row
+    that set-up only), a published listing, a brand profile, a cell, an invitation, a reset link and an audit row
     with contact data; tenant B: the same graph."""
     for table, trigger in (("listing_submissions", "ls_guard"), ("listing_items", "li_guard")):
         db.execute(
@@ -118,6 +118,25 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
         style = f.product(db, side.tenant_id, "style", size_run=["s"])
         colourway = f.colourway(db, side.tenant_id, style)
         f.cell(db, side.tenant_id, style, colourway_id=colourway, size_key="s")
+        # 0018 (SI7): an accepted AI candidate, its model run and the image it became
+        main = f.image(db, side.tenant_id, style, slot="main")
+        run = f.agent_run(db, side.tenant_id, agent_name="image", trigger="vision")
+        candidate = f.image_candidate(
+            db, side.tenant_id, style, main, kind="white_background", agent_run_id=run
+        )
+        made = f.image(
+            db,
+            side.tenant_id,
+            style,
+            origin="generated",
+            parent_image_id=main,
+            candidate_id=candidate,
+        )
+        db.execute(
+            "UPDATE image_candidates SET status = 'accepted', storage_key = 'k', "
+            "accepted_image_id = %s WHERE id = %s",
+            (made, candidate),
+        )
         party = f.party(db, side.tenant_id)
         f.brand_profile(db, side.tenant_id, default_manufacturer_party_id=party)
         f.insert(
@@ -128,6 +147,16 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
             role="reviewer",
             token_hash=bytes(side.tenant_id.bytes * 2),
             expires_at="2099-01-01T00:00:00Z",
+        )
+        # 0017 (ADR-0029): a copied reset link for a teammate
+        f.insert(
+            db,
+            "password_reset_links",
+            tenant_id=side.tenant_id,
+            user_id=f.member(db, side.tenant_id, "reviewer"),
+            issued_by_user_id=side.user_id,
+            token_hash=bytes(side.tenant_id.bytes[::-1] * 2),
+            expires_at=db.execute("SELECT now() + interval '1 hour'").fetchone()[0],  # type: ignore[index]
         )
         f.audit(
             db,

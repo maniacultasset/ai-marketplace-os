@@ -8,6 +8,8 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 DICTIONARY = json.loads(
     (resources.files("mkos_schemas") / "data/attribute_dictionary.json").read_text("utf-8")
 )
@@ -22,8 +24,8 @@ def test_amazon_seed_templates_two_categories() -> None:
 
     got = [(t.template.marketplace.value, t.template.category, t.version, t.product_type) for t in seed_templates()]  # fmt: skip
     assert got == [
-        ("amazon", "ethnic_wear_kurta_sets", 2, "KURTA"),
-        ("amazon", "tshirts", 1, "SHIRT"),
+        ("amazon", "ethnic_wear_kurta_sets", 3, "KURTA"),  # SI2
+        ("amazon", "tshirts", 2, "SHIRT"),  # SI2
         ("amazon", "home_decor_lamps", 2, "LAMP"),  # A2
     ]
     for seed in seed_templates():
@@ -103,8 +105,8 @@ def test_flipkart_seed_templates_two_categories() -> None:
 
     got = [(t.template.marketplace.value, t.template.category, t.version, t.product_type) for t in flipkart_seed_templates()]  # fmt: skip
     assert got == [
-        ("flipkart", "ethnic_wear_kurta_sets", 2, "kurta"),
-        ("flipkart", "tshirts", 1, "t_shirt"),
+        ("flipkart", "ethnic_wear_kurta_sets", 3, "kurta"),  # SI2
+        ("flipkart", "tshirts", 2, "t_shirt"),  # SI2
         ("flipkart", "home_decor_lamps", 2, "table_lamp"),  # A2
     ]
     for seed in flipkart_seed_templates():
@@ -184,8 +186,9 @@ def test_flipkart_seed_templates_s9_v1_unchanged() -> None:
 # ---- A2 (ai-deps PLAN C1, C20): the home_decor_lamps mappings and their dictionary keys ----
 
 LAMP_KEYS = ("lamp_type", "lamp_material", "shade_material", "light_source_type")
-# The kurta and tshirts entries of `platform_template_loads()` before A2: unchanged by it.
-APPAREL_TEMPLATES_SHA256 = "163538417d23d1bbcaa4b898214e3c5d2850d28ceecf1cce51ec17b150f49762"
+# The kurta and tshirts entries of `platform_template_loads()`: unchanged by A2; SI2's new
+# versions (Amazon kurta v3 / tshirts v2, Flipkart kurta v3 / t_shirt v2) moved the pin once.
+APPAREL_TEMPLATES_SHA256 = "58a98deb1fe516ee3269ff4fa20790f862d8e6dc0ebcb5bafea2b15584fa8c12"
 
 
 def test_platform_dictionary_file_loads() -> None:
@@ -276,3 +279,110 @@ def test_apparel_templates_unchanged() -> None:
     ]
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_TEMPLATES_SHA256
+
+
+# ---- SI2 T5/T6 (AC6, AC8, AC9): wider lists, value maps and the seller-fact specs ----
+
+
+def _all_seeds() -> list[Any]:
+    from app.db.seed_templates import flipkart_seed_templates, seed_templates
+
+    return [*seed_templates(), *flipkart_seed_templates()]
+
+
+def _apparel(marketplace: str, category: str) -> Any:
+    (seed,) = [
+        s
+        for s in _all_seeds()
+        if s.template.marketplace.value == marketplace and s.template.category == category
+    ]
+    return seed
+
+
+@pytest.mark.parametrize(
+    "seed", _all_seeds(), ids=lambda s: f"{s.template.marketplace.value}-{s.template.category}"
+)
+def test_si2_template_consistency(seed: Any) -> None:
+    from app.services.rules_engine.template import template_allowed
+
+    dictionary = json.loads(
+        resources.files("mkos_schemas").joinpath("data/attribute_dictionary.json").read_text()
+    )
+    keys = {e["key"] for e in dictionary["attributes"]}
+    fields = [s.marketplace_field for s in seed.template.specs.values() if s.marketplace_field]
+    assert len(fields) == len(set(fields)), "two specs share a marketplace field"
+    for key, spec in seed.template.specs.items():
+        assert key in keys, key
+        if spec.allowed_values is not None:
+            assert set(spec.value_map.values()) <= set(spec.allowed_values), key
+    if "color" in seed.template.specs and seed.template.specs["color"].allowed_values:
+        allowed = template_allowed(seed.template, "color")
+        assert allowed is not None
+        assert set(seed.template.specs["color"].allowed_values) <= set(allowed)
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+@pytest.mark.parametrize("category", ["ethnic_wear_kurta_sets", "tshirts"])
+def test_si2_fact_specs_optional_and_versions(marketplace: str, category: str) -> None:
+    seed = _apparel(marketplace, category)
+    for key in ("fiber_composition", "manufacturer", "country_of_origin"):
+        assert seed.template.specs[key].requirement == "optional"
+    assert seed.version == (3 if category == "ethnic_wear_kurta_sets" else 2)
+
+
+def test_si2_amazon_value_maps() -> None:
+    from app.adapters.amazon.mapping import map_enum
+
+    specs = _apparel("amazon", "ethnic_wear_kurta_sets").template.specs
+    assert map_enum(specs["color"], "Mustard") == "Mustard"
+    assert map_enum(specs["color"], "Peach") == "Peach"
+    assert map_enum(specs["color"], "off white") == "Off White"
+    assert map_enum(specs["color"], "Neon Plaid") is None
+    assert map_enum(specs["fabric_type"], "Cotton Lycra") == "Cotton Lycra"
+    assert map_enum(specs["fabric_type"], "cotton spandex") == "Cotton Lycra"
+    assert specs["fabric_type"].marketplace_field == "material"
+    assert specs["fiber_composition"].marketplace_field == "fabric_type"
+    country = specs["country_of_origin"]
+    assert map_enum(country, "India") == "IN"
+    assert map_enum(country, "IN") == "IN"
+    assert map_enum(country, "bharat") == "IN"
+    assert map_enum(country, "XX") is None
+
+
+def test_si2_flipkart_value_maps() -> None:
+    from app.adapters.amazon.mapping import map_enum
+
+    specs = _apparel("flipkart", "tshirts").template.specs
+    assert map_enum(specs["color"], "Mustard") == "Mustard"
+    assert map_enum(specs["fabric_type"], "Cotton Lycra") == "Cotton Lycra"
+    country = specs["country_of_origin"]
+    assert map_enum(country, "IN") == "India"
+    assert map_enum(country, "India") == "India"
+    assert map_enum(country, "XX") is None
+    assert specs["fiber_composition"].marketplace_field == "Fabric Composition"
+    assert specs["manufacturer"].marketplace_field == "Manufacturer Details"
+
+
+def test_si5_seed_barcodes_cover_every_sellable_sku() -> None:
+    """Every sellable seeded SKU has its own valid EAN-13 per tenant; a style holds none."""
+    from app.core.identifiers import check
+    from app.db.seed_ops import (
+        DEMO_FAMILY_COLOURS,
+        DEMO_FAMILY_SIZES,
+        DEMO_FAMILY_SKU,
+        SEED_BARCODES,
+        TENANTS,
+        demo_family_child_sku,
+        products_for,
+    )
+
+    for tenant in TENANTS:
+        skus = {sku for sku, _, _ in products_for("demo", tenant.slug)}
+        if tenant.slug == "acme":
+            skus |= {
+                demo_family_child_sku(s, c) for c in DEMO_FAMILY_COLOURS for s in DEMO_FAMILY_SIZES
+            }
+        barcodes = SEED_BARCODES[tenant.slug]
+        assert set(barcodes) == skus and DEMO_FAMILY_SKU not in barcodes
+        assert len(set(barcodes.values())) == len(barcodes)
+        assert all(check("ean", v) is None and len(v) == 13 for v in barcodes.values())

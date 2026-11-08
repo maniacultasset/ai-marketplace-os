@@ -90,10 +90,12 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "WHERE p.pronamespace = 'public'::regnamespace AND p.prosecdef ORDER BY 1"
     ).fetchall()
     assert [r[0] for r in rows] == [
+        "activate_tenant(uuid,text,text)",  # 0017 (ADR-0029)
         "app_ai_credit_auto_clear(numeric)",  # 0021 (SI10 D3)
         "app_begin_auth_attempt(uuid)",  # 0011 (DPP-1)
         "app_clear_auth_failures(uuid)",  # 0011 (DPP-1)
         "app_create_google_applicant(text,text,text,text,text,text,text)",  # 0012 (ADR-0020)
+        "app_create_google_invitee(text,text,text)",  # 0017 (ADR-0029)
         "app_google_user(text)",  # 0012
         "app_is_platform_admin()",  # 0010 (ADR-0019)
         "app_link_google_sub(uuid,text)",  # 0012
@@ -102,6 +104,7 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "app_prune_trusted_devices()",  # 0013 (ADR-0023)
         "app_unlink_google_sub(uuid)",  # 0012
         "expire_trials()",
+        "extend_tenant_trial(uuid,integer,text,text)",  # 0017 (ADR-0029)
         "set_tenant_lifecycle(uuid,text,text)",
     ]
     for name, config in rows:

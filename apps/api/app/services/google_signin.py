@@ -615,6 +615,19 @@ async def link(
 # ---- 5. sign-up details ----
 
 
+async def consume_details(session: Any, details_handle: str, binding: str) -> FlowIdentity:
+    """Consume a `details` handle bound to this browser, in the caller's transaction, and give
+    its verified Google identity (the sign-up form and SI5's invite accept). Raises
+    `GoogleDisabled` or `FlowInvalid`."""
+    _enabled()
+    row = await LoginFlowRepository(session).consume(
+        flow_hash=_digest(details_handle), phase="details", binding_hash=_binding(binding)
+    )
+    if row is None or row.identity is None:
+        raise FlowInvalid
+    return row.identity
+
+
 async def signup_details(
     details_handle: str,
     binding: str,
@@ -631,12 +644,7 @@ async def signup_details(
     `FlowInvalid`."""
     _enabled()
     async with identity_session() as session:
-        row = await LoginFlowRepository(session).consume(
-            flow_hash=_digest(details_handle), phase="details", binding_hash=_binding(binding)
-        )
-        if row is None or row.identity is None:
-            raise FlowInvalid
-        identity = row.identity
+        identity = await consume_details(session, details_handle, binding)
         await set_gucs(session, login_email=identity.email)
         requests = SignupRepository(session)
         request_id = await requests.create_google_applicant(
@@ -684,6 +692,7 @@ __all__ = [
     "app_location",
     "callback",
     "complete",
+    "consume_details",
     "decide",
     "link",
     "peek_email",

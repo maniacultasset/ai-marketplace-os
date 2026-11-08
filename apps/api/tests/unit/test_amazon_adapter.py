@@ -73,12 +73,13 @@ async def test_amazon_partial_result() -> None:
     sent = _five()
     app.state.fake.spapi_issues[sent.seller_sku] = [
         _issue("90220", "color", message="Color is invalid."),
-        _issue("8541", "fabric_type", message="Fabric is invalid."),
+        _issue("8541", "material", message="Fabric is invalid."),  # SI2: fabric_type -> material
     ]
     result = await amazon_adapter(app).create_listing(sent)
     assert result.status == "partially_published"
     statuses = _fields(result)
-    assert sorted(statuses.values()) == ["failed", "failed", "succeeded", "succeeded", "succeeded"]
+    # SI2: the seller facts (price, MRP, country, manufacturer, composition) are sent too
+    assert sorted(statuses.values()) == ["failed", "failed"] + ["succeeded"] * (len(statuses) - 2)
     failed = {f.field: f.error for f in result.fields if f.status == "failed"}
     assert set(failed) == {"attributes.color", "attributes.fabric_type"}
     color = failed["attributes.color"]

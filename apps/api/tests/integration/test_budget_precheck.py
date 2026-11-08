@@ -268,3 +268,16 @@ async def test_generate_tenant_cap_minus_003_admitted(api: Any, gen_world: Any) 
     _today_spend(gen_world.conn, gen_world.tenant("acme"), "2.470000")
     response = await _generate(api, gen_world)
     assert response.status_code == 202, response.text
+
+
+async def test_budget_message_names_the_ist_reset(world: Any) -> None:
+    """SI5 (AC19): the refusal says 5:30 am IST, and `Retry-After` still counts to 00:00 UTC."""
+    from app.services.budget import BUDGET_MESSAGE, BudgetExceededError, budget_report
+
+    assert "5:30 am IST" in BUDGET_MESSAGE and "midnight" not in BUDGET_MESSAGE
+    assert budget_report().errors[0].message == BUDGET_MESSAGE
+    acme = world.tenant("acme")
+    _spend(world.conn, acme, "2.500000")
+    with pytest.raises(BudgetExceededError) as caught:
+        await _precheck(acme)
+    assert caught.value.retry_after_s == 12 * 3600  # the fixed clock is 12:00 UTC

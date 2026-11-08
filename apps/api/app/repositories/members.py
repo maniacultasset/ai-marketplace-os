@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import Any, Final
 
 from sqlalchemy import text, tuple_
+from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models.tenancy import TenantMembership, User
 from app.repositories.base import TenantScopedRepository
@@ -100,3 +101,20 @@ class MembersRepository(TenantScopedRepository[TenantMembership]):
     async def check_owners_at_each_statement(self) -> None:
         """Run the deferred last-owner trigger at the statement (OWN01 there, not at COMMIT)."""
         await self.db.execute(_OWNER_GUARD_NOW)
+
+    async def insert(
+        self, *, user_id: uuid.UUID, role: str, invited_by: uuid.UUID | None
+    ) -> uuid.UUID:
+        """SI5 (ADR-0029): the membership an accepted invite creates, in this tenant only."""
+        stmt = (
+            insert(TenantMembership)
+            .values(
+                tenant_id=self.tenant_id,
+                user_id=user_id,
+                role=role,
+                invited_by_user_id=invited_by,
+            )
+            .returning(TenantMembership.id)
+        )
+        found: uuid.UUID = (await self.db.execute(stmt)).scalar_one()
+        return found

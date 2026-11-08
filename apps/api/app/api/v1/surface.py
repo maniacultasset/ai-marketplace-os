@@ -6,8 +6,9 @@ connect confirm and account revoke, 43 with S16's profile update and document li
 50 with S21's listing submissions and refresh-status, 55 with ADR-0019's sign-up, sign-up status
 and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up and password
 routes (ADR-0021), 72 with Google sign-in's config, start, callback, complete, link, unlink and
-sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023); no
-dead-letter path,
+sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023), 80
+with SI1's and SI3's product and task routes, 91 with SI5's invites, reset links and the platform
+admin's tenant list, activate and extend-trial (ADR-0029); no dead-letter path,
 which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
@@ -71,8 +72,22 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
+from app.api.v1.schemas.image_candidates import (
+    ImageCandidateAccepted,
+    ImageCandidateOut,
+    ImageCandidatePage,
+)
 from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
+from app.api.v1.schemas.invites import (
+    InviteAccepted,
+    InviteCreated,
+    InviteJoined,
+    InviteOut,
+    InvitePage,
+    InvitePreview,
+    ResetLinkOut,
+)
 from app.api.v1.schemas.issues import IssueOut, IssuePage
 from app.api.v1.schemas.listings import (
     ListingDetail,
@@ -95,7 +110,7 @@ from app.api.v1.schemas.signup import (
 )
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
-from app.api.v1.schemas.tenants import TenantOut
+from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
 from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, roles_for
 
 Case = Literal[
@@ -458,6 +473,11 @@ _GOOGLE_PUBLIC: Final = MappingProxyType(
 _401_SUSPENDED: Final = MappingProxyType({**_401, 403: (E.TENANT_SUSPENDED,)})
 _GOOGLE_COMPLETE: Final = MappingProxyType({**_GOOGLE_PUBLIC, 403: (E.TENANT_SUSPENDED,)})
 
+# SI5: the generic refusal of a copied link, and a bad Google handle on accept (OAUTH_STATE_INVALID)
+# or Google sign-in switched off (501).
+_404: Final = MappingProxyType({404: (E.NOT_FOUND,)})
+_INVITE_ACCEPT: Final = MappingProxyType({**_GOOGLE_PUBLIC, **_404})
+
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
     Operation("auth_login", "POST", "/auth/login", 200, LoginResult, "auth",
@@ -506,6 +526,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("auth_password_change", "POST", "/auth/password", 204, None, "auth",
               "Change the password (current password, DPP rules, not one of the last 10)",
               "DPP-1", has_body=True, action=A.TENANT_READ),
+    Operation("auth_password_reset", "POST", "/auth/password/reset", 204, None, "auth",
+              "Set a new password with a copied reset link (DPP rules, not one of the last 10)",
+              "SI5", public=True, has_body=True, extra_codes=_404),
     # ---- Google sign-in, always followed by the Kuinn code (ADR-0020) ----
     Operation("auth_google_config", "GET", "/auth/google/config", 200, GoogleConfigOut,
               "auth", "Whether sign-in with Google is switched on (show the button)",
@@ -545,6 +568,33 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Change a member's role or active flag (only an owner grants or removes owner)",
               "S10", path_id="user_id", has_body=True, conflict_code=E.LAST_OWNER_REQUIRED,
               action=A.TEAM_MANAGE, step_up="any"),
+    Operation("members_password_reset", "POST", "/members/{user_id}/password-reset", 201,
+              ResetLinkOut, "members",
+              "A copied password reset link for a member (24 hours, once; sole-tenant members "
+              "with an authenticator under MFA_ENFORCEMENT=all)", "SI5", path_id="user_id",
+              action=A.TEAM_MANAGE, step_up="otp"),
+    # ---- team invites by copied link (SI5, ADR-0029) ----
+    Operation("invites_create", "POST", "/invites", 201, InviteCreated, "invites",
+              "Invite a teammate: a copied link for 7 days (a new invite for the email replaces "
+              "the old one)", "SI5", has_body=True, action=A.TEAM_MANAGE, step_up="any"),
+    Operation("invites_list", "GET", "/invites", 200, InvitePage, "invites",
+              "List the tenant's invites, newest first", "SI5",
+              query=("status", "limit", "cursor"), action=A.TEAM_MANAGE),
+    Operation("invites_revoke", "POST", "/invites/{invite_id}/revoke", 200, InviteOut,
+              "invites", "Revoke an invite (idempotent; an accepted invite is 409)", "SI5",
+              path_id="invite_id", conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.TEAM_MANAGE),
+    Operation("invites_lookup", "POST", "/invites/lookup", 200, InvitePreview, "invites",
+              "What an invite link is for: the brand, the role and whether the email has an "
+              "account", "SI5", public=True, has_body=True, extra_codes=_404),
+    Operation("invites_accept", "POST", "/invites/accept", 200, InviteAccepted, "invites",
+              "Accept an invite with a new account (a password, or the matching Google "
+              "identity)", "SI5", public=True, has_body=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, extra_codes=_INVITE_ACCEPT),
+    Operation("invites_join", "POST", "/invites/join", 200, InviteJoined, "invites",
+              "Join the inviting brand with the signed-in account whose email matches", "SI5",
+              has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION, extra_codes=_404,
+              action=A.TENANT_READ),
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
               "The brand profile", "S16", etag=True, action=A.TENANT_READ),
@@ -688,6 +738,24 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
               "Delete an image (and its prepared and public copies)", "SI1",
               path_id="image_id", action=A.PRODUCT_IMPORT),
+    # ---- image candidates (SI7) ----
+    Operation("image_candidates_create", "POST", "/products/{product_id}/image-candidates", 202,
+              ImageCandidateAccepted, "images",
+              "Make an image candidate from a photo or the size chart", "SI7",
+              path_id="product_id", has_body=True, body_ids=("source_image_id",),
+              idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
+              ImageCandidatePage, "images", "The product's image candidates", "SI7",
+              path_id="product_id", action=A.TENANT_READ),
+    Operation("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept", 202,
+              ImageAccepted, "images", "Use a candidate as a product image", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
+    Operation("image_candidates_reject", "POST", "/image-candidates/{candidate_id}/reject", 200,
+              ImageCandidateOut, "images", "Discard a candidate", "SI7",
+              path_id="candidate_id", idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
     # ---- rules (S14b) ----
     Operation("rules_list", "GET", "/rules", 200, RulePage, "rules", "List rules", "S14b",
               query=("marketplace", "category", "limit", "cursor"), action=A.TENANT_READ),
@@ -744,6 +812,20 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
               conflict_code=E.INVALID_STATUS_TRANSITION,
               extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+    # ---- trial recovery (SI5, ADR-0029) ----
+    Operation("admin_tenants_list", "GET", "/admin/tenants", 200, TenantAdminPage, "admin",
+              "List every tenant with its status and trial end, newest first (platform admins)",
+              "SI5", query=("status", "limit", "cursor"), platform_admin=True),
+    Operation("admin_tenants_activate", "POST", "/admin/tenants/{target_tenant_id}/activate", 200,
+              TenantAdminOut, "admin",
+              "Activate a trial or suspended tenant, with a reason (idempotent)", "SI5",
+              has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION, extra_codes=_404,
+              platform_admin=True),
+    Operation("admin_tenants_extend_trial", "POST", "/admin/tenants/{target_tenant_id}/extend-trial",
+              200, TenantAdminOut, "admin",
+              "Extend a trial by 1-90 days, or reopen a trial that expired, with a reason", "SI5",
+              has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION, extra_codes=_404,
+              platform_admin=True),
     # SI10: the AI credit card (platform admins)
     Operation("admin_ai_credit_get", "GET", "/admin/ai-credit", 200, AiCreditOut, "admin",
               "The AI credit: pause, last key check, floor and today's platform spend", "SI10",

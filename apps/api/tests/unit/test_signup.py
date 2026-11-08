@@ -646,7 +646,7 @@ async def test_approve_creates_trial_tenant_and_owner(monkeypatch: pytest.Monkey
     out = await svc.approve(admin, row.id, trial_days=None)
     [tenant] = world.tenants
     assert tenant["name"] == "Kalakar Weaves" and tenant["slug"] == "kalakar-weaves"
-    assert tenant["trial_days"] == svc.DEFAULT_TRIAL_DAYS == 14
+    assert tenant["trial_days"] == svc.DEFAULT_TRIAL_DAYS == 30  # ADR-0029
     assert tenant["owner_id"] == row.user_id and tenant["staff_email"] == admin.email
     assert out.status == "approved" and out.created_tenant_id == tenant["tenant_id"]
     assert {"tenant_id": tenant["tenant_id"]} in world.gucs
@@ -799,8 +799,8 @@ def test_0021_is_the_single_head() -> None:
             parents.add(down.group(1))
     # DPP-1 sits on top of 0010, the account purge on top of DPP-1, Google sign-in on top of it,
     # the trusted browsers (ADR-0023) on top of Google sign-in, the PTD table (DW2) on top of them,
-    # the image public copies (SI1) on top of the PTD table, the AI credit state (SI10) on top of
-    # them (re-chained at merge once 0016-0020 land)
+    # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
+    # image candidates (SI7) on top of team access, the AI credit state (SI10) on top of those
     assert revisions - parents == {"0021_ai_credit_state"}
 
 

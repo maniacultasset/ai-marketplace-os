@@ -197,6 +197,9 @@ DEFINERS = frozenset(
         "app_unlink_google_sub(uuid)",  # 0012
         "app_prune_login_flows()",  # 0012
         "app_prune_trusted_devices()",  # 0013 (ADR-0023)
+        "activate_tenant(uuid,text,text)",  # 0017 (ADR-0029)
+        "extend_tenant_trial(uuid,integer,text,text)",  # 0017
+        "app_create_google_invitee(text,text,text)",  # 0017
         "app_ai_credit_auto_clear(numeric)",  # 0021 (SI10 D3)
     }
 )

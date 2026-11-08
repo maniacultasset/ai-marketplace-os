@@ -69,6 +69,8 @@ from app.adapters.base import (
     RawResponseSink,
     UpdateFields,
     fields_by_sku,
+    issue_text,
+    party_secrets,
 )
 from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, read_issue
 
@@ -157,8 +159,10 @@ class AmazonAdapter(MarketplaceAdapter):
         index: Mapping[str, tuple[str, ...]],
         scope: Iterable[str],
         values: Mapping[str, str | None],
+        secrets: Sequence[str] = (),
     ) -> tuple[dict[str, ErrorItem], dict[str, ErrorItem], list[ErrorItem]]:
-        """(failed path -> error, warned path -> warning, item-level errors)."""
+        """(failed path -> error, warned path -> warning, item-level errors). `secrets` (SI2:
+        the manufacturer strings, `party_secrets`) are scrubbed from every issue text."""
         body = _write_reply(response)
         issues = body.get("issues") or body.get("errors") or []
         in_scope = set(scope)
@@ -179,10 +183,11 @@ class AmazonAdapter(MarketplaceAdapter):
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
-                    raw_message=str(issue.get("message", "")),
+                    raw_message=issue_text(str(issue.get("message", "")), names, index, secrets),
                     field=path,
                     value=values.get(path) if path else None,
                     categories=categories,
+                    secrets=secrets,
                 )
                 if severity == "WARNING":
                     one = one.model_copy(update={"severity": Severity.WARNING})
@@ -203,10 +208,11 @@ class AmazonAdapter(MarketplaceAdapter):
         index: Mapping[str, tuple[str, ...]],
         scope: Sequence[str],
         sent: Sequence[str],
+        secrets: Sequence[str] = (),
     ) -> _Outcome:
         unit = mapped.unit
-        values: dict[str, str | None] = dict.fromkeys(scope)
-        failed, warned, loose = self._issue_items(response, mapped, index, scope, values)
+        values: dict[str, str | None] = dict.fromkeys(scope)  # never a party value (SI2)
+        failed, warned, loose = self._issue_items(response, mapped, index, scope, values, secrets)
         body = _write_reply(response)
         status = str(body.get("status", "")).upper()
         invalid = response.status != 200 or status != c.ACCEPTED
@@ -386,7 +392,9 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "put", response.raw)
             try:
-                outcome = self._outcome(response, one, index, one.paths, one.submitted)
+                outcome = self._outcome(
+                    response, one, index, one.paths, one.submitted, party_secrets(item)
+                )
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             results.append(outcome.item)
@@ -405,7 +413,10 @@ class AmazonAdapter(MarketplaceAdapter):
     async def update_listing(self, item: AdapterListing, *, fields: UpdateFields) -> ListingResult:
         per_sku = fields_by_sku(item, fields)
         # DW2 D5/AC9: schema errors show in preview and the snapshot, never block a PATCH.
-        mapped, errors = build(item, marketplace_id=self._marketplace_id, schema=False)
+        # SI5 CP-D14: a live item is never refused for a missing barcode (a create is).
+        mapped, errors = build(
+            item, marketplace_id=self._marketplace_id, schema=False, require_identifier=False
+        )
         template = item.template.template if item.template is not None else None
         index = reverse_index(template)
         by_sku = {m.unit.seller_sku: m for m in mapped}
@@ -460,7 +471,7 @@ class AmazonAdapter(MarketplaceAdapter):
             bodies.append(response.raw)
             self._sink.put(one.unit.seller_sku, "patch", response.raw)
             try:
-                outcome = self._outcome(response, one, index, scope, sent)
+                outcome = self._outcome(response, one, index, scope, sent, party_secrets(item))
             except _UnreadableReplyError:
                 raise _unconfirmed(results) from None
             merged = {f.field: f for f in outcome.item.fields}

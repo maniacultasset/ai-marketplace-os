@@ -1,4 +1,4 @@
-"""Amazon SP-API Listings Items constants (spec L5272; S20 T6; PLAN D1-D3).
+"""Amazon SP-API Listings Items constants (spec L5272; S20 T6; PLAN D1-D3; SI2 T7-T8).
 
 Every wire name here is believed from the public SP-API documentation. They stay believed until
 the production definitions are fetched (DW2-P): since DW2, `app.cli templates diff` checks them
@@ -9,13 +9,36 @@ canonical listing has none.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from decimal import Decimal
 from types import MappingProxyType
 from typing import Final
 
 API_VERSION: Final = "2021-08-01"
 ITEMS_PATH: Final = f"/listings/{API_VERSION}/items"
 LANGUAGE_TAG: Final = "en_IN"
-REQUIREMENTS: Final = "LISTING_PRODUCT_ONLY"  # D2: no offer data (price, stock) in v1
+# SI2 D3: a sellable item (standalone, child) carries the seller's offer; a parent stays
+# product-only. No stock or fulfilment data (D16: DL1).
+REQUIREMENTS_SELLABLE: Final = "LISTING"
+REQUIREMENTS_PARENT: Final = "LISTING_PRODUCT_ONLY"
+
+# SI2 T7 (D4): the offer. Price and MRP are the seller's own values, sent with tax.
+OFFER_ATTRIBUTE: Final = "purchasable_offer"
+OUR_PRICE: Final = "our_price"
+MRP_FIELD: Final = "maximum_retail_price"
+CONDITION_ATTRIBUTE: Final = "condition_type"
+CONDITION_NEW: Final = "new_new"
+CURRENCY: Final = "INR"
+MAX_MONEY: Final = Decimal("9999999999.99")
+REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_origin")
+# SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
+MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
+# SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,
+# never on a parent). Our identifier type -> Amazon's `type` spelling.
+EXTERNAL_ID_ATTRIBUTE: Final = "externally_assigned_product_identifier"
+EXEMPTION_ATTRIBUTE: Final = "supplier_declared_has_product_identifier_exemption"
+IDENTIFIER_TYPES: Final[Mapping[str, str]] = MappingProxyType(
+    {"ean": "ean", "upc": "upc", "gtin": "gtin"}
+)
 
 # C6: canonical content and keyword paths -> Amazon attributes
 CONTENT_FIELDS: Final[Mapping[str, str]] = MappingProxyType(
@@ -66,7 +89,11 @@ DISCOVERABLE: Final = "DISCOVERABLE"
 PTD_API_VERSION: Final = "2020-09-01"
 PTD_PATH: Final = f"/definitions/{PTD_API_VERSION}/productTypes"
 PTD_LOCALE: Final = "en_IN"
-PTD_REQUIREMENTS: Final = REQUIREMENTS  # decision 2: store and validate what submission sends
+# decision 2: store and validate what is sent. SI2 D3: two definitions per product type, the
+# `LISTING` one for sellable items (the `templates refresh|diff` default) and the PRODUCT_ONLY
+# one for a family's parent.
+PTD_REQUIREMENTS: Final = REQUIREMENTS_SELLABLE
+PTD_PARENT_REQUIREMENTS: Final = REQUIREMENTS_PARENT
 PTD_REQUIREMENTS_VALUES: Final = ("LISTING", "LISTING_PRODUCT_ONLY", "LISTING_OFFER_ONLY")
 PTD_OPERATIONS: Final = ("ptd_get",)
 # Believed: Amazon publishes 5 req/s; 1/s is the safe start for a one-shot staff command.

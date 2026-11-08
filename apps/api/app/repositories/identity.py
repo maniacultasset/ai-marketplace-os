@@ -40,6 +40,8 @@ from app.db import staff_ops
 from app.db.guard import TENANT_INFO_KEY
 from app.db.models.ops import OAuthState, RefreshToken
 from app.db.models.tenancy import (
+    Invitation,
+    PasswordResetLink,
     SignupRequest,
     Tenant,
     TenantMembership,
@@ -58,13 +60,17 @@ __all__ = [
     "AuthState",
     "ConsumedState",
     "FamilyDevice",
+    "InvitationLookup",
     "MembershipRepository",
     "MembershipRow",
     "RefreshRow",
     "RefreshTokenRepository",
+    "ResetLinkLookup",
     "SignupRepository",
     "SignupRow",
     "SlugTakenError",
+    "TenantAdminRepository",
+    "TenantAdminRow",
     "UserRepository",
     "UserRow",
     "consume_oauth_state",
@@ -172,9 +178,89 @@ def _user_row(user: User) -> UserRow:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class InvitationLookup:
+    """An invitation found by its token hash before the tenant is known (SI5, ADR-0029)."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    email: str
+    role: str
+    invited_by_user_id: uuid.UUID | None
+    expires_at: datetime
+    accepted_at: datetime | None
+    revoked_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class ResetLinkLookup:
+    """A password reset link found by its token hash before the tenant is known (SI5)."""
+
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    user_id: uuid.UUID
+    issued_by_user_id: uuid.UUID
+    expires_at: datetime
+    used_at: datetime | None
+    revoked_at: datetime | None
+
+
 class UserRepository:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    # ---- SI5 (ADR-0029): the copied links, found by hash before any tenant GUC ----
+
+    async def invitation_by_hash(self, token_hash: bytes) -> InvitationLookup | None:
+        """Sets `app.token_hash` (the `invitations_hash` SELECT branch, 0005) and reads the one
+        row it names; None for any other hash. The GUC stays set for the transaction (the Google
+        invitee definer reads it)."""
+        await set_gucs(self.db, token_hash=token_hash)
+        stmt = identity_scope(
+            select(
+                Invitation.id,
+                Invitation.tenant_id,
+                Invitation.email,
+                Invitation.role,
+                Invitation.invited_by_user_id,
+                Invitation.expires_at,
+                Invitation.accepted_at,
+                Invitation.revoked_at,
+            ).where(Invitation.token_hash == token_hash)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else InvitationLookup(*row)
+
+    async def reset_link_by_hash(self, token_hash: bytes) -> ResetLinkLookup | None:
+        """Sets `app.token_hash` (`password_reset_links_hash`, 0017) and reads the one row it
+        names; None for any other hash."""
+        await set_gucs(self.db, token_hash=token_hash)
+        stmt = identity_scope(
+            select(
+                PasswordResetLink.id,
+                PasswordResetLink.tenant_id,
+                PasswordResetLink.user_id,
+                PasswordResetLink.issued_by_user_id,
+                PasswordResetLink.expires_at,
+                PasswordResetLink.used_at,
+                PasswordResetLink.revoked_at,
+            ).where(PasswordResetLink.token_hash == token_hash)
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else ResetLinkLookup(*row)
+
+    async def insert_google_invitee(
+        self, *, email: str, sub: str, display_name: str | None
+    ) -> uuid.UUID | None:
+        """A password-less Google user for an invite (`app_create_google_invitee`, 0017): needs
+        `app.login_email` = the email and `app.token_hash` naming a pending invitation for it;
+        None when the email or the Google account is taken."""
+        found = await self.db.execute(
+            text("SELECT public.app_create_google_invitee(:e, :s, :n)"),
+            {"e": email, "s": sub, "n": display_name},
+        )
+        value = found.scalar_one_or_none()
+        return None if value is None else uuid.UUID(str(value))
 
     async def by_email(self, email: str) -> UserRow | None:
         """Visible only under `app.login_email` = lower(email) (users_login)."""
@@ -303,7 +389,7 @@ class UserRepository:
         return bool((await self.db.execute(stmt)).scalar_one_or_none())
 
     async def insert_signup_user(
-        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str
+        self, *, user_id: uuid.UUID, email: str, password_hash: str, display_name: str | None
     ) -> bool:
         """A new user from the public sign-up (users_signup needs `app.login_email` = the
         lower-cased email); False when a concurrent sign-up of the same email took
@@ -417,6 +503,18 @@ class MembershipRepository:
             .limit(1)
         )
         return (await self.db.execute(stmt)).first() is not None
+
+    async def every_for_user(
+        self, user_id: uuid.UUID
+    ) -> builtins.list[tuple[uuid.UUID, str, bool]]:
+        """SI5: every membership of `user_id`, any status and any tenant state, as
+        `(tenant_id, role, is_active)`. Needs `app.user_id` = `user_id` (memberships_own)."""
+        stmt = identity_scope(
+            select(
+                TenantMembership.tenant_id, TenantMembership.role, TenantMembership.is_active
+            ).where(TenantMembership.user_id == user_id)
+        )
+        return [(r[0], str(r[1]), bool(r[2])) for r in (await self.db.execute(stmt)).all()]
 
     async def probe(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> MembershipRow | None:
         """The one-lookup membership probe (DATABASE.md:312): an active membership of an active
@@ -904,6 +1002,75 @@ class SignupRepository:
             staff_email=staff_email,
             request_id=request_id,
         )
+
+
+@dataclass(frozen=True, slots=True)
+class TenantAdminRow:
+    id: uuid.UUID
+    name: str
+    slug: str
+    status: str
+    trial_ends_at: datetime | None
+    created_at: datetime
+
+
+_TENANT_ADMIN_COLUMNS: Final = (
+    Tenant.id,
+    Tenant.name,
+    Tenant.slug,
+    Tenant.status,
+    Tenant.trial_ends_at,
+    Tenant.created_at,
+)
+
+
+class TenantAdminRepository:
+    """The platform admin's tenant list and re-read (SI5, ADR-0029): every tenant row through
+    `tenants_platform_admin` (0017), so the caller sets `app.user_id` to the admin first; a
+    non-admin sees only its own switcher rows."""
+
+    def __init__(self, db: AsyncSession) -> None:
+        self.db = db
+
+    async def page(
+        self,
+        *,
+        status: str | None,
+        limit: int,
+        after: tuple[datetime, uuid.UUID] | None,
+    ) -> builtins.list[TenantAdminRow]:
+        """Up to `limit` rows, newest first on `(created_at, id)`, after the cursor."""
+        stmt = select(*_TENANT_ADMIN_COLUMNS)
+        if status is not None:
+            stmt = stmt.where(Tenant.status == status)
+        if after is not None:
+            at, row_id = after
+            bound = tuple_(literal(at, Tenant.created_at.type), literal(row_id, Tenant.id.type))
+            stmt = stmt.where(tuple_(Tenant.created_at, Tenant.id) < bound)
+        stmt = identity_scope(
+            stmt.order_by(Tenant.created_at.desc(), Tenant.id.desc()).limit(limit)
+        )
+        return [TenantAdminRow(*row) for row in (await self.db.execute(stmt)).all()]
+
+    async def get(self, tenant_id: uuid.UUID) -> TenantAdminRow | None:
+        stmt = identity_scope(select(*_TENANT_ADMIN_COLUMNS).where(Tenant.id == tenant_id))
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else TenantAdminRow(*row)
+
+    async def activate(self, tenant_id: uuid.UUID, *, reason: str) -> str:
+        """`activate_tenant` (0017) as the admin: the outcome text; GRD01 for anyone else."""
+        found = await self.db.execute(
+            text("SELECT public.activate_tenant(:t, :r, NULL)"), {"t": tenant_id, "r": reason}
+        )
+        return str(found.scalar_one())
+
+    async def extend_trial(self, tenant_id: uuid.UUID, *, days: int, reason: str) -> str:
+        """`extend_tenant_trial` (0017) as the admin: the outcome text."""
+        found = await self.db.execute(
+            text("SELECT public.extend_tenant_trial(:t, :d, :r, NULL)"),
+            {"t": tenant_id, "d": days, "r": reason},
+        )
+        return str(found.scalar_one())
 
 
 async def pending_signup_count(session: AsyncSession) -> int:

@@ -79,10 +79,12 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
         "job_runs": 1,
         "refresh_tokens": 0,
         "invitations": 0,
+        "password_reset_links": 0,  # SI5
         "brand_chunks": 0,
         "trusted_devices": 0,
         "image_orphans": 0,
         "deleted_image_objects": 0,  # SI1 T22: runs at the end of retention
+        "image_candidates": 0,  # SI7: after the deleted images' objects
     }
     assert not _exists(jobs_db, "imports", imp) and not _exists(jobs_db, "job_runs", job)
 
@@ -337,3 +339,123 @@ async def test_retention_inactive_brand_chunks_30_days(jobs_db: JobWorld) -> Non
     assert totals["brand_chunks"] == 1
     assert not _exists(jobs_db, "brand_chunks", stale)
     assert _exists(jobs_db, "brand_chunks", fresh) and _exists(jobs_db, "brand_chunks", active)
+
+
+# ---- SI7 T16 (AC16): candidates past 30 days that were never accepted ----
+
+
+@pytest.fixture
+def cstore(monkeypatch: pytest.MonkeyPatch) -> Any:
+    import app.workers.periodic as periodic
+
+    from .images_support import FakeStorage
+
+    fake = FakeStorage()
+    monkeypatch.setattr(periodic, "get_storage", lambda: fake)
+    return fake
+
+
+def _candidate(jw: JobWorld, slug: str, days: int, **cols: Any) -> tuple[uuid.UUID, str]:
+    from app.services.image_keys import candidate_key
+
+    from . import factories as f
+
+    tenant = jw.tenant(slug)
+    p = f.product(jw.conn, tenant, category="kurtas")
+    src = f.image(
+        jw.conn, tenant, p, slot="main", storage_key=f"{tenant}/{p}/images/{uuid.uuid4()}"
+    )
+    cid = uuid.uuid4()
+    key = candidate_key(tenant, p, cid)
+    if cols.get("status") in ("ready", "accepted", "rejected"):
+        cols.setdefault("storage_key", key)
+    if cols.get("status") == "accepted":
+        cols.setdefault("accepted_image_id", src)
+    f.image_candidate(
+        jw.conn, tenant, p, src, id=cid, created_at=datetime.now(UTC) - timedelta(days=days), **cols
+    )
+    return cid, key
+
+
+async def test_candidate_sweep(jobs_db: JobWorld, cstore: Any) -> None:
+    from app.workers.periodic import sweep_image_candidates
+
+    now = datetime.now(UTC)
+    rejected, rkey = _candidate(jobs_db, "acme", 31, status="rejected")
+    failed, fkey = _candidate(jobs_db, "acme", 31, status="failed", failure_reason="fidelity")
+    accepted, akey = _candidate(jobs_db, "acme", 31, status="accepted")
+    young, ykey = _candidate(jobs_db, "acme", 29, status="ready")
+    other, okey = _candidate(jobs_db, "bharat", 29, status="rejected")
+    for key in (rkey, fkey, akey, ykey, okey):
+        cstore.objects[key] = (b"x", "image/jpeg", now)
+    result = await sweep_image_candidates()
+    assert result == {"deleted": 2, "failed": 0}
+    assert not _exists(jobs_db, "image_candidates", rejected) and rkey not in cstore.objects
+    assert not _exists(jobs_db, "image_candidates", failed) and fkey not in cstore.objects
+    for kept, key in ((accepted, akey), (young, ykey), (other, okey)):
+        assert _exists(jobs_db, "image_candidates", kept) and key in cstore.objects
+
+
+async def test_candidate_sweep_keeps_the_row_when_the_store_fails(
+    jobs_db: JobWorld, cstore: Any
+) -> None:
+    from app.adapters.storage import StorageUnavailable
+    from app.workers.periodic import sweep_image_candidates
+
+    rejected, _ = _candidate(jobs_db, "acme", 31, status="rejected")
+    cstore.fail = {"delete": StorageUnavailable("down")}
+    assert await sweep_image_candidates() == {"deleted": 0, "failed": 1}
+    assert _exists(jobs_db, "image_candidates", rejected)
+
+
+def _reset_link(
+    jw: JobWorld, slug: str, *, closed_days: float | None, how: str = "used_at"
+) -> uuid.UUID:
+    """A reset link for `reviewer@<slug>.test` issued by the owner, closed `closed_days` ago
+    (None: still live). `created_at` is backdated with it (the 24-hour CHECK)."""
+    row_id = uuid.uuid4()
+    created = _ago((closed_days or 0) + 0.5) if closed_days is not None else datetime.now(UTC)
+    jw.conn.execute(
+        sql.SQL(
+            "INSERT INTO password_reset_links (id, tenant_id, user_id, issued_by_user_id, "
+            "token_hash, created_at, expires_at, {}) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+        ).format(sql.Identifier(how)),
+        [
+            row_id,
+            jw.tenant(slug),
+            jw.world.user(f"reviewer@{slug}.test"),
+            jw.owner(slug),
+            hashlib.sha256(row_id.bytes).digest(),
+            created,
+            created + timedelta(hours=1),
+            None if closed_days is None else _ago(closed_days),
+        ],
+    )
+    return row_id
+
+
+async def test_retention_reset_links_30_days_after_closing(jobs_db: JobWorld) -> None:
+    """SI5 (ADR-0029): closed reset links go 30 days after they closed, as app_rw inside the
+    tenant's unit of work, in the same run as the other auth rows (no 42501 aborts it)."""
+    old = _reset_link(jobs_db, "acme", closed_days=31)
+    young = _reset_link(jobs_db, "acme", closed_days=29, how="revoked_at")
+    theirs = _reset_link(jobs_db, "bharat", closed_days=60)
+    token = _refresh_token(jobs_db, "acme", expired_days=60)
+    invitation = _invitation(jobs_db, "acme", expires_at=_ago(31))
+    acme = jobs_db.tenant("acme")
+    async with unit_of_work(acme) as session:
+        counts = await retention.prune_tenant(session, acme)
+    assert counts["password_reset_links"][0] == 1
+    assert not _exists(jobs_db, "password_reset_links", old)
+    assert _exists(jobs_db, "password_reset_links", young)
+    assert _exists(jobs_db, "password_reset_links", theirs)
+    assert not _exists(jobs_db, "refresh_tokens", token)
+    assert not _exists(jobs_db, "invitations", invitation)
+
+
+async def test_retention_keeps_a_live_reset_link(jobs_db: JobWorld) -> None:
+    live = _reset_link(jobs_db, "acme", closed_days=None)
+    acme = jobs_db.tenant("acme")
+    async with unit_of_work(acme) as session:
+        await retention.prune_tenant(session, acme)
+    assert _exists(jobs_db, "password_reset_links", live)

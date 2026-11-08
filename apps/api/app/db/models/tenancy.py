@@ -1,7 +1,7 @@
 """Tenancy models: `tenants`, global `users`, `tenant_memberships`, `invitations`
 (DATABASE.md §5.1; ADR-0006), the platform `signup_requests` (0010; ADR-0019), the per-user MFA,
 challenge and password-history tables (0011; DPP-1, ADR-0021), the Google sign-in flows
-(0012; ADR-0020) and the trusted browsers (0013; ADR-0023). Columns, defaults, keys and indexes mirror revision
+(0012; ADR-0020), the trusted browsers (0013; ADR-0023) and the copied reset links (0017; ADR-0029). Columns, defaults, keys and indexes mirror revision
 0001_core_tenancy under the same names; the CHECK constraints live only in the revision."""
 
 from __future__ import annotations
@@ -442,3 +442,36 @@ class Invitation(TenantScoped, Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
+
+
+class PasswordResetLink(TenantScoped, Base):
+    """A copied password reset link (0017; ADR-0029): one live link per member, 24 hours, used or
+    revoked once. The CHECKs live only in the revision."""
+
+    __tablename__ = "password_reset_links"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_password_reset_links")),
+        anchor("password_reset_links"),
+        UniqueConstraint("token_hash", name=conv("uq_password_reset_links_token_hash")),
+        tenant_fk("password_reset_links"),
+        to_membership("password_reset_links", "user_id"),
+        to_membership("password_reset_links", "issued_by_user_id"),
+        Index(
+            conv("uq_password_reset_links_live"),
+            "tenant_id",
+            "user_id",
+            unique=True,
+            postgresql_where=text("used_at IS NULL AND revoked_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    # sha256 of the raw token; never granted to the read-only roles.
+    token_hash: Mapped[bytes] = mapped_column(LargeBinary)
+    issued_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()

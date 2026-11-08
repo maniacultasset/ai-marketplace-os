@@ -45,6 +45,19 @@ def believed_names() -> tuple[str, ...]:
     )
 
 
+def sellable_names() -> tuple[str, ...]:
+    """SI2: the names a sellable item sends from the seller's facts (the offer, the
+    manufacturer contact and, since SI5, the barcode or its exemption). They feed a `required` of the LISTING definition; a PRODUCT_ONLY
+    definition need not declare them, so their absence is not drift."""
+    return (
+        c.OFFER_ATTRIBUTE,
+        c.CONDITION_ATTRIBUTE,
+        c.MANUFACTURER_CONTACT,
+        c.EXTERNAL_ID_ATTRIBUTE,  # SI5 B2: the barcode or the exemption
+        c.EXEMPTION_ATTRIBUTE,
+    )
+
+
 def _item_properties(spec: Any) -> Mapping[str, Any] | None:
     items = spec.get("items") if isinstance(spec, dict) else None
     props = items.get("properties") if isinstance(items, dict) else None
@@ -64,7 +77,7 @@ def diff(
     raw = schema.get("properties")
     properties: Mapping[str, Any] = raw if isinstance(raw, dict) else {}
     found: set[Drift] = set()
-    fed: set[str] = set(believed_names())
+    fed: set[str] = set(believed_names()) | set(sellable_names())
     for name in believed_names():
         if name not in properties:
             found.add(Drift("unknown_attribute", name, f"not declared by {product_type}"))

@@ -11,6 +11,9 @@ owner): `GenerationContext.product` stays a `dict` and gets `for_prompt(facts)`.
   pipeline deps object holds (CP13). Parties are `{legal_name}`; no contact, GSTIN or evidence.
   SI3: an unconfirmed `ai` attribute (a value read from the photos the seller has not confirmed)
   is left out, so it can never back a claim or satisfy a condition. `for_prompt` keeps it.
+- `listing_facts_digest(main, children)` (SI2 D9): a standalone's `facts_digest`, unchanged; a
+  family's digest also covers each child's facts (child order does not matter), so a child's
+  price change after approval is caught.
 - `facts_digest(facts)`: sha256 of the canonical JSON (sorted keys, Decimals as strings, every
   `updated_at` dropped, and `confirmed_by`/`confirmed_at` set to null, SI3 CP-D3) of the full
   facts, parties, family, provenance and dictionary version included: it pins the facts a
@@ -18,12 +21,14 @@ owner): `GenerationContext.product` stays a `dict` and gets `for_prompt(facts)`.
 - `stamp_reread(pre, reread)` / `recheck_digest`: SI3 design §2.3. The worker re-reads the facts
   after writing photo facts; the re-check run may take the re-read digest only when the two
   differ by unconfirmed `ai` attributes alone (so the rule result on `pre` holds on `reread`).
+  A family's re-read digest is its `listing_facts_digest` over the children read with `pre`.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from typing import Any, Final, Literal
 from uuid import UUID
 
@@ -46,6 +51,7 @@ __all__ = [
     "for_prompt",
     "for_rules",
     "is_unconfirmed_ai",
+    "listing_facts_digest",
     "recheck_digest",
     "stamp_reread",
 ]
@@ -342,6 +348,16 @@ def facts_digest(facts: ProductFacts) -> bytes:
     return hashlib.sha256(canonical_facts_json(facts)).digest()
 
 
+def listing_facts_digest(main: ProductFacts, children: Sequence[ProductFacts] = ()) -> bytes:
+    """`facts_digest(main)` with no children; else sha256 over a family tag, the style's digest
+    and each child's digest in `product_id` order (32 bytes)."""
+    if not children:
+        return facts_digest(main)
+    ordered = sorted(children, key=lambda c: c.product_id)
+    body = b"family:v1\0" + facts_digest(main) + b"".join(facts_digest(c) for c in ordered)
+    return hashlib.sha256(body).digest()
+
+
 def stamp_reread(pre: ProductFacts, reread: ProductFacts) -> bool:
     """True when `reread` differs from `pre` by unconfirmed `ai` attributes only (design §2.3).
 
@@ -365,7 +381,14 @@ def stamp_reread(pre: ProductFacts, reread: ProductFacts) -> bool:
     return True
 
 
-def recheck_digest(pre: ProductFacts, reread: ProductFacts, pinned: bytes) -> bytes:
+def recheck_digest(
+    pre: ProductFacts,
+    reread: ProductFacts,
+    pinned: bytes,
+    children: Sequence[ProductFacts] = (),
+) -> bytes:
     """The digest the version-linked re-check run stamps: the re-read one when `stamp_reread`
-    holds, else the pre-pipeline pin (so a seller change made during the run is caught)."""
-    return facts_digest(reread) if stamp_reread(pre, reread) else pinned
+    holds, else the pre-pipeline pin (so a seller change made during the run is caught). For a
+    family (SI2 D9) the re-read one is `listing_facts_digest(reread, children)` over the children
+    pinned at read time, so a child changed during the run still voids the approval."""
+    return listing_facts_digest(reread, children) if stamp_reread(pre, reread) else pinned

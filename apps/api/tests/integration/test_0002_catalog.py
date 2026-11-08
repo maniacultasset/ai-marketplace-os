@@ -403,4 +403,4 @@ def test_0002_tenant_fks_cover_every_column(db: Conn) -> None:
     """Every tenant-composite FK column of a 0002 table has a cross-tenant 23503 test: a new
     FK column without one goes red."""
     assert tenant_fk_columns(db, set(TABLES_0002)) == CROSS_TENANT_FK_COLUMNS
-    assert len(CROSS_TENANT_FK_COLUMNS) == 32
+    assert len(CROSS_TENANT_FK_COLUMNS) == 33

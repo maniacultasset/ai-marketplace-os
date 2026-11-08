@@ -107,6 +107,80 @@ def brand_profile(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
     )
 
 
+def brand_manufacturer(conn: Conn, tenant_id: UUID, *, country: str | None = "IN") -> UUID:
+    """SI2 T2: a manufacturer party with a full address, set as the tenant's brand default (and
+    `default_country_of_origin`), so a product with no own party resolves one (S-b)."""
+    party_id = party(
+        conn,
+        tenant_id,
+        legal_name="Test Mills Pvt Ltd",
+        address_line1="1 Mill Road",
+        city="Surat",
+        state_code="GJ",
+        postal_code="395003",
+        country_code="IN",
+    )
+    conn.execute(
+        "INSERT INTO brand_profiles (tenant_id) VALUES (%s) ON CONFLICT (tenant_id) DO NOTHING",
+        [tenant_id],
+    )
+    conn.execute(
+        "UPDATE brand_profiles SET default_manufacturer_party_id = %s,"
+        " default_country_of_origin = %s WHERE tenant_id = %s",
+        [party_id, country, tenant_id],
+    )
+    return party_id
+
+
+def ensure_brand_manufacturer(conn: Conn, tenant_id: UUID) -> None:
+    """`brand_manufacturer` unless the tenant already has a brand-default manufacturer."""
+    row = conn.execute(
+        "SELECT default_manufacturer_party_id FROM brand_profiles WHERE tenant_id = %s",
+        [tenant_id],
+    ).fetchone()
+    if row is None or row[0] is None:
+        brand_manufacturer(conn, tenant_id)
+
+
+def ean() -> str:
+    """SI5 B2: a fresh, valid EAN-13 (an Amazon create needs a barcode or the GTIN exemption).
+    Random, so `products_identifier_uq` holds across the products of one tenant."""
+    from uuid import uuid4
+
+    from app.core.identifiers import gtin_valid
+
+    body = f"890{uuid4().int % 10**9:09d}"
+    return next(body + d for d in "0123456789" if gtin_valid(body + d))
+
+
+def barcoded() -> dict[str, Any]:
+    """The identifier columns of a sellable product with a fresh EAN (SI5 B2)."""
+    return {"identifier_type": "ean", "identifier_value": ean(), "identifier_status": "provided"}
+
+
+SELLER_PRICED: dict[str, Any] = {
+    "mrp": "999.00",
+    "selling_price": "499.00",
+    "country_of_origin": "IN",
+}
+
+
+def seller_product(conn: Conn, tenant_id: UUID, kind: str = "standalone", **columns: Any) -> UUID:
+    """SI2: a product the adapters can publish: priced, with a country, the seller's colour and
+    fabric (standalone) and the tenant's brand-default manufacturer; since SI5 a sellable one
+    (not a style) has an EAN. Columns override."""
+    ensure_brand_manufacturer(conn, tenant_id)
+    defaults: dict[str, Any] = dict(SELLER_PRICED)
+    if kind != "style":
+        defaults.update(barcoded())
+    if kind == "standalone":
+        defaults["attributes"] = {
+            "color": fact(value="navy blue"),
+            "fabric_type": fact(value="cotton"),
+        }
+    return product(conn, tenant_id, kind, **{**defaults, **columns})
+
+
 # Typed fact column → its `provenance` key (DATABASE.md §5.6 `ck_products_typed_facts_sourced`).
 TYPED_FACT_KEYS: dict[str, str] = {
     "mrp": "mrp",
@@ -461,3 +535,20 @@ def listing_issue(conn: Conn, tenant_id: UUID, listing_id: UUID, **columns: Any)
         prefix = f"{values['source']}|{values['field_path']}|{values['error_code']}|"
         values["dedupe_key"] = prefix + str(values.get("rule_id") or "")
     return insert(conn, "listing_issues", **values)  # type: ignore[no-any-return]
+
+
+def image_candidate(
+    conn: Conn, tenant_id: UUID, product_id: UUID, source_image_id: UUID | None, **columns: Any
+) -> UUID:
+    """SI7: a queued `fix` candidate of `source_image_id` (or a `size_chart` one without a
+    source), with a fresh cache key."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "product_id": product_id,
+        "source_image_id": source_image_id,
+        "kind": "fix" if source_image_id is not None else "size_chart",
+        "source_hash": f"{n:064x}",
+        "generator_key": "fix/v1",
+    }
+    return insert(conn, "image_candidates", **{**defaults, **columns})  # type: ignore[no-any-return]

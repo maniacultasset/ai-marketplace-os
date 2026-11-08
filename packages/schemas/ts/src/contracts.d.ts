@@ -1818,6 +1818,43 @@ export interface ValidationResult {
   [k: string]: unknown;
 }
 /**
+ * One edit of one product photo. The image is the backend's square JPEG (at most 1024 px).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ImageEditRequest".
+ */
+export interface ImageEditRequest {
+  attempt?: number;
+  category: string;
+  image: ContextImage;
+  job_id: string;
+  product_id: string;
+  request_id: string;
+  schema_version?: string;
+  task: "white_background";
+  tenant_id: string;
+  [k: string]: unknown;
+}
+/**
+ * The pipeline's answer: one edited image and one record when `ok`; an error when `failed`.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ImageEditResult".
+ */
+export interface ImageEditResult {
+  /**
+   * @maxItems 1
+   */
+  agent_runs?: [] | [AgentRunRecord];
+  error?: ErrorReport | null;
+  image_b64?: string | null;
+  mime?: ("image/png" | "image/jpeg" | "image/webp") | null;
+  schema_version?: string;
+  served_provider?: string | null;
+  status: "ok" | "failed";
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "ImportReport".
  */

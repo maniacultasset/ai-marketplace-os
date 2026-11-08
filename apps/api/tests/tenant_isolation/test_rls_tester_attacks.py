@@ -332,7 +332,7 @@ def test_attack_token_hash_guc_of_other_value_hides_rows(
     assert world.tenants
     wrong = hashlib.sha256(b"no such token").hexdigest()
     with session(app_conn, None, token_hash=wrong):
-        for table in ("refresh_tokens", "invitations", "oauth_states"):
+        for table in ("refresh_tokens", "invitations", "oauth_states", "password_reset_links"):
             count = sql.SQL("SELECT count(*) FROM {}").format(sql.Identifier(table))
             row = app_conn.execute(count).fetchone()
             assert row == (0,), table

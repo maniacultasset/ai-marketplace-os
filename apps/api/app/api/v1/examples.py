@@ -38,11 +38,14 @@ GOOGLE_AUTHORIZE_EXAMPLE: Final = (
 GOOGLE_CALLBACK_LOCATION: Final = "https://kuinn.in/auth/google?handle=gh_example_opaque_value"
 ISSUE: Final = "0b1c2d3e-0000-4000-8000-000000001001"
 TASK: Final = "0b1c2d3e-0000-4000-8000-000000001101"
+CANDIDATE: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 AUDIT_EVENT: Final = "0b1c2d3e-0000-4000-8000-000000001201"
 SUBMISSION: Final = "0b1c2d3e-0000-4000-8000-000000001301"
 LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
 SIGNUP: Final = "0b1c2d3e-0000-4000-8000-000000001501"
 APPLICANT: Final = "0b1c2d3e-0000-4000-8000-000000001502"
+INVITE: Final = "0b1c2d3e-0000-4000-8000-000000001601"
+T_INVITE_END: Final = "2026-10-12T09:30:00Z"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
 _TOKENS: Final = {
@@ -100,6 +103,28 @@ _BRAND_PROFILE: Final = {
         "inherited": False,
     },
     "updated_at": T0,
+}
+
+
+# SI5 (ADR-0029): an invite, and a tenant in the platform admin's list.
+_INVITE: Final = {
+    "id": INVITE,
+    "email": "meera@fabrica.example",
+    "role": "reviewer",
+    "status": "pending",
+    "invited_by_user_id": USER,
+    "expires_at": T_INVITE_END,
+    "created_at": T0,
+    "accepted_at": None,
+    "revoked_at": None,
+}
+_TENANT_ADMIN: Final = {
+    "id": TENANT,
+    "name": "Fabrica",
+    "slug": "fabrica",
+    "status": "suspended",
+    "trial_ends_at": "2026-10-04T09:30:00Z",
+    "created_at": "2026-09-20T09:30:00Z",
 }
 
 
@@ -454,6 +479,31 @@ _AI_CREDIT: Final[dict[str, Any]] = {
 }
 
 
+# SI7: a ready white-background candidate of the main image (the signed previews are examples)
+_CANDIDATE: Final = {
+    "id": CANDIDATE,
+    "kind": "white_background",
+    "source_image_id": IMAGE,
+    "colourway_id": None,
+    "status": "ready",
+    "failure_reason": None,
+    "width": 1200,
+    "height": 1200,
+    "fidelity": {
+        "mask_iou": 0.97,
+        "colour_distance": 0.02,
+        "agreement": 0.99,
+        "hole_share": 0.0,
+    },
+    "model": "google/gemini-2.5-flash-image",
+    "prompt_version": "image_edit/white_bg/v1",
+    "cost_usd": "0.039000",
+    "preview_url": "https://storage.example/candidate.jpg?X-Goog-Signature=example",
+    "source_preview_url": "https://storage.example/clean.jpg?X-Goog-Signature=example",
+    "accepted_image_id": None,
+    "created_at": T0,
+}
+
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
     {
         "auth_login": {
@@ -501,6 +551,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "expires_in": 1800,
         },
         "auth_password_change": None,
+        "auth_password_reset": None,
         "auth_google_config": {"enabled": True},
         "auth_google_start": None,
         "auth_google_callback": None,
@@ -568,6 +619,25 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "display_name": "Ravi",
             "role": "operator",
         },
+        "members_password_reset": {
+            "reset_url": "https://kuinn.in/reset-password#token=" + "R" * 43,
+            "expires_at": "2026-10-06T09:30:00Z",
+        },
+        "invites_create": {
+            "invite": _INVITE,
+            "invite_url": "https://kuinn.in/invite#token=" + "T" * 43,
+        },
+        "invites_list": _page([_INVITE]),
+        "invites_revoke": {**_INVITE, "status": "revoked", "revoked_at": T1},
+        "invites_lookup": {
+            "tenant_name": "Fabrica",
+            "role": "reviewer",
+            "email": "meera@fabrica.example",
+            "expires_at": T_INVITE_END,
+            "account": "new",
+        },
+        "invites_accept": {"email": "meera@fabrica.example", "tenant_name": "Fabrica"},
+        "invites_join": {"tenant_id": TENANT, "role": "reviewer"},
         "tenants_me": {
             "id": TENANT,
             "name": "Fabrica",
@@ -620,6 +690,8 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "selling_price": "1299.00",
             "currency": "INR",
             "photo_facts": [{**_PHOTO_FACT, "confirmed": True, "confirmed_at": T1}],
+            "product_identifier": {"type": "ean", "value": "4006381333931"},
+            "identifier_exemption": False,
         },
         "products_bulk": {
             "import_id": IMPORT,
@@ -740,6 +812,25 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "image_candidates_create": {
+            "candidate_id": CANDIDATE,
+            "status": "queued",
+            "job_id": JOB,
+            "poll_url": f"/api/v1/jobs/{JOB}",
+        },
+        "image_candidates_list": {"items": [_CANDIDATE]},
+        "image_candidates_accept": {
+            "image_id": IMAGE,
+            "job_id": JOB,
+            "status": "queued",
+            "poll_url": f"/api/v1/jobs/{JOB}",
+        },
+        "image_candidates_reject": {
+            **_CANDIDATE,
+            "status": "rejected",
+            "preview_url": None,
+            "source_preview_url": None,
+        },
         "images_upload": {
             "image_id": IMAGE,
             "job_id": JOB,
@@ -815,6 +906,13 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "status": "approved",
             "tenant_id": TENANT,
             "decided_at": T1,
+        },
+        "admin_tenants_list": _page([_TENANT_ADMIN]),
+        "admin_tenants_activate": {**_TENANT_ADMIN, "status": "active"},
+        "admin_tenants_extend_trial": {
+            **_TENANT_ADMIN,
+            "status": "trial",
+            "trial_ends_at": "2026-11-04T09:31:00Z",
         },
         "admin_signup_requests_reject": {
             **_SIGNUP_REQUEST,

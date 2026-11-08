@@ -282,6 +282,79 @@ async def test_style_override_reaches_its_variant(world: Any) -> None:
     assert facts.compliance.manufacturer.legal_name == "Style Maker Pvt Ltd"
 
 
+# ---- SI2 T4 (AC2, AC5, AC14): a family's facts ----
+
+
+async def _family(tenant: uuid.UUID, product_id: uuid.UUID) -> Any:
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(tenant) as uow:
+        return await uow.product_facts.resolve_family(product_id)
+
+
+async def test_resolve_family_children_in_sku_order_skip_deleted(world: Any) -> None:
+    from .family_support import family
+
+    acme = world.tenant("acme")
+    style, children = family(world.conn, acme, f"SI2-{uuid.uuid4().hex[:6]}", sizes=("s", "m"))
+    gone = sorted(children)[0]
+    with world.conn.transaction():  # the matrix check wants the cell retired with the child
+        world.conn.execute(
+            "UPDATE variant_matrix_cells SET availability = 'unavailable',"
+            " unavailable_reason = 'not_produced', variant_product_id = NULL"
+            " WHERE variant_product_id = %s",
+            [children[gone]],
+        )
+        world.conn.execute("UPDATE products SET deleted_at = now() WHERE id = %s", [children[gone]])
+    found = await _family(acme, style)
+    assert found is not None
+    main, kids = found
+    assert main.level == "style"
+    assert [k.sku for k in kids] == sorted(s for s in children if s != gone)
+    # AC2: a child with no own price inherits the style's
+    assert {k.commercial.selling_price for k in kids} == {"499.00"}
+    assert {k.commercial.mrp for k in kids} == {"999.00"}
+
+
+async def test_resolve_family_standalone_has_no_children(world: Any) -> None:
+    acme = world.tenant("acme")
+    p = f.product(world.conn, acme, mrp="10.00")
+    found = await _family(acme, p)
+    assert found is not None and found[1] == ()
+    assert await _family(acme, uuid.uuid4()) is None
+
+
+async def test_resolve_family_brand_default_manufacturer_address(world: Any) -> None:
+    acme = world.tenant("acme")
+    f.brand_manufacturer(world.conn, acme)
+    p = f.product(world.conn, acme)
+    found = await _family(acme, p)
+    assert found is not None
+    maker = found[0].compliance.manufacturer
+    assert maker is not None and maker.legal_name == "Test Mills Pvt Ltd"
+    assert maker.address is not None and "1 Mill Road" in maker.address
+    # a product override party wins
+    own = f.party(world.conn, acme, legal_name="Own Maker Pvt Ltd")
+    q = f.product(world.conn, acme, manufacturer_party_id=own)
+    over = await _family(acme, q)
+    assert over is not None and over[0].compliance.manufacturer.legal_name == "Own Maker Pvt Ltd"
+
+
+async def test_resolve_family_other_tenant_children_never_returned(world: Any) -> None:
+    """AC14. A product naming another tenant's party cannot exist (the composite FK
+    `fk_products_manufacturer_party_id` on (tenant_id, party_id)), so the family read is the
+    isolation surface left: tenant B's style and children never resolve under tenant A."""
+    from .family_support import family
+
+    acme, bharat = world.tenant("acme"), world.tenant("bharat")
+    style, children = family(world.conn, bharat, f"SI2B-{uuid.uuid4().hex[:6]}")
+    assert await _family(acme, style) is None
+    for child in children.values():
+        assert await _family(acme, child) is None
+    mine = await _family(bharat, style)
+    assert mine is not None and len(mine[1]) == len(children)
+
+
 async def test_critical_keys_from_the_dictionary(world: Any) -> None:
     """SI4 A6 (CP-D9): the `is_critical` dictionary keys (DATABASE.md:1229)."""
     from app.repositories.uow import tenant_uow

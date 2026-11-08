@@ -1928,10 +1928,10 @@
   },
   {
    "id": "R04763",
-   "status": "later-phase",
-   "owner": "ai-team",
-   "ref": "",
-   "note": "deferred (L4763)"
+   "status": "covered-changed",
+   "owner": "backend-db",
+   "ref": "T134; ADR-0030; DATABASE.md image_candidates (0018)",
+   "note": "SI7 (user rank 0, 2026-11-07): the seller-approved white-background main candidate ships in V1; lifestyle and canvas editing stay deferred (R04763a)"
   },
   {
    "id": "R04763a",

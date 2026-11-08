@@ -198,3 +198,50 @@ def test_gate_is_the_nine_quality_gates_in_spec_order() -> None:
         "commercial",
         "submission",
     ]
+
+
+# SI7 (AC1): the image-edit work adds no member to a closed vocabulary. A failure here means a MAJOR
+# change slipped in; it waits for a contract window (docs/RULES.md §11).
+_ERROR_CODES_SHA256 = "d1ae0d6934372d9ffc006378cfb1a7ee2583a1c4e8073d6a3ffc6b7c067071a0"
+
+
+def test_si7_closed_vocabularies_are_unchanged() -> None:
+    import hashlib
+    import typing
+
+    from mkos_schemas.agent import AgentName, Trigger
+    from mkos_schemas.codes import ErrorCode, ImageIssueCode
+
+    assert _values(JobKind) == {
+        "brand_embed",
+        "bulk_import",
+        "image_compliance",
+        "listing_generate",
+        "listing_publish",
+        "listing_status_sync",
+    }
+    assert set(typing.get_args(AgentName)) == {
+        "content",
+        "keyword",
+        "attribute",
+        "image",
+        "correction",
+        "embedding",
+        "quality",
+    }
+    assert set(typing.get_args(Trigger)) == {"generate", "correct", "embed", "vision"}
+    assert _values(ImageIssueCode) == {
+        "BACKGROUND_OFF",
+        "CORRUPT",
+        "FILE_TOO_LARGE",
+        "FILL_RATIO_LOW",
+        "FORMAT_UNSUPPORTED",
+        "LOGO_PROHIBITED",
+        "RESOLUTION_LOW",
+        "TEXT_DETECTED",
+        "WATERMARK",
+        "WRONG_ASPECT",
+    }
+    codes = sorted(member.value for member in ErrorCode)
+    assert len(codes) == 78
+    assert hashlib.sha256("\n".join(codes).encode()).hexdigest() == _ERROR_CODES_SHA256

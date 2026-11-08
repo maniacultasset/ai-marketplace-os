@@ -128,6 +128,9 @@ PRODUCT_FIELDS = frozenset(
         "colourways",
         # SI3: photo-sourced facts the seller can confirm
         "photo_facts",
+        # SI5: the barcode and the GTIN exemption
+        "product_identifier",
+        "identifier_exemption",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

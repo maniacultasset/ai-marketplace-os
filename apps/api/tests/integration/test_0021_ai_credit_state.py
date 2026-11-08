@@ -25,7 +25,7 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
-PREVIOUS = "0015_image_public_copies"
+PREVIOUS = "0018_image_generation"
 REVISION = "0021_ai_credit_state"
 PAUSE = (
     "UPDATE ai_credit_state SET paused_reason = %s, paused_at = now() "

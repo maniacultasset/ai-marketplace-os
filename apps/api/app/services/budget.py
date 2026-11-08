@@ -6,7 +6,7 @@ predicate in `app.services.ai_credit`) before a fresh generate or regenerate cha
   the route renders as 503 `AI_CREDIT_EXHAUSTED` or `AI_PROVIDER_KEY_INVALID`, no `Retry-After`;
 - the tenant's or the platform's spend plus live reservations plus one generation's reservation
   would pass its daily cap (UTC day of `now`): `BudgetExceededError(scope)`, rendered as 429
-  `BUDGET_EXCEEDED` with `Retry-After` = whole seconds to the next UTC midnight (at least 1). The
+  `BUDGET_EXCEEDED` with `Retry-After` = whole seconds to the next UTC midnight (05:30 IST; at least 1). The
   platform cap is checked here too since SI10 (decision 6), ending the D10 claim-only departure.
 Nothing is written and nothing is enqueued. No body states an amount.
 """
@@ -30,10 +30,10 @@ from app.repositories.uow import TenantUnitOfWork
 from app.services.ai_credit import REASON_CODE, PauseReason
 
 BUDGET_MESSAGE: Final = (
-    "The daily AI budget for this brand is used up; try again after midnight UTC."
+    "The daily AI budget for this brand is used up. It resets at 5:30 am IST; try again then."
 )
 PLATFORM_BUDGET_MESSAGE: Final = (
-    "Today's AI budget for the service is used up; try again after midnight UTC."
+    "Today's AI budget for the service is used up. It resets at 5:30 am IST; try again then."
 )
 # P:§7 decision 7: calm, no amount, no retry.
 CREDIT_MESSAGES: Final[Mapping[PauseReason, str]] = MappingProxyType(

@@ -20,15 +20,26 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
   value reaches a log line or a Sentry event through `str(exc)`.
 - `submitted_fields(listing)`: the field paths one submission answers for, each a legal
   `FieldResult` path (`images[<i>]`, `keywords.<list>`; never the rule-only `images`).
+- SI2: `SellerFacts` are the seller's own factual values one item sends (price, MRP, currency,
+  country, manufacturer, composition), keyed by product id in `AdapterListing.unit_facts`; they
+  are reported at `facts.<key>` (`fact_paths`). `composition_text`, `money`, `locator_ok` and
+  `nearest_values` are the pure helpers both adapters share. `party_secrets(listing)` lists the
+  manufacturer strings an issue text must never carry, and `issue_text` replaces any issue on a
+  manufacturer attribute with a fixed text (DPDP, `db/models/facts.py:88`).
 """
 
 from __future__ import annotations
 
+import difflib
+import functools
+import math
+import re
+import unicodedata
 from abc import ABC, abstractmethod
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from types import MappingProxyType
 from typing import Any, Final, Literal, Protocol, get_args
 from uuid import UUID
@@ -42,11 +53,40 @@ from mkos_schemas.paths import is_valid_field_path
 from mkos_schemas.publish import ItemResult, ListingResult
 from pydantic import SecretStr
 
+from app.core.redaction import REDACTED
+
 ItemRole = Literal["standalone", "parent", "child"]
 ITEM_ROLES: Final = frozenset(get_args(ItemRole))
 MAX_ATTEMPTS: Final = 3
 DIGEST_BYTES: Final = 32
 _EMPTY: Final[Mapping[Any, Any]] = MappingProxyType({})
+FACT_SPEC_KEYS: Final = ("country_of_origin", "fiber_composition", "manufacturer")
+"""The seller facts an adapter maps through the template spec of the same canonical key."""
+PRICE_PATHS: Final = ("facts.mrp", "facts.selling_price")
+_CENT: Final = Decimal("0.01")
+_HUNDRED: Final = Decimal(100)
+# scheme :// authority rest (adapters import no URL or socket library, `test_fake_adapter`)
+_URL: Final = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*)://([^/?#]*)(.*)", re.DOTALL)
+_PORT: Final = re.compile(r":[0-9]*$")
+
+
+@dataclass(frozen=True)
+class SellerFacts:
+    """The seller's own factual values one item sends (SI2 design 2.1). Money is quantized to
+    0.01. `__repr__` leaves out the manufacturer address (DPDP, `db/models/facts.py:88`)."""
+
+    mrp: Decimal | None = None
+    selling_price: Decimal | None = None
+    currency: str | None = None
+    country_of_origin: str | None = None
+    manufacturer_name: str | None = None
+    manufacturer_address: str | None = field(default=None, repr=False)
+    fiber_composition_text: str | None = None
+    fiber_composition_parts: object | None = None
+    # SI5 B1: the item's barcode (`products.identifier_*`), or the seller's GTIN exemption
+    identifier_type: str | None = None
+    identifier_value: str | None = None
+    identifier_exempt: bool = False
 
 
 @dataclass(frozen=True)
@@ -138,7 +178,14 @@ class AdapterListing:
     """colour_key -> the image locators of that colourway (S22 C1), in slot order; a family
     whose colourways carry images fans them out to each child of the colour."""
     product_type_schema: ProductTypeSchema | None = None
-    """DW2: the stored Amazon definition to check each item against; None = no check (AC10)."""
+    """DW2: the stored Amazon definition to check each item against; None = no check (AC10).
+    SI2: the `LISTING` definition, for sellable items (standalone, child)."""
+    unit_facts: Mapping[UUID, SellerFacts] = field(default_factory=lambda: _EMPTY)
+    """SI2: product id -> the seller facts that item sends; a unit with none fails closed."""
+    parent_type_schema: ProductTypeSchema | None = None
+    """SI2: the `LISTING_PRODUCT_ONLY` definition, for a family's parent; None = no check."""
+    allow_http_images: bool = False
+    """SI2: let an `http://` image locator through (APP_ENV=local only; the caller sets it)."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt
@@ -153,6 +200,7 @@ class AdapterListing:
             "colour_image_refs",
             MappingProxyType({k: tuple(v) for k, v in self.colour_image_refs.items()}),
         )
+        object.__setattr__(self, "unit_facts", MappingProxyType(dict(self.unit_facts)))
         _check_items(self.seller_sku, self.items)
 
     def units(self) -> tuple[AdapterItem, ...]:
@@ -316,6 +364,190 @@ def submitted_fields(listing: CanonicalListing) -> list[str]:
     if bad:
         raise ValueError(f"illegal field path(s) {bad}")
     return sorted(fields)
+
+
+def money(value: str | None) -> Decimal | None:
+    """A decimal string as Decimal quantized to 0.01; None for None. Raises ValueError for NaN,
+    Infinity or a non-number."""
+    if value is None:
+        return None
+    try:
+        number = Decimal(str(value).strip())
+    except InvalidOperation:
+        raise ValueError("not a number") from None
+    if not number.is_finite():
+        raise ValueError("not a finite number")
+    return number.quantize(_CENT)
+
+
+def _percent(value: object) -> Decimal:
+    if isinstance(value, bool) or not isinstance(value, int | float | Decimal | str):
+        raise ValueError("a percent must be a number")
+    if isinstance(value, float) and not math.isfinite(value):
+        raise ValueError("a percent must be finite")
+    try:
+        number = Decimal(str(value).strip())
+    except InvalidOperation:
+        raise ValueError("a percent must be a number") from None
+    if not number.is_finite() or number <= 0 or number > _HUNDRED:
+        raise ValueError("a percent is above 0 and at most 100")
+    return number
+
+
+def _parts(parts: object) -> list[tuple[str, Decimal]]:
+    """SI1 seam S-c: a non-empty list of `{"fiber"|"fibre": str, "percent": number}` summing
+    to exactly 100, or ValueError."""
+    if not isinstance(parts, list) or not parts:
+        raise ValueError("the composition must be a non-empty list")
+    out: list[tuple[str, Decimal]] = []
+    for part in parts:
+        if not isinstance(part, Mapping):
+            raise ValueError("each composition part is an object")
+        name = part.get("fiber", part.get("fibre"))
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("a fibre name is blank")
+        out.append((name, _percent(part.get("percent"))))
+    if sum((p for _, p in out), Decimal(0)) != _HUNDRED:
+        raise ValueError("the percents must add up to 100")
+    return out
+
+
+def _title(name: str) -> str:
+    words = unicodedata.normalize("NFKC", name).split()
+    return " ".join(w[:1].upper() + w[1:] for w in words)
+
+
+def _percent_text(value: Decimal) -> str:
+    return format(value.normalize(), "f")
+
+
+def composition_text(text: str | None, parts: object | None) -> str | None:
+    """The composition one item sends: the seller's raw text (trimmed) when present, else the
+    parts written as `60% Cotton, 40% Polyester`. `parts`, when given, is always checked first
+    (ValueError on a bad shape or a sum other than 100)."""
+    checked = None if parts is None else _parts(parts)
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    if checked is None:
+        return None
+    return ", ".join(f"{_percent_text(p)}% {_title(n)}" for n, p in checked)
+
+
+def _clean_locator(ref: str) -> bool:
+    return bool(ref) and not any(ch.isspace() or unicodedata.category(ch) == "Cc" for ch in ref)
+
+
+def locator_ok(ref: str, *, preview: bool, allow_http: bool) -> bool:
+    """An image locator an item may send: an absolute https URL with a host; `http://` only when
+    `allow_http` (local); the preview tag `image:<uuid>` only in a preview."""
+    if not isinstance(ref, str) or not _clean_locator(ref):
+        return False
+    if ref.startswith("image:"):
+        if not preview:
+            return False
+        try:
+            UUID(ref.removeprefix("image:"))
+        except ValueError:
+            return False
+        return True
+    match = _URL.fullmatch(ref)
+    if match is None:
+        return False
+    scheme = match.group(1).casefold()
+    host = _PORT.sub("", match.group(2).rsplit("@", 1)[-1])
+    if not host:
+        return False
+    return scheme == "https" or (scheme == "http" and allow_http)
+
+
+def _fold(value: str) -> str:
+    return unicodedata.normalize("NFKC", value).casefold().strip()
+
+
+def nearest_values(value: str, allowed: Sequence[str], n: int = 5) -> list[str]:
+    """Up to `n` allowed values close to `value` (deterministic); the first `n` when none is."""
+    folded = {_fold(a): a for a in reversed(list(allowed))}
+    close = difflib.get_close_matches(_fold(value), list(folded), n=n, cutoff=0.5)
+    if close:
+        return [folded[c] for c in close]
+    return list(allowed)[:n]
+
+
+def fact_paths(unit: AdapterItem) -> tuple[str, ...]:
+    """The `facts.*` paths one item answers for: the compliance facts for every item, the
+    price paths for a sellable one (standalone, child)."""
+    paths = {f"facts.{k}" for k in FACT_SPEC_KEYS}
+    if unit.item_role != "parent":
+        paths |= set(PRICE_PATHS)
+    return tuple(sorted(paths))
+
+
+PARTY_PATH: Final = "facts.manufacturer"
+PARTY_REJECTED_MESSAGE: Final = "The manufacturer contact was rejected"
+"""The fixed issue text for any marketplace issue on an attribute that carries the manufacturer
+contact: a reformatted echo (other separators or case) beats substring scrubbing, so the raw text
+stays only in the private raw response log (DPDP, `db/models/facts.py:88`)."""
+_PART_MIN: Final = 4  # shorter address parts ("IN", "GJ") would redact unrelated text
+_ADDRESS_SPLIT: Final = re.compile(r"\s*[,\n]\s*")
+
+
+def party_secrets(listing: AdapterListing) -> tuple[str, ...]:
+    """Every manufacturer string an issue text must never carry, longest first: each unit's
+    name, address and combined `"<name>, <address>"`, plus every run of consecutive address
+    parts (split on commas) of at least 4 characters, so a truncated echo is scrubbed too."""
+    found: set[str] = set()
+    for facts in listing.unit_facts.values():
+        name = (facts.manufacturer_name or "").strip()
+        address = (facts.manufacturer_address or "").strip()
+        if address:
+            found.add(address)
+            parts = [p for p in _ADDRESS_SPLIT.split(address) if p]
+            for i in range(len(parts)):
+                for j in range(i + 1, len(parts) + 1):
+                    run = ", ".join(parts[i:j])
+                    if len(run) >= _PART_MIN:
+                        found.add(run)
+        if name:
+            found.add(name)
+        if name and address:
+            found.add(f"{name}, {address}")
+    return tuple(sorted(found, key=lambda s: (-len(s), s)))
+
+
+_WORD: Final = re.compile(r"[^\W_]+")
+
+
+@functools.lru_cache(maxsize=64)
+def _loose_patterns(parties: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
+    out: list[re.Pattern[str]] = []
+    for party in parties:
+        words = _WORD.findall(party)
+        if words and len(party) >= _PART_MIN:
+            out.append(re.compile(r"[\W_]+".join(map(re.escape, words)), re.IGNORECASE))
+    return tuple(out)
+
+
+def party_patterns(parties: Sequence[str]) -> tuple[re.Pattern[str], ...]:
+    """Loose matchers for the `party_secrets` strings (same order, longest first): the words
+    of each string of at least 4 characters, case-insensitive, joined by any run of
+    non-alphanumerics, so `"TEST MILLS PVT LTD; 1 MILL ROAD / SURAT"` still matches."""
+    return _loose_patterns(tuple(parties))
+
+
+def issue_text(
+    raw: str,
+    names: Sequence[str],
+    index: Mapping[str, Sequence[str]],
+    parties: Sequence[str] = (),
+) -> str:
+    """The marketplace text to keep for one issue: `PARTY_REJECTED_MESSAGE` when any attribute
+    it names feeds `facts.manufacturer` (in scope or not), else `raw` with every loose echo of
+    the manufacturer strings (`parties`, from `party_secrets`) redacted, whatever it names."""
+    if any(PARTY_PATH in index.get(n, ()) for n in names):
+        return PARTY_REJECTED_MESSAGE
+    for pattern in party_patterns(parties):
+        raw = pattern.sub(REDACTED, raw)
+    return raw
 
 
 UpdateFields = Sequence[str] | Mapping[str, Sequence[str]]

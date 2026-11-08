@@ -22,6 +22,7 @@ from .review_support import OPERATOR, REVIEWER, Made, generated, only_item, post
 from .test_issue_tasks import (
     CATEGORY,
     FIBER,
+    FILLABLE,
     Pipeline,
     issues,
     product_of,
@@ -81,9 +82,9 @@ async def test_an_error_on_one_marketplace_and_a_warning_on_the_other(
 async def test_a_live_shared_question_alone_never_blocks_the_approval(
     api: httpx.AsyncClient, gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    require(gen_world, FIBER)
+    require(gen_world, FILLABLE)
     pipeline = Pipeline(monkeypatch)
-    pipeline.overrides[FIBER] = None
+    pipeline.overrides[FILLABLE] = None
     amazon = await generated(gen_world)
     flipkart = await generated(gen_world, sku=sku_of(gen_world, amazon), marketplace="flipkart")
     product = product_of(gen_world, amazon)

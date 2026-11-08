@@ -61,6 +61,7 @@ from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
+from app.core.resolved_facts import ProductFacts
 from app.repositories.uow import tenant_uow
 from app.services.ai_credit import EmbedRefusal
 from app.services.auto_fix.apply import auto_fix
@@ -74,6 +75,7 @@ from app.services.embeddings import (
 )
 from app.services.rules_engine import evaluate
 from app.services.rules_loader import LoadedRules
+from app.services.seller_facts import seller_overlay
 
 log = get_logger(__name__)
 
@@ -178,6 +180,31 @@ class _ModelConfig:
         )
 
 
+def image_edit_credentials(settings: Settings) -> ModelCredentials:
+    """SI7: the credentials of the image-edit seam call. The edit goes only through OpenRouter
+    (`LLM_MODEL_IMAGE_EDIT` is a `vendor/model` id), with the gateway key and base. Locally under
+    `direct` (the stub pipeline) a placeholder key stands in; anywhere else there is no edit
+    model (`MODEL_UNAVAILABLE`). The `provider` and `purpose` Literals stay unchanged (C:67-68)."""
+    key: SecretStr | None
+    if settings.llm_gateway == "openrouter":
+        key, api_base = _secret(settings.openrouter_api_key), OPENROUTER_BASE_URL
+    elif settings.app_env == "local":
+        key, api_base = None, None
+    else:
+        raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "image_edit")
+    if key is None:
+        if settings.app_env != "local":
+            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, "image_edit")
+        key = SecretStr(LOCAL_PLACEHOLDER_KEY)
+    return ModelCredentials(
+        provider="openai",
+        api_key=key,
+        api_base=api_base,
+        model=settings.llm_model_image_edit,
+        timeout_seconds=float(settings.llm_timeout_seconds),
+    )
+
+
 def _internal_report(listing: CanonicalListing) -> ErrorReport:
     """`INTERNAL_ERROR` on the whole listing, `source=system` (C2): the run fails, never passes."""
     meta = ERROR_CODE_META[ErrorCode.INTERNAL_ERROR]
@@ -209,6 +236,7 @@ class BackendPipelineDeps:
         "_critical_keys",
         "_embed_refusal",
         "_embedder",
+        "_facts",
         "_has_chunks",
         "_image_reports",
         "_job_id",
@@ -240,8 +268,10 @@ class BackendPipelineDeps:
         models: _ModelConfig,
         critical_keys: frozenset[str],
         attempt: int = 1,
+        facts: ProductFacts | None = None,
     ) -> None:
         self._tenant_id = tenant_id
+        self._facts = facts
         self._critical_keys = frozenset(critical_keys)
         self._job_id = job_id
         self._user_id = user_id
@@ -398,6 +428,10 @@ class BackendPipelineDeps:
                 or listing.category != ruleset.category
             ):
                 raise ValueError("the listing is outside the RuleSet's scope")
+            if self._facts is not None:
+                # SI2 T16 (D5): the engine judges the seller's factual values, so a correction
+                # round never chases an AI fact the seller already gave (invariant 9)
+                listing = seller_overlay(listing, self._facts, self._rules.template)
             template, product = self._rules.template, self._product
 
             def engine(candidate: CanonicalListing) -> ErrorReport:
@@ -405,7 +439,7 @@ class BackendPipelineDeps:
 
             # SI4 A8 (§2 fact 1): the fix pass runs on a copy and the fixed copy's verdict is
             # reported, so the pipeline spends no correction attempt on a fixable item; the
-            # worker runs the same pass on the final listing (AC7)
+            # worker runs the same pass on the final listing (AC7), after the same overlay
             fixes = FixContext(
                 ruleset=ruleset, template=template, critical_keys=self._critical_keys
             )
@@ -523,6 +557,7 @@ async def build_pipeline_deps(
     rules: LoadedRules,
     critical_keys: frozenset[str],
     product: Mapping[str, object] | None = None,
+    facts: ProductFacts | None = None,
 ) -> BackendPipelineDeps:
     """One short unit of work preloads the product's stored image reports (D6)."""
     market = Marketplace(marketplace)
@@ -546,4 +581,5 @@ async def build_pipeline_deps(
         models=_ModelConfig.from_settings(settings),
         critical_keys=critical_keys,
         attempt=attempt,
+        facts=facts,
     )

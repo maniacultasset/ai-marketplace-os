@@ -22,7 +22,8 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 TEMPLATE = frozenset({"t_tenant", "t_platform", "t_migrator"})
 # The named branches beside (or instead of) the template, per table (DATABASE.md §5.1-§5.4).
 POLICIES: dict[str, frozenset[str]] = {
-    "tenants": TEMPLATE | {"tenants_switcher"},
+    # 0017 (ADR-0029): a platform admin reads every tenant (the admin console list)
+    "tenants": TEMPLATE | {"tenants_switcher", "tenants_platform_admin"},
     "users": frozenset(
         {"users_self", "users_login", "users_signup", "users_teammates", "users_platform_admin"}
     )
@@ -30,6 +31,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "tenant_memberships": TEMPLATE | {"memberships_own"},
     "refresh_tokens": TEMPLATE | {"refresh_tokens_hash", "refresh_tokens_own"},
     "invitations": TEMPLATE | {"invitations_hash"},
+    # 0017 (ADR-0029): the copied reset links, found by hash before the tenant is known
+    "password_reset_links": TEMPLATE | {"password_reset_links_hash"},
     # 0006_oauth_pending replaced 0005's SELECT-only branch with a SELECT and a DELETE branch
     "oauth_states": TEMPLATE | {"oauth_states_hash_select", "oauth_states_hash_delete"},
     "job_runs": TEMPLATE | {"jr_by_id"},
@@ -46,6 +49,8 @@ POLICIES: dict[str, frozenset[str]] = {
     ),
     # 0013 (ADR-0023): trusted browsers have no tenant_id; own rows through app.user_id
     "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
+    # 0018 (SI7): the plain template
+    "image_candidates": TEMPLATE,
     # 0021 (SI10): one platform row with no tenant data; the guard trigger owns the clear
     "ai_credit_state": frozenset({"acs_read", "acs_write", "t_platform", "t_migrator"}),
 }

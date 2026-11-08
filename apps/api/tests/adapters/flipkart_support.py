@@ -9,10 +9,16 @@ from typing import Any
 
 from app.adapters.base import AdapterItem, AdapterListing, AdapterTemplate
 from mkos_schemas.listing import CanonicalListing
-from tests.adapters.amazon_support import CountingLimiter, FakeTokens, FixedRng
+from tests.adapters.amazon_support import (
+    SELLER_FACTS,
+    CountingLimiter,
+    FakeTokens,
+    FixedRng,
+    with_facts,
+)
 from tests.adapters.contract import item, sample_listing
 
-__all__ = ["CountingLimiter", "FakeTokens", "FixedRng"]
+__all__ = ["SELLER_FACTS", "CountingLimiter", "FakeTokens", "FixedRng", "with_facts"]
 FK_API = "http://127.0.0.1:4020/flipkart/sellers"
 SELLER = "FKSELLER01"
 
@@ -47,7 +53,8 @@ def fk_item(
     sent = item(body, sku=sku, key=key)
     fields: dict[str, Any] = {"template": template(), "image_refs": image_refs(body)}
     fields.update(over)
-    return dataclasses.replace(sent, **fields)
+    built = dataclasses.replace(sent, **fields)
+    return built if "unit_facts" in over else with_facts(built)
 
 
 DEFAULT_CHILDREN = (
@@ -99,13 +106,14 @@ def fk_family(
         "image_refs": image_refs(body),
     }
     fields.update(over)
-    return AdapterListing(
+    built = AdapterListing(
         listing_id=body.listing_id or uuid.uuid4(),
         seller_sku=style_sku,
         idempotency_key=uuid.uuid4().hex,
         listing=body,
         **fields,
     )
+    return built if "unit_facts" in over else with_facts(built)
 
 
 def prepare(sent: AdapterListing) -> AdapterListing:
@@ -123,8 +131,10 @@ def prepare(sent: AdapterListing) -> AdapterListing:
         for u in sent.items
         if u.item_role != "parent"
     )
-    return dataclasses.replace(
-        sent, listing=body, items=items, template=template(), image_refs=image_refs(body)
+    return with_facts(
+        dataclasses.replace(
+            sent, listing=body, items=items, template=template(), image_refs=image_refs(body)
+        )
     )
 
 
