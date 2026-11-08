@@ -368,6 +368,8 @@ def apply_repairs(
     repaired: list[tuple[UUID, str, bytes, bytes]] = []
     stale: list[UUID] = []
     for repair in listing.repairs:
+        if repair.attribute in REFUSED_ATTRIBUTES:
+            continue  # content, offer and seller-owned attributes never change without a human
         if repair.seller_sku is not None and repair.seller_sku != unit.seller_sku:
             continue
         if digest(source_value(listing, unit, repair.field_path)) != repair.source_digest:

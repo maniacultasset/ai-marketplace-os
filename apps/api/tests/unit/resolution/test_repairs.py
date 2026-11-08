@@ -297,6 +297,19 @@ def test_apply_replaces_while_the_source_is_unchanged() -> None:
     assert result.stale == ()
 
 
+@pytest.mark.parametrize("attribute", sorted(REFUSED_ATTRIBUTES))
+def test_apply_never_changes_a_refused_attribute(attribute: str) -> None:
+    """A stored repair on a content, offer or seller-owned attribute (never proposed, but a row
+    could hold one) is skipped at apply time: the resend carries the approved value."""
+    sent = amazon_item(listing(color="red"))
+    unit = sent.units()[0]
+    repair = dataclasses.replace(_color_repair(sent), attribute=attribute)
+    applied = dataclasses.replace(sent, repairs=(repair,))
+    attrs = _sent(attribute, "approved")
+    result = apply_repairs(attrs, applied, unit)
+    assert result.attributes == attrs and result.repaired == () and result.stale == ()
+
+
 def test_apply_reports_stale_after_a_seller_edit() -> None:
     sent = amazon_item(listing(color="blue"))  # the seller changed the colour since
     applied = dataclasses.replace(sent, repairs=(_color_repair(sent),))
