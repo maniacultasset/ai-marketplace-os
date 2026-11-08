@@ -71,7 +71,7 @@ Q7: dict[str, str] = {
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",
     "tasks_answer": "product:import",
-    "tasks_close": "product:import",  # SI9
+    "tasks_close": "marketplace:connect",  # SI9
     "listings_content_patch": "listing:edit",
     "listings_regenerate": "listing:regenerate",
     "listings_retry_fields": "listing:publish",

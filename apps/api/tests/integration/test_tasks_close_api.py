@@ -16,7 +16,7 @@ from .conftest import LOCAL_HOSTS
 from .generation_support import GenWorld, gen_world
 from .products_support import bad_bearer
 from .publish_support import insert_account
-from .review_support import OPERATOR, REVIEWER
+from .review_support import ADMIN, OPERATOR, REVIEWER
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 __all__ = ["gen_world"]
@@ -50,7 +50,7 @@ async def _close(
     task_id: object,
     body: Any,
     *,
-    email: str = OPERATOR,
+    email: str = ADMIN,
     key: str | None = None,
 ) -> httpx.Response:
     return await api.post(_url(task_id), headers=world.headers(email, key), json=body)
@@ -81,7 +81,7 @@ async def test_tasks_close_applies_the_resolution(
     assert "answer" not in body and "note" not in body
     row = _task(gen_world, task_id)
     assert row["answer"] == {"resolution": resolution, "note": "Fixed."}
-    assert row["answered_by_user_id"] == gen_world.user(OPERATOR)
+    assert row["answered_by_user_id"] == gen_world.user(ADMIN)
     audits = gen_world.conn.execute(
         "SELECT entity_type, entity_id, reason FROM audit_log WHERE action = 'human_task.closed'"
         " AND entity_id = %s",
@@ -158,9 +158,13 @@ async def test_tasks_close_invalid_token_wrong_typ(
 
 
 @pytest.mark.endpoint("tasks_close", case="wrong_role")
-async def test_tasks_close_wrong_role_403(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+@pytest.mark.parametrize("email", [REVIEWER, OPERATOR])
+async def test_tasks_close_wrong_role_403(
+    api: httpx.AsyncClient, gen_world: GenWorld, email: str
+) -> None:
+    # an account task is marketplace:connect work (owner, admin), not product:import
     task_id = await _open(gen_world)
-    response = await _close(api, gen_world, task_id, {"resolution": "done"}, email=REVIEWER)
+    response = await _close(api, gen_world, task_id, {"resolution": "done"}, email=email)
     assert response.status_code == 403
     assert response.json()["error"]["type"] == "PERMISSION_DENIED"
     assert _task(gen_world, task_id)["status"] == "open"
@@ -170,10 +174,10 @@ async def test_tasks_close_wrong_role_403(api: httpx.AsyncClient, gen_world: Gen
 async def test_tasks_close_foreign_404(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
     task_id = await _open(gen_world)
     foreign = await _close(
-        api, gen_world, task_id, {"resolution": "done"}, email="operator@bharat.test"
+        api, gen_world, task_id, {"resolution": "done"}, email="owner@bharat.test"
     )
     missing = await _close(
-        api, gen_world, uuid.uuid4(), {"resolution": "done"}, email="operator@bharat.test"
+        api, gen_world, uuid.uuid4(), {"resolution": "done"}, email="owner@bharat.test"
     )
     assert foreign.status_code == missing.status_code == 404
     assert foreign.json()["error"]["message"] == missing.json()["error"]["message"]

@@ -762,7 +762,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("tasks_close", "POST", "/tasks/{task_id}/close", 200, TaskOut, "tasks",
               "Close an account task (marketplace_error_review, permission_decision) as done or "
               "dismissed", "SI9", path_id="task_id", has_body=True, idempotency=True,
-              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.MARKETPLACE_CONNECT),
     # ---- analytics (S23) ----
     Operation("analytics_get", "GET", "/analytics", 200, AnalyticsSummary, "analytics",
               "Operational metrics (alias of /analytics/summary)", "S23", query=("from", "to"), action=A.ANALYTICS_READ),

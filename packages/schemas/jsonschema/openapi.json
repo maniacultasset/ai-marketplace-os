@@ -40738,7 +40738,7 @@
         "tags": [
           "tasks"
         ],
-        "x-mkos-action": "product:import"
+        "x-mkos-action": "marketplace:connect"
       }
     },
     "/api/v1/tenants/me": {
