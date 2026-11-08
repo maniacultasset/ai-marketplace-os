@@ -38,6 +38,7 @@ from app.api.v1.schemas.products import (
     RecategorizeIn,
     SizeChart,
     SizeChartRow,
+    SizeChartSuggestionOut,
     SuggestionsOut,
 )
 from app.api.v1.surface import OPS, route
@@ -89,6 +90,19 @@ def _image_out(detail: Any) -> ProductImageOut:
     fields = {name: getattr(detail, name) for name in ProductImageOut.model_fields}
     fields["fixes"] = list(detail.fixes)
     return ProductImageOut.model_construct(**fields)
+
+
+def _suggestion(found: dict[str, Any] | None) -> SizeChartSuggestionOut | None:
+    """SI12: the size-chart read of the live photo; the chart is the normalised stored table."""
+    if found is None:
+        return None
+    return SizeChartSuggestionOut.model_construct(
+        image_id=found["image_id"],
+        status=found["status"],
+        chart=_chart(found.get("chart")),
+        confidence=found.get("confidence"),
+        read_at=found.get("read_at"),
+    )
 
 
 def _chart(chart: dict[str, Any] | None) -> SizeChart | None:
@@ -167,6 +181,7 @@ def _out(view: products.ProductView) -> ProductOut:
             )
             for key, source in view.field_sources.items()
         },
+        size_chart_suggestion=_suggestion(view.size_chart_suggestion),
         suggestions=SuggestionsOut.model_construct(
             hsn_code=(
                 None

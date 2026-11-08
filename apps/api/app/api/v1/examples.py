@@ -960,6 +960,12 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "decided_at": T1,
         },
         "admin_ai_credit_get": _AI_CREDIT,
+        "size_chart_read_create": {
+            "image_id": IMAGE,
+            "status": "queued",
+            "job_id": JOB,
+            "poll_url": f"/api/v1/jobs/{JOB}",
+        },
         "admin_ai_credit_resume": {
             **_AI_CREDIT,
             "state": "ok",

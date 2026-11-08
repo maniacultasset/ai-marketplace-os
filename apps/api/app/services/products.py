@@ -216,8 +216,10 @@ class ProductView:
     # SI12: detail reads only (`{}` and None on lists)
     field_sources: dict[str, FieldSource] = field(default_factory=dict)
     hsn_suggestion: HsnSuggestion | None = None
+    size_chart_suggestion: dict[str, Any] | None = None
 
 
+READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
 PACKAGE_COLUMNS: Final = {
     "length_cm": "package_length_cm",
     "breadth_cm": "package_breadth_cm",
@@ -277,6 +279,50 @@ def effective_envelopes(row: Any, style: Any) -> dict[str, Any]:
         if envelope is not None:
             out[key] = envelope
     return out
+
+
+def _newest_chart(details: tuple[ImageDetail, ...]) -> ImageDetail | None:
+    """The product's size chart (CP-D3): its newest live style-level `size_chart` image."""
+    charts = [d for d in details if d.slot == "size_chart" and d.colourway_id is None]
+    if not charts:
+        return None
+    return max(
+        charts, key=lambda d: (d.created_at or datetime.min.replace(tzinfo=UTC), str(d.image_id))
+    )
+
+
+async def size_chart_suggestion(
+    uow: TenantUnitOfWork, row: Any, details: tuple[ImageDetail, ...]
+) -> dict[str, Any] | None:
+    """SI12: the read of the live size-chart photo (a style or standalone; else None). A stored
+    result counts only for the photo's current clean copy; without one, a live read job shows
+    `queued` or `reading` (one indexed read, CP-D6); otherwise None."""
+    if row.parent_product_id is not None:
+        return None
+    chart = _newest_chart(details)
+    if chart is None:
+        return None
+    stored = chart.size_chart_read
+    if (
+        stored is not None
+        and chart.clean_content_hash is not None
+        and stored.get("source_hash") == chart.clean_content_hash
+        and stored.get("status") in READ_STATUSES
+    ):
+        confidence = stored.get("confidence")
+        read_at = stored.get("read_at")
+        return {
+            "image_id": chart.image_id,
+            "status": stored["status"],
+            "chart": stored.get("chart") if stored.get("status") == "read" else None,
+            "confidence": confidence if isinstance(confidence, int | float) else None,
+            "read_at": datetime.fromisoformat(read_at) if isinstance(read_at, str) else None,
+        }
+    job = await uow.job_runs.latest_for_entity("size_chart_read", chart.image_id)
+    if job is None or job.status not in ("queued", "running"):
+        return None
+    status = "queued" if job.status == "queued" else "reading"
+    return {"image_id": chart.image_id, "status": status, "chart": None}
 
 
 def _own_dims(row: Any) -> dict[str, Any] | None:
@@ -553,6 +599,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         view,
         field_sources=sources,
         hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
+        size_chart_suggestion=await size_chart_suggestion(uow, row, details),
     )
 
 

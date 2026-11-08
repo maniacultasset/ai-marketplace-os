@@ -88,6 +88,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "tasks_answer",
         # SI7
         "image_candidates_create",
+        "size_chart_read_create",  # SI12
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",
