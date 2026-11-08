@@ -109,6 +109,8 @@ _TABLE: dict[ErrorCode, Routing] = {
     _E.TIMEOUT: _RETRY,
     # operations: API, auth, account, job, import and system codes (never a listing issue)
     _E.ACCOUNT_PERMISSION_DENIED: _OPS,
+    _E.AI_CREDIT_EXHAUSTED: _OPS,  # SI10: the platform AI pause, never a listing issue
+    _E.AI_PROVIDER_KEY_INVALID: _OPS,
     _E.AUTH_EXPIRED: _OPS,
     _E.BATCH_TOO_LARGE: _OPS,
     _E.BUDGET_EXCEEDED: _OPS,
@@ -148,6 +150,7 @@ _TABLE: dict[ErrorCode, Routing] = {
     _E.STALE_VERSION: _OPS,
     _E.SUBMISSION_ATTEMPTS_EXHAUSTED: _OPS,
     _E.SUBMISSION_IN_FLIGHT: _OPS,
+    _E.TENANT_SUSPENDED: _OPS,  # SI10: a sign-in refusal
     _E.TOKEN_LIMIT: _OPS,
     _E.UNAUTHENTICATED: _OPS,
     _E.UNKNOWN_FACT_KEY: _OPS,

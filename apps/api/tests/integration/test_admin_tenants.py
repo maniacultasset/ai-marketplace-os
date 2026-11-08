@@ -83,7 +83,9 @@ async def test_activate_a_trial_expired_tenant(
     bharat = world.tenant("bharat")
     _expire(auth_db, bharat)
     refused = await login(api, "owner@bharat.test")
-    assert refused.status_code == 401
+    # SI10: a verified password whose only brand is suspended is told so
+    assert refused.status_code == 403
+    assert refused.json()["error"]["type"] == "TENANT_SUSPENDED"
     response = await _activate(api, world, bharat)
     assert response.status_code == 200, response.text
     body = response.json()

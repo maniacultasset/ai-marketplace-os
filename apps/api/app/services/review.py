@@ -56,18 +56,28 @@ from app.core.request_context import current_request_id
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.services.adapter_check import adapter_check
-from app.services.budget import BudgetExceededError, precheck
+from app.services.ai_credit import Refusal
+from app.services.budget import (
+    CREDIT_MESSAGES,
+    BudgetExceededError,
+    CreditPausedError,
+    admit,
+    refuse,
+)
 from app.services.generation import enqueue_generate
 from app.services.generation_context import previous_listing
 from app.services.image_gate import evaluate_image_gate
 from app.services.listings import current_pins
-from app.services.maker_checker import VersionLink, approver_refusal, contributor_chain
+from app.services.maker_checker import (
+    VersionLink,
+    approve_block,
+    contributor_chain,
+)
 
 log = get_logger(__name__)
 
 REVIEWABLE: Final = frozenset({"validated", "needs_review"})
 BUSY: Final = frozenset({"generating", "publishing"})
-APPROVER_ROLES: Final = frozenset({"reviewer", "owner"})
 REJECTED: Final = "rejected"
 # (from, event, to, reason): the transitions S19 makes, each a `listing_status_transitions` row
 REVIEW_EDGES: Final = (
@@ -92,6 +102,8 @@ _MESSAGES: Final[Mapping[ErrorCode, str]] = {
         "Whoever generated or edited this version cannot approve it."
     ),
     ErrorCode.BUDGET_EXCEEDED: "The daily generation budget is spent.",
+    ErrorCode.AI_CREDIT_EXHAUSTED: CREDIT_MESSAGES["credit_exhausted"],
+    ErrorCode.AI_PROVIDER_KEY_INVALID: CREDIT_MESSAGES["key_invalid"],
     ErrorCode.IMAGE_NON_COMPLIANT: "An image blocks the approval.",
     ErrorCode.VALIDATION_FAILED: "The marketplace check blocks the approval.",
     ErrorCode.INTERNAL_ERROR: "Internal error.",
@@ -102,6 +114,8 @@ _STATUS: Final[Mapping[ErrorCode, int]] = {
     ErrorCode.IMAGE_NON_COMPLIANT: 422,
     ErrorCode.VALIDATION_FAILED: 422,
     ErrorCode.BUDGET_EXCEEDED: 429,
+    ErrorCode.AI_CREDIT_EXHAUSTED: 503,
+    ErrorCode.AI_PROVIDER_KEY_INVALID: 503,
     ErrorCode.INTERNAL_ERROR: 500,
 }
 ALREADY_APPROVED: Final = "edit or regenerate to approve again"
@@ -171,6 +185,7 @@ class _Ctx:
     multi: bool
     versions: Mapping[uuid.UUID, Any]
     image_reports: Mapping[uuid.UUID, Mapping[Any, ImageReport]]
+    regenerate_refusal: Refusal | None = None
 
 
 def _gate(listing: Any | None, item: ReviewItem) -> Any:
@@ -255,7 +270,10 @@ async def _pins_digest(ctx: _Ctx, listing: Any, version: Any) -> bytes:
     return digest
 
 
-async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> frozenset[uuid.UUID]:
+async def version_chain(
+    uow: TenantUnitOfWork, listing_id: uuid.UUID, version_id: uuid.UUID
+) -> frozenset[uuid.UUID]:
+    """Every contributor of `version_id` since the last generation (maker_checker module)."""
     links = {
         row.id: VersionLink(
             id=row.id,
@@ -265,7 +283,7 @@ async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> fro
             generated_by_user_id=row.generated_by_user_id,
             edited_by_user_id=row.edited_by_user_id,
         )
-        for row in await ctx.uow.listing_versions.chain_links(listing_id)
+        for row in await uow.listing_versions.chain_links(listing_id)
     }
     return contributor_chain(version_id, links)
 
@@ -273,10 +291,15 @@ async def _chain(ctx: _Ctx, listing_id: uuid.UUID, version_id: uuid.UUID) -> fro
 async def _maker_checker(ctx: _Ctx, listing: Any, version: Any) -> bool:
     """True when the approver may approve: outside the chain, an active reviewer or owner."""
     approver = ctx.principal.user_id
-    if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:
-        return False
+    chain = await version_chain(ctx.uow, listing.id, version.id)
     member = await ctx.uow.members.role_for_share(approver)
-    return member is not None and member[1] and member[0] in APPROVER_ROLES
+    block = approve_block(
+        approver,
+        role=None if member is None else member[0],
+        active=member is not None and member[1],
+        chain=chain,
+    )
+    return block is None
 
 
 async def _audit(ctx: _Ctx, listing: Any, action: str, **kw: Any) -> None:
@@ -358,9 +381,11 @@ async def _reject_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome:
     job_id: uuid.UUID | None = None
     if item.regenerate:
         try:
-            await precheck(uow, datetime.now(UTC))
+            refuse(ctx.regenerate_refusal, datetime.now(UTC))
         except BudgetExceededError:
             raise Refused(ErrorCode.BUDGET_EXCEEDED) from None
+        except CreditPausedError as exc:
+            raise Refused(exc.code) from None
         job_id = await enqueue_generate(uow, ctx.principal, ctx.http_key, listing.id, None)
     await uow.review_decisions.insert_reject(
         listing.id,
@@ -432,7 +457,10 @@ async def approve_batch(
     items: Sequence[ReviewItem],
     *,
     http_key: str,
+    regenerate_refusal: Refusal | None = None,
 ) -> BatchOutcome:
+    """`regenerate_refusal` is the admission answer the caller read before its transaction
+    (`services.budget.admit`); every reject-and-regenerate item refuses with it."""
     if not items:
         raise ValueError("an approve batch has at least one item")
     kind = "approve" if any(i.decision == "approve" for i in items) else "reject"
@@ -460,6 +488,7 @@ async def approve_batch(
         multi=len(items) > 1,
         versions=versions,
         image_reports=reports,
+        regenerate_refusal=regenerate_refusal,
     )
     return BatchOutcome(batch.id, [await _one(ctx, listings, item) for item in items])
 
@@ -487,9 +516,16 @@ async def accept_review(
     """The route's idempotent transaction: 200 with per-item results, stored under the key."""
     from app.services.idempotency import idempotent
 
+    # the admission read runs first, holding no connection, and only for a batch that may spend
+    regenerates = any(i.decision == "reject" and i.regenerate for i in items)
+    refusal = await admit(principal.tenant_id, datetime.now(UTC)) if regenerates else None
+
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        return 200, outcome_body(await approve_batch(uow, principal, items, http_key=key))
+        outcome = await approve_batch(
+            uow, principal, items, http_key=key, regenerate_refusal=refusal
+        )
+        return 200, outcome_body(outcome)
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
     return stored

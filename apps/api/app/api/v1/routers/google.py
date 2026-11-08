@@ -24,7 +24,7 @@ from app.api.rate_limit import (
     request_ip,
 )
 from app.api.v1.deps import get_current_principal
-from app.api.v1.routers.auth import _login_result, _refused
+from app.api.v1.routers.auth import _login_result, _refused, tenant_suspended
 from app.api.v1.schemas.auth import LoginResult
 from app.api.v1.schemas.google import (
     GoogleCompleteOut,
@@ -169,6 +169,8 @@ async def auth_google_complete(body: GoogleCompleteRequest, request: Request) ->
     except google_signin.FlowInvalid:
         raise _flow_invalid() from None
     if isinstance(done, google_signin.Failure):
+        if done.reason == "tenant_suspended":  # SI10: a verified Google identity, told plainly
+            raise tenant_suspended()
         raise _generic()
     return _complete_out(done)
 

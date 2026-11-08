@@ -62,7 +62,7 @@ async def test_generation_timeout(gen_world: GenWorld, monkeypatch: pytest.Monke
     await wrapper.run_job(str(accepted.job_id))
     job = job_row(gen_world.conn, accepted.job_id)
     assert (job["status"], job["error_code"]) == ("failed", "JOB_TIMEOUT")
-    assert job["cost_reserved_usd"] == Decimal("0.10")  # a timeout stays counted (DB:998)
+    assert job["cost_reserved_usd"] == Decimal("0")  # SI10: the wrapper deadline releases it
     assert _listing_state(gen_world, accepted.listing_id) == ("failed", "generation_failed")
 
 

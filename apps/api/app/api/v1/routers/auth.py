@@ -108,6 +108,14 @@ def _unauthenticated() -> ApiError:
     return ApiError(401, ErrorCode.UNAUTHENTICATED)
 
 
+# SI10 (AC13): after a verified sign-in whose only brands are suspended; never "wrong password"
+TENANT_SUSPENDED_MESSAGE: Final = "This brand's access is paused. Contact support."
+
+
+def tenant_suspended() -> ApiError:
+    return ApiError(403, ErrorCode.TENANT_SUSPENDED, TENANT_SUSPENDED_MESSAGE)
+
+
 def _require_mfa_on() -> None:
     """The MFA routes answer 501 under `MFA_ENFORCEMENT=off` (the dormant mode, D6)."""
     if get_settings().mfa_enforcement != "all":
@@ -155,6 +163,8 @@ async def auth_login(body: LoginRequest, request: Request) -> LoginResult:
             body.device_token.get_secret_value() if body.device_token is not None else None
         ),
     )
+    if isinstance(result, auth.Refusal):  # the one kind login refuses with: tenant_suspended
+        raise tenant_suspended()
     if result is None:
         raise _unauthenticated()
     return _login_result(result)
@@ -433,6 +443,8 @@ async def auth_me(principal: Caller) -> MeOut:
             "role": found.role,
             "memberships": _memberships(found.memberships),
             "is_platform_admin": found.is_platform_admin,
+            "trial_ends_at": found.trial_ends_at,
+            "ai_paused": found.ai_paused,
         }
     )
 

@@ -287,6 +287,9 @@ def test_maker_checker_property_guard_agrees(
 ) -> None:
     """Leg 2: the API's chain check patched out; `lv_guard` (MKC01) must agree with the shadow."""
     import app.services.review as review
+    from app.services.maker_checker import approve_block as real  # SI10 T16: the chain check
 
-    monkeypatch.setattr(review, "approver_refusal", lambda *_a: None)
+    monkeypatch.setattr(
+        review, "approve_block", lambda caller, **kw: real(caller, **{**kw, "chain": frozenset()})
+    )
     _machine_test(gen_world)

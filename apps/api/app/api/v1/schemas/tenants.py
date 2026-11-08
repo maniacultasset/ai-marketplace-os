@@ -44,6 +44,9 @@ class TenantOut(WireModel):
     guidelines: list[str] = Field(default_factory=list)
     glossary: dict[str, str] = Field(default_factory=dict)
     status: Literal["trial", "active", "suspended", "offboarded"]
+    trial_ends_at: AwareDatetime | None = Field(
+        default=None, description="When the trial ends, while the brand is on trial; else null."
+    )
 
 
 class TenantPatch(StrictModel):

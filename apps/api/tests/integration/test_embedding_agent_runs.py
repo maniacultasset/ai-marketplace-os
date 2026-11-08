@@ -134,6 +134,7 @@ async def test_query_embed_failure_writes_row(products_world: World, auth_db: Co
     from mkos_schemas.codes import ErrorCode
 
     acme = products_world.tenant("acme")
+    chunk(auth_db, acme, "kurta set guidance")  # SI10: a brand with no chunks embeds nothing
     deps = await build(products_world, auth_db)
     object.__setattr__(deps, "_embedder", FakeEmbedder(fail={1: failure(timed_out=True)}))
     with pytest.raises(SeamPortError) as info:

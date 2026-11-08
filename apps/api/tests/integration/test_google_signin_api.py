@@ -913,3 +913,59 @@ async def test_google_flow_logs_no_identity_or_secret(
     stored = repr(rows)
     for secret in (handle, query_of(redirect)["code"], browser.secret, CANARY):
         assert secret not in stored
+
+
+# ---- SI10 T15 (AC13): a suspended brand at Google sign-in ----
+
+
+def _suspend_acme(gw: GoogleWorld) -> None:
+    gw.conn.execute(
+        "UPDATE tenants SET status = 'suspended' WHERE id = %s", [gw.world.tenant("acme")]
+    )
+
+
+async def test_linked_suspended_only_member_403(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
+    from tests.support.fake_google import sub_for
+
+    gw.conn.execute("UPDATE users SET google_sub = %s WHERE email = %s", [sub_for(OWNER), OWNER])
+    _suspend_acme(gw)
+    response = await GoogleBrowser(gapi, gw).sign_in(**{"as": OWNER, "hd": "acme.test"})
+    assert response.status_code == 403, response.text
+    error = response.json()["error"]
+    assert error["type"] == "TENANT_SUSPENDED"
+    assert error["message"] == "This brand's access is paused. Contact support."
+    assert "access_token" not in response.text
+    assert [r[-1] for r in audit_rows(gw.conn, "auth.login_failed")] == ["tenant_suspended"]
+
+
+async def test_link_step_for_a_suspended_member_stays_401(
+    gapi: httpx.AsyncClient, gw: GoogleWorld
+) -> None:
+    """CP-D6: the Google link step keeps the one 401."""
+    _suspend_acme(gw)
+    browser = GoogleBrowser(gapi, gw)
+    done = await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})
+    if done.status_code != 200 or done.json().get("outcome") != "link_required":
+        assert done.status_code in (401, 403), done.text
+        return
+    link = done.json()["link"]
+    response = await gapi.post(
+        LINK,
+        json={"link_handle": link["link_handle"], "binding": browser.secret, "password": PASSWORD},
+    )
+    await _generic_failure(response)
+
+
+async def test_mfa_enrolled_suspended_member_403_before_any_challenge(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    mfa_on(monkeypatch)
+    await enrol(gapi, gw.conn, OWNER, clock)
+    _suspend_acme(gw)
+    response = await gapi.post("/api/v1/auth/login", json={"email": OWNER, "password": PASSWORD})
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["type"] == "TENANT_SUSPENDED"
+    assert "challenge_token" not in response.text

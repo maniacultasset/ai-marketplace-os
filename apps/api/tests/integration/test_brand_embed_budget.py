@@ -146,3 +146,132 @@ async def test_profile_embed_refused_at_tenant_cap(
     assert caught.value.report.error_code is not None
     assert caught.value.report.error_code.value == "BUDGET_EXCEEDED"
     assert fake.calls == []
+
+
+# ---- SI10 T11 (AC8): the AI pause and provider refusals ----
+
+
+class _AlertSpy:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def __call__(self, kind: str, **_: Any) -> bool:
+        self.calls.append(kind)
+        return True
+
+
+@pytest.fixture
+def alerts(monkeypatch: pytest.MonkeyPatch) -> _AlertSpy:
+    from app.workers import budget
+
+    spy = _AlertSpy()
+    monkeypatch.setattr(budget, "alert", spy)
+    return spy
+
+
+@pytest.fixture
+def key_answer(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """`/key` stand-in (no network): set `[0]` to `refused` or `ok`."""
+    from app.adapters.openrouter.key import KeyInfo, KeyRefused
+    from app.core.config import get_settings
+    from app.workers import budget
+
+    answer = ["ok"]
+
+    async def fake_key(api_key: str, **_: Any) -> Any:
+        if answer[0] == "refused":
+            raise KeyRefused("HTTP 401")
+        return KeyInfo(limit=Decimal(10), remaining=Decimal(5), usage=Decimal(5))
+
+    monkeypatch.setattr(budget, "fetch_key", fake_key)
+    monkeypatch.setenv("LLM_GATEWAY", "openrouter")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "Zq9openrouter-test")
+    get_settings.cache_clear()
+    budget.reset_key_confirmation()
+    yield answer
+    budget.reset_key_confirmation()
+
+
+def _paused(conn: Conn) -> Any:
+    row = conn.execute("SELECT paused_reason FROM ai_credit_state WHERE id = 1").fetchone()
+    assert row is not None
+    return row[0]
+
+
+def _wire(status: int) -> Exception:
+    from app.services.embeddings import EmbeddingFailed
+    from mkos_schemas.codes import ErrorCode
+
+    if status == 402:
+        return EmbeddingFailed(ErrorCode.AI_CREDIT_EXHAUSTED, retryable=False, status=402)
+    return EmbeddingFailed(
+        ErrorCode.MODEL_UNAVAILABLE, retryable=False, status=status, key_suspect=True
+    )
+
+
+async def test_document_embed_refused_while_paused(
+    products_world: World, auth_db: Conn, store: MemoryStore, fake: FakeEmbedder
+) -> None:
+    auth_db.execute(
+        "UPDATE ai_credit_state SET paused_reason = 'credit_exhausted', paused_at = now()"
+    )
+    doc, job = await _upload(products_world)
+    await _run(job)
+    row = job_row(auth_db, job)
+    assert (row["status"], row["error_code"]) == ("failed", "AI_CREDIT_EXHAUSTED")
+    assert row["cost_reserved_usd"] == 0
+    assert doc_row(auth_db, doc)["status"] == "failed"
+    assert fake.calls == []
+
+
+async def test_document_embed_402_pauses_and_releases(
+    products_world: World,
+    auth_db: Conn,
+    store: MemoryStore,
+    fake: FakeEmbedder,
+    alerts: _AlertSpy,
+) -> None:
+    fake.fail = {1: _wire(402)}
+    _doc, job = await _upload(products_world)
+    await _run(job)
+    row = job_row(auth_db, job)
+    assert (row["status"], row["error_code"]) == ("failed", "AI_CREDIT_EXHAUSTED")
+    assert row["cost_reserved_usd"] == 0
+    assert _paused(auth_db) == "credit_exhausted"
+    assert alerts.calls == ["llm_provider_refused"]
+
+
+async def test_document_embed_403_not_confirmed_no_pause(
+    products_world: World,
+    auth_db: Conn,
+    store: MemoryStore,
+    fake: FakeEmbedder,
+    alerts: _AlertSpy,
+    key_answer: list[str],
+) -> None:
+    """Uploaded document text reaches the embedder: a moderation 403 must not pause anyone."""
+    fake.fail = {1: _wire(403)}
+    _doc, job = await _upload(products_world)
+    await _run(job)
+    row = job_row(auth_db, job)
+    assert (row["status"], row["error_code"]) == ("failed", "MODEL_UNAVAILABLE")
+    assert _paused(auth_db) is None
+    assert alerts.calls == []
+
+
+async def test_document_embed_401_confirmed_pauses_key_invalid(
+    products_world: World,
+    auth_db: Conn,
+    store: MemoryStore,
+    fake: FakeEmbedder,
+    alerts: _AlertSpy,
+    key_answer: list[str],
+) -> None:
+    key_answer[0] = "refused"
+    fake.fail = {1: _wire(401)}
+    _doc, job = await _upload(products_world)
+    await _run(job)
+    row = job_row(auth_db, job)
+    assert (row["status"], row["error_code"]) == ("failed", "AI_PROVIDER_KEY_INVALID")
+    assert _paused(auth_db) == "key_invalid"
+    assert alerts.calls == ["llm_provider_refused"]

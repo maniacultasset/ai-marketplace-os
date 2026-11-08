@@ -107,6 +107,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",
+        # SI10
+        "admin_ai_credit_get",
+        "admin_ai_credit_resume",
         # DPP-1
         "auth_login_mfa",
         "auth_login_mfa_enroll",

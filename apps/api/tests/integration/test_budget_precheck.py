@@ -13,9 +13,11 @@ import pytest
 
 from . import factories as f
 from .conftest import LOCAL_HOSTS
+from .generation_support import gen_world
 from .seam_support import running_job
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
+__all__ = ["gen_world"]
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
 
 
@@ -33,11 +35,9 @@ async def _state(tenant: uuid.UUID) -> Any:
 
 
 async def _precheck(tenant: uuid.UUID) -> None:
-    from app.repositories.uow import tenant_uow
     from app.services.budget import precheck
 
-    async with tenant_uow(tenant) as uow:
-        await precheck(uow, NOW)
+    await precheck(tenant, NOW)
 
 
 def _spend(conn: Any, tenant: uuid.UUID, cost: str, at: str = "2026-10-05T01:00:00Z") -> None:
@@ -75,7 +75,7 @@ async def test_precheck_at_cap_429(world: Any) -> None:
 
 async def test_precheck_below_cap_passes(world: Any) -> None:
     acme = world.tenant("acme")
-    _spend(world.conn, acme, "2.499999")
+    _spend(world.conn, acme, "2.480000")  # SI10: + the 0.02 reservation still fits
     await _precheck(acme)
 
 
@@ -123,6 +123,156 @@ def test_budget_report_has_no_amounts() -> None:
     assert (item.field, item.source.value) == ("listing", "system")
 
 
+# ---- SI10 T7 (AC5-AC7): the credit pause and the platform cap at the API ----
+
+GENERATE = "/api/v1/listings/generate"
+CREDIT_TEXT = "AI credit is used up. Our team has been told; nothing was changed."
+KEY_TEXT = "AI is paused while our team fixes a settings problem; nothing was changed."
+
+
+def _pause(conn: Any, reason: str) -> None:
+    conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = %s, paused_at = now() WHERE id = 1", [reason]
+    )
+
+
+def _today_spend(conn: Any, tenant: uuid.UUID, usd: str) -> None:
+    f.agent_run(conn, tenant, cost_usd=Decimal(usd), started_at=datetime.now(UTC))
+
+
+def _counts(world: Any, tenant: uuid.UUID) -> tuple[int, ...]:
+    tables = ("listings", "job_runs", "idempotency_keys", "audit_log")
+    rows = [world.count(table, "tenant_id = %s", [tenant]) for table in tables]
+    return (*rows, world.count("procrastinate_jobs"))
+
+
+async def _generate(api: Any, world: Any, *, key: str | None = None, sku: str = "KURTA-002") -> Any:
+    return await api.post(
+        GENERATE,
+        headers=world.headers("operator@acme.test", key),
+        json={"product_id": str(world.product("acme", sku)), "marketplace": "amazon"},
+    )
+
+
+async def _regenerate(api: Any, world: Any) -> Any:
+    from .generation_support import set_status
+
+    listing_id = world.listing_of(world.product("acme", "KURTA-001"))
+    assert listing_id is not None
+    set_status(world, listing_id, "validated")
+    return (
+        await api.post(
+            f"/api/v1/listings/{listing_id}/regenerate",
+            headers=world.headers("operator@acme.test"),
+            json={},
+        ),
+        listing_id,
+    )
+
+
+@pytest.mark.parametrize(
+    ("reason", "code", "text"),
+    [
+        ("credit_exhausted", "AI_CREDIT_EXHAUSTED", CREDIT_TEXT),
+        ("key_invalid", "AI_PROVIDER_KEY_INVALID", KEY_TEXT),
+    ],
+)
+async def test_generate_paused_503(
+    api: Any, gen_world: Any, reason: str, code: str, text: str
+) -> None:
+    acme = gen_world.tenant("acme")
+    _pause(gen_world.conn, reason)
+    before = _counts(gen_world, acme)
+    response = await _generate(api, gen_world)
+    assert response.status_code == 503, response.text
+    body = response.json()
+    assert body["error"]["type"] == code
+    assert body["error"]["message"] == text
+    assert "retry-after" not in response.headers
+    assert "The marketplace is unavailable" not in response.text
+    for figure in ("USD", "$", "0.5", "10"):
+        assert figure not in body["error"]["message"]
+    assert _counts(gen_world, acme) == before
+
+
+@pytest.mark.parametrize(
+    ("reason", "code", "text"),
+    [
+        ("credit_exhausted", "AI_CREDIT_EXHAUSTED", CREDIT_TEXT),
+        ("key_invalid", "AI_PROVIDER_KEY_INVALID", KEY_TEXT),
+    ],
+)
+async def test_regenerate_paused_503(
+    api: Any, gen_world: Any, reason: str, code: str, text: str
+) -> None:
+    acme = gen_world.tenant("acme")
+    _pause(gen_world.conn, reason)
+    before = _counts(gen_world, acme)
+    response, listing_id = await _regenerate(api, gen_world)
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["type"] == code
+    assert response.json()["error"]["message"] == text
+    assert "retry-after" not in response.headers
+    assert _counts(gen_world, acme) == before
+    assert gen_world.listing(listing_id)["status"] == "validated"
+
+
+async def test_generate_fresh_low_credit_503(api: Any, gen_world: Any) -> None:
+    gen_world.conn.execute(
+        "UPDATE ai_credit_state SET remaining_usd = 0.40, checked_at = now() WHERE id = 1"
+    )
+    response = await _generate(api, gen_world)
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["type"] == "AI_CREDIT_EXHAUSTED"
+
+
+async def test_stored_replay_after_pause_still_202(api: Any, gen_world: Any) -> None:
+    first = await _generate(api, gen_world, key="replay-key-0001")
+    assert first.status_code == 202, first.text
+    _pause(gen_world.conn, "credit_exhausted")
+    again = await _generate(api, gen_world, key="replay-key-0001")
+    assert again.status_code == 202, again.text
+    assert again.json() == first.json()
+
+
+async def test_generate_platform_cap_429(api: Any, gen_world: Any) -> None:
+    from app.services.budget import PLATFORM_BUDGET_MESSAGE
+
+    acme, bharat = gen_world.tenant("acme"), gen_world.tenant("bharat")
+    gen_world.conn.execute("UPDATE tenants SET llm_daily_budget_usd = 100 WHERE id = %s", [bharat])
+    _today_spend(gen_world.conn, bharat, "11.990000")  # + 0.02 > 12 for the platform
+    before = _counts(gen_world, acme)
+    response = await _generate(api, gen_world)
+    assert response.status_code == 429, response.text
+    body = response.json()
+    assert body["error"]["type"] == "BUDGET_EXCEEDED"
+    assert body["error"]["message"] == PLATFORM_BUDGET_MESSAGE
+    assert 1 <= int(response.headers["retry-after"]) <= 86400
+    # no amount and no other tenant's figure (the ids are random, so only the texts are read)
+    texts = [
+        body["error"]["message"],
+        *(e["message"] for e in body["error"]["error_report"]["errors"]),
+    ]
+    for figure in ("11.99", "12", "USD", "$"):
+        assert all(figure not in text for text in texts), figure
+    assert _counts(gen_world, acme) == before
+
+
+async def test_generate_tenant_cap_429_message(api: Any, gen_world: Any) -> None:
+    from app.services.budget import BUDGET_MESSAGE
+
+    _today_spend(gen_world.conn, gen_world.tenant("acme"), "2.490000")  # cap - 0.01
+    response = await _generate(api, gen_world)
+    assert response.status_code == 429, response.text
+    assert response.json()["error"]["message"] == BUDGET_MESSAGE
+
+
+async def test_generate_tenant_cap_minus_003_admitted(api: Any, gen_world: Any) -> None:
+    _today_spend(gen_world.conn, gen_world.tenant("acme"), "2.470000")
+    response = await _generate(api, gen_world)
+    assert response.status_code == 202, response.text
+
+
 async def test_budget_message_names_the_ist_reset(world: Any) -> None:
     """SI5 (AC19): the refusal says 5:30 am IST, and `Retry-After` still counts to 00:00 UTC."""
     from app.services.budget import BUDGET_MESSAGE, BudgetExceededError, budget_report
@@ -134,3 +284,84 @@ async def test_budget_message_names_the_ist_reset(world: Any) -> None:
     with pytest.raises(BudgetExceededError) as caught:
         await _precheck(acme)
     assert caught.value.retry_after_s == 12 * 3600  # the fixed clock is 12:00 UTC
+
+
+# ---- the precheck holds no pooled connection while it reads (one connection is enough) ----
+#
+# The admission read opens short sessions of its own. Run inside the idempotent transaction it
+# needed a second pooled connection while the first was held, so a burst of about pool-size
+# generate requests waited on each other until `pool_timeout` and answered 500. With one
+# connection in the pool, any nesting times out at once.
+
+
+async def _one_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    monkeypatch.setenv("DATABASE_POOL_SIZE", "1")
+    monkeypatch.setenv("DATABASE_MAX_OVERFLOW", "0")
+    monkeypatch.setenv("DATABASE_POOL_TIMEOUT", "1")
+    get_settings.cache_clear()
+    await dispose_engine()
+    settings = get_settings()
+    assert (settings.database_pool_size, settings.database_max_overflow) == (1, 0)
+
+
+async def test_generate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _one_connection(monkeypatch)
+    response = await _generate(api, gen_world)
+    assert response.status_code == 202, response.text
+    _pause(gen_world.conn, "credit_exhausted")
+    refused = await _generate(api, gen_world, sku="KURTA-001")
+    assert refused.status_code == 503, refused.text
+    assert refused.json()["error"]["type"] == "AI_CREDIT_EXHAUSTED"
+
+
+async def test_regenerate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _one_connection(monkeypatch)
+    response, _listing_id = await _regenerate(api, gen_world)
+    assert response.status_code == 202, response.text
+
+
+async def test_review_regenerate_on_one_pooled_connection(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from .review_support import REVIEWER, generated, item, only_item, post_approve
+
+    made = await generated(gen_world)  # the worker run needs its usual pool
+    await _one_connection(monkeypatch)
+    reject = item(
+        made,
+        "reject",
+        reason_code="poor_quality",
+        feedback="The title repeats the brand name; keep it short.",
+        regenerate=True,
+    )
+    result = only_item(await post_approve(api, gen_world, REVIEWER, [reject]))
+    assert (result["http_status"], result["listing_status"]) == (200, "generating"), result
+    assert result["job_id"] is not None
+
+
+async def test_burst_of_generates_never_times_out_the_pool(
+    api: Any, gen_world: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ten concurrent requests on a two-connection pool: each finishes (202, or the live-job
+    cap's 429), none waits out `pool_timeout` into a 500."""
+    import asyncio
+
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    monkeypatch.setenv("DATABASE_POOL_SIZE", "2")
+    monkeypatch.setenv("DATABASE_MAX_OVERFLOW", "0")
+    monkeypatch.setenv("DATABASE_POOL_TIMEOUT", "5")
+    get_settings.cache_clear()
+    await dispose_engine()
+    responses = await asyncio.gather(*(_generate(api, gen_world) for _ in range(10)))
+    statuses = [r.status_code for r in responses]
+    assert 500 not in statuses, [r.text for r in responses if r.status_code == 500][:1]
+    assert set(statuses) <= {202, 409, 429}, statuses

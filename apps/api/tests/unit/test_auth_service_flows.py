@@ -172,6 +172,9 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
         async def list_active_for_user(self, _: uuid.UUID) -> list[MembershipRow]:
             return list(w.memberships)
 
+        async def has_suspended(self, _: uuid.UUID) -> bool:  # SI10
+            return False
+
         async def touch_last_used(self, *_: Any) -> None:
             return None
 
@@ -300,7 +303,13 @@ def world(monkeypatch: pytest.MonkeyPatch) -> World:
 
 
 async def _login(world: World, password: str = PASSWORD) -> auth.SignInResult | None:
-    return await auth.login("asha@acme.test", password, ip="203.0.113.7", user_agent="ua")
+    return _signed(await auth.login("asha@acme.test", password, ip="203.0.113.7", user_agent="ua"))
+
+
+def _signed(result: auth.SignInResult | auth.Refusal | None) -> auth.SignInResult | None:
+    """SI10: these flows never meet a suspended tenant, so a Refusal is a test failure."""
+    assert not isinstance(result, auth.Refusal), result
+    return result
 
 
 # ---- the password step ----
@@ -945,8 +954,10 @@ def _device(user: UserRow, trusted_at: datetime = TRUSTED_AT) -> trusted_service
 async def _login_with_device(
     world: World, password: str = PASSWORD, token: str = "dt-old"  # noqa: S107 - a test value
 ) -> auth.SignInResult | None:
-    return await auth.login(
-        "asha@acme.test", password, ip="203.0.113.7", user_agent="ua", device_token=token
+    return _signed(
+        await auth.login(
+            "asha@acme.test", password, ip="203.0.113.7", user_agent="ua", device_token=token
+        )
     )
 
 
@@ -1046,7 +1057,7 @@ async def test_linking_never_reads_the_device(world: World) -> None:
         link_sub="google-sub",
         device_token="dt-old",
     )
-    assert result is not None and result.status == "mfa_required"
+    assert isinstance(result, auth.SignInResult) and result.status == "mfa_required"
     assert "device_lookup" not in world.events
 
 

@@ -104,11 +104,12 @@ async def test_generate_transient_embedding_failure_releases_reservation(
     assert (listing["status"], listing["status_reason"]) == ("failed", "generation_failed")
 
 
-async def test_generate_pipeline_error_after_a_model_stage_keeps_reservation(
+async def test_generate_pipeline_error_after_a_model_stage_releases_reservation(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A crash after a writer started may follow paid calls whose records are lost with the
-    exception: INTERNAL_ERROR, and the reservation stays counted."""
+    exception: INTERNAL_ERROR, and (SI10 D6) the reservation is released all the same; the key's
+    credit limit is the backstop for the unrecorded calls."""
     from app.workers import generation
     from mkos_schemas.enums import PipelineStage
 
@@ -121,7 +122,7 @@ async def test_generate_pipeline_error_after_a_model_stage_keeps_reservation(
     accepted = await _run(gen_world)
     status, code, reserved, report = _reserved_and_report(gen_world, accepted.job_id)
     assert (status, code) == ("failed", "INTERNAL_ERROR")
-    assert reserved > 0 and report["retryable"] is False
+    assert reserved == 0 and report["retryable"] is False
 
 
 async def test_generate_pipeline_error_before_a_model_stage_releases_reservation(

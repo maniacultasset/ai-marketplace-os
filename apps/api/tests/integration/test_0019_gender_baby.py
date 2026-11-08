@@ -51,6 +51,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     assert "baby" not in _check(scratch_db)
     command.upgrade(cfg, REVISION)
     assert "baby" in _check(scratch_db)
+    command.upgrade(cfg, "head")  # 0021 sits on top (SI10): `check` compares at the head
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert "baby" not in _check(scratch_db)

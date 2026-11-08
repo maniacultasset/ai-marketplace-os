@@ -59,7 +59,7 @@ from app.services import (
     review,
     submission_reads,
 )
-from app.services.budget import BudgetExceededError
+from app.services.budget import BudgetExceededError, CreditPausedError
 
 router = APIRouter()
 ListingId = Annotated[UUID, PathParam()]
@@ -70,8 +70,14 @@ def _budget(exc: BudgetExceededError) -> ApiError:
     return ApiError(
         429,
         ErrorCode.BUDGET_EXCEEDED,
+        exc.message,
         headers={"Retry-After": str(exc.retry_after_s)},
     )
+
+
+def _credit(exc: CreditPausedError) -> ApiError:
+    """SI10 decision 7: 503 with the calm text and no `Retry-After` (a top-up is a person's job)."""
+    return ApiError(503, exc.code, exc.message)
 
 
 @route(router, OPS["listings_generate"])
@@ -88,6 +94,8 @@ async def listings_generate(
         )
     except BudgetExceededError as exc:
         raise _budget(exc) from None
+    except CreditPausedError as exc:
+        raise _credit(exc) from None
     return JobAccepted.model_validate(stored)
 
 
@@ -283,6 +291,8 @@ async def listings_regenerate(
         )
     except BudgetExceededError as exc:
         raise _budget(exc) from None
+    except CreditPausedError as exc:
+        raise _credit(exc) from None
     return JobAccepted.model_validate(stored)
 
 

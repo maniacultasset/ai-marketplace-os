@@ -55,6 +55,7 @@ from app.core.config import get_settings
 from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
 from app.core.security import InvalidToken, decode, encode, issue_claims, token_hash
+from app.repositories.ai_credit import AiCreditRepository
 from app.repositories.identity import (
     AUTH_BUSY,
     AuditRepository,
@@ -73,10 +74,12 @@ from app.repositories.mfa import (
     PasswordHistoryRepository,
     RecoveryCodeRepository,
 )
+from app.repositories.tenants import TenantProfileRepository
 from app.repositories.transactions import identity_session, set_gucs, unit_of_work
 from app.repositories.trusted_devices import TrustedDeviceRepository, TrustedDeviceRow
 from app.services import auth_events, mfa
 from app.services import trusted_devices as trusted
+from app.services.ai_credit import credit_refusal
 from app.services.sign_in_policy import (
     STEP_UP_MAX_AGE_SECONDS,
     SignInFacts,
@@ -169,6 +172,7 @@ RefusalKind = Literal[
     "reused",
     "reauth_required",
     "not_found",
+    "tenant_suspended",  # SI10: a verified sign-in whose only brands are suspended (403)
 ]
 
 
@@ -517,10 +521,12 @@ async def login(
     user_agent: str | None,
     link_sub: str | None = None,
     device_token: str | None = None,
-) -> SignInResult | None:
+) -> SignInResult | Refusal | None:
     """Email + password in; tokens or the next challenge out, or None for the one 401 (an
     unknown email, a wrong password, a locked account, an inactive user and no live membership
-    look the same: one argon2 verify each). A failure writes `auth.login_failed` and commits
+    look the same: one argon2 verify each). SI10: after a verified password, a user whose only
+    active memberships are in suspended brands gets `Refusal("tenant_suspended")` (403), never
+    counted as a guess. A failure writes `auth.login_failed` and commits
     before the caller answers 401 (Q10 (4)). `link_sub` (ADR-0020, the Google link step) links
     that Google account when this sign-in finishes; it never gets the grace period.
     `device_token` (ADR-0023) is read only after the password passed, and never while linking."""
@@ -556,8 +562,12 @@ async def login(
         if not user.is_active:
             await _login_failed(session, user.id, "inactive_user", ip)
             return None
-        memberships = await MembershipRepository(session).list_active_for_user(user.id)
+        members = MembershipRepository(session)
+        memberships = await members.list_active_for_user(user.id)
         if not memberships:
+            if await members.has_suspended(user.id):
+                await _login_failed(session, user.id, "tenant_suspended", ip)
+                return Refusal("tenant_suspended")
             await _login_failed(session, user.id, "no_active_membership", ip)
             return None
         compliant = not password_policy.check(
@@ -619,7 +629,10 @@ async def sign_in_with_google(
         return None
     if is_locked(state.locked_until, _now()):
         return Refusal("locked")
-    memberships = await MembershipRepository(session).list_active_for_user(user.id)
+    members = MembershipRepository(session)
+    memberships = await members.list_active_for_user(user.id)
+    if not memberships and user.is_active and await members.has_suspended(user.id):
+        return Refusal("tenant_suspended")
     device = None
     if device_tokens and _enforcing() and user.is_active and memberships:
         device = await trusted.lookup(session, user.id, device_tokens, ip=inet(ip), now=_now())
@@ -1470,6 +1483,8 @@ class Me:
     role: str
     memberships: list[Membership]
     is_platform_admin: bool = False
+    trial_ends_at: datetime | None = None  # SI10: the active tenant's, while on trial
+    ai_paused: bool = False  # SI10: generation is refused (the credit pause or floor)
 
 
 async def me(principal: Principal) -> Me:
@@ -1478,7 +1493,10 @@ async def me(principal: Principal) -> Me:
     async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
         rows = await MembershipRepository(session).list_active_for_user(principal.user_id)
         admin = await UserRepository(session).is_platform_admin(principal.user_id)
+        tenant = await TenantProfileRepository(session, principal.tenant_id).get_profile()
+        credit = await AiCreditRepository(session).read()
     current = next((r for r in rows if r.tenant_id == principal.tenant_id), None)
+    trial = tenant.trial_ends_at if tenant is not None and tenant.status == "trial" else None
     return Me(
         user_id=principal.user_id,
         email=principal.email,
@@ -1487,6 +1505,8 @@ async def me(principal: Principal) -> Me:
         role=principal.role,
         memberships=[_membership(r) for r in rows],
         is_platform_admin=admin,
+        trial_ends_at=trial,
+        ai_paused=credit_refusal(credit, datetime.now(UTC)) is not None,
     )
 
 

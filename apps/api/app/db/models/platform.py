@@ -21,8 +21,10 @@ from sqlalchemy import (
     LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
+    Uuid,
     text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -30,7 +32,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
 from app.db.base import Base
-from app.db.models.tenancy import created_at_column, id_column
+from app.db.models.tenancy import created_at_column, id_column, updated_at_column
 
 # Written as Alembic renders the reflected default (it drops `::regclass`); see `Rule.revision`.
 RULES_REVISION = text("nextval('rules_revision_seq')")
@@ -234,3 +236,32 @@ class ProductTypeDefinition(Base):
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     is_current: Mapped[bool] = mapped_column(Boolean, server_default=FALSE)
     created_at: Mapped[datetime] = created_at_column()
+
+
+class AiCreditState(Base):
+    """`ai_credit_state` (revision 0021, SI10; DATABASE.md §5.4): the one platform row that holds
+    the AI provider pause and the last OpenRouter `/key` check. app_rw reads it and records checks
+    and pauses; `ai_credit_state_guard` lets only staff (or the migrator-owned
+    `app_ai_credit_auto_clear`) clear a pause. CHECKs live in the revision."""
+
+    __tablename__ = "ai_credit_state"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_ai_credit_state")),
+        ForeignKeyConstraint(
+            ["resumed_by_user_id"],
+            ["users.id"],
+            ondelete="SET NULL",
+            name=conv("fk_ai_credit_state_resumed_by_user_id_users"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(SmallInteger, autoincrement=False)
+    paused_reason: Mapped[str | None] = mapped_column(Text)
+    paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    limit_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    usage_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    remaining_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
+    checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resumed_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    updated_at: Mapped[datetime] = updated_at_column()

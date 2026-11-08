@@ -11,6 +11,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from fastapi import Path as PathParam
 
+from app.api.errors import ApiError
 from app.api.v1.deps import IdempotencyKey, get_current_principal
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
@@ -22,6 +23,7 @@ from app.api.v1.schemas.images import ImageAccepted
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import image_candidates
+from app.services.budget import CreditPausedError
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -39,14 +41,18 @@ async def image_candidates_create(
     image editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or
     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
     image until it is accepted. The same source asked again answers the same candidate; 202 names
-    its job only when a new one started (poll `poll_url`)."""
-    answer = await image_candidates.create_candidate(
-        principal,
-        product_id,
-        image_candidates.CandidateRequest(kind=body.kind, source_image_id=body.source_image_id),
-        idempotency_key,
-        request.url.path,
-    )
+    its job only when a new one started (poll `poll_url`). A new AI edit while AI is paused
+    for every brand is 503 with the pause's code and no `Retry-After` (SI10)."""
+    try:
+        answer = await image_candidates.create_candidate(
+            principal,
+            product_id,
+            image_candidates.CandidateRequest(kind=body.kind, source_image_id=body.source_image_id),
+            idempotency_key,
+            request.url.path,
+        )
+    except CreditPausedError as exc:
+        raise ApiError(503, exc.code, exc.message) from None
     return ImageCandidateAccepted.model_validate(answer)
 
 

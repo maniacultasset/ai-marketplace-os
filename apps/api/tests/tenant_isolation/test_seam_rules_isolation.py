@@ -120,6 +120,18 @@ async def test_iso_retrieve_brand_chunks_acme_only(world: World, admin_conn: Con
         await deps.retrieve_brand_chunks(bharat, "tone")
 
 
+async def test_iso_has_active_ignores_other_tenant_chunks(world: World, admin_conn: Conn) -> None:
+    """SI10 T9: another tenant's active chunks never make this brand spend a query embed."""
+    acme, bharat = world.tenant("acme"), world.tenant("bharat")
+    _chunk(admin_conn, bharat, "bharat tone")
+    deps = await _deps(world, admin_conn, "acme")
+    assert await deps.retrieve_brand_chunks(acme, "tone", k=8) == []
+    row = admin_conn.execute(
+        "SELECT count(*) FROM agent_runs WHERE tenant_id = %s", [acme]
+    ).fetchone()
+    assert row is not None and row[0] == 0
+
+
 async def test_iso_set_node_cross_tenant_false(world: World, admin_conn: Conn) -> None:
     from mkos_schemas.enums import PipelineStage
 

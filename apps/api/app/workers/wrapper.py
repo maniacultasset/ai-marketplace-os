@@ -206,6 +206,7 @@ async def _execute(
             "failed",
             None,
             failure(ErrorCode.JOB_TIMEOUT, f"the job exceeded its {policy.timeout_s} s timeout"),
+            zero_reservation=True,  # SI10 (CP-D19): every terminal path releases the hold
         )
         return "timeout", None
     except JobFailed as exc:
@@ -251,6 +252,7 @@ async def _execute(
             "failed",
             None,
             failure(ErrorCode.INTERNAL_ERROR, f"the job failed ({name})"),
+            zero_reservation=True,  # SI10 (CP-D19)
         )
         return "failed", name
     await _finish(

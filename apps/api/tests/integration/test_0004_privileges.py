@@ -101,6 +101,24 @@ MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "category_attributes": (READ, frozenset(), frozenset()),
     "listing_status_transitions": (READ, frozenset(), frozenset()),
     "product_type_definitions": (READ, frozenset(), frozenset()),  # 0014 (DW2)
+    # 0021 (SI10): one platform row; app_rw records checks and pauses, the guard owns the clear
+    "ai_credit_state": (
+        READ,
+        frozenset(
+            {
+                "paused_reason",
+                "paused_at",
+                "limit_usd",
+                "usage_usd",
+                "remaining_usd",
+                "checked_at",
+                "resumed_at",
+                "resumed_by_user_id",
+                "updated_at",
+            }
+        ),
+        frozenset(),
+    ),
 }
 
 

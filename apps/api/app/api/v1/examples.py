@@ -464,6 +464,21 @@ _GOOGLE_SIGNUP_STATUS: Final = {
     "decided_at": None,
 }
 
+# SI10: the platform admin's AI credit card
+_AI_CREDIT: Final[dict[str, Any]] = {
+    "state": "paused",
+    "paused_reason": "credit_exhausted",
+    "paused_at": T1,
+    "limit_usd": "10.000000",
+    "usage_usd": "9.600000",
+    "remaining_usd": "0.400000",
+    "floor_usd": "0.500000",
+    "checked_at": T1,
+    "today_spend_usd": "0.420000",
+    "daily_cap_usd": "3.000000",
+}
+
+
 # SI7: a ready white-background candidate of the main image (the signed previews are examples)
 _CANDIDATE: Final = {
     "id": CANDIDATE,
@@ -943,6 +958,15 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "status": "rejected",
             "reason": "We could not verify the brand; write to support with your GSTIN.",
             "decided_at": T1,
+        },
+        "admin_ai_credit_get": _AI_CREDIT,
+        "admin_ai_credit_resume": {
+            **_AI_CREDIT,
+            "state": "ok",
+            "paused_reason": None,
+            "paused_at": None,
+            "remaining_usd": "6.000000",
+            "usage_usd": "4.000000",
         },
     }
 )

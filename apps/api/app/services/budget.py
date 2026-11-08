@@ -1,17 +1,27 @@
-"""The tenant AI budget pre-check at the API (DW8, AC 14; DATABASE.md:997; ENV.md:91; S18 T6).
+"""The AI admission pre-check at the API (DW8, AC 14; DATABASE.md:997; ENV.md:91; S18 T6; SI10 D4).
 
-`precheck(uow, now)` refuses a fresh generate or regenerate when the tenant's spend plus its live
-reservations for the UTC day of `now` has reached its cap: `BudgetExceededError`, which the route
-renders as 429 `BUDGET_EXCEEDED` with `Retry-After` = whole seconds to the next UTC midnight
-(05:30 IST; at least 1). Nothing is written and nothing is enqueued. The body states no amount. The global
-platform cap is checked at claim only (`app/workers/budget.py`, the D10 departure).
+`admit(tenant_id, now)` runs the worker claim's own rule (`app.workers.budget.admission`, one
+predicate in `app.services.ai_credit`) in short sessions of its own, so the caller runs it before
+it opens any transaction (holding no pooled connection), passes the answer into its idempotent
+handler, and the handler calls `refuse(refusal, now)` before a fresh generate or regenerate
+changes anything (a stored replay never reaches it):
+- the AI credit is paused, or a fresh `/key` check is below the floor: `CreditPausedError`, which
+  the route renders as 503 `AI_CREDIT_EXHAUSTED` or `AI_PROVIDER_KEY_INVALID`, no `Retry-After`;
+- the tenant's or the platform's spend plus live reservations plus one generation's reservation
+  would pass its daily cap (UTC day of `now`): `BudgetExceededError(scope)`, rendered as 429
+  `BUDGET_EXCEEDED` with `Retry-After` = whole seconds to the next UTC midnight (05:30 IST; at least 1). The
+  platform cap is checked here too since SI10 (decision 6), ending the D10 claim-only departure.
+Nothing is written and nothing is enqueued. No body states an amount.
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
-from typing import Final
+from types import MappingProxyType
+from typing import Final, Literal
+from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource
@@ -21,18 +31,48 @@ from app.core.config import get_settings
 from app.core.errors import DomainError
 from app.repositories.budget import BudgetState
 from app.repositories.uow import TenantUnitOfWork
+from app.services.ai_credit import REASON_CODE, PauseReason, Refusal
 
 BUDGET_MESSAGE: Final = (
     "The daily AI budget for this brand is used up. It resets at 5:30 am IST; try again then."
 )
+PLATFORM_BUDGET_MESSAGE: Final = (
+    "Today's AI budget for the service is used up. It resets at 5:30 am IST; try again then."
+)
+# P:§7 decision 7: calm, no amount, no retry.
+CREDIT_MESSAGES: Final[Mapping[PauseReason, str]] = MappingProxyType(
+    {
+        "credit_exhausted": "AI credit is used up. Our team has been told; nothing was changed.",
+        "key_invalid": (
+            "AI is paused while our team fixes a settings problem; nothing was changed."
+        ),
+    }
+)
 
 
 class BudgetExceededError(DomainError):
-    """The tenant is at its daily AI cap. `retry_after_s` is the `Retry-After` value."""
+    """A daily AI cap (the tenant's or the platform's) would be passed. `retry_after_s` is the
+    `Retry-After` value."""
 
-    def __init__(self, retry_after_s: int) -> None:
+    def __init__(self, retry_after_s: int, scope: Literal["tenant", "global"] = "tenant") -> None:
         super().__init__("BUDGET_EXCEEDED")
         self.retry_after_s = retry_after_s
+        self.scope = scope
+
+    @property
+    def message(self) -> str:
+        return PLATFORM_BUDGET_MESSAGE if self.scope == "global" else BUDGET_MESSAGE
+
+
+class CreditPausedError(DomainError):
+    """AI is paused for every tenant (or the credit is below the floor). `code` is the reason's
+    error code; `message` the decision 7 text."""
+
+    def __init__(self, reason: PauseReason) -> None:
+        super().__init__(REASON_CODE[reason].value)
+        self.reason = reason
+        self.code = REASON_CODE[reason]
+        self.message = CREDIT_MESSAGES[reason]
 
 
 def seconds_to_utc_midnight(now: datetime) -> int:
@@ -73,7 +113,26 @@ async def tenant_state(uow: TenantUnitOfWork, now: datetime) -> BudgetState:
     )
 
 
-async def precheck(uow: TenantUnitOfWork, now: datetime) -> None:
-    state = await tenant_state(uow, now)
-    if state.used >= state.cap:
-        raise BudgetExceededError(seconds_to_utc_midnight(now))
+async def admit(tenant_id: UUID, now: datetime, *, amount: Decimal | None = None) -> Refusal | None:
+    """The worker claim's admission rule for `tenant_id` (CP-D18): None admits. It opens its own
+    short sessions, so never call it inside a unit of work: one request would then hold two
+    pooled connections, and a burst of them exhausts the pool."""
+    from app.workers.budget import admission
+
+    if amount is None:
+        return await admission(tenant_id, now)
+    return await admission(tenant_id, now, amount=amount)
+
+
+def refuse(refusal: Refusal | None, now: datetime) -> None:
+    """Raise the API error for an admission refusal; nothing for None."""
+    if refusal is None:
+        return
+    if refusal == "tenant" or refusal == "global":
+        raise BudgetExceededError(seconds_to_utc_midnight(now), refusal)
+    raise CreditPausedError(refusal)
+
+
+async def precheck(tenant_id: UUID, now: datetime) -> None:
+    """`admit` then `refuse`, for a caller that holds no connection."""
+    refuse(await admit(tenant_id, now), now)

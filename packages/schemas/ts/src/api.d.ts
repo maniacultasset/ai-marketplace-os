@@ -4,6 +4,47 @@
  */
 
 export interface paths {
+    "/api/v1/admin/ai-credit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The AI credit: pause, last key check, floor and today's platform spend
+         * @description The AI credit: the pause, the last key check, the floor and today's platform spend.
+         */
+        get: operations["admin_ai_credit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/ai-credit/resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resume AI after a top-up or a key fix (repeatable)
+         * @description Clear the AI pause now (after a top-up or a key fix). Repeatable; the credit floor still
+         *     applies at the next check.
+         */
+        post: operations["admin_ai_credit_resume"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/signup-requests": {
         parameters: {
             query?: never;
@@ -1763,7 +1804,8 @@ export interface paths {
          *     image editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or
          *     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
          *     image until it is accepted. The same source asked again answers the same candidate; 202 names
-         *     its job only when a new one started (poll `poll_url`).
+         *     its job only when a new one started (poll `poll_url`). A new AI edit while AI is paused
+         *     for every brand is 503 with the pause's code and no `Retry-After` (SI10).
          */
         post: operations["image_candidates_create"];
         delete?: never;
@@ -2048,6 +2090,54 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AiCreditOut */
+        AiCreditOut: {
+            /** Checked At */
+            checked_at?: string | null;
+            /**
+             * Daily Cap Usd
+             * @description The platform's daily AI cap.
+             * @example 9.600000
+             */
+            daily_cap_usd: string;
+            /**
+             * Floor Usd
+             * @description Below this remaining credit, generation is refused.
+             * @example 9.600000
+             */
+            floor_usd: string;
+            /**
+             * Limit Usd
+             * @description The key's credit limit.
+             */
+            limit_usd?: string | null;
+            /** Paused At */
+            paused_at?: string | null;
+            /** Paused Reason */
+            paused_reason?: ("credit_exhausted" | "key_invalid") | null;
+            /**
+             * Remaining Usd
+             * @description What is left of the limit.
+             */
+            remaining_usd?: string | null;
+            /**
+             * State
+             * @description `paused`: AI is paused for every brand; `low`: the last check (within 15 minutes) is below the floor, so generation is refused; `unknown`: never checked or the check is stale; `ok` otherwise.
+             * @enum {string}
+             */
+            state: "ok" | "low" | "paused" | "unknown";
+            /**
+             * Today Spend Usd
+             * @description Today's (UTC) platform AI spend plus live reservations.
+             * @example 9.600000
+             */
+            today_spend_usd: string;
+            /**
+             * Usage Usd
+             * @description What the key has used.
+             */
+            usage_usd?: string | null;
+        };
         /**
          * AnalyticsCounts
          * @description The counts each rate is computed from, for the range.
@@ -2422,7 +2512,7 @@ export interface components {
          * @description Every machine-readable error code in v1.0.0.
          * @enum {string}
          */
-        ErrorCode: "ACCOUNT_PERMISSION_DENIED" | "API_REJECTED_PARTIAL" | "AUTH_EXPIRED" | "BANNED_TERM" | "BATCH_TOO_LARGE" | "BUDGET_EXCEEDED" | "BULK_APPROVE_REQUIRES_VALIDATED" | "BYTE_BUDGET_EXCEEDED" | "CATEGORY_MISMATCH" | "CATEGORY_NOT_MAPPED" | "COMPLIANCE_DECLARATION_MISSING" | "CRITICAL_FACT_MISSING" | "CROSS_FIELD_MISMATCH" | "DUPLICATE_SKU_IN_FILE" | "DUPLICATE_SUBMISSION_BLOCKED" | "FACTS_CHANGED_SINCE_APPROVAL" | "FACT_LEVEL_INVALID" | "FACT_MISMATCH" | "FACT_NEEDS_CONFIRMATION" | "FACT_SOURCE_FORBIDDEN" | "FIELD_TOO_LONG" | "FIELD_TOO_SHORT" | "GENERATION_FAILED" | "HEADER_DUPLICATE_COLUMN" | "HEADER_MISSING_COLUMN" | "HEADER_UNKNOWN_COLUMN" | "IDENTIFIER_DUPLICATE" | "IDENTIFIER_INVALID" | "IDENTIFIER_MISSING" | "IMAGE_NON_COMPLIANT" | "IMPORT_FAILED" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "INVALID_STATUS_TRANSITION" | "JOB_TIMEOUT" | "JSON_INVALID" | "KEYWORD_DUPLICATE" | "LAST_OWNER_REQUIRED" | "LISTING_ARCHIVED" | "LISTING_BUSY" | "LISTING_PAUSED" | "MAKER_CHECKER_VIOLATION" | "MARKETPLACE_UNAVAILABLE" | "MARKETPLACE_UNCONFIRMED" | "MARKETPLACE_UNKNOWN_ERROR" | "MARKETPLACE_ACCOUNT_CONFLICT" | "METHOD_NOT_ALLOWED" | "MISSING_ATTRIBUTE" | "MFA_ENROLLMENT_REQUIRED" | "MFA_STEP_UP_REQUIRED" | "MODEL_UNAVAILABLE" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "OAUTH_STATE_INVALID" | "PAYLOAD_TOO_LARGE" | "PERMISSION_DENIED" | "PATTERN_MISMATCH" | "PRICE_ABOVE_MRP" | "PUBLISH_FAILED" | "RATE_LIMITED" | "REQUIRED_FIELD_MISSING" | "RETRY_EXHAUSTED" | "SCHEMA_INVALID" | "SELLER_SKU_CONFLICT" | "SKU_CONFLICT" | "STALE_VERSION" | "SUBMISSION_ATTEMPTS_EXHAUSTED" | "SUBMISSION_IN_FLIGHT" | "SUBMISSION_NOT_APPLIED" | "TIMEOUT" | "TOKEN_LIMIT" | "UNAUTHENTICATED" | "UNKNOWN_FACT_KEY" | "UNSUPPORTED_CLAIM" | "VALIDATION_FAILED" | "VALUE_NOT_ALLOWED" | "VARIANT_MATRIX_INCOMPLETE" | "VARIATION_INVALID";
+        ErrorCode: "ACCOUNT_PERMISSION_DENIED" | "API_REJECTED_PARTIAL" | "AI_CREDIT_EXHAUSTED" | "AI_PROVIDER_KEY_INVALID" | "AUTH_EXPIRED" | "BANNED_TERM" | "BATCH_TOO_LARGE" | "BUDGET_EXCEEDED" | "BULK_APPROVE_REQUIRES_VALIDATED" | "BYTE_BUDGET_EXCEEDED" | "CATEGORY_MISMATCH" | "CATEGORY_NOT_MAPPED" | "COMPLIANCE_DECLARATION_MISSING" | "CRITICAL_FACT_MISSING" | "CROSS_FIELD_MISMATCH" | "DUPLICATE_SKU_IN_FILE" | "DUPLICATE_SUBMISSION_BLOCKED" | "FACTS_CHANGED_SINCE_APPROVAL" | "FACT_LEVEL_INVALID" | "FACT_MISMATCH" | "FACT_NEEDS_CONFIRMATION" | "FACT_SOURCE_FORBIDDEN" | "FIELD_TOO_LONG" | "FIELD_TOO_SHORT" | "GENERATION_FAILED" | "HEADER_DUPLICATE_COLUMN" | "HEADER_MISSING_COLUMN" | "HEADER_UNKNOWN_COLUMN" | "IDENTIFIER_DUPLICATE" | "IDENTIFIER_INVALID" | "IDENTIFIER_MISSING" | "IMAGE_NON_COMPLIANT" | "IMPORT_FAILED" | "IDEMPOTENCY_KEY_REUSED" | "INTERNAL_ERROR" | "INVALID_STATUS_TRANSITION" | "JOB_TIMEOUT" | "JSON_INVALID" | "KEYWORD_DUPLICATE" | "LAST_OWNER_REQUIRED" | "LISTING_ARCHIVED" | "LISTING_BUSY" | "LISTING_PAUSED" | "MAKER_CHECKER_VIOLATION" | "MARKETPLACE_UNAVAILABLE" | "MARKETPLACE_UNCONFIRMED" | "MARKETPLACE_UNKNOWN_ERROR" | "MARKETPLACE_ACCOUNT_CONFLICT" | "METHOD_NOT_ALLOWED" | "MISSING_ATTRIBUTE" | "MFA_ENROLLMENT_REQUIRED" | "MFA_STEP_UP_REQUIRED" | "MODEL_UNAVAILABLE" | "NOT_FOUND" | "NOT_IMPLEMENTED" | "OAUTH_STATE_INVALID" | "PAYLOAD_TOO_LARGE" | "PERMISSION_DENIED" | "PATTERN_MISMATCH" | "PRICE_ABOVE_MRP" | "PUBLISH_FAILED" | "RATE_LIMITED" | "REQUIRED_FIELD_MISSING" | "RETRY_EXHAUSTED" | "SCHEMA_INVALID" | "SELLER_SKU_CONFLICT" | "SKU_CONFLICT" | "STALE_VERSION" | "SUBMISSION_ATTEMPTS_EXHAUSTED" | "SUBMISSION_IN_FLIGHT" | "SUBMISSION_NOT_APPLIED" | "TENANT_SUSPENDED" | "TIMEOUT" | "TOKEN_LIMIT" | "UNAUTHENTICATED" | "UNKNOWN_FACT_KEY" | "UNSUPPORTED_CLAIM" | "VALIDATION_FAILED" | "VALUE_NOT_ALLOWED" | "VARIANT_MATRIX_INCOMPLETE" | "VARIATION_INVALID";
         /** ErrorDetail */
         ErrorDetail: {
             /** Loc */
@@ -3345,8 +3435,18 @@ export interface components {
         };
         /** ListingDetail */
         ListingDetail: {
+            /**
+             * Approve Hint
+             * @description Why `can_approve` is false: `own_work` (you made or edited this version), `no_other_approver` (and nobody else in the brand can approve it yet) or `not_approver` (your role does not approve).
+             */
+            approve_hint?: ("own_work" | "no_other_approver" | "not_approver") | null;
             /** Approved Version Id */
             approved_version_id?: string | null;
+            /**
+             * Can Approve
+             * @description Whether your role and maker-checker let you approve the current version (SI10). Null unless the listing is reviewable with a current version. The approve call still checks the rest (permission, stale checks, images).
+             */
+            can_approve?: boolean | null;
             /** Category */
             category?: string | null;
             content?: components["schemas"]["CanonicalListing"] | null;
@@ -3703,6 +3803,12 @@ export interface components {
         MarketplaceState: "not_submitted" | "processing" | "pending_review" | "live" | "partially_live" | "inactive" | "rejected" | "removed";
         /** MeOut */
         MeOut: {
+            /**
+             * Ai Paused
+             * @description True while AI generation is refused for every brand (the AI credit is used up or paused): show one calm banner, no retry.
+             * @default false
+             */
+            ai_paused: boolean;
             /** Display Name */
             display_name?: string | null;
             /** Email */
@@ -3725,6 +3831,11 @@ export interface components {
              * Format: uuid
              */
             tenant_id: string;
+            /**
+             * Trial Ends At
+             * @description When the active brand's trial ends, while it is on trial; else null.
+             */
+            trial_ends_at?: string | null;
             /**
              * User Id
              * Format: uuid
@@ -4815,6 +4926,11 @@ export interface components {
             status: "trial" | "active" | "suspended" | "offboarded";
             /** Tone */
             tone?: string | null;
+            /**
+             * Trial Ends At
+             * @description When the trial ends, while the brand is on trial; else null.
+             */
+            trial_ends_at?: string | null;
         };
         /**
          * TenantPatch
@@ -5071,6 +5187,550 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    admin_ai_credit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checked_at": "2026-10-05T09:31:00Z",
+                     *       "daily_cap_usd": "3.000000",
+                     *       "floor_usd": "0.500000",
+                     *       "limit_usd": "10.000000",
+                     *       "paused_at": "2026-10-05T09:31:00Z",
+                     *       "paused_reason": "credit_exhausted",
+                     *       "remaining_usd": "0.400000",
+                     *       "state": "paused",
+                     *       "today_spend_usd": "0.420000",
+                     *       "usage_usd": "9.600000"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AiCreditOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PERMISSION_DENIED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PERMISSION_DENIED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "PERMISSION_DENIED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    admin_ai_credit_resume: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "checked_at": "2026-10-05T09:31:00Z",
+                     *       "daily_cap_usd": "3.000000",
+                     *       "floor_usd": "0.500000",
+                     *       "limit_usd": "10.000000",
+                     *       "remaining_usd": "6.000000",
+                     *       "state": "ok",
+                     *       "today_spend_usd": "0.420000",
+                     *       "usage_usd": "4.000000"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["AiCreditOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PERMISSION_DENIED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PERMISSION_DENIED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "PERMISSION_DENIED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     admin_signup_requests_list: {
         parameters: {
             query?: {
@@ -9079,6 +9739,45 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Permission denied. Codes: `TENANT_SUSPENDED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "TENANT_SUSPENDED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "TENANT_SUSPENDED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "TENANT_SUSPENDED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
             413: {
                 headers: {
@@ -10435,6 +11134,45 @@ export interface operations {
                      *         "message": "Authentication required.",
                      *         "status": 401,
                      *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Permission denied. Codes: `TENANT_SUSPENDED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "TENANT_SUSPENDED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "TENANT_SUSPENDED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "TENANT_SUSPENDED"
                      *       }
                      *     }
                      */
@@ -24628,7 +25366,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            /** @description Too many requests. Codes: `RATE_LIMITED`, `BUDGET_EXCEEDED`. */
             429: {
                 headers: {
                     /**
@@ -24666,6 +25404,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The marketplace is unavailable; try again. Codes: `AI_CREDIT_EXHAUSTED`, `AI_PROVIDER_KEY_INVALID`. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "AI_CREDIT_EXHAUSTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "AI_CREDIT_EXHAUSTED",
+                     *               "field": "request",
+                     *               "message": "The marketplace is unavailable; try again.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The marketplace is unavailable; try again.",
+                     *         "status": 503,
+                     *         "type": "AI_CREDIT_EXHAUSTED"
                      *       }
                      *     }
                      */
@@ -28314,7 +29091,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            /** @description Too many requests. Codes: `RATE_LIMITED`, `BUDGET_EXCEEDED`. */
             429: {
                 headers: {
                     /**
@@ -28352,6 +29129,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The marketplace is unavailable; try again. Codes: `AI_CREDIT_EXHAUSTED`, `AI_PROVIDER_KEY_INVALID`. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "AI_CREDIT_EXHAUSTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "AI_CREDIT_EXHAUSTED",
+                     *               "field": "request",
+                     *               "message": "The marketplace is unavailable; try again.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The marketplace is unavailable; try again.",
+                     *         "status": 503,
+                     *         "type": "AI_CREDIT_EXHAUSTED"
                      *       }
                      *     }
                      */
@@ -34530,6 +35346,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The marketplace is unavailable; try again. Codes: `AI_CREDIT_EXHAUSTED`, `AI_PROVIDER_KEY_INVALID`. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "AI_CREDIT_EXHAUSTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "AI_CREDIT_EXHAUSTED",
+                     *               "field": "request",
+                     *               "message": "The marketplace is unavailable; try again.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The marketplace is unavailable; try again.",
+                     *         "status": 503,
+                     *         "type": "AI_CREDIT_EXHAUSTED"
                      *       }
                      *     }
                      */

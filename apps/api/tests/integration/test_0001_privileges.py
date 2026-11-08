@@ -182,7 +182,7 @@ def _functions(conn: Conn) -> list[tuple[str, int]]:
 
 
 # 0004's two tenant-scoped definers (DATABASE.md §8.1) and 0010's platform-admin check (ADR-0019)
-# and 0011's three lockout definers (DPP-1, ADR-0021)
+# and 0011's three lockout definers (DPP-1, ADR-0021) and 0021's AI credit auto-clear (SI10)
 DEFINERS = frozenset(
     {
         "set_tenant_lifecycle(uuid,text,text)",
@@ -200,6 +200,7 @@ DEFINERS = frozenset(
         "activate_tenant(uuid,text,text)",  # 0017 (ADR-0029)
         "extend_tenant_trial(uuid,integer,text,text)",  # 0017
         "app_create_google_invitee(text,text,text)",  # 0017
+        "app_ai_credit_auto_clear(numeric)",  # 0021 (SI10 D3)
     }
 )
 

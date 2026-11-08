@@ -251,15 +251,18 @@ async def enforce_live_generate_cap(uow: TenantUnitOfWork) -> None:
 async def accept_generate(
     principal: Principal, key: str, path: str, body: GenerateListingRequest
 ) -> dict[str, Any]:
-    """Idempotent 202. A stored replay skips the budget pre-check (CP6)."""
-    from app.services.budget import precheck
+    """Idempotent 202. A stored replay skips the budget pre-check (CP6). The admission read runs
+    first, holding no connection; the handler raises its refusal."""
+    from app.services.budget import admit, refuse
     from app.services.idempotency import idempotent
 
     payload = body.model_dump_json().encode()
+    now = datetime.now(UTC)
+    refusal = await admit(principal.tenant_id, now)
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        await precheck(uow, datetime.now(UTC))
+        refuse(refusal, now)
         await enforce_live_generate_cap(uow)
         [result] = await request_generation(
             uow,
@@ -290,14 +293,16 @@ async def accept_regenerate(
     listing_id: uuid.UUID,
     instructions: str | None,
 ) -> dict[str, Any]:
-    from app.services.budget import precheck
+    from app.services.budget import admit, refuse
     from app.services.idempotency import idempotent
 
     payload = json.dumps({"instructions": instructions}, sort_keys=True).encode()
+    now = datetime.now(UTC)
+    refusal = await admit(principal.tenant_id, now)  # before any connection is held
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        await precheck(uow, datetime.now(UTC))
+        refuse(refusal, now)
         await enforce_live_generate_cap(uow)
         accepted = await request_regeneration(uow, principal, key, listing_id, instructions)
         return 202, accepted_body(accepted)

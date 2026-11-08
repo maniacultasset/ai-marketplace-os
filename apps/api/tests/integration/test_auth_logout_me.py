@@ -231,3 +231,64 @@ async def test_me_reflects_row_role(api: httpx.AsyncClient, world: World, auth_d
     assert me["memberships"] == [
         {"tenant_id": str(world.tenant("acme")), "tenant_name": "Acme", "role": "reviewer"}
     ]
+
+
+# ---- SI10 T14 (AC12): the trial end and the AI pause on /auth/me ----
+
+
+def _me_headers(world: World, email: str, slug: str) -> dict[str, str]:
+    from .auth_support import tokens_for
+
+    return bearer(tokens_for(world, email, slug))
+
+
+async def test_me_trial_ends_at_of_the_active_tenant(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    acme, bharat = world.tenant("acme"), world.tenant("bharat")
+    auth_db.execute(
+        "UPDATE tenants SET status = 'trial', trial_ends_at = '2026-11-21T00:00:00Z' WHERE id = %s",
+        [acme],
+    )
+    auth_db.execute(
+        "UPDATE tenants SET status = 'trial', trial_ends_at = '2026-12-01T00:00:00Z' WHERE id = %s",
+        [bharat],
+    )
+    user = world.user("reviewer@acme.test")
+    add_member(auth_db, bharat, user, "operator")
+    on_acme = (await api.get(ME, headers=_me_headers(world, "reviewer@acme.test", "acme"))).json()
+    assert on_acme["trial_ends_at"] == "2026-11-21T00:00:00Z"
+    on_bharat = (
+        await api.get(ME, headers=_me_headers(world, "reviewer@acme.test", "bharat"))
+    ).json()
+    assert on_bharat["trial_ends_at"] == "2026-12-01T00:00:00Z"
+
+
+async def test_me_active_tenant_trial_null(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    auth_db.execute(
+        "UPDATE tenants SET status = 'active', trial_ends_at = '2026-10-01T00:00:00Z' "
+        "WHERE id = %s",
+        [world.tenant("acme")],
+    )
+    me = (await api.get(ME, headers=_me_headers(world, "owner@acme.test", "acme"))).json()
+    assert me["trial_ends_at"] is None
+
+
+@pytest.mark.parametrize(
+    ("sql", "paused"),
+    [
+        (None, False),
+        ("paused_reason = 'credit_exhausted', paused_at = now()", True),
+        ("remaining_usd = 0.40, checked_at = now()", True),  # fresh and below the floor
+        ("remaining_usd = 0.40, checked_at = now() - interval '20 minutes'", False),  # stale
+    ],
+)
+async def test_me_ai_paused(
+    api: httpx.AsyncClient, world: World, auth_db: Conn, sql: str | None, paused: bool
+) -> None:
+    if sql is not None:
+        auth_db.execute(f"UPDATE ai_credit_state SET {sql} WHERE id = 1")  # noqa: S608 - literals
+    me = (await api.get(ME, headers=_me_headers(world, "owner@acme.test", "acme"))).json()
+    assert me["ai_paused"] is paused

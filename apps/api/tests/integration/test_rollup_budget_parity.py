@@ -106,14 +106,14 @@ async def test_spend_today_matches_kill_switch(jobs_db: JobWorld) -> None:
 
 
 async def test_alert_fires_where_kill_switch_refuses(jobs_db: JobWorld, log_lines: Any) -> None:
-    """At 0.70 used of a 0.75 cap the kill switch refuses the next 0.10 claim; the alert has fired
-    80 % (0.60) and not 100 % (0.70 < 0.75). Yesterday's 9.00 started-before-midnight call moves
-    neither."""
+    """At 0.74 used of a 0.75 cap the kill switch refuses the next 0.02 claim (SI10 T6); the alert
+    has fired 80 % (0.60) and not 100 % (0.74 < 0.75). Yesterday's 9.00 started-before-midnight
+    call moves neither."""
     from app.workers.budget import BudgetRefused, reserve
     from app.workers.periodic import check_alerts
 
     acme, _ = _world(jobs_db)
-    _reserve(jobs_db.conn, acme, "0.20", NOW)  # 0.4 spent + 0.3 reserved = 0.70
+    _reserve(jobs_db.conn, acme, "0.24", NOW)  # 0.4 spent + 0.34 reserved = 0.74
     capture = log_lines()
     with pytest.raises(BudgetRefused) as info:
         await reserve(acme, uuid.uuid4(), 1, now=NOW)

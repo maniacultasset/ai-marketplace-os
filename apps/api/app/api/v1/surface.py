@@ -52,6 +52,7 @@ from app.api.v1.examples import (
     GOOGLE_CALLBACK_LOCATION,
     SUCCESS_EXAMPLES,
 )
+from app.api.v1.schemas.ai_credit import AiCreditOut
 from app.api.v1.schemas.analytics import AnalyticsSummary
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
@@ -453,6 +454,12 @@ def route(
 
 A = Action
 _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
+# SI10: a daily cap (429) or the platform AI pause (503) refuses a generate or regenerate.
+_AI_ADMISSION: Final = MappingProxyType(
+    {429: (E.BUDGET_EXCEEDED,), 503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)}
+)
+# SI10 D4: an AI image edit while AI is paused (a daily cap is a `failed/budget` candidate)
+_AI_PAUSED: Final = MappingProxyType({503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)})
 # S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
 _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 # DPP-1: the public challenge routes (a wrong code or burned challenge is 401; 501 under `off`)
@@ -464,6 +471,9 @@ _MFA_BEARER: Final = MappingProxyType({403: (E.MFA_STEP_UP_REQUIRED,), 501: (E.N
 _GOOGLE_PUBLIC: Final = MappingProxyType(
     {401: (E.UNAUTHENTICATED, E.OAUTH_STATE_INVALID), 501: (E.NOT_IMPLEMENTED,)}
 )
+# SI10: a verified sign-in whose only brands are suspended is told so (403)
+_401_SUSPENDED: Final = MappingProxyType({**_401, 403: (E.TENANT_SUSPENDED,)})
+_GOOGLE_COMPLETE: Final = MappingProxyType({**_GOOGLE_PUBLIC, 403: (E.TENANT_SUSPENDED,)})
 
 # SI5: the generic refusal of a copied link, and a bad Google handle on accept (OAUTH_STATE_INVALID)
 # or Google sign-in switched off (501).
@@ -474,7 +484,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
     Operation("auth_login", "POST", "/auth/login", 200, LoginResult, "auth",
               "Log in with email and password: tokens, or the next sign-in step", "S10",
-              public=True, has_body=True, extra_codes=_401),
+              public=True, has_body=True, extra_codes=_401_SUSPENDED),
     Operation("auth_refresh", "POST", "/auth/refresh", 200, TokenResponse, "auth",
               "Rotate the refresh token", "S10", public=True, has_body=True,
               extra_codes=_401),
@@ -534,7 +544,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("auth_google_complete", "POST", "/auth/google/complete", 200, GoogleCompleteOut,
               "auth", "Finish the Google step: sign in (or the code step), pending, the "
               "prefilled sign-up, or the password step that links Google", "ADR-0020",
-              public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
+              public=True, has_body=True, extra_codes=_GOOGLE_COMPLETE),
     Operation("auth_google_link", "POST", "/auth/google/link", 200, LoginResult, "auth",
               "Link Google to an existing account: its password, then the usual code steps",
               "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
@@ -648,7 +658,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- listings (S18, S19, S21) ----
     Operation("listings_generate", "POST", "/listings/generate", 202, JobAccepted, "listings",
               "Start AI generation", "S18", has_body=True, body_ids=("product_id",),
-              idempotency=True, action=A.LISTING_GENERATE),
+              idempotency=True, action=A.LISTING_GENERATE, extra_codes=_AI_ADMISSION),
     Operation("listings_validate", "POST", "/listings/validate", 200, ValidationSummary,
               "listings", "Run schema, rules and vision checks (200 with passed=false on a rules "
               "failure)", "S18", has_body=True, body_ids=("listing_id",), action=A.LISTING_EDIT),
@@ -680,7 +690,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.STALE_VERSION, etag=True, action=A.LISTING_EDIT),
     Operation("listings_regenerate", "POST", "/listings/{listing_id}/regenerate", 202,
               JobAccepted, "listings", "Regenerate an existing listing", "S18",
-              path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE),
+              path_id="listing_id", has_body=True, idempotency=True, action=A.LISTING_REGENERATE,
+              extra_codes=_AI_ADMISSION),
     Operation("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields",
               202, JobAccepted, "listings", "Retry only the fields that failed to publish",
               "S21", path_id="listing_id", idempotency=True,
@@ -742,7 +753,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Make an image candidate from a photo or the size chart", "SI7",
               path_id="product_id", has_body=True, body_ids=("source_image_id",),
               idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
-              action=A.PRODUCT_IMPORT),
+              action=A.PRODUCT_IMPORT, extra_codes=_AI_PAUSED),
     Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
               ImageCandidatePage, "images", "The product's image candidates", "SI7",
               path_id="product_id", action=A.TENANT_READ),
@@ -827,6 +838,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               200, TenantAdminOut, "admin",
               "Extend a trial by 1-90 days, or reopen a trial that expired, with a reason", "SI5",
               has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION, extra_codes=_404,
+              platform_admin=True),
+    # SI10: the AI credit card (platform admins)
+    Operation("admin_ai_credit_get", "GET", "/admin/ai-credit", 200, AiCreditOut, "admin",
+              "The AI credit: pause, last key check, floor and today's platform spend", "SI10",
+              platform_admin=True),
+    Operation("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume", 200, AiCreditOut,
+              "admin", "Resume AI after a top-up or a key fix (repeatable)", "SI10",
               platform_admin=True),
 )  # fmt: skip
 

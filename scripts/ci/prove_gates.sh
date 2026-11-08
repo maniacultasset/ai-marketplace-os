@@ -508,8 +508,8 @@ seed_preview_case_matrix() {
 seed_no_api_maker_checker() {
   cp "$root/.env" .env
   replace apps/api/app/services/review.py \
-    'if approver_refusal(approver, await _chain(ctx, listing.id, version.id)) is not None:' \
-    'if False:'
+    '    return block is None' \
+    '    return block in (None, "own_work")'
 }
 seed_no_if_match() {
   cp "$root/.env" .env
