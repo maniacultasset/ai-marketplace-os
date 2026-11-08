@@ -981,7 +981,6 @@ app_env() {
   if [ "$role" = "worker" ]; then
     printf 'LLM_GATEWAY\t%s\nLLM_PROVIDER\t%s\n' "$LLM_GATEWAY" "$LLM_PROVIDER"
     [ -z "$LLM_MODEL_DEFAULT" ] || printf 'LLM_MODEL_DEFAULT\t%s\n' "$LLM_MODEL_DEFAULT"
-    [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
@@ -990,9 +989,11 @@ app_env() {
       [ -z "$LLM_DAILY_BUDGET_USD" ] || printf 'LLM_DAILY_BUDGET_USD\t%s\n' "$LLM_DAILY_BUDGET_USD"
       [ -z "$LLM_TENANT_DAILY_BUDGET_USD" ] ||
         printf 'LLM_TENANT_DAILY_BUDGET_USD\t%s\n' "$LLM_TENANT_DAILY_BUDGET_USD"
-      # SI7: the image-edit switch and limits, so the api's create check and the worker's
-      # reservation use one switch and one limit
+      # SI7: the image-edit switch, model and limits, so the api's create check and the worker's
+      # reservation use one switch and one limit, and the api keys and labels candidates by the
+      # model the worker calls
       printf 'IMAGE_EDIT_ENABLED\t%s\n' "$IMAGE_EDIT_ENABLED"
+      [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
         printf 'IMAGE_EDIT_TENANT_DAILY_LIMIT\t%s\n' "$IMAGE_EDIT_TENANT_DAILY_LIMIT"
       [ -z "$IMAGE_EDIT_PLATFORM_DAILY_SHARE" ] ||

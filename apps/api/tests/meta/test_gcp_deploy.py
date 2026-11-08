@@ -2223,7 +2223,7 @@ def test_image_edit_switch_and_limits_reach_both_roles(
         toolkit,
         "staging",
         **IMAGE_EDIT_ROUTER,
-        LLM_MODEL_IMAGE_EDIT="google/gemini-2.5-flash-image",
+        LLM_MODEL_IMAGE_EDIT="google/gemini-3.1-flash-image",
         IMAGE_EDIT_TENANT_DAILY_LIMIT="7",
         IMAGE_EDIT_PLATFORM_DAILY_SHARE="0.4",
     )
@@ -2234,8 +2234,8 @@ def test_image_edit_switch_and_limits_reach_both_roles(
         assert env["IMAGE_EDIT_ENABLED"] == "true"
         assert env["IMAGE_EDIT_TENANT_DAILY_LIMIT"] == "7"
         assert env["IMAGE_EDIT_PLATFORM_DAILY_SHARE"] == "0.4"
-    assert worker["LLM_MODEL_IMAGE_EDIT"] == "google/gemini-2.5-flash-image"
-    assert "LLM_MODEL_IMAGE_EDIT" not in api
+        # the api keys and labels candidates by the model the worker calls
+        assert env["LLM_MODEL_IMAGE_EDIT"] == "google/gemini-3.1-flash-image"
     assert "OPENROUTER_API_KEY" in secrets
     _boot(monkeypatch, worker, secrets)
     deploy = next(line for line in out.splitlines() if line.startswith("+ gcloud run deploy "))
