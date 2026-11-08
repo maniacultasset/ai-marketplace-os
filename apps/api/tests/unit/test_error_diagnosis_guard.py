@@ -144,8 +144,9 @@ def test_model_refuses_extra_keys_and_non_text() -> None:
 
 @settings(max_examples=200, deadline=None)
 @given(
-    before=st.text(max_size=60),
-    after=st.text(max_size=60),
+    # a secret is matched as a whole word (R2-1), so it sits between non-word characters
+    before=st.text(alphabet=" .,;:!?()-'\"/", max_size=60),
+    after=st.text(alphabet=" .,;:!?()-'\"/", max_size=60),
     secret=st.text(alphabet=st.characters(categories=("L", "N")), min_size=3, max_size=20),
 )
 def test_a_secret_never_survives(before: str, after: str, secret: str) -> None:
@@ -247,8 +248,7 @@ def test_the_listing_text_and_party_values_are_secrets() -> None:
         "festive kurta",
         "silk kurti",
         "Royal Blue",
-        "Large",
-    }
+    }  # "Large" and "ok" are ordinary words (free text needs 8 characters)
     party = SimpleNamespace(
         legal_name="Zebra Mills Pvt Ltd",
         address="12 Ring Road, Surat, GJ",
@@ -263,8 +263,87 @@ def test_the_listing_text_and_party_values_are_secrets() -> None:
         )
     )
     parties = {v for v, _ in party_values(facts)}  # type: ignore[arg-type]
-    assert {"Zebra Mills Pvt Ltd", "12 Ring Road, Surat", "Surat", "ops@zebra.example"} <= parties
-    assert "GJ" not in parties and party_values(None) == []
+    assert {
+        "Zebra Mills Pvt Ltd",
+        "12 Ring Road, Surat",
+        "Surat, GJ",
+        "ops@zebra.example",
+    } <= parties
+    assert "12 Ring Road, Surat, GJ" in parties
+    assert not {"GJ", "Surat", "12 Ring Road"} & parties and party_values(None) == []
     quoted = "The value 'Zebra Silk Kurta Royal Blue' for item_name is too long"
     secrets = [("ZBR-001", "{sku}"), ("Zebra", "{brand}"), *content_secrets(content)]
     assert "Silk Kurta" not in redact(quoted, secrets)
+
+
+# ---- round 2: a secret matches only as a whole word or phrase (R2-1) ----
+
+
+def _red_secrets() -> list[str]:
+    from app.workers.error_diagnosis import content_secrets
+
+    return [v for v, _ in content_secrets({"attributes": {"color": "Red"}})]
+
+
+def test_a_short_attribute_value_never_refuses_an_ordinary_word() -> None:
+    out = DiagnosisOut.model_validate(
+        {**GOOD, "plain_cause": "Amazon needs the required colour value for this item."}
+    )
+    found = check(out, field_index=INDEX, critical_keys=frozenset(), secrets=_red_secrets())
+    assert isinstance(found, Proposed), found
+
+
+def test_a_short_value_never_mangles_amazon_text() -> None:
+    from app.workers.error_diagnosis import content_secrets
+
+    pairs = content_secrets({"attributes": {"color": "Red"}})
+    assert redact("Required attribute missing", pairs) == "Required attribute missing"
+    # an exact token still matches inside a word boundary only
+    assert redact("Required attribute missing", [("Red", "{value}")]) == (
+        "Required attribute missing"
+    )
+    assert redact("The value red is refused", [("Red", "{value}")]) == (
+        "The value {value} is refused"
+    )
+
+
+def test_an_address_country_part_never_refuses_amazon_india() -> None:
+    from types import SimpleNamespace
+
+    from app.workers.error_diagnosis import party_values
+
+    party = SimpleNamespace(
+        legal_name="Zebra Mills Pvt Ltd",
+        email=None,
+        phone=None,
+        gstin=None,
+        address="12 MG Road, Andheri, Mumbai, Maharashtra, India",
+    )
+    facts = SimpleNamespace(
+        compliance=SimpleNamespace(
+            manufacturer=party, marketer=None, packer=None, importer=None, consumer_care=None
+        )
+    )
+    secrets = [v for v, _ in party_values(facts)]  # type: ignore[arg-type]
+    out = DiagnosisOut.model_validate(
+        {**GOOD, "plain_cause": "Amazon India needs a product type for this item."}
+    )
+    found = check(out, field_index=INDEX, critical_keys=frozenset(), secrets=secrets)
+    assert isinstance(found, Proposed), found
+    echoed = DiagnosisOut.model_validate(
+        {**GOOD, "plain_cause": "The packer at Mumbai, Maharashtra, India is wrong here."}
+    )
+    found = check(echoed, field_index=INDEX, critical_keys=frozenset(), secrets=secrets)
+    assert found == Invalid("plain_cause:secret")
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Amazon refused zebra mills for this item here.",  # any case
+        "Amazon refused Zebra Mills.",  # before punctuation
+        "SKU KURTA-NAVY-M was refused by Amazon.",
+    ],
+)
+def test_a_whole_word_secret_echo_is_still_refused(cause: str) -> None:
+    assert _check(plain_cause=cause) == Invalid("plain_cause:secret")

@@ -94,7 +94,8 @@ def _strings(value: Any) -> list[str]:
 
 def content_secrets(content_json: Any) -> list[tuple[str, str]]:
     """The version's own product text Amazon may quote back: the title, every bullet, the
-    description, the search and hidden terms, and the string attribute values (each 3+ chars)."""
+    description, the search and hidden terms, and the string attribute values. Free text, so each
+    needs `FREE_TEXT_MIN` characters: a short value ("Red", "Large") is an ordinary word."""
     if not isinstance(content_json, dict):
         return []
     found: list[str] = []
@@ -110,16 +111,16 @@ def content_secrets(content_json: Any) -> list[tuple[str, str]]:
     if isinstance(attributes, dict):
         for value in attributes.values():
             found += _strings(value)
-    return [(v, "{value}") for v in found if len(v.strip()) >= diagnosis.SECRET_MIN]
+    return [(v, "{value}") for v in found if len(v.strip()) >= diagnosis.FREE_TEXT_MIN]
 
 
 _PARTY_ROLES: Final = ("manufacturer", "marketer", "packer", "importer", "consumer_care")
-_PARTY_PART_MIN: Final = 4  # as `adapters.base.party_secrets`: "IN", "GJ" would redact any text
 
 
 def party_values(facts: ProductFacts | None) -> list[tuple[str, str]]:
     """Every party string of the product (manufacturer, marketer, packer, importer, consumer
-    care): name, address, each run of address parts of 4+ characters, email, phone, GSTIN."""
+    care): name, email, phone and GSTIN (exact tokens), the full address and each run of two or
+    more address parts. A single part ("India", "Surat") is an ordinary word, never a secret."""
     if facts is None:
         return []
     found: set[str] = set()
@@ -133,11 +134,10 @@ def party_values(facts: ProductFacts | None) -> list[tuple[str, str]]:
         address = (party.address or "").strip()
         if address:
             parts = [p for p in re.split(r"\s*[,\n]\s*", address) if p]
+            found.add(address)
             for i in range(len(parts)):
-                for j in range(i + 1, len(parts) + 1):
-                    run = ", ".join(parts[i:j])
-                    if len(run) >= _PARTY_PART_MIN:
-                        found.add(run)
+                for j in range(i + 2, len(parts) + 1):
+                    found.add(", ".join(parts[i:j]))
     return [(v, "{value}") for v in sorted(found) if len(v) >= diagnosis.SECRET_MIN]
 
 

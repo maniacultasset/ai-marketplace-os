@@ -5,8 +5,8 @@ the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
   (control, format and bidi characters go, NFKC, whitespace collapses), so a zero-width split
   never hides a secret. Then, in this order: each `secrets` value, folded the same way (the
   listing's SKUs, brand, party values, barcode, title, bullets, description, search terms and the
-  sent string values of its attributes, each of at least 3 characters) becomes
-  `{sku}`/`{brand}`/`{value}`; an ASIN (`B0` + 8) `{asin}`; a digit run of 8 or more `{number}`;
+  sent string values of its attributes; an exact token needs 3 characters, free text 8) becomes
+  `{sku}`/`{brand}`/`{value}`, matched as a whole word or phrase in any case; an ASIN (`B0` + 8) `{asin}`; a digit run of 8 or more `{number}`;
   a URL or an email `{link}`; at most 1,000 characters (a code-point cut). The text sits only at
   `data["message"]`, the untrusted block the `DEVELOPER` prompt names.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
@@ -37,7 +37,8 @@ PROMPT_VERSION: Final = "error-diagnosis-1"
 MESSAGE_MAX: Final = 1000
 TEXT_MIN: Final = 10
 TEXT_MAX: Final = 300
-SECRET_MIN: Final = 3
+SECRET_MIN: Final = 3  # exact tokens: SKU, brand, barcode, GSTIN, phone, email
+FREE_TEXT_MIN: Final = 8  # listing prose and attribute values: "Red" or "India" is an ordinary word
 SYSTEM: Final = (
     "You explain one marketplace listing error code to a seller support team. You draft a short, "
     "plain-language cause and fix and a classification. A person reviews every draft before it "
@@ -129,6 +130,12 @@ def _fold(text: str) -> str:
     return unicodedata.normalize("NFKC", _strip(text))
 
 
+def _secret_pattern(value: str) -> re.Pattern[str]:
+    """The one secret matcher of `redact` and `check`: the folded value as a whole word or
+    phrase, any case, so "Red" never matches inside "Required"."""
+    return re.compile(rf"(?<!\w){re.escape(value)}(?!\w)", re.IGNORECASE)
+
+
 def redact(message: str, secrets: Iterable[tuple[str, str]]) -> str:
     """`message` folded (NFKC, control and bidi characters gone), then each (value, placeholder)
     secret replaced (longest first, folded the same way), then the ASIN, long digit, URL and
@@ -139,7 +146,7 @@ def redact(message: str, secrets: Iterable[tuple[str, str]]) -> str:
         key=lambda pair: -len(pair[0]),
     )
     for value, placeholder in pairs:
-        text = re.sub(re.escape(value), placeholder, text, flags=re.IGNORECASE)
+        text = _secret_pattern(value).sub(placeholder, text)
     text = _URL.sub("{link}", text)
     text = _EMAIL.sub("{link}", text)
     text = _ASIN.sub("{asin}", text)
@@ -185,10 +192,10 @@ def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
         return "formula"
     if any(p.search(normal) for p in _BAD_TEXT) or _TOKEN.search(normal):
         return "markup"
-    folded = _fold(text).casefold()
+    folded = _fold(text)
     for secret in secrets:
-        mine = _fold(secret).casefold() if secret else ""
-        if len(mine) >= SECRET_MIN and mine in folded:
+        mine = _fold(secret) if secret else ""
+        if len(mine) >= SECRET_MIN and _secret_pattern(mine).search(folded):
             return "secret"
     return None
 
