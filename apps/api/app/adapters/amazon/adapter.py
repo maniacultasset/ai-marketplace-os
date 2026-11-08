@@ -31,6 +31,13 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
   `attributeNames` or `categories` is not a list names no attribute.
 - The adapter never checks approval (invariant 1: S21 calls it only after approval), never runs
   a `fix_action`, and passes `attempt` through unchanged (invariant 9).
+- `preview_remote` (SI11): Amazon's dry run of what a create would send (`put_preview`, one per
+  item, parent first), with no images (CP-D23: the caller passes no `image_refs`, and an issue on
+  an image attribute is dropped). A local ERROR or an unmapped category sends nothing (`failed`).
+  VALID everywhere -> `clean`; INVALID -> `issues`, mapped and scrubbed as a write's issues; a
+  reply with no status, an unreadable body or any other status -> `failed` with `applied` True
+  and one ERROR log `preview.applied` (Amazon may have stored it; the caller opens the account
+  breaker). A transport failure propagates (the job's retry). Nothing of the reply is kept.
 """
 
 from __future__ import annotations
@@ -69,14 +76,21 @@ from app.adapters.base import (
     NullSink,
     PerformanceDay,
     RawResponseSink,
+    RemotePreview,
+    RemoteStatus,
     UpdateFields,
     fields_by_sku,
     issue_text,
     party_secrets,
 )
 from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, read_issue
+from app.core.logging import get_logger
+
+log = get_logger(__name__)
 
 NO_LISTING_ID: Final = UUID(int=0)
+PREVIEW_VERDICTS: Final = frozenset({"VALID", "INVALID"})
+IMAGE_ATTRIBUTES: Final = frozenset({c.MAIN_IMAGE, *c.OTHER_IMAGES})
 MAX_PERFORMANCE_DAYS: Final = 366
 _ORDER: Final = {"failed": 0, "succeeded": 1, "skipped": 2}
 
@@ -151,6 +165,76 @@ class AmazonAdapter(MarketplaceAdapter):
 
     def preview(self, item: AdapterListing) -> AdapterPreview:
         return preview(item, marketplace_id=self._marketplace_id)
+
+    async def preview_remote(self, item: AdapterListing) -> RemotePreview:
+        """SI11: Amazon's VALIDATION_PREVIEW of every item (module docstring)."""
+        # The stored-definition check is the local pre-approval check's job (SI9); this asks
+        # Amazon itself. A live listing's next send is an update: no barcode refusal (CP-D14).
+        mapped, errors = build(
+            item,
+            marketplace_id=self._marketplace_id,
+            schema=False,
+            require_identifier=not item.live,
+        )
+        local = tuple(e for e in errors if e.severity is Severity.ERROR)
+        if local:
+            return RemotePreview(status="failed", errors=local[:MAX_ERROR_ITEMS])
+        template = item.template.template if item.template is not None else None
+        index = reverse_index(template)
+        parties = party_secrets(item)
+        found: list[ErrorItem] = []
+        per_sku: dict[str, str] = {}
+        scope: set[str] = set()
+        for position, one in enumerate(mapped):
+            paths = tuple(p for p in one.paths if not p.startswith("images"))
+            scope.update(paths)
+            response = await self._client.put_preview(one.unit.seller_sku, one.payload)
+            if response.status != 200:
+                per_sku[one.unit.seller_sku] = str(response.status)
+                return RemotePreview(
+                    status="failed",
+                    errors=(_preview_refused(response.status),),
+                    per_sku=per_sku,
+                    scope=tuple(sorted(scope)),
+                )
+            try:
+                body = _write_reply(response)
+            except _UnreadableReplyError:
+                body = {}
+            verdict = body.get("status")
+            if not isinstance(verdict, str) or verdict.upper() not in PREVIEW_VERDICTS:
+                log.error("preview.applied", listing_id=str(item.listing_id), sku_index=position)
+                per_sku[one.unit.seller_sku] = "unexpected"
+                return RemotePreview(
+                    status="failed",
+                    applied=True,
+                    errors=(_preview_unread(),),
+                    per_sku=per_sku,
+                    scope=tuple(sorted(scope)),
+                )
+            per_sku[one.unit.seller_sku] = verdict.upper()
+            kept = _without_images(response, body)
+            # this session's tokens are known only once a call has gone out
+            secrets = (*parties, *self._client.used_secrets())
+            failed, _, loose = self._issue_items(
+                kept, one, index, paths, dict.fromkeys(paths), secrets
+            )
+            found += [failed[p] for p in sorted(failed)] + loose
+        status: RemoteStatus = "issues" if found or "INVALID" in per_sku.values() else "clean"
+        if status == "issues" and not found:
+            found.append(
+                error(
+                    "listing",
+                    ErrorCode.MARKETPLACE_UNKNOWN_ERROR,
+                    "Amazon's check refused the item without naming an attribute.",
+                )
+            )
+        return RemotePreview(
+            status=status,
+            errors=tuple(found[:MAX_ERROR_ITEMS]),
+            per_sku=per_sku,
+            scope=tuple(sorted(scope)),
+        )
 
     # ---- issues -> field results ----
 
@@ -588,6 +672,39 @@ class AmazonAdapter(MarketplaceAdapter):
 
 
 # ---- helpers ----
+
+
+def _without_images(response: SpApiResponse, body: Mapping[str, Any]) -> SpApiResponse:
+    """The preview reply with every issue on an image attribute removed (CP-D23: a preview sends
+    no image, so Amazon's "missing image" is the gap the preview made itself)."""
+    issues = body.get("issues") or body.get("errors") or []
+    kept = [
+        i
+        for i in (issues if isinstance(issues, list) else [])
+        if not (isinstance(i, dict) and set(_names(i.get("attributeNames"))) & IMAGE_ATTRIBUTES)
+    ]
+    return SpApiResponse(
+        status=response.status,
+        json={**body, "issues": kept, "errors": None},
+        headers=response.headers,
+        raw=b"",
+    )
+
+
+def _preview_refused(status: int) -> ErrorItem:
+    return error(
+        "listing",
+        ErrorCode.MARKETPLACE_UNAVAILABLE,
+        f"Amazon's check answered {status}; nothing was judged.",
+    )
+
+
+def _preview_unread() -> ErrorItem:
+    return error(
+        "listing",
+        ErrorCode.MARKETPLACE_UNCONFIRMED,
+        "Amazon's check answered in a way Kuinn could not read.",
+    )
 
 
 def _unavailable(message: str) -> MarketplaceUnavailable:

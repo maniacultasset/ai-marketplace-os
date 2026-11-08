@@ -581,6 +581,32 @@ def fields_by_sku(item: AdapterListing, fields: UpdateFields) -> dict[str, list[
     return out
 
 
+RemoteStatus = Literal["clean", "issues", "failed"]
+
+
+@dataclass(frozen=True)
+class RemotePreview:
+    """The marketplace's dry-run verdict on what a create would send (SI11; Amazon
+    `VALIDATION_PREVIEW`, which saves nothing). `status`: `clean` (every item VALID), `issues`
+    (an item INVALID: `errors` holds the mapped, scrubbed items) or `failed` (nothing judged: a
+    local ERROR sent nothing, a 4xx, or a reply the adapter could not read). `applied` is True
+    only when the marketplace answered as if it stored the item (an invariant-1 alarm: the
+    caller opens the account breaker). `scope` holds every non-image path the items carried;
+    `per_sku` the raw verdict per seller SKU (`VALID`, `INVALID`, or what came back)."""
+
+    status: RemoteStatus
+    applied: bool = False
+    errors: tuple[ErrorItem, ...] = ()
+    per_sku: Mapping[str, str] = field(default_factory=lambda: _EMPTY)
+    scope: tuple[str, ...] = ()
+
+
+class RemotePreviewer(Protocol):
+    """The one call the dry-run job may make (SI11): a preview, never a write."""
+
+    async def preview_remote(self, item: AdapterListing) -> RemotePreview: ...
+
+
 class MarketplaceReader(Protocol):
     """The one call the status sync may make (DATABASE.md:890; S21 T19): a read, never a write."""
 
