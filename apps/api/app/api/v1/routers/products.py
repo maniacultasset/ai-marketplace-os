@@ -179,7 +179,8 @@ async def products_create(
             size_chart=None if body.size_chart is None else size_chart_dict(body.size_chart),
             id=body.id,
             image_uploads=tuple(
-                CreateUpload(storage_key=u.storage_key, slot=u.slot) for u in body.image_uploads
+                CreateUpload(storage_key=u.storage_key, slot=u.slot, role=u.role)
+                for u in body.image_uploads
             ),
             product_identifier=(
                 None

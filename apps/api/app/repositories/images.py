@@ -242,7 +242,10 @@ class ImageRepository(TenantScopedRepository[Image]):
             .on_conflict_do_nothing(index_elements=[Image.tenant_id, Image.storage_key])
             .returning(Image)
         )
-        row: Image | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        try:
+            row: Image | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        except IntegrityError as exc:  # SI12: `images_one_role` lost a race (CP-D5)
+            raise to_conflict(exc) from exc
         return row
 
     async def demote_main(self, image_id: UUID, position: int) -> bool:
