@@ -639,6 +639,42 @@ async def run_value_maps(min_listings: int) -> int:
     return EXIT_OK
 
 
+# ---- SI13 T16: the Auto / Seller / Marketplace export (read-only, staff) ----
+
+
+async def run_errors_export(fmt: str, marketplace: str | None) -> int:
+    from sqlalchemy import select, text
+
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.models.platform import MarketplaceErrorMap
+    from app.db.session import dispose_engine, platform_scope
+    from app.services.resolution.export import rows, to_csv, to_md
+
+    m = MarketplaceErrorMap
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                stmt = select(m)
+                if marketplace is not None:
+                    stmt = stmt.where(m.marketplace == marketplace)
+                found = list((await session.execute(stmt)).scalars())
+                count = text(
+                    "SELECT count(DISTINCT (marketplace, marketplace_code)) FROM "
+                    "public.marketplace_error_catalog WHERE NOT mapped AND marketplace_code IS NOT "
+                    "NULL AND (CAST(:m AS text) IS NULL OR marketplace = :m)"
+                )
+                unmapped = int((await session.execute(count, {"m": marketplace})).scalar_one() or 0)
+                table = rows(found, unmapped)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors export: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    sys.stdout.write(to_csv(table, unmapped) if fmt == "csv" else to_md(table, unmapped))
+    return EXIT_OK
+
+
 # ---- SI13 T14: the staff review of AI-drafted error-map proposals ----
 
 
@@ -1665,6 +1701,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     errors_catalog.add_argument("--unmapped", action="store_true")
     errors_catalog.add_argument("--limit", type=_catalog_limit, default=200)
+    export = errors_commands.add_parser(
+        "export", help="the Auto / Seller / Marketplace table from the error map (staff)"
+    )
+    export.add_argument("--format", choices=("md", "csv"), default="md")
+    export.add_argument("--marketplace", choices=("amazon", "flipkart"))
     value_maps = errors_commands.add_parser(
         "value-maps", help="alias proposals from refused-then-live values (staff, read-only)"
     )
@@ -1738,6 +1779,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_platform_load(args.error_map))
     if args.group == "errors" and args.command == "catalog":
         return asyncio.run(run_errors_catalog(unmapped=args.unmapped, limit=args.limit))
+    if args.group == "errors" and args.command == "export":
+        return asyncio.run(run_errors_export(args.format, args.marketplace))
     if args.group == "errors" and args.command == "value-maps":
         return asyncio.run(run_value_maps(max(2, args.min_listings)))
     if args.group == "errors" and args.command == "proposals":

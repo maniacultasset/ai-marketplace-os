@@ -399,6 +399,7 @@ source_modules =
     app.services.resolution.reassign
     app.services.resolution.diagnosis
     app.services.resolution.value_maps
+    app.services.resolution.export
 forbidden_modules =
     sqlalchemy
     psycopg
