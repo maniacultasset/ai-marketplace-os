@@ -41,7 +41,9 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
             listing is None
             or version_id is None
             or listing.current_version_id != version_id
-            or not previewable(listing, payload.trigger)
+            # a queued job runs wherever its verdict may still be written (`apply_preview`):
+            # a validate re-check (fix round 2) is queued from `blocked/validation_errors`
+            or not previewable(listing, payload.trigger, recheck=True)
         ):
             return Outcome("succeeded", result={"skipped": "stale"})
         account = await uow.marketplace_accounts.active_for_publish(

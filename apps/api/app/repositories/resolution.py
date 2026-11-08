@@ -24,7 +24,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Final
 
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import func, or_, select
 
 from app.db.models.issues import HumanTask, ListingIssue
 from app.db.models.listings import ListingVersion, ReviewDecision
@@ -82,18 +82,16 @@ class ResolutionRepository(TenantScopedRepository[ListingRepair]):
     async def has_open_preview_error(self, listing_id: uuid.UUID, version_id: uuid.UUID) -> bool:
         """An open `amazon_adapter` ERROR of the dry run on `version_id` (the approve gate, T8)."""
         i = ListingIssue
-        stmt = select(
-            exists().where(
-                self._criterion_for(ListingIssue),
-                i.listing_id == listing_id,
-                i.listing_version_id == version_id,
-                i.status == "open",
-                i.severity == "error",
-                i.source == "amazon_adapter",
-                i.dedupe_key.like("%|preview"),
-            )
+        stmt = select(i.id).where(
+            self._criterion_for(ListingIssue),
+            i.listing_id == listing_id,
+            i.listing_version_id == version_id,
+            i.status == "open",
+            i.severity == "error",
+            i.source == "amazon_adapter",
+            i.dedupe_key.like("%|preview"),
         )
-        return bool((await self.db.execute(self._scoped_read(stmt))).scalar())
+        return (await self.db.execute(self._scoped_read(stmt.limit(1)))).first() is not None
 
     async def human_mark(self, listing_id: uuid.UUID) -> datetime | None:
         d, v, t, i, j = ReviewDecision, ListingVersion, HumanTask, ListingIssue, JobRun

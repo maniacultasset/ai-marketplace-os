@@ -14,7 +14,10 @@ writes Amazon's issues as `amazon_adapter` rows of the `preview` channel (CP-D4)
   the same version with the same repairs and the same seller facts (`listing_facts_digest` of the
   product family: a preview sends the origin, barcode and identity facts, which change without a
   new version) is the same payload, so a second verdict is a replay. A replay never leaves the
-  check `pending`: it takes the earlier job's verdict (`pending` only while that job is live). A live sync job of the
+  check `pending`: it takes the earlier job's verdict (`pending` only while that job is live),
+  unless that verdict contradicts the version's open pre-check ERROR rows (fix round 2: facts
+  A, then B, then A again replay A's 'clean' while B's ERROR is open): then a fresh job is
+  keyed on those rows too, and its verdict closes or keeps them. A live sync job of the
   listing means no insert: the check is marked `pending` and the live job's terminal enqueues it
   (CP-D5). The insert runs in a SAVEPOINT, so the live-index race never fails the caller's
   request or terminal transaction. Returns the new job's id, or None.
@@ -48,7 +51,7 @@ from app.core.errors import ConflictError
 from app.core.logging import get_logger
 from app.core.resolved_facts import listing_facts_digest
 from app.db.models.ops import JobRun
-from app.repositories.jobs import EnqueueSpec
+from app.repositories.jobs import Enqueued, EnqueueSpec
 from app.repositories.listings import JobActor
 from app.repositories.repairs import repair_set_digest
 from app.repositories.resolution import BREAKER_KIND, BREAKER_TARGET
@@ -76,14 +79,16 @@ def is_preview(job: JobRun) -> bool:
     return isinstance(job.payload_json, dict) and job.payload_json.get("op") == "preview"
 
 
-def previewable(listing: Any, trigger: Trigger) -> bool:
-    """The statuses a dry run may start from (and still write in, `apply_preview`)."""
+def previewable(listing: Any, trigger: Trigger, *, recheck: bool = False) -> bool:
+    """The statuses a dry run may start from (and still write in, `apply_preview`). `recheck`
+    (fix round 2): a validate whose current version holds an open pre-check ERROR may re-ask
+    from `blocked/validation_errors`, as a resolution re-check does."""
     if listing.paused_at is not None or listing.archived_at is not None:
         return False
     if listing.status in PRE_APPROVAL:
         return True
     return (
-        trigger == "resolution"
+        (trigger == "resolution" or recheck)
         and listing.status == "blocked"
         and listing.status_reason == "validation_errors"
     )
@@ -94,6 +99,18 @@ def preview_key(
 ) -> str:
     raw = f"preview:{listing_id}:{version_id}:{repair_set.hex()}:{facts.hex()}"
     return hashlib.sha256(raw.encode("ascii")).hexdigest()
+
+
+def open_rows_digest(keys: list[str]) -> bytes:
+    """The open pre-check ERROR rows a fresh job is asked to re-judge (fix round 2)."""
+    return hashlib.sha256("\n".join(sorted(keys)).encode("utf-8")).digest()
+
+
+def replay_disagrees(verdict: str, open_keys: list[str]) -> bool:
+    """A replayed verdict that contradicts the version's open pre-check rows (fix round 2): a
+    'clean' replay while an ERROR of this version is open (a later verdict on other facts opened
+    it), or an 'issues' replay while none is open. Such a replay is not taken."""
+    return (verdict == "clean" and bool(open_keys)) or (verdict == "issues" and not open_keys)
 
 
 def replayed_check(job: JobRun) -> str:
@@ -112,13 +129,14 @@ async def request_preview(
     version_id: uuid.UUID | None,
     *,
     trigger: Trigger = "system",
+    recheck: bool = False,
 ) -> uuid.UUID | None:
     settings = get_settings()
     if (
         version_id is None
         or listing.marketplace != "amazon"
         or not settings.amazon_validation_preview_enabled
-        or not previewable(listing, trigger)
+        or not previewable(listing, trigger, recheck=recheck)
     ):
         return None
     # the account a publish would use: the listing's own once set, else the tenant's active one
@@ -136,29 +154,28 @@ async def request_preview(
     repairs = await uow.listing_repairs.live_for_listing(listing.id)
     family = await uow.product_facts.resolve_family(listing.product_id)
     facts = b"" if family is None else listing_facts_digest(*family)
-    spec = EnqueueSpec(
-        kind=JobKind.LISTING_STATUS_SYNC,
-        entity_type="listing",
-        entity_id=listing.id,
-        listing_id=listing.id,
-        created_by=None,
-        job_key=preview_key(listing.id, version_id, repair_set_digest(repairs), facts),
-        payload=dump(
-            StatusSyncPayload(
-                listing_id=listing.id, op="preview", version_id=version_id, trigger=trigger
-            )
-        ),
-    )
-    try:
-        async with uow.session.begin_nested():
-            enqueued = await uow.job_runs.enqueue(spec)
-    except ConflictError:
-        # a sync job went live between the check and the insert: it enqueues this one later
-        await uow.listings.set_remote_check(listing.id, version_id, "pending")
+    key = preview_key(listing.id, version_id, repair_set_digest(repairs), facts)
+    enqueued = await _enqueue(uow, listing, version_id, trigger, key)
+    if enqueued is None:
         return None
     if not enqueued.created:  # the same version, repairs and facts were judged already
-        await uow.listings.set_remote_check(listing.id, version_id, replayed_check(enqueued.job))
-        return None
+        verdict = replayed_check(enqueued.job)
+        open_keys = await _open_preview_keys(uow, listing.id, version_id)
+        if verdict not in ("clean", "issues") or not replay_disagrees(verdict, open_keys):
+            await uow.listings.set_remote_check(listing.id, version_id, verdict)
+            return None
+        # the replay contradicts the open rows (A -> B -> A facts): ask again, keyed on them
+        key = preview_key(
+            listing.id, version_id, repair_set_digest(repairs), facts + open_rows_digest(open_keys)
+        )
+        enqueued = await _enqueue(uow, listing, version_id, trigger, key)
+        if enqueued is None:
+            return None
+        if not enqueued.created:
+            await uow.listings.set_remote_check(
+                listing.id, version_id, replayed_check(enqueued.job)
+            )
+            return None
     await uow.listings.set_remote_check(listing.id, version_id, "pending")
     log.info(
         "preview.requested",
@@ -167,6 +184,39 @@ async def request_preview(
         trigger=trigger,
     )
     return enqueued.job.id
+
+
+async def _enqueue(
+    uow: TenantUnitOfWork, listing: Any, version_id: uuid.UUID, trigger: Trigger, key: str
+) -> Enqueued | None:
+    """The preview job insert in a SAVEPOINT; None when a sync job went live meanwhile (the
+    check is left `pending`, and that job's terminal enqueues this one)."""
+    spec = EnqueueSpec(
+        kind=JobKind.LISTING_STATUS_SYNC,
+        entity_type="listing",
+        entity_id=listing.id,
+        listing_id=listing.id,
+        created_by=None,
+        job_key=key,
+        payload=dump(
+            StatusSyncPayload(
+                listing_id=listing.id, op="preview", version_id=version_id, trigger=trigger
+            )
+        ),
+    )
+    try:
+        async with uow.session.begin_nested():
+            return await uow.job_runs.enqueue(spec)
+    except ConflictError:
+        await uow.listings.set_remote_check(listing.id, version_id, "pending")
+        return None
+
+
+async def _open_preview_keys(
+    uow: TenantUnitOfWork, listing_id: uuid.UUID, version_id: uuid.UUID
+) -> list[str]:
+    rows = await uow.listing_issues.open_errors(listing_id, ["amazon_adapter"], channel="preview")
+    return [row.dedupe_key for row in rows if row.listing_version_id == version_id]
 
 
 async def apply_preview(
