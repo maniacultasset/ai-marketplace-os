@@ -5,7 +5,8 @@ requeue control (D10; requeue is the S13 staff CLI). Templates keep Jinja autoes
 S23 (C6): the cost page takes `?day=YYYY-MM-DD` (default today UTC; malformed, empty or more than
 366 days back is 400) and adds that day's spend per model and per trigger and the top 50 listings
 by 30-day cost; `ops/cost/listings/{listing_id}` shows one listing's all-time cost (a malformed id
-is 400, an unknown one 404). The numbers come from `app/workers/rollup.py`. Local-only until the
+is 400, an unknown one 404). The numbers come from `app/workers/rollup.py`. SI11 T19: `ops/errors`, the marketplace
+error catalogue (`app.repositories.error_catalog`, `services/resolution/catalog`). Local-only until the
 staging admin sits behind IAM (S4): outside local the gate refuses every request."""
 
 from __future__ import annotations
@@ -101,6 +102,25 @@ class OpsView(BaseView):
         async with PlatformSessionMaker()() as session:
             rows = await ops.funnel(session, type(self).clock())
         return await self._render(request, "ops/funnel.html", rows=rows)
+
+    @expose("/ops/errors", methods=["GET"])
+    async def errors(self, request: Request) -> Response:
+        """SI11 T19: the marketplace error catalogue with each code's lane and, for an unmapped
+        code, the suggested map row to review (counts only: no tenant, no message text)."""
+        import json
+
+        from app.repositories.error_catalog import catalog_rows
+        from app.services.resolution.catalog import catalog_line
+
+        async with PlatformSessionMaker()() as session:
+            stats = await catalog_rows(session, limit=200)
+        rows = []
+        for stat in stats:
+            line = catalog_line(stat)
+            suggested = line.pop("suggested_row")
+            line["suggested"] = None if suggested is None else json.dumps(suggested, indent=2)
+            rows.append(line)
+        return await self._render(request, "ops/errors.html", rows=rows)
 
     @expose("/ops/dlq", methods=["GET"])
     async def dlq(self, request: Request) -> Response:

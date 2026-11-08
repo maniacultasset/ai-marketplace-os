@@ -16,7 +16,8 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from mkos_schemas.jobs import MAX_TARGET_FIELDS
+from pydantic import BaseModel, ConfigDict, Field
 
 PublishMode = Literal["publish", "retry_fields", "resume"]
 SyncReason = Literal["scheduled", "refresh", "daily"]
@@ -47,6 +48,21 @@ class StatusSyncPayload(_Payload):
     # fix round 3: a preview's inputs key (version, repairs, seller facts); a replay is taken
     # only from the version's newest preview, and only when this matches
     basis: str | None = None
+
+
+class AutoFixPayload(_Payload):
+    """SI11 T15: a `listing_generate` job the resolution engine enqueued to fix content. Stored
+    whole (never through `dump`): `trigger` must stay in `payload_json`, so the 3-cycle cap counts
+    the job and the human mark never takes it for a member's request."""
+
+    listing_id: UUID
+    mode: Literal["auto_fix", "ai_field"] = "auto_fix"
+    base_version_id: UUID
+    issue_ids: tuple[UUID, ...] = Field(default=(), max_length=50)
+    trigger: Literal["resolution"] = "resolution"
+    # T16 (`ai_field`): the paths the model may rewrite and one feedback line per refusal
+    target_fields: tuple[str, ...] = Field(default=(), max_length=MAX_TARGET_FIELDS)
+    feedback: tuple[str, ...] = Field(default=(), max_length=5)
 
 
 # SI11 keys left out at their default, so every payload written before SI11 (and every user job

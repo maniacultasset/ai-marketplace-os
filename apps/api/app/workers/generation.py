@@ -72,6 +72,7 @@ from app.services.generation_context import GenerationContextError, build_contex
 from app.services.generation_images import load_context_images, order_for_listing, pick_context
 from app.services.generation_persist import PersistPlan, Pins, make_persist
 from app.services.generation_result import (
+    NEEDS_REVIEW,
     Untrusted,
     check_result,
     map_outcome,
@@ -86,10 +87,12 @@ from app.services.photo_facts import (
     screen,
 )
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
+from app.services.resolution.merge import merge_targets
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.services.seller_facts import seller_overlay
 from app.workers import budget
 from app.workers.errors import JobFailed
+from app.workers.payloads import AutoFixPayload
 from app.workers.registry import JobContext, Outcome, register
 
 log = get_logger(__name__)
@@ -228,6 +231,16 @@ async def _refusal_failure(ctx: JobContext, refusal: EmbedRefusal, **kw: Any) ->
 
 
 async def run_listing_generate(ctx: JobContext) -> Outcome:
+    if ctx.payload.get("mode") == "auto_fix":  # SI11 T15: the deterministic content fix
+        from app.workers.auto_fix_job import run_auto_fix
+
+        return await run_auto_fix(ctx)
+    # SI11 T16: an AI rewrite of the refused fields only (the same body, gates and records)
+    fix = (
+        AutoFixPayload.model_validate(ctx.payload)
+        if ctx.payload.get("mode") == "ai_field"
+        else None
+    )
     settings = get_settings()
     tenant, job_id = ctx.tenant_id, ctx.job_run_id
     try:
@@ -254,6 +267,10 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         )
         if job is None or listing is None:
             raise _fail(ctx, ErrorCode.INTERNAL_ERROR, "generation failed", zero_reservation=True)
+        if fix is not None and listing.current_version_id != fix.base_version_id:
+            raise _fail(
+                ctx, ErrorCode.GENERATION_FAILED, "Kuinn could not fix it.", zero_reservation=True
+            )
         try:
             rules = await load_rules(
                 uow, tenant_id=tenant, marketplace=listing.marketplace, category=listing.category
@@ -278,6 +295,8 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 facts=facts,
                 request_id=ctx.request_id,
                 max_attempts=settings.llm_max_correction_attempts,
+                target_fields=() if fix is None else fix.target_fields,
+                feedback=() if fix is None else fix.feedback,
             )
         except GenerationContextError as exc:
             raise _fail(
@@ -289,6 +308,16 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
         rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
+        # SI11 T16 (backstop): only a refusal on a path the model was sent closes as its fix
+        covered = (
+            ()
+            if fix is None
+            else tuple(
+                r.id
+                for r in await uow.listing_issues.open_by_ids(listing.id, fix.issue_ids)
+                if r.field_path in fix.target_fields
+            )
+        )
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
@@ -300,7 +329,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     sent_set = photo_set(context_images, {r.image_id: r.clean_content_hash or "" for r in picked})
     targets = (
         []
-        if rules.template is None
+        if rules.template is None or fix is not None  # a field fix reads no photos
         else build_targets(
             facts, rules.template, context_images, current_set=sent_set, last_set=seen_set
         )
@@ -334,6 +363,17 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         "created_by": created_by,
         "pins": pins,
     }
+    if fix is not None:  # SI11 T16: only the target paths change; the refusals close as AI fixes
+        plan_base.update(
+            origin="regeneration",
+            changed_paths=tuple(fix.target_fields),
+            closes=tuple(
+                (issue_id, "Kuinn rewrote this field the way the marketplace accepts it.")
+                for issue_id in covered
+            ),
+            close_resolution="ai_correction",
+            preview_trigger="resolution",
+        )
 
     # ---- 3. the pipeline, no transaction open ----
     deps = await build_pipeline_deps(
@@ -419,7 +459,12 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         )
     report: ErrorReport | None = None
     fixes: tuple[FixRecord, ...] = ()
-    if trusted.listing is not None:
+    if trusted.listing is not None and fix is not None and gctx.previous_version is not None:
+        # SI11 T16: the base everywhere but the targets, whatever the model returned
+        merged = merge_targets(gctx.previous_version, trusted.listing, fix.target_fields)
+        trusted = dataclasses.replace(trusted, listing=merged)
+        report = recheck(merged, rules, product, rejections=rejections)
+    elif trusted.listing is not None:
         # SI4 A9 (§2 fact 1, AC7): the same pure fix pass the correction loop ran, on the final
         # listing; the fixed listing is what the version stores. A human edit never gets here (D6)
         fixed = auto_fix(
@@ -432,6 +477,8 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
+    if fix is not None and move.to == "validated":
+        move = NEEDS_REVIEW  # a Kuinn-made change always waits for a person
     photo: dict[str, Any] = {}
     if targets and rules.template is not None:  # SI3: only a trusted result, this run's targets
         decision = screen(

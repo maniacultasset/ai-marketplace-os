@@ -818,6 +818,37 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "listings_regenerate": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "listings_retry_fields": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "listings_submissions": _page([_SUBMISSION]),
+        "listings_resolution": {
+            "state": "needs_you",
+            "cycles_used": 1,
+            "max_cycles": 3,
+            "remote_check": {"version_id": VERSION, "status": "issues", "at": T1},
+            "attempts": [
+                {
+                    "kind": "precheck",
+                    "number": 0,
+                    "version": 1,
+                    "at": T1,
+                    "actor": "system",
+                    "outcome": "issues",
+                    "failed": [
+                        {
+                            "field": "attributes.color",
+                            "message": "The value for 'color' is not one of the allowed values.",
+                            "lane": "seller",
+                            "cause": "seller_fact",
+                            "marketplace_code": "90220",
+                        }
+                    ],
+                    "changed": [],
+                }
+            ],
+            "next_step": {
+                "kind": "answer",
+                "task_ids": [TASK],
+                "text": "Answer the open question so Kuinn can fix the listing.",
+            },
+        },
         "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"

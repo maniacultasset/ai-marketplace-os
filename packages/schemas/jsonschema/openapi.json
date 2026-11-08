@@ -361,6 +361,146 @@
         "title": "ApproveRequest",
         "type": "object"
       },
+      "AttemptFailureOut": {
+        "properties": {
+          "cause": {
+            "enum": [
+              "seller_fact",
+              "ai_content",
+              "mapping",
+              "image",
+              "marketplace",
+              "unknown"
+            ],
+            "title": "Cause",
+            "type": "string"
+          },
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "lane": {
+            "enum": [
+              "auto_repair",
+              "auto_content",
+              "ai_field",
+              "seller",
+              "marketplace",
+              "retry",
+              "staff"
+            ],
+            "title": "Lane",
+            "type": "string"
+          },
+          "marketplace_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marketplace Code"
+          },
+          "message": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "message",
+          "lane",
+          "cause"
+        ],
+        "title": "AttemptFailureOut",
+        "type": "object"
+      },
+      "AttemptOut": {
+        "properties": {
+          "actor": {
+            "enum": [
+              "user",
+              "system"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/ChangeOut"
+            },
+            "maxItems": 50,
+            "title": "Changed",
+            "type": "array"
+          },
+          "failed": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptFailureOut"
+            },
+            "maxItems": 50,
+            "title": "Failed",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "precheck",
+              "submission"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "description": "The submission attempt (1-3); 0 for a pre-check.",
+            "maximum": 99.0,
+            "minimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "clean",
+              "issues",
+              "failed",
+              "pending",
+              "accepted",
+              "partially_accepted",
+              "rejected",
+              "error",
+              "live",
+              "superseded"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "number",
+          "version",
+          "at",
+          "actor",
+          "outcome"
+        ],
+        "title": "AttemptOut",
+        "type": "object"
+      },
       "AuditEventOut": {
         "description": "One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller\nread, and both are personal data (DATABASE.md §5.2).",
         "properties": {
@@ -970,6 +1110,51 @@
           "content"
         ],
         "title": "CanonicalListing",
+        "type": "object"
+      },
+      "ChangeOut": {
+        "properties": {
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "repair",
+              "content_fix",
+              "ai_correction",
+              "seller_answer"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "summary": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "field",
+          "summary"
+        ],
+        "title": "ChangeOut",
         "type": "object"
       },
       "Claim": {
@@ -5149,6 +5334,43 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "NextStepOut": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "none",
+              "wait",
+              "approve",
+              "answer",
+              "marketplace",
+              "resume",
+              "regenerate"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "task_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Task Ids",
+            "type": "array"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 300,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "NextStepOut",
+        "type": "object"
+      },
       "PackageIn": {
         "additionalProperties": false,
         "description": "SI12: the shipping package. A JSON merge patch (CP-D8): a key not sent is unchanged. The\nthree dimensions are sent together, all set or all null (null clears them); `weight_g: null`\nclears the weight. `{}` is refused: send `package: null` to clear all four.",
@@ -7021,6 +7243,66 @@
           "expires_at"
         ],
         "title": "ResetLinkOut",
+        "type": "object"
+      },
+      "ResolutionOut": {
+        "properties": {
+          "attempts": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/AttemptOut"
+            },
+            "maxItems": 10,
+            "title": "Attempts",
+            "type": "array"
+          },
+          "cycles_used": {
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Cycles Used",
+            "type": "integer"
+          },
+          "max_cycles": {
+            "const": 3,
+            "default": 3,
+            "title": "Max Cycles",
+            "type": "integer"
+          },
+          "next_step": {
+            "$ref": "#/components/schemas/NextStepOut"
+          },
+          "remote_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RemoteCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "checking",
+              "fixing",
+              "resubmitted",
+              "fix_ready",
+              "needs_you",
+              "needs_marketplace",
+              "stopped",
+              "live",
+              "idle"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "cycles_used",
+          "next_step"
+        ],
+        "title": "ResolutionOut",
         "type": "object"
       },
       "RetryClass": {
@@ -34909,6 +35191,368 @@
           "listings"
         ],
         "x-mkos-action": "listing:regenerate"
+      }
+    },
+    "/api/v1/listings/{listing_id}/resolution": {
+      "get": {
+        "description": "SI11: the resolution timeline (state, cycles used, dry-run verdict, attempts newest first\nwith their failures and changes, and the next step). A read: the engine never runs here.",
+        "operationId": "listings_resolution",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": [
+                    {
+                      "actor": "system",
+                      "at": "2026-10-05T09:31:00Z",
+                      "changed": [],
+                      "failed": [
+                        {
+                          "cause": "seller_fact",
+                          "field": "attributes.color",
+                          "lane": "seller",
+                          "marketplace_code": "90220",
+                          "message": "The value for 'color' is not one of the allowed values."
+                        }
+                      ],
+                      "kind": "precheck",
+                      "number": 0,
+                      "outcome": "issues",
+                      "version": 1
+                    }
+                  ],
+                  "cycles_used": 1,
+                  "max_cycles": 3,
+                  "next_step": {
+                    "kind": "answer",
+                    "task_ids": [
+                      "0b1c2d3e-0000-4000-8000-000000001101"
+                    ],
+                    "text": "Answer the open question so Kuinn can fix the listing."
+                  },
+                  "remote_check": {
+                    "at": "2026-10-05T09:31:00Z",
+                    "status": "issues",
+                    "version_id": "0b1c2d3e-0000-4000-8000-000000000202"
+                  },
+                  "state": "needs_you"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ResolutionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "What Kuinn tried, changed and needs for this listing",
+        "tags": [
+          "listings"
+        ],
+        "x-mkos-action": "tenant:read"
       }
     },
     "/api/v1/listings/{listing_id}/status": {

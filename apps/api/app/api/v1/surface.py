@@ -102,6 +102,7 @@ from app.api.v1.schemas.marketplaces import (
     MarketplaceAccountPage,
 )
 from app.api.v1.schemas.products import ProductOut, ProductPage
+from app.api.v1.schemas.resolution import ResolutionOut
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.signup import (
     SignupAccepted,
@@ -724,6 +725,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
               SubmissionPage, "listings", "The listing's publish attempts with their per-field "
               "results, newest first", "S21", path_id="listing_id", query=("limit", "cursor"),
               action=A.TENANT_READ),
+    Operation("listings_resolution", "GET", "/listings/{listing_id}/resolution", 200,
+              ResolutionOut, "listings", "What Kuinn tried, changed and needs for this listing",
+              "SI11", path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
               JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
               "minutes per listing)", "S21", path_id="listing_id", idempotency=True,

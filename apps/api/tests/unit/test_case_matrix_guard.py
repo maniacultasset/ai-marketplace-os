@@ -100,6 +100,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_publish",
         "listings_retry_fields",
         "listings_submissions",
+        "listings_resolution",
         "listings_refresh_status",
         "analytics_get",
         "analytics_summary",

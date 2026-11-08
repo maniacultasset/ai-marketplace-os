@@ -171,9 +171,23 @@ async def test_another_tenants_listing_gets_no_task(api: httpx.AsyncClient, prev
 async def test_a_content_rejection_opens_the_staff_content_review(
     prev: PubWorld, field: str, code: ErrorCode, raw: str
 ) -> None:
-    """Fix round 3 (R3-3): a marketplace error on a keyword or content path opens a staff task
-    and links the issue (the content auto-fix, T15, is not built yet), never a silent lane."""
-    made = await _previewed(prev, [_error(field, code, raw, "This value is not accepted here.")])
+    """Fix round 3 (R3-3), kept by T15/T16: a marketplace error on a keyword or content path that
+    neither the content fix (no limit stated) nor the AI rewrite (AI paused) can take opens a
+    staff task and links the issue, never a silent lane."""
+    prev.fake.preview_errors = [_error(field, code, raw, "This value is not accepted here.")]
+    made = await generated(prev.world)
+    prev.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = 'credit_exhausted', paused_at = now() "
+        "WHERE id = 1"
+    )
+    try:
+        for job in preview_jobs(prev, made.listing_id):
+            if job["status"] == "queued":
+                await run_job(job["id"])
+    finally:
+        prev.conn.execute(
+            "UPDATE ai_credit_state SET paused_reason = NULL, paused_at = NULL WHERE id = 1"
+        )
     tasks = _tasks(prev, made.listing_id)
     assert [(t["kind"], t["target_path"], t["field_path"]) for t in tasks] == [
         ("marketplace_error_review", "account.review.content_review", field)

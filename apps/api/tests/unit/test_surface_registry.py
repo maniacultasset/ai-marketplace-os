@@ -94,6 +94,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
+    ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -137,7 +138,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI10: the platform admin's AI credit card (95 + 2)
     ("admin_ai_credit_get", "GET", "/admin/ai-credit"),
     ("admin_ai_credit_resume", "POST", "/admin/ai-credit/resume"),
-    # SI12: the size-chart read and the marketplace needs (99 + 2)
+    # SI12: the size-chart read and the marketplace needs (100 + 2)
     ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
 )
@@ -146,7 +147,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 101
+    assert len(FROZEN) == 102
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -439,8 +440,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_101_operations() -> None:
-    assert len(OPS) == 101
+def test_102_operations() -> None:
+    assert len(OPS) == 102
 
 
 def test_error_codes_per_d2() -> None:
@@ -565,7 +566,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
         "SI12",
     }  # fmt: skip
     for op in OPS.values():

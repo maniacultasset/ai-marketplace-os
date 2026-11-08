@@ -301,6 +301,24 @@ def _reformat_terms(
     return write_slot(listing, item.field, terms), record
 
 
+def fix_to_limit(
+    listing: CanonicalListing, item: ErrorItem, limit: int, unit: Unit = "chars"
+) -> tuple[CanonicalListing, FixRecord] | None:
+    """SI11 T15: `fix_reformat` against a marketplace's limit (the adapter gives it: the stored
+    product type definition, else the limit the marketplace's refusal states), for a
+    marketplace refusal that carries no Rules Engine rule. The same trim, cleanup and share cap."""
+    path = item.field
+    value = read_slot(listing, path)
+    if value is None or limit <= 0:
+        return None
+    before = measure(value, unit)
+    if before <= limit:
+        return None
+    if isinstance(value, str):
+        return _reformat_text(listing, item, value, before=before, limit=limit, unit=unit)
+    return _reformat_terms(listing, item, value, before=before, limit=limit, unit=unit)
+
+
 def fix_keyword_duplicates(
     listing: CanonicalListing, item: ErrorItem, ctx: FixContext
 ) -> tuple[CanonicalListing, FixRecord] | None:

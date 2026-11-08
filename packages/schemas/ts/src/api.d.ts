@@ -1516,6 +1516,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/resolution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What Kuinn tried, changed and needs for this listing
+         * @description SI11: the resolution timeline (state, cycles used, dry-run verdict, attempts newest first
+         *     with their failures and changes, and the next step). A read: the engine never runs here.
+         */
+        get: operations["listings_resolution"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}/status": {
         parameters: {
             query?: never;
@@ -2263,6 +2284,59 @@ export interface components {
             /** Items */
             items: components["schemas"]["ApproveItem"][];
         };
+        /** AttemptFailureOut */
+        AttemptFailureOut: {
+            /**
+             * Cause
+             * @enum {string}
+             */
+            cause: "seller_fact" | "ai_content" | "mapping" | "image" | "marketplace" | "unknown";
+            /** Field */
+            field: string;
+            /**
+             * Lane
+             * @enum {string}
+             */
+            lane: "auto_repair" | "auto_content" | "ai_field" | "seller" | "marketplace" | "retry" | "staff";
+            /** Marketplace Code */
+            marketplace_code?: string | null;
+            /** Message */
+            message: string;
+        };
+        /** AttemptOut */
+        AttemptOut: {
+            /**
+             * Actor
+             * @enum {string}
+             */
+            actor: "user" | "system";
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /** Changed */
+            changed?: components["schemas"]["ChangeOut"][];
+            /** Failed */
+            failed?: components["schemas"]["AttemptFailureOut"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "precheck" | "submission";
+            /**
+             * Number
+             * @description The submission attempt (1-3); 0 for a pre-check.
+             */
+            number: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "clean" | "issues" | "failed" | "pending" | "accepted" | "partially_accepted" | "rejected" | "error" | "live" | "superseded";
+            /** Version */
+            version: number;
+        };
         /**
          * AuditEventOut
          * @description One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
@@ -2488,6 +2562,20 @@ export interface components {
              * @default 1
              */
             version: number;
+        };
+        /** ChangeOut */
+        ChangeOut: {
+            /** Field */
+            field: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "repair" | "content_fix" | "ai_correction" | "seller_answer";
+            /** Rule */
+            rule?: string | null;
+            /** Summary */
+            summary: string;
         };
         /**
          * Claim
@@ -3989,6 +4077,21 @@ export interface components {
             /** Tenant Name */
             tenant_name: string;
         };
+        /** NextStepOut */
+        NextStepOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "none" | "wait" | "approve" | "answer" | "marketplace" | "resume" | "regenerate";
+            /** Task Ids */
+            task_ids?: string[];
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
         /**
          * PackageIn
          * @description SI12: the shipping package. A JSON merge patch (CP-D8): a key not sent is unchanged. The
@@ -4603,6 +4706,29 @@ export interface components {
              * @description `<dashboard>/reset-password#token=<token>`, shown once: copy it to the member. It works once, for 24 hours; a new link replaces it.
              */
             reset_url: string;
+        };
+        /** ResolutionOut */
+        ResolutionOut: {
+            /**
+             * Attempts
+             * @description Newest first.
+             */
+            attempts?: components["schemas"]["AttemptOut"][];
+            /** Cycles Used */
+            cycles_used: number;
+            /**
+             * Max Cycles
+             * @default 3
+             * @constant
+             */
+            max_cycles: 3;
+            next_step: components["schemas"]["NextStepOut"];
+            remote_check?: components["schemas"]["RemoteCheckOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "checking" | "fixing" | "resubmitted" | "fix_ready" | "needs_you" | "needs_marketplace" | "stopped" | "live" | "idle";
         };
         /**
          * RetryClass
@@ -29712,6 +29838,354 @@ export interface operations {
                      *         "message": "The marketplace is unavailable; try again.",
                      *         "status": 503,
                      *         "type": "AI_CREDIT_EXHAUSTED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listings_resolution: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempts": [
+                     *         {
+                     *           "actor": "system",
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "changed": [],
+                     *           "failed": [
+                     *             {
+                     *               "cause": "seller_fact",
+                     *               "field": "attributes.color",
+                     *               "lane": "seller",
+                     *               "marketplace_code": "90220",
+                     *               "message": "The value for 'color' is not one of the allowed values."
+                     *             }
+                     *           ],
+                     *           "kind": "precheck",
+                     *           "number": 0,
+                     *           "outcome": "issues",
+                     *           "version": 1
+                     *         }
+                     *       ],
+                     *       "cycles_used": 1,
+                     *       "max_cycles": 3,
+                     *       "next_step": {
+                     *         "kind": "answer",
+                     *         "task_ids": [
+                     *           "0b1c2d3e-0000-4000-8000-000000001101"
+                     *         ],
+                     *         "text": "Answer the open question so Kuinn can fix the listing."
+                     *       },
+                     *       "remote_check": {
+                     *         "at": "2026-10-05T09:31:00Z",
+                     *         "status": "issues",
+                     *         "version_id": "0b1c2d3e-0000-4000-8000-000000000202"
+                     *       },
+                     *       "state": "needs_you"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ResolutionOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
                      *       }
                      *     }
                      */

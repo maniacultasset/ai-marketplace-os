@@ -494,10 +494,12 @@ class ListingRepository(TenantScopedRepository[Listing]):
         status: str,
         *,
         only_version: uuid.UUID | None = None,
+        only_status: str | None = None,
     ) -> bool:
         """SI11: the marketplace dry run's state on one version (`ck_listings_remote_check`):
         `pending` clears the time, a verdict stamps it. `only_version` writes only while the
-        stored check still names that version (a late verdict never overwrites a newer one)."""
+        stored check still names that version (a late verdict never overwrites a newer one);
+        `only_status` only while it still has that status (part B fix round 2)."""
         self._own_session()
         if status not in ("pending", "clean", "issues", "failed"):
             raise ValueError("unknown remote check status")
@@ -505,6 +507,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
         stmt = update(Listing).where(Listing.id == listing_id, criterion)
         if only_version is not None:
             stmt = stmt.where(Listing.remote_check_version_id == only_version)
+        if only_status is not None:
+            stmt = stmt.where(Listing.remote_check_status == only_status)
         stmt = self._scoped_write(
             stmt.values(
                 remote_check_version_id=version_id,
