@@ -34,7 +34,6 @@ from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.image_keys import image_object_key, parse_image_key
 from app.services.image_objects import delete_image_objects
-from app.workers.policy import IMAGE_JOB_LOCK as IMAGE_JOB_LOCK
 
 log = get_logger(__name__)
 API_V1: Final = "/api/v1"
@@ -299,7 +298,6 @@ async def insert_image_and_job(
             entity_id=new.id,
             created_by=principal.user_id,
             payload={"image_id": str(new.id)},
-            lock=IMAGE_JOB_LOCK,
         )
     )
     await _audit(

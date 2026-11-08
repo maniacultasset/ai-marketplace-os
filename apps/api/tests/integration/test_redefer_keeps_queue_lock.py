@@ -15,7 +15,7 @@ import pytest
 from app.db.session import unit_of_work
 from app.repositories.jobs import EnqueueSpec, JobRunRepository
 from app.workers.periodic import reap_once
-from app.workers.policy import IMAGE_JOB_LOCK
+from app.workers.policy import image_job_lock
 from mkos_schemas.enums import JobKind
 
 from .conftest import LOCAL_HOSTS
@@ -50,7 +50,7 @@ def _lock(jw: JobWorld, qid: str) -> Any:
 
 async def test_orphan_redefer_keeps_image_lock(jobs_db: JobWorld) -> None:
     job, qid = await _enqueue_image_job(jobs_db.tenant("acme"))
-    assert _lock(jobs_db, qid) == IMAGE_JOB_LOCK
+    assert _lock(jobs_db, qid) == image_job_lock(jobs_db.tenant("acme"))
     jobs_db.conn.execute("UPDATE job_runs SET status = 'queued', attempt = 1 WHERE id = %s", [job])
     jobs_db.conn.execute(
         "UPDATE procrastinate_jobs SET status = 'doing', worker_id = NULL WHERE id = %s",
@@ -59,7 +59,7 @@ async def test_orphan_redefer_keeps_image_lock(jobs_db: JobWorld) -> None:
     result = await reap_once()
     assert result.redeferred == [job]
     new_qid = job_row(jobs_db.conn, job)["queue_job_id"]
-    assert _lock(jobs_db, new_qid) == IMAGE_JOB_LOCK
+    assert _lock(jobs_db, new_qid) == image_job_lock(jobs_db.tenant("acme"))
 
 
 async def test_lease_reaper_requeue_keeps_image_lock(jobs_db: JobWorld) -> None:
@@ -77,7 +77,7 @@ async def test_lease_reaper_requeue_keeps_image_lock(jobs_db: JobWorld) -> None:
     row = job_row(jobs_db.conn, job)
     assert row["status"] == "queued"
     assert row["queue_job_id"] != qid
-    assert _lock(jobs_db, row["queue_job_id"]) == IMAGE_JOB_LOCK
+    assert _lock(jobs_db, row["queue_job_id"]) == image_job_lock(jobs_db.tenant("acme"))
 
 
 async def test_staff_requeue_keeps_image_lock(jobs_db: JobWorld) -> None:
@@ -96,7 +96,7 @@ async def test_staff_requeue_keeps_image_lock(jobs_db: JobWorld) -> None:
     async with unit_of_work(tenant) as session:
         _, new = await JobRunRepository(session, tenant).requeue(job)
     assert new.queue_job_id is not None
-    assert _lock(jobs_db, new.queue_job_id) == IMAGE_JOB_LOCK
+    assert _lock(jobs_db, new.queue_job_id) == image_job_lock(jobs_db.tenant("acme"))
 
 
 # ---- SI7 T11 (design §2.2): a candidate job keeps its tenant's lock on every re-defer ----

@@ -99,7 +99,8 @@ async def test_lost_finish_does_not_stall_the_image_lock(
         await eventually(lambda: job_row(jobs_db.conn, first)["status"] == "succeeded")
         await eventually(lambda: bool(lost))
         assert queue_row(jobs_db.conn, first_qid)["status"] == "doing"  # the lock is held
-        second, second_qid = await _image_job(jobs_db.tenant("bharat"))  # another tenant
+        # the same tenant: since V1 hardening #9 the lock is per tenant
+        second, second_qid = await _image_job(jobs_db.tenant("acme"))
         await asyncio.sleep(1.0)
         assert job_row(jobs_db.conn, second)["status"] == "queued"  # blocked by the lock
         fresh = await reap_once()
@@ -179,7 +180,7 @@ async def test_lost_retry_under_a_live_worker_is_redeferred_past_the_lease(
     fresh = jobs_db.conn.execute(
         "SELECT status, lock FROM procrastinate_jobs WHERE id = %s", [int(row["queue_job_id"])]
     ).fetchone()
-    assert fresh == ("todo", "image_compliance")
+    assert fresh == ("todo", f"image_compliance:{jobs_db.tenant('acme')}")
 
 
 async def test_infra_cap_ends_the_queued_row(
