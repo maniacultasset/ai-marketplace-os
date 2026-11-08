@@ -98,6 +98,91 @@ async def test_finish_white_moved_product_is_fidelity() -> None:
     assert not reply.ok and reply.reason == "fidelity" and reply.fidelity is not None
 
 
+BEIGE = (214, 198, 172)  # a beige room wall (live check 2026-11-08)
+GREY = (150, 150, 152)  # a grey studio backdrop
+
+
+def _white_edit(clean: Image.Image, colour: tuple[int, int, int] = PRODUCT) -> Image.Image:
+    """The edit a faithful model returns for a white-padded portrait photo: a 1024 px white
+    square with the product where it sat in the padded input."""
+    side = max(clean.size)
+    edit = Image.new("RGB", (side, side), (255, 255, 255))
+    x0, y0 = (side - clean.width) // 2, (side - clean.height) // 2
+    w, h = clean.size
+    box = (x0 + w // 4, y0 + h // 4, x0 + 3 * w // 4, y0 + 3 * h // 4)
+    ImageDraw.Draw(edit).rectangle(box, fill=colour)
+    return edit.resize((1024, 1024), Image.Resampling.LANCZOS)
+
+
+async def test_prepare_pads_a_beige_photo_with_white() -> None:
+    vision = fx.encode(_scene(BEIGE, (600, 800)), "JPEG", quality=90)
+    img = _open(await run_candidate_isolated("prepare", {"vision": vision}, {})).convert("RGB")
+    assert img.size == (800, 800)
+    for xy in ((2, 2), (2, 797), (797, 400)):  # the padding bars
+        assert min(img.getpixel(xy)) >= 250  # type: ignore[arg-type]
+    edge = img.getpixel((110, 400))  # the photo's own beige edge, kept
+    assert all(abs(a - b) <= 6 for a, b in zip(edge, BEIGE, strict=True))  # type: ignore[arg-type]
+
+
+async def test_finish_white_beige_photo_white_edit_keeps_the_product() -> None:
+    clean = _scene(BEIGE)
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean, "PNG"), "output": fx.encode(_white_edit(clean), "PNG")},
+        _params(),
+    )
+    img = _open(reply).convert("RGB")
+    assert reply.fidelity is not None
+    iou, agreement = reply.fidelity["mask_iou"], reply.fidelity["agreement"]
+    assert iou is not None and iou >= 0.95  # the white padding is not counted as product
+    assert agreement is not None and agreement >= 0.98
+    centre = img.getpixel((img.width // 2, img.height // 2))
+    assert all(abs(a - b) <= 4 for a, b in zip(centre, PRODUCT, strict=True))  # type: ignore[arg-type]
+    for xy in ((3, 3), (img.width - 4, img.height // 2), (img.width // 2, img.height - 4)):
+        assert img.getpixel(xy) == (255, 255, 255)  # no beige bar pasted back
+
+
+@pytest.mark.parametrize("kept", [BEIGE, GREY])
+async def test_finish_white_coloured_output_is_not_white(kept: tuple[int, int, int]) -> None:
+    clean = _scene(kept)
+    bars = _scene(kept, (2000, 2000)).resize((1024, 1024))  # the model kept the backdrop
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean, "PNG"), "output": fx.encode(bars, "PNG")},
+        _params(),
+    )
+    assert reply == CandidateReply(ok=False, reason="not_white")
+
+
+@pytest.mark.parametrize("kept", [BEIGE, GREY])
+async def test_finish_white_kept_backdrop_inside_white_bars_is_not_white(
+    kept: tuple[int, int, int],
+) -> None:
+    """The model whitened only the padding bars: the frame edge is mostly white, the photo's own
+    edge is not."""
+    clean = _scene(kept)
+    side = max(clean.size)
+    echo = Image.new("RGB", (side, side), (255, 255, 255))
+    echo.paste(clean, ((side - clean.width) // 2, 0))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean, "PNG"), "output": fx.encode(echo.resize((1024, 1024)), "PNG")},
+        _params(),
+    )
+    assert reply == CandidateReply(ok=False, reason="not_white")
+
+
+async def test_finish_white_beige_photo_recoloured_product_is_fidelity() -> None:
+    clean = _scene(BEIGE)
+    recoloured = _white_edit(clean, colour=(160, 70, 40))
+    reply = await run_candidate_isolated(
+        "finish_white",
+        {"clean": fx.encode(clean, "PNG"), "output": fx.encode(recoloured, "PNG")},
+        _params(),
+    )
+    assert not reply.ok and reply.reason == "fidelity" and reply.fidelity is not None
+
+
 @pytest.mark.parametrize("fmt", ["GIF", "TIFF"])
 async def test_disallowed_model_output_is_unusable(fmt: str) -> None:
     clean = fx.encode(_scene((235, 235, 235), (2000, 2000)), "PNG")

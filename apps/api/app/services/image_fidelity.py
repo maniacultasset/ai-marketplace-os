@@ -12,7 +12,9 @@ Scores (all in 0..1):
 - `colour_distance`: the Bhattacharyya distance of the two 8x8x8 colour histograms under that
   mask (a recolour fails);
 - `mask_iou`: the overlap of the two product masks, only when the photo's border is uniform
-  (a scaled product fails); None on a busy border;
+  (a scaled product fails); None on a busy border. The original is padded to a square with white
+  (`PAD_COLOUR`), so its product mask is read inside the photo only (`photo_size`): the white
+  padding is never product;
 - `hole_share` (CP-D20): the share of product-coloured pixels the edit turned white near the
   product (an erased strap or sleeve fails on any border).
 
@@ -31,6 +33,7 @@ from PIL import Image, ImageChops, ImageFilter
 from app.services.image_fix import BorderProfile
 
 __all__ = [
+    "PAD_COLOUR",
     "Fidelity",
     "composite",
     "decide",
@@ -55,6 +58,13 @@ HOLE_MAX: Final = 0.10
 # so the blurred one-to-two pixel product edge (blended with the old background in the photo and
 # with white in the edit) never counts as a change.
 CORE_ERODE: Final = 7
+# The model's input and the judged original are padded with white: a coloured bar at the edge is
+# one more background the model may keep (live check 2026-11-08), and white padding composited
+# back is white.
+PAD_COLOUR: Final = (255, 255, 255)
+# Work pixels next to the padding blend the photo with the white padding (bilinear plus the blur):
+# they are left out of the original's product mask on the sides that have padding.
+PHOTO_EDGE: Final = 2
 # Composite mask: eroded one pixel, then feathered.
 ERODE: Final = 3
 FEATHER: Final = 1.5
@@ -138,9 +148,24 @@ def _near_white(p: _RGB) -> bool:
     return p[0] >= CAND_WHITE and p[1] >= CAND_WHITE and p[2] >= CAND_WHITE
 
 
-def judge(original: Image.Image, candidate: Image.Image, border: BorderProfile) -> Fidelity:
+def _photo_span(start: int, length: int, side: int, scale: float, work: int) -> tuple[int, int]:
+    """The work-pixel range [lo, hi) of the photo along one axis of the padded square, without the
+    `PHOTO_EDGE` pixels that blend into padding (a side flush with the frame has none)."""
+    lo = 0 if start <= 0 else math.ceil(start * scale) + PHOTO_EDGE
+    hi = work if start + length >= side else math.floor((start + length) * scale) - PHOTO_EDGE
+    return lo, hi
+
+
+def judge(
+    original: Image.Image,
+    candidate: Image.Image,
+    border: BorderProfile,
+    *,
+    photo_size: tuple[int, int] | None = None,
+) -> Fidelity:
     """Score the edit against the photo. A frame whose aspect differs by more than `ASPECT_TOL`
-    fails at once, before any pixel work."""
+    fails at once, before any pixel work. `photo_size` is the seller's photo when `original` is
+    it padded by `pad_square`: outside it the original is padding, never product."""
     ow, oh = original.size
     cw, ch = candidate.size
     if ow <= 0 or oh <= 0 or cw <= 0 or ch <= 0:
@@ -157,6 +182,11 @@ def judge(original: Image.Image, candidate: Image.Image, border: BorderProfile) 
     orig: list[_RGB] = list(orig_img.get_flattened_data())  # type: ignore[arg-type]
     cand: list[_RGB] = list(cand_img.get_flattened_data())  # type: ignore[arg-type]
     bg = border.colour
+    x_lo, x_hi, y_lo, y_hi = 0, size[0], 0, size[1]
+    if photo_size is not None:
+        pw, ph = photo_size
+        x_lo, x_hi = _photo_span((ow - pw) // 2, pw, ow, size[0] / ow, size[0])
+        y_lo, y_hi = _photo_span((oh - ph) // 2, ph, oh, size[1] / oh, size[1])
     bins = HIST_BINS**3
     hist_o, hist_c = [0] * bins, [0] * bins
     cand_mask: list[bool] = []
@@ -166,12 +196,16 @@ def judge(original: Image.Image, candidate: Image.Image, border: BorderProfile) 
     for i, (po, pc) in enumerate(zip(orig, cand, strict=True)):
         in_cand = not _near_white(pc)
         cand_mask.append(in_cand)
-        in_orig = max(abs(po[0] - bg[0]), abs(po[1] - bg[1]), abs(po[2] - bg[2])) > ORIG_DIST
+        x, y = i % width, i // width
+        in_orig = (
+            x_lo <= x < x_hi
+            and y_lo <= y < y_hi
+            and max(abs(po[0] - bg[0]), abs(po[1] - bg[1]), abs(po[2] - bg[2])) > ORIG_DIST
+        )
         orig_n += in_orig
         if in_cand:
             inside += 1
             both += in_orig
-            x, y = i % width, i // width
             min_x, max_x = min(min_x, x), max(max_x, x)
             min_y, max_y = min(min_y, y), max(max_y, y)
         if core[i]:
@@ -220,8 +254,9 @@ def judge(original: Image.Image, candidate: Image.Image, border: BorderProfile) 
 
 def composite(original_full: Image.Image, candidate: Image.Image) -> Image.Image:
     """The seller's pixels wherever the edit shows product; the edit's pixels (its white
-    background) elsewhere. `original_full` is the padded square at the seller's resolution; the
-    edit is resized to it first (design §2.7)."""
+    background) elsewhere. `original_full` is the square padded with `PAD_COLOUR` at the seller's
+    resolution, so no coloured padding is ever pasted back; the edit is resized to it first
+    (design §2.7)."""
     original = original_full if original_full.mode == "RGB" else original_full.convert("RGB")
     output = candidate if candidate.mode == "RGB" else candidate.convert("RGB")
     if output.size != original.size:
