@@ -118,7 +118,7 @@ from app.workers.alerting import alert
 from app.workers.budget import pause_ai
 from app.workers.errors import system_report
 from app.workers.policy import LEASE_GRACE_S
-from app.workers.settings import STALLED_WORKER_S
+from app.workers.settings import PERIODIC_QUEUE, STALLED_WORKER_S
 from app.workers.token_refresh import REFRESH_MARGIN, refresh_account
 from app.workers.wrapper import alert_dead_letter
 
@@ -838,14 +838,16 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
 
 
 def register_periodic(app: procrastinate.App) -> None:
-    """Register every periodic task on `app` (queue `default`, `queueing_lock` = its id, so a
-    slot never queues twice); a second call is a no-op."""
+    """Register every periodic task on `app` (queue `periodic`, its own worker slots, so business
+    jobs on `default` never delay the reaper or the token refresh; `queueing_lock` = its id, so
+    a slot never queues twice); a second call is a no-op."""
+
     for periodic_id, (cron, fn, pass_context) in PERIODIC.items():
         name = f"periodic_{periodic_id}"
         if name in app.tasks:
             continue
         if pass_context:
-            task: Any = app.task(name=name, queue="default", pass_context=True)(fn)
+            task: Any = app.task(name=name, queue=PERIODIC_QUEUE, pass_context=True)(fn)
         else:
-            task = app.task(name=name, queue="default", pass_context=False)(fn)
+            task = app.task(name=name, queue=PERIODIC_QUEUE, pass_context=False)(fn)
         app.periodic(cron=cron, periodic_id=periodic_id, queueing_lock=periodic_id)(task)
