@@ -137,6 +137,48 @@ def test_a_child_error_sits_at_its_identifier_fact() -> None:
     assert fact_key(item.field) == "identifier"
 
 
+@pytest.mark.parametrize("other_first", [False, True])
+def test_one_barcode_under_two_asins_reports_the_other_brand(other_first: bool) -> None:
+    """Round 2 fix: the worst relation wins, whatever order Amazon lists the ASINs in."""
+    sent = amazon_item()
+    ours, theirs = _entry(EAN, BRAND, "B0AAAAAAAA"), _entry(EAN, "Acme Traders", "B0BBBBBBBB")
+    entries = [theirs, ours] if other_first else [ours, theirs]
+    items, matched, others = from_catalog(sent, sent.units(), entries)
+    (item,) = items
+    assert item.severity is Severity.ERROR and item.raw_code == "catalog:other_brand"
+    assert matched == [] and others == ["B0BBBBBBBB"]
+
+
+@pytest.mark.parametrize(
+    ("second", "code"),
+    [
+        (None, "catalog:no_brand"),
+        ("Test Brand Co", "catalog:similar_brand"),
+        (BRAND, "catalog:same_brand"),
+    ],
+)
+def test_one_barcode_under_two_asins_reports_the_worst_warning(
+    second: str | None, code: str
+) -> None:
+    sent = amazon_item()
+    entries = [_entry(EAN, BRAND, "B0AAAAAAAA"), _entry(EAN, second, "B0BBBBBBBB")]
+    items, matched, others = from_catalog(sent, sent.units(), entries)
+    (item,) = items
+    assert item.severity is Severity.WARNING and item.raw_code == code and others == []
+    assert matched == ([(sent.seller_sku, "B0AAAAAAAA")] if code.endswith("same_brand") else [])
+
+
+def test_every_other_brand_asin_is_kept_once() -> None:
+    sent = amazon_item()
+    entries = [
+        _entry(EAN, "Acme Traders", "B0BBBBBBBB"),
+        _entry(EAN, "Zeta Goods", "B0CCCCCCCC"),
+        _entry(EAN, "Acme Traders", "B0BBBBBBBB"),
+    ]
+    _, _, others = from_catalog(sent, sent.units(), entries)
+    assert others == ["B0BBBBBBBB", "B0CCCCCCCC"]
+
+
 def test_no_hit_and_garbage_give_nothing() -> None:
     sent = amazon_item()
     for reply in ([], None, "x", [{"asin": 3}], [{"asin": "B0/ABCDEF1", "identifiers": []}]):

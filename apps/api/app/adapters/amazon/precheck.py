@@ -150,43 +150,54 @@ def _catalog_item(unit: AdapterItem, code: str, message: str, severity: Severity
     return item.model_copy(update={"severity": severity, "raw_code": code})
 
 
+CatalogRelation = Literal["same", "similar", "no_brand", "other"]
+_CATALOG_RANK: Final[dict[str, int]] = {"same": 0, "similar": 1, "no_brand": 2, "other": 3}
+
+
 def from_catalog(
     listing: AdapterListing, units: Sequence[AdapterItem], reply_items: Any
 ) -> tuple[list[ErrorItem], list[tuple[str, str]], list[str]]:
     """(items, (sku, asin) of same-brand matches, ASINs of other-brand matches) for the units
-    searched in one call. An unreadable entry is skipped (never raised)."""
+    searched in one call. A barcode filed under several ASINs reports its worst relation
+    (other > no brand > similar > same), whatever order Amazon lists them in; every other-brand
+    ASIN is kept and a same-brand match counts only when every ASIN is the same brand. An
+    unreadable entry is skipped (never raised)."""
     ours = _brand_of(listing)
     entries = reply_items if isinstance(reply_items, list) else []
-    by_barcode: dict[str, Mapping[str, Any]] = {}
+    by_barcode: dict[str, list[Mapping[str, Any]]] = {}
     for entry in entries:
         if not isinstance(entry, dict) or not isinstance(entry.get("asin"), str):
             continue
         if not ASIN_RE.fullmatch(entry["asin"]):
             continue
         for barcode in _barcodes(entry):
-            by_barcode.setdefault(barcode, entry)
+            by_barcode.setdefault(barcode, []).append(entry)
     items: list[ErrorItem] = []
     matched: list[tuple[str, str]] = []
     others: list[str] = []
     for unit in units:
         code = barcode_of(listing, unit)
-        entry = by_barcode.get(code) if code is not None else None
-        if entry is None:
+        found = by_barcode.get(code, []) if code is not None else []
+        if not found:
             continue
-        asin = str(entry["asin"])
-        theirs = _brand_in(entry)
-        if theirs is None:
+        relations: list[tuple[CatalogRelation, str]] = []
+        for entry in found:
+            theirs = _brand_in(entry)
+            relation: CatalogRelation = (
+                "no_brand" if theirs is None else brand_relation(ours or "", theirs)
+            )
+            relations.append((relation, str(entry["asin"])))
+        worst = max((r for r, _ in relations), key=_CATALOG_RANK.__getitem__)
+        if worst == "other":
+            items.append(
+                _catalog_item(unit, "catalog:other_brand", OTHER_BRAND_MESSAGE, Severity.ERROR)
+            )
+            others += dict.fromkeys(a for r, a in relations if r == "other")
+        elif worst == "no_brand":
             items.append(
                 _catalog_item(unit, "catalog:no_brand", NO_BRAND_MESSAGE, Severity.WARNING)
             )
-            continue
-        relation = brand_relation(ours or "", theirs)
-        if relation == "same":
-            items.append(
-                _catalog_item(unit, "catalog:same_brand", SAME_BRAND_MESSAGE, Severity.WARNING)
-            )
-            matched.append((unit.seller_sku, asin))
-        elif relation == "similar":
+        elif worst == "similar":
             items.append(
                 _catalog_item(
                     unit, "catalog:similar_brand", SIMILAR_BRAND_MESSAGE, Severity.WARNING
@@ -194,9 +205,9 @@ def from_catalog(
             )
         else:
             items.append(
-                _catalog_item(unit, "catalog:other_brand", OTHER_BRAND_MESSAGE, Severity.ERROR)
+                _catalog_item(unit, "catalog:same_brand", SAME_BRAND_MESSAGE, Severity.WARNING)
             )
-            others.append(asin)
+            matched.append((unit.seller_sku, relations[0][1]))
     return items, matched, others
 
 
