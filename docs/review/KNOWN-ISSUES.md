@@ -184,6 +184,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
     is refused by the status guard (LST01), as before SI4; a regenerate is the way out until a
     migration adds the edge.
 
+- **Closed by SI11 (ADR-0028):** the Amazon `VALIDATION_PREVIEW` check before approval now runs as the dry-run body of `listing_status_sync` (off by default until the India runbook passes).
+- **SI11 open:** SP-API notifications (EventBridge) instead of polling; `VALIDATION_PREVIEW` support on Amazon India unconfirmed (F:61); catalog and restriction pre-checks; AI diagnosis of unknown codes; the seller, marketplace and staff lane writers, the content/AI auto-fix job and the resolution read (SI11 T15-T22) follow in the next lane.
 - **Amazon `VALIDATION_PREVIEW` before approval is deferred (SI9 D10, LOW).** The pre-approval check is the local
   mapping plus the stored Product Type Definition (`services/adapter_check.py`); Amazon's own preview call needs the
   marketplace token in a new job path, shares the publish rate limit and needs fake-server support. Trigger: after
