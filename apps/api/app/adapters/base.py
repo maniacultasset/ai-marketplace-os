@@ -83,6 +83,10 @@ class SellerFacts:
     manufacturer_address: str | None = field(default=None, repr=False)
     fiber_composition_text: str | None = None
     fiber_composition_parts: object | None = None
+    # SI5 B1: the item's barcode (`products.identifier_*`), or the seller's GTIN exemption
+    identifier_type: str | None = None
+    identifier_value: str | None = None
+    identifier_exempt: bool = False
 
 
 @dataclass(frozen=True)

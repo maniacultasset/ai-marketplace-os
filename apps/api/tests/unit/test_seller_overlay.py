@@ -8,10 +8,12 @@ from decimal import Decimal
 from importlib import resources
 from typing import Any
 
+import pytest
 from app.core.resolved_facts import (
     Commercial,
     Compliance,
     FamilySummary,
+    Identifier,
     PartyFacts,
     ProductFacts,
     ResolvedFact,
@@ -215,6 +217,49 @@ def test_seller_facts_legacy_list_value() -> None:
     )
     out = seller_facts(body)
     assert out.fiber_composition_text is None and out.fiber_composition_parts == parts
+
+
+# ---- SI5 B1 (AC22): the product identifier ----
+
+
+@pytest.mark.parametrize("level", ["standalone", "variant"])
+def test_seller_facts_provided_identifier(level: str) -> None:
+    out = seller_facts(
+        facts(
+            level=level, identifier=Identifier(type="ean", value="0012345678905", status="provided")
+        )
+    )
+    assert (out.identifier_type, out.identifier_value) == ("ean", "0012345678905")
+    assert out.identifier_exempt is False
+
+
+def test_seller_facts_exempt_identifier() -> None:
+    out = seller_facts(facts(level="variant", identifier=Identifier(status="exempt")))
+    assert out.identifier_exempt is True
+    assert out.identifier_type is None and out.identifier_value is None
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        Identifier(),
+        Identifier(status="not_applicable"),
+        Identifier(status="provided"),  # no value: not sendable
+        Identifier(type="ean", value="  ", status="provided"),
+    ],
+)
+def test_seller_facts_no_identifier(identifier: Identifier) -> None:
+    out = seller_facts(facts(identifier=identifier))
+    assert (out.identifier_type, out.identifier_value, out.identifier_exempt) == (None, None, False)
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [Identifier(status="exempt"), Identifier(type="ean", value="0012345678905", status="provided")],
+)
+def test_seller_facts_style_carries_no_identifier(identifier: Identifier) -> None:
+    out = seller_facts(facts(level="style", identifier=identifier))
+    assert (out.identifier_type, out.identifier_value, out.identifier_exempt) == (None, None, False)
 
 
 # ---- AC7 property ----
