@@ -2625,6 +2625,23 @@ export interface components {
             status: "succeeded" | "failed" | "skipped";
         };
         /**
+         * FieldSourceOut
+         * @description SI12: where a field's value came from. `sheet` the CSV import, `you` the seller in the app,
+         *     `photo` read from a photo (unconfirmed), `confirmed` a photo value the seller confirmed,
+         *     `size_chart` the seller's chart saved from a size-chart photo, `brand` the brand default.
+         */
+        FieldSourceOut: {
+            /** Confidence */
+            confidence?: number | null;
+            /** Image Id */
+            image_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "sheet" | "you" | "photo" | "confirmed" | "size_chart" | "brand";
+        };
+        /**
          * FixAction
          * @enum {string}
          */
@@ -2830,6 +2847,19 @@ export interface components {
             phone?: string | null;
             /** Website */
             website?: string | null;
+        };
+        /**
+         * HsnSuggestionOut
+         * @description SI12: a suggested HSN heading from the category; never stored until the seller saves it.
+         */
+        HsnSuggestionOut: {
+            /**
+             * Basis
+             * @constant
+             */
+            basis: "category";
+            /** Value */
+            value: string;
         };
         /** ImageAccepted */
         ImageAccepted: {
@@ -3044,6 +3074,11 @@ export interface components {
         ImageSlot: "main" | "secondary" | "lifestyle" | "size_chart" | "packaging_label";
         /** ImageUploadIn */
         ImageUploadIn: {
+            /**
+             * Role
+             * @description SI12: `back` or `close_up`, only with `slot: secondary` (Front is `main`). A new holder takes the role; the old one stays a plain secondary.
+             */
+            role?: ("back" | "close_up") | null;
             slot: components["schemas"]["ImageSlot"];
             /**
              * Storage Key
@@ -3892,6 +3927,33 @@ export interface components {
             /** Tenant Name */
             tenant_name: string;
         };
+        /**
+         * PackageIn
+         * @description SI12: the shipping package. A JSON merge patch (CP-D8): a key not sent is unchanged. The
+         *     three dimensions are sent together, all set or all null (null clears them); `weight_g: null`
+         *     clears the weight. `{}` is refused: send `package: null` to clear all four.
+         */
+        PackageIn: {
+            /** Breadth Cm */
+            breadth_cm?: (number | string) | null;
+            /** Height Cm */
+            height_cm?: (number | string) | null;
+            /** Length Cm */
+            length_cm?: (number | string) | null;
+            /** Weight G */
+            weight_g?: number | null;
+        };
+        /** PackageOut */
+        PackageOut: {
+            /** Breadth Cm */
+            breadth_cm?: number | string | null;
+            /** Height Cm */
+            height_cm?: number | string | null;
+            /** Length Cm */
+            length_cm?: number | string | null;
+            /** Weight G */
+            weight_g?: number | null;
+        };
         /** PageInfo */
         PageInfo: {
             /** Has More */
@@ -4096,11 +4158,15 @@ export interface components {
             brand_name?: string | null;
             /** Category */
             category: string;
+            /** Country Of Origin */
+            country_of_origin?: string | null;
             /**
              * Gender
              * @description SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.
              */
             gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
+            /** Hsn Code */
+            hsn_code?: string | null;
             /**
              * Id
              * @description The product id minted by `POST /images/upload-url`; needs `image_uploads`.
@@ -4119,6 +4185,7 @@ export interface components {
             manufacturer?: components["schemas"]["PartyIn"] | null;
             /** Mrp */
             mrp?: string | null;
+            package?: components["schemas"]["PackageIn"] | null;
             product_identifier?: components["schemas"]["ProductIdentifierIn"] | null;
             /** Selling Price */
             selling_price?: string | null;
@@ -4186,6 +4253,11 @@ export interface components {
             parent_image_id?: string | null;
             /** Position */
             position: number;
+            /**
+             * Role
+             * @description SI12: Back or Close-up.
+             */
+            role?: ("back" | "close_up") | null;
             slot: components["schemas"]["ImageSlot"];
             /** Status */
             status: string;
@@ -4212,6 +4284,11 @@ export interface components {
             /** Colourways */
             colourways?: components["schemas"]["ColourwayOut"][];
             /**
+             * Country Of Origin
+             * @description SI12: own, else the style's, else the brand default on single reads; own on lists.
+             */
+            country_of_origin?: string | null;
+            /**
              * Created At
              * Format: date-time
              */
@@ -4221,10 +4298,22 @@ export interface components {
             /** Fiber Composition */
             fiber_composition?: components["schemas"]["FibreOut"][] | null;
             /**
+             * Field Sources
+             * @description SI12: per dictionary key, where the value came from; `{}` on lists.
+             */
+            field_sources?: {
+                [key: string]: components["schemas"]["FieldSourceOut"];
+            };
+            /**
              * Gender
              * @description SI8: the audience; own or the style's on single reads, own on lists.
              */
             gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
+            /**
+             * Hsn Code
+             * @description SI12: own, else the style's on single reads; own on lists.
+             */
+            hsn_code?: string | null;
             /**
              * Id
              * Format: uuid
@@ -4247,6 +4336,8 @@ export interface components {
              * @example 1299.00
              */
             mrp?: string | null;
+            /** @description SI12: own, else the style's on single reads; own on lists. */
+            package?: components["schemas"]["PackageOut"] | null;
             /** Parent Product Id */
             parent_product_id?: string | null;
             /** Photo Facts */
@@ -4261,6 +4352,8 @@ export interface components {
              */
             selling_price?: string | null;
             size_chart?: components["schemas"]["SizeChart"] | null;
+            /** @description SI12: the size-chart read of a style or standalone; null on lists. */
+            size_chart_suggestion?: components["schemas"]["SizeChartSuggestionOut"] | null;
             /** Size Chart Url */
             size_chart_url?: string | null;
             /**
@@ -4275,6 +4368,8 @@ export interface components {
             status: "draft" | "active";
             /** Style Number */
             style_number?: string | null;
+            /** @description SI12: values to suggest while the field is empty; empty on lists. */
+            suggestions?: components["schemas"]["SuggestionsOut"];
             /** Title */
             title: string;
             /**
@@ -4300,8 +4395,8 @@ export interface components {
          * ProductPatch
          * @description A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,
          *     `brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,
-         *     `manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not
-         *     a field.
+         *     `manufacturer` (back to the inherited party), `hsn_code`, `package`, `country_of_origin` and an
+         *     attribute key. `sku` is immutable and not a field.
          */
         ProductPatch: {
             /** Attributes */
@@ -4320,11 +4415,15 @@ export interface components {
              * @description SI3: photo-derived attribute keys the seller confirms as they are.
              */
             confirm_attributes?: string[] | null;
+            /** Country Of Origin */
+            country_of_origin?: string | null;
             /**
              * Gender
              * @description SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.
              */
             gender?: ("women" | "men" | "unisex" | "girls" | "boys" | "baby") | null;
+            /** Hsn Code */
+            hsn_code?: string | null;
             /**
              * Identifier Exemption
              * @description SI5: true marks the product GTIN-exempt (clears any barcode); false clears the exemption. On a style it is set on every variant without a barcode.
@@ -4333,11 +4432,18 @@ export interface components {
             manufacturer?: components["schemas"]["PartyIn"] | null;
             /** Mrp */
             mrp?: string | null;
+            /** @description SI12: merges; `null` clears all four values. */
+            package?: components["schemas"]["PackageIn"] | null;
             /** @description SI5: the barcode; `null` clears a stored one. */
             product_identifier?: components["schemas"]["ProductIdentifierIn"] | null;
             /** Selling Price */
             selling_price?: string | null;
             size_chart?: components["schemas"]["SizeChart"] | null;
+            /**
+             * Size Chart Image Id
+             * @description SI12: the live size-chart image this chart was read from (only with a non-null `size_chart`); stored as the chart's evidence.
+             */
+            size_chart_image_id?: string | null;
             /** Style Number */
             style_number?: string | null;
             /** Title */
@@ -4648,6 +4754,28 @@ export interface components {
             waist?: number | null;
         };
         /**
+         * SizeChartSuggestionOut
+         * @description SI12: the chart read from the live size-chart photo, a suggestion the seller edits and
+         *     saves (with `size_chart_image_id`); never a fact by itself.
+         */
+        SizeChartSuggestionOut: {
+            chart?: components["schemas"]["SizeChart"] | null;
+            /** Confidence */
+            confidence?: number | null;
+            /**
+             * Image Id
+             * Format: uuid
+             */
+            image_id: string;
+            /** Read At */
+            read_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "reading" | "read" | "unreadable" | "failed" | "unavailable";
+        };
+        /**
          * StepUpOut
          * @description A new access token only: swap it in and keep the stored refresh token.
          */
@@ -4746,6 +4874,10 @@ export interface components {
             /** Data */
             data: components["schemas"]["SubmissionOut"][];
             page: components["schemas"]["PageInfo"];
+        };
+        /** SuggestionsOut */
+        SuggestionsOut: {
+            hsn_code?: components["schemas"]["HsnSuggestionOut"] | null;
         };
         /**
          * SwitchTenantRequest

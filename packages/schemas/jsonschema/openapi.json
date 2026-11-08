@@ -1600,6 +1600,51 @@
         "title": "FieldResult",
         "type": "object"
       },
+      "FieldSourceOut": {
+        "description": "SI12: where a field's value came from. `sheet` the CSV import, `you` the seller in the app,\n`photo` read from a photo (unconfirmed), `confirmed` a photo value the seller confirmed,\n`size_chart` the seller's chart saved from a size-chart photo, `brand` the brand default.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Id"
+          },
+          "kind": {
+            "enum": [
+              "sheet",
+              "you",
+              "photo",
+              "confirmed",
+              "size_chart",
+              "brand"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "FieldSourceOut",
+        "type": "object"
+      },
       "FixAction": {
         "enum": [
           "remap_value",
@@ -2065,6 +2110,26 @@
           "owner_name"
         ],
         "title": "GoogleSignupRequest",
+        "type": "object"
+      },
+      "HsnSuggestionOut": {
+        "description": "SI12: a suggested HSN heading from the category; never stored until the seller saves it.",
+        "properties": {
+          "basis": {
+            "const": "category",
+            "title": "Basis",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "basis"
+        ],
+        "title": "HsnSuggestionOut",
         "type": "object"
       },
       "ImageAccepted": {
@@ -2666,6 +2731,22 @@
       "ImageUploadIn": {
         "additionalProperties": false,
         "properties": {
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: `back` or `close_up`, only with `slot: secondary` (Front is `main`). A new holder takes the role; the old one stays a plain secondary.",
+            "title": "Role"
+          },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           },
@@ -4991,6 +5072,164 @@
         "title": "MembershipOut",
         "type": "object"
       },
+      "PackageIn": {
+        "additionalProperties": false,
+        "description": "SI12: the shipping package. A JSON merge patch (CP-D8): a key not sent is unchanged. The\nthree dimensions are sent together, all set or all null (null clears them); `weight_g: null`\nclears the weight. `{}` is refused: send `package: null` to clear all four.",
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "examples": [
+                  450
+                ],
+                "maximum": 2000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "PackageIn",
+        "type": "object"
+      },
+      "PackageOut": {
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "PackageOut",
+        "type": "object"
+      },
       "PageInfo": {
         "properties": {
           "has_more": {
@@ -5513,6 +5752,22 @@
             "title": "Category",
             "type": "string"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "description": "SI12: ISO 3166 alpha-2, stored upper-cased.",
+                "examples": [
+                  "IN"
+                ],
+                "pattern": "^[A-Za-z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Origin"
+          },
           "gender": {
             "anyOf": [
               {
@@ -5532,6 +5787,22 @@
             ],
             "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "description": "SI12: the HSN code, 4, 6 or 8 digits.",
+                "examples": [
+                  "6109"
+                ],
+                "pattern": "^([0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
           },
           "id": {
             "anyOf": [
@@ -5604,6 +5875,16 @@
               }
             ],
             "title": "Mrp"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "product_identifier": {
             "anyOf": [
@@ -5792,6 +6073,22 @@
             "title": "Position",
             "type": "integer"
           },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: Back or Close-up.",
+            "title": "Role"
+          },
           "slot": {
             "$ref": "#/components/schemas/ImageSlot"
           },
@@ -5863,6 +6160,18 @@
             "title": "Colourways",
             "type": "array"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's, else the brand default on single reads; own on lists.",
+            "title": "Country Of Origin"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -5893,6 +6202,14 @@
             ],
             "title": "Fiber Composition"
           },
+          "field_sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldSourceOut"
+            },
+            "description": "SI12: per dictionary key, where the value came from; `{}` on lists.",
+            "title": "Field Sources",
+            "type": "object"
+          },
           "gender": {
             "anyOf": [
               {
@@ -5912,6 +6229,18 @@
             ],
             "description": "SI8: the audience; own or the style's on single reads, own on lists.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's on single reads; own on lists.",
+            "title": "Hsn Code"
           },
           "id": {
             "format": "uuid",
@@ -5966,6 +6295,17 @@
               "1299.00"
             ],
             "title": "Mrp"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: own, else the style's on single reads; own on lists."
           },
           "parent_product_id": {
             "anyOf": [
@@ -6032,6 +6372,17 @@
               }
             ]
           },
+          "size_chart_suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChartSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: the size-chart read of a style or standalone; null on lists."
+          },
           "size_chart_url": {
             "anyOf": [
               {
@@ -6067,6 +6418,10 @@
               }
             ],
             "title": "Style Number"
+          },
+          "suggestions": {
+            "$ref": "#/components/schemas/SuggestionsOut",
+            "description": "SI12: values to suggest while the field is empty; empty on lists."
           },
           "title": {
             "maxLength": 500,
@@ -6122,7 +6477,7 @@
       },
       "ProductPatch": {
         "additionalProperties": false,
-        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,\n`brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,\n`manufacturer` (back to the inherited party) and an attribute key. `sku` is immutable and not\na field.",
+        "description": "A JSON merge patch: an absent field is unchanged; `null` clears `style_number`,\n`brand_name` (back to the brand default), `gender`, `mrp`, `selling_price`, `size_chart`,\n`manufacturer` (back to the inherited party), `hsn_code`, `package`, `country_of_origin` and an\nattribute key. `sku` is immutable and not a field.",
         "properties": {
           "attributes": {
             "anyOf": [
@@ -6202,6 +6557,22 @@
             "description": "SI3: photo-derived attribute keys the seller confirms as they are.",
             "title": "Confirm Attributes"
           },
+          "country_of_origin": {
+            "anyOf": [
+              {
+                "description": "SI12: ISO 3166 alpha-2, stored upper-cased.",
+                "examples": [
+                  "IN"
+                ],
+                "pattern": "^[A-Za-z]{2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Of Origin"
+          },
           "gender": {
             "anyOf": [
               {
@@ -6221,6 +6592,22 @@
             ],
             "description": "SI8: the audience (style or standalone level); required before an Amazon publish of Kurta sets and T-shirts.",
             "title": "Gender"
+          },
+          "hsn_code": {
+            "anyOf": [
+              {
+                "description": "SI12: the HSN code, 4, 6 or 8 digits.",
+                "examples": [
+                  "6109"
+                ],
+                "pattern": "^([0-9]{4}|[0-9]{6}|[0-9]{8})$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn Code"
           },
           "identifier_exemption": {
             "anyOf": [
@@ -6260,6 +6647,17 @@
             ],
             "title": "Mrp"
           },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: merges; `null` clears all four values."
+          },
           "product_identifier": {
             "anyOf": [
               {
@@ -6296,6 +6694,19 @@
                 "type": "null"
               }
             ]
+          },
+          "size_chart_image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI12: the live size-chart image this chart was read from (only with a non-null `size_chart`); stored as the chart's evidence.",
+            "title": "Size Chart Image Id"
           },
           "style_number": {
             "anyOf": [
@@ -7187,6 +7598,67 @@
         "title": "SizeChartRow",
         "type": "object"
       },
+      "SizeChartSuggestionOut": {
+        "description": "SI12: the chart read from the live size-chart photo, a suggestion the seller edits and\nsaves (with `size_chart_image_id`); never a fact by itself.",
+        "properties": {
+          "chart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChart"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "reading",
+              "read",
+              "unreadable",
+              "failed",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "status"
+        ],
+        "title": "SizeChartSuggestionOut",
+        "type": "object"
+      },
       "StepUpOut": {
         "description": "A new access token only: swap it in and keep the stored refresh token.",
         "properties": {
@@ -7459,6 +7931,22 @@
           "page"
         ],
         "title": "SubmissionPage",
+        "type": "object"
+      },
+      "SuggestionsOut": {
+        "properties": {
+          "hsn_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HsnSuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "SuggestionsOut",
         "type": "object"
       },
       "SwitchTenantRequest": {
