@@ -43,6 +43,7 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import date
 from typing import Any, Final
@@ -92,6 +93,7 @@ from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, re
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+PRODUCT_TYPE_READ: Final = re.compile(r"[A-Z0-9_]{1,64}", re.ASCII)
 
 NO_LISTING_ID: Final = UUID(int=0)
 PREVIEW_VERDICTS: Final = frozenset({"VALID", "INVALID"})
@@ -702,6 +704,7 @@ class AmazonAdapter(MarketplaceAdapter):
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
             not_buyable=not_buyable,
+            product_type=_read_product_type(summary),
         )
 
     def _read_fields(
@@ -750,6 +753,12 @@ class AmazonAdapter(MarketplaceAdapter):
 
 
 # ---- helpers ----
+
+
+def _read_product_type(summary: Mapping[str, Any]) -> str | None:
+    """SI13: the summary's `productType`, only when it is a plain product-type name."""
+    value = summary.get("productType")
+    return value if isinstance(value, str) and PRODUCT_TYPE_READ.fullmatch(value) else None
 
 
 def _without_images(response: SpApiResponse, body: Mapping[str, Any]) -> SpApiResponse:
