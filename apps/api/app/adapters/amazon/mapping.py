@@ -18,7 +18,9 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   - a required attribute missing or blank -> MISSING_ATTRIBUTE;
   - an unmappable enum -> VALUE_NOT_ALLOWED;
   - a bad family (C10) -> VARIATION_INVALID (`variants`);
-  - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED.
+  - a seller SKU `.` or `..` (C16) -> VALUE_NOT_ALLOWED;
+  - SI5: a sellable item with no barcode and no GTIN exemption -> IDENTIFIER_MISSING (a create
+    only; the update path passes `require_identifier=False`, CP-D14).
 - `family_payloads(listing)`: the parent first (content, theme, `parentage_level parent`), then
   each child (content, attributes with its variant values, images, the parent link).
 - `preview(listing)`: what a create would send, per item, and the mapping report.
@@ -317,6 +319,30 @@ def _offer(
     }, []
 
 
+def _identifier(
+    unit: AdapterItem, facts: SellerFacts | None, marketplace_id: str, *, require: bool
+) -> tuple[dict[str, Any], list[ErrorItem]]:
+    """SI5 B2 (PLAN §2.7-2.8): a sellable item's barcode, else its GTIN exemption. With
+    neither, a create (`require`) is IDENTIFIER_MISSING: the message names the SKU, never a
+    value. An update of a live item is not refused (CP-D14). A parent sends neither."""
+    if unit.item_role == "parent":
+        return {}, []
+    id_type = None if facts is None else c.IDENTIFIER_TYPES.get(facts.identifier_type or "")
+    value = None if facts is None else facts.identifier_value
+    if id_type is not None and value is not None and value.strip():
+        entry = {"type": id_type, "value": value, "marketplace_id": marketplace_id}
+        return {c.EXTERNAL_ID_ATTRIBUTE: [entry]}, []
+    if facts is not None and facts.identifier_exempt:
+        return {c.EXEMPTION_ATTRIBUTE: [{"value": True, "marketplace_id": marketplace_id}]}, []
+    if not require:
+        return {}, []
+    message = (
+        f"Amazon needs a barcode (EAN, UPC or GTIN) for {unit.seller_sku}, or mark it GTIN-exempt"
+        " if Amazon approved an exemption for your brand."
+    )
+    return {}, [error(fact_path(unit, "identifier"), ErrorCode.IDENTIFIER_MISSING, message)]
+
+
 def _fact_attributes(
     unit: AdapterItem,
     mapped: CategoryTemplate | None,
@@ -432,6 +458,7 @@ def item_payload(
     *,
     marketplace_id: str = DEFAULT_MARKETPLACE_ID,
     preview: bool = False,
+    require_identifier: bool = True,
 ) -> MappedItem:
     body = listing.listing
     attributes: dict[str, Any] = {}
@@ -491,6 +518,9 @@ def item_payload(
         if offer is not None:
             attributes.update(offer)
             sent += list(PRICE_PATHS)
+    barcode, barcode_errors = _identifier(unit, facts, marketplace_id, require=require_identifier)
+    attributes.update(barcode)
+    errors += barcode_errors
     skipped += list(fact_paths(unit))
 
     if unit.item_role != "parent":
@@ -629,10 +659,13 @@ def build(
     marketplace_id: str = DEFAULT_MARKETPLACE_ID,
     schema: bool = True,
     preview: bool = False,
+    require_identifier: bool = True,
 ) -> tuple[list[MappedItem], list[ErrorItem]]:
     """Every item's mapping and every blocking error (`check`), in item order. `schema=False`
     leaves out the stored-definition check: the update path (PATCH) is never blocked by it.
-    `preview=True` (only from `preview()`) lets the opaque `image:<id>` tags through."""
+    `preview=True` (only from `preview()`) lets the opaque `image:<id>` tags through.
+    `require_identifier=False` (only the update path, CP-D14) does not refuse an item with no
+    barcode and no exemption."""
     template = listing.template if is_mapped(listing.template) else None
     mapped = template.template if template is not None else None
     errors: list[ErrorItem] = []
@@ -646,7 +679,14 @@ def build(
         )
     errors += _family_errors(listing, mapped)
     items = [
-        item_payload(listing, unit, template, marketplace_id=marketplace_id, preview=preview)
+        item_payload(
+            listing,
+            unit,
+            template,
+            marketplace_id=marketplace_id,
+            preview=preview,
+            require_identifier=require_identifier,
+        )
         for unit in listing.units()
     ]
     for unit in listing.units():

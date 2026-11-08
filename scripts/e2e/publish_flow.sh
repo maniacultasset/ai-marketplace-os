@@ -178,7 +178,7 @@ wait_listing() {
 # generated_approved SKU: a product, a stub generation and the reviewer's approval; sets
 # $listing_id and $version.
 generated_approved() {
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\"}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"identifier_exemption\": true}"
   expect 201
   local product job
   product="$(json 'b["id"]')"

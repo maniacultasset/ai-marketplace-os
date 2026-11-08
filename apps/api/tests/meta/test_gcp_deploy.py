@@ -1651,7 +1651,11 @@ def test_revoke_runs_only_where_the_worker_holds_the_binding(toolkit: Path, tmp_
         ("staging", {"PIPELINE_REF": "v0.1.0"}, "PIPELINE_REF must be a full 40-character"),
         ("staging", {"LLM_PROVIDER": "openrouter"}, "LLM_PROVIDER must be openai or deepseek"),
         ("staging", {"LLM_GATEWAY": "https://x.test/v1"}, "LLM_GATEWAY must be direct or"),
-        ("prod", {"LLM_GATEWAY": "OpenRouter"}, "LLM_GATEWAY must be direct or openrouter"),
+        (
+            "prod",
+            {"LLM_GATEWAY": "OpenRouter", "IMAGE_EDIT_ENABLED": "false"},
+            "LLM_GATEWAY must be direct or openrouter",
+        ),
         ("prod", {"LLM_MODEL_DEFAULT": ""}, NO_ROUTER_MODEL),
         ("prod", {"LLM_MODEL_DEFAULT": "deepseek-chat"}, NO_ROUTER_MODEL),
         ("prod", {"LLM_MODEL_DEFAULT": "deepseek/"}, NO_ROUTER_MODEL),
@@ -2194,10 +2198,11 @@ def _worker_env(out: str) -> tuple[dict[str, str], list[str]]:
 
 
 @pytest.mark.parametrize("env_name", ["staging", "prod"])
-def test_env_files_ship_image_edit_off(repo_root: Path, env_name: str) -> None:
+def test_env_files_ship_image_edit_switch(repo_root: Path, env_name: str) -> None:
     text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
     values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
-    assert values["IMAGE_EDIT_ENABLED"] == "false"
+    # prod turned image editing on 2026-11-08 after the live check (DECISIONS D17); staging stays off.
+    assert values["IMAGE_EDIT_ENABLED"] == ("true" if env_name == "prod" else "false")
     for key in (
         "LLM_MODEL_IMAGE_EDIT",
         "IMAGE_EDIT_TENANT_DAILY_LIMIT",

@@ -297,9 +297,9 @@ json 'any(a["id"] == "'"$account"'" and a["status"] == "active" and a["marketpla
 
 leg import_csv
 {
-  echo "seller_sku,parent_style_id,product_name,brand_name,category,gender,color_name,normalized_color,size_name,fabric_type,mrp,selling_price,tax_rate,hsn_code,country_of_origin,package_weight,main_image"
+  echo "seller_sku,parent_style_id,product_name,brand_name,category,gender,color_name,normalized_color,size_name,fabric_type,mrp,selling_price,tax_rate,hsn_code,country_of_origin,package_weight,main_image,identifier_exemption"
   for size in $sizes; do
-    echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,Fashionista,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg"
+    echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,Fashionista,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg,yes"
   done
 } >"$work/products.csv"
 multipart "$operator" "acc-import-$run" "$api/products/bulk" "file=@$work/products.csv;type=text/csv"

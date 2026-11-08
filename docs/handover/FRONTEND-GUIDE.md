@@ -119,7 +119,8 @@ local-only `devpassword123`. Never use it anywhere else.
 What else the seed creates:
 
 - Products `KURTA-001`, `KURTA-002` and `DECOR-001` in both tenants, plus `ACME-900` (acme) and
-  `BH-900` (bharat).
+  `BH-900` (bharat). Each sellable product, and each family child, has its own EAN-13 barcode
+  (`890…`), so an Amazon create is not refused for a missing identifier.
 - For acme: a demo listing on `KURTA-001`, a kurta family `KURTA-FAM-01` (2 sizes x 2 colours)
   with an Amazon listing, and Flipkart demo listings.
 - The category `ethnic_wear_kurta_sets` has current Amazon and Flipkart templates. Use it for new products you want to

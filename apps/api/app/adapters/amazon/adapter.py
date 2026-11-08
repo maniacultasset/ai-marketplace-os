@@ -415,7 +415,10 @@ class AmazonAdapter(MarketplaceAdapter):
     async def update_listing(self, item: AdapterListing, *, fields: UpdateFields) -> ListingResult:
         per_sku = fields_by_sku(item, fields)
         # DW2 D5/AC9: schema errors show in preview and the snapshot, never block a PATCH.
-        mapped, errors = build(item, marketplace_id=self._marketplace_id, schema=False)
+        # SI5 CP-D14: a live item is never refused for a missing barcode (a create is).
+        mapped, errors = build(
+            item, marketplace_id=self._marketplace_id, schema=False, require_identifier=False
+        )
         template = item.template.template if item.template is not None else None
         index = reverse_index(template)
         by_sku = {m.unit.seller_sku: m for m in mapped}

@@ -54,6 +54,7 @@ def family(
                     category=style_columns.get("category", "t_shirts"),
                     variant_attributes={"size": size, "color": colour},
                     attributes={"size": f.fact(value=size.upper(), normalized=size)},
+                    **f.barcoded(),  # SI5 B2: an Amazon create needs each child's barcode
                 )
                 conn.execute(INSERT_CELL, (tenant_id, style, colourway, size, child))
                 children[child_sku] = child
