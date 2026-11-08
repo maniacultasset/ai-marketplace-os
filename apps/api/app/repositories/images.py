@@ -6,6 +6,8 @@
   live-job count (PLAN D15), `create`, the live/by-key reads, `soft_delete`, `write_report` (one
   UPDATE: report, worst-of `compliance_status`, the meta columns and `content_hash`), the product
   view's live keys, the orphan sweep's `registered_keys` and S19's `live_reports_for_images`.
+- SI12: the photo `role` (Back, Close-up) and `clear_role`, the product's live size chart, and the
+  size-chart read result stored on the image (`metadata.size_chart_read`, fenced on the clean hash).
 
 "Live" is `deleted_at IS NULL`. A replaced image is soft-deleted and its object kept (spec L10193
 "versions are kept"), so `get_by_key` and `registered_keys` count deleted rows too. Nothing here
@@ -24,7 +26,7 @@ from uuid import UUID
 
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.images import ImageReport
-from sqlalchemy import case, cast, func, literal, select, text, update
+from sqlalchemy import and_, case, cast, func, literal, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
@@ -61,6 +63,8 @@ class NewImage:
     origin: str = "seller"
     parent_image_id: UUID | None = None
     candidate_id: UUID | None = None
+    # SI12: `back` | `close_up` on a secondary image
+    role: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +82,12 @@ class ImageDetail:
     fixes: tuple[str, ...] = ()
     report: Mapping[str, Any] | None = None
     border: Mapping[str, Any] | None = None
+    # SI12: the photo role, and what the size-chart suggestion needs (the read stored on the
+    # image, the clean hash it must match, and the upload time to pick the newest chart)
+    role: str | None = None
+    size_chart_read: Mapping[str, Any] | None = None
+    clean_content_hash: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,6 +103,8 @@ class ListingImageRow:
     vision: Mapping[str, Any] | None
     colourway_position: int | None
     created_at: datetime
+    # SI12: `back` | `close_up` on a secondary image
+    role: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,6 +237,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 origin=new.origin,
                 parent_image_id=new.parent_image_id,
                 candidate_id=new.candidate_id,
+                role=new.role,
             )
             .on_conflict_do_nothing(index_elements=[Image.tenant_id, Image.storage_key])
             .returning(Image)
@@ -248,6 +261,26 @@ class ImageRepository(TenantScopedRepository[Image]):
             .returning(Image.id)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def clear_role(
+        self, product_id: UUID, colourway_id: UUID | None, role: str
+    ) -> builtins.list[UUID]:
+        """SI12: the live holders of `role` on this product and colourway lose it (they stay live
+        `secondary` images), so a new upload can take it. Returns the ids cleared."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.product_id == _uuid("product_id", product_id),
+                Image.colourway_id.is_not_distinct_from(colourway_id),
+                Image.role == role,
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(role=None)
+            .returning(Image.id)
+        )
+        return sorted((await self.db.execute(stmt)).scalars())
 
     async def soft_delete(self, image_id: UUID) -> bool:
         """Mark a live row deleted (its object stays); False when it is not live."""
@@ -542,6 +575,10 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.parent_image_id,
                 Image.image_report_json,
                 Image.metadata_["border"].label("border"),
+                Image.role,
+                Image.metadata_["size_chart_read"].label("size_chart_read"),
+                Image.clean_content_hash,
+                Image.created_at,
             )
             .order_by(slot_rank, Image.position, Image.created_at, Image.id)
         )
@@ -557,6 +594,12 @@ class ImageRepository(TenantScopedRepository[Image]):
                 parent_image_id=row.parent_image_id,
                 report=row.image_report_json,
                 border=row.border if isinstance(row.border, Mapping) else None,
+                role=row.role,
+                size_chart_read=(
+                    row.size_chart_read if isinstance(row.size_chart_read, Mapping) else None
+                ),
+                clean_content_hash=row.clean_content_hash,
+                created_at=row.created_at,
             )
             for row in (await self.db.execute(stmt)).all()
         ]
@@ -577,6 +620,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.clean_content_hash,
                 Image.metadata_,
                 Image.created_at,
+                Image.role,
             )
         )
         rows = (await self.db.execute(stmt)).all()
@@ -591,7 +635,7 @@ class ImageRepository(TenantScopedRepository[Image]):
             )
             positions = {cid: int(pos) for cid, pos in found.all()}
         out: builtins.list[ListingImageRow] = []
-        for image_id, owner, slot, colourway, position, clean, metadata, created in rows:
+        for image_id, owner, slot, colourway, position, clean, metadata, created, role in rows:
             vision = metadata.get("vision") if isinstance(metadata, dict) else None
             out.append(
                 ListingImageRow(
@@ -604,9 +648,78 @@ class ImageRepository(TenantScopedRepository[Image]):
                     vision=vision if isinstance(vision, dict) else None,
                     colourway_position=None if colourway is None else positions.get(colourway),
                     created_at=created,
+                    role=role,
                 )
             )
         return out
+
+    # ---- SI12: the size chart and its read ----
+
+    async def live_size_chart(self, product_id: UUID) -> Image | None:
+        """The product's size chart (CP-D3): its newest live style-level `size_chart` image."""
+        stmt = (
+            self._select()
+            .where(
+                Image.product_id == _uuid("product_id", product_id),
+                Image.slot == ImageSlot.SIZE_CHART.value,
+                Image.colourway_id.is_(None),
+                Image.deleted_at.is_(None),
+            )
+            .order_by(Image.created_at.desc(), Image.id.desc())
+            .limit(1)
+        )
+        found: Image | None = (await self.db.execute(stmt)).scalars().first()
+        return found
+
+    async def size_chart_of(self, product_id: UUID, image_id: UUID) -> Image | None:
+        """A live `size_chart` image of this product, else None (a foreign, deleted or other
+        product's image is None alike)."""
+        stmt = self._select().where(
+            Image.id == _uuid("image_id", image_id),
+            Image.product_id == _uuid("product_id", product_id),
+            Image.slot == ImageSlot.SIZE_CHART.value,
+            Image.deleted_at.is_(None),
+        )
+        found: Image | None = (await self.db.execute(stmt)).scalars().first()
+        return found
+
+    async def write_size_chart_read(
+        self, image_id: UUID, value: Mapping[str, Any], *, source_hash: str, job_id: UUID
+    ) -> bool:
+        """Store one read result as `metadata.size_chart_read` (with `source_hash` and `job_id`)
+        on a live `size_chart` image whose clean copy still has `source_hash`. Another job's
+        `read` or `unreadable` result for the same hash is never overwritten. False when nothing
+        was written."""
+        self._own_session()
+        stored = {**value, "source_hash": source_hash, "job_id": str(job_id)}
+        current = Image.metadata_["size_chart_read"]
+        settled = (
+            current["source_hash"].astext == source_hash,
+            current["job_id"].astext != str(job_id),
+            current["status"].astext.in_(("read", "unreadable")),
+        )
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.slot == ImageSlot.SIZE_CHART.value,
+                Image.deleted_at.is_(None),
+                Image.clean_content_hash == source_hash,
+                ~func.coalesce(and_(*settled), False),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(
+                {
+                    Image.metadata_: Image.metadata_.op("||")(
+                        func.jsonb_build_object(
+                            "size_chart_read", cast(literal(json.dumps(stored)), JSONB)
+                        )
+                    )
+                }
+            )
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""
