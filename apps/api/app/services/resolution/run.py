@@ -486,7 +486,11 @@ async def _ai_allowed(uow: TenantUnitOfWork) -> bool:
 def _ai_scope(
     listing: Any, steps: Sequence[Step], by_issue: Mapping[uuid.UUID, Any]
 ) -> tuple[tuple[str, ...], tuple[str, ...]]:
-    """T16: the `ai_field` steps' target paths and one feedback line per path (at most 5)."""
+    """T16: the `ai_field` steps' target paths (at most `MAX_TARGET_FIELDS`, the generation
+    context's cap) and one feedback line per path (at most 5). A path cut here is not sent: its
+    issue stays open for the next round (the fix version's dry run asks again)."""
+    from mkos_schemas.jobs import MAX_TARGET_FIELDS
+
     from app.services.auto_fix.text import rewrite_feedback
 
     targets: dict[str, str] = {}
@@ -498,7 +502,7 @@ def _ai_scope(
             row.field_path,
             rewrite_feedback(listing.marketplace, row.field_path, row.plain_message or row.message),
         )
-    paths = tuple(sorted(targets))[:20]
+    paths = tuple(sorted(targets))[:MAX_TARGET_FIELDS]
     return paths, tuple(targets[p] for p in paths)[:5]
 
 
@@ -514,18 +518,23 @@ async def _auto_fix(
     none, `ai_field` steps make the AI rewrite of those fields only. A replayed key or a refused
     move enqueues nothing."""
     lane = "auto_content" if any(s.lane == "auto_content" for s in steps) else "ai_field"
-    issue_ids = sorted(s.issue_id for s in steps if s.lane == lane)[:50]
+    mode = "auto_fix" if lane == "auto_content" else "ai_field"
+    rows = by_issue or {}
+    targets, feedback = ((), ()) if mode == "auto_fix" else _ai_scope(listing, steps, rows)
+    # an `ai_field` issue is covered only when its path is one of the kept targets: one cut by
+    # the cap stays open and is never closed as an AI fix of a field the model was not sent
+    issue_ids = sorted(
+        s.issue_id
+        for s in steps
+        if s.lane == lane and (mode == "auto_fix" or rows[s.issue_id].field_path in targets)
+    )[:50]
     if not issue_ids or listing.current_version_id is None:
         return None
     version = await uow.listing_versions.get(listing.id, listing.current_version_id)
     if version is None:
         return None
     joined = ",".join(str(i) for i in issue_ids)
-    mode = "auto_fix" if lane == "auto_content" else "ai_field"
     key = hashlib.sha256(f"{mode}:{listing.id}:{version.id}:{joined}".encode()).hexdigest()
-    targets, feedback = (
-        ((), ()) if mode == "auto_fix" else _ai_scope(listing, steps, by_issue or {})
-    )
     payload = AutoFixPayload(
         listing_id=listing.id,
         mode=mode,

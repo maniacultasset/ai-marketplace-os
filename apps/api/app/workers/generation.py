@@ -308,6 +308,16 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         critical = await uow.product_facts.critical_keys()  # SI4 A8/A9 (CP-D9)
         seen_set = await uow.job_runs.latest_photo_set(listing.product_id)
         rejections = await uow.products.photo_rejections(listing.product_id)  # SI9 B5
+        # SI11 T16 (backstop): only a refusal on a path the model was sent closes as its fix
+        covered = (
+            ()
+            if fix is None
+            else tuple(
+                r.id
+                for r in await uow.listing_issues.open_by_ids(listing.id, fix.issue_ids)
+                if r.field_path in fix.target_fields
+            )
+        )
 
     # SI1 T18 (PLAN D4): the product's images reach the pipeline as vision copies, read with no
     # transaction open; a missing one is skipped and logged by id
@@ -359,7 +369,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             changed_paths=tuple(fix.target_fields),
             closes=tuple(
                 (issue_id, "Kuinn rewrote this field the way the marketplace accepts it.")
-                for issue_id in fix.issue_ids
+                for issue_id in covered
             ),
             close_resolution="ai_correction",
             preview_trigger="resolution",

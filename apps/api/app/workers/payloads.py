@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Literal
 from uuid import UUID
 
+from mkos_schemas.jobs import MAX_TARGET_FIELDS
 from pydantic import BaseModel, ConfigDict, Field
 
 PublishMode = Literal["publish", "retry_fields", "resume"]
@@ -60,7 +61,7 @@ class AutoFixPayload(_Payload):
     issue_ids: tuple[UUID, ...] = Field(default=(), max_length=50)
     trigger: Literal["resolution"] = "resolution"
     # T16 (`ai_field`): the paths the model may rewrite and one feedback line per refusal
-    target_fields: tuple[str, ...] = Field(default=(), max_length=20)
+    target_fields: tuple[str, ...] = Field(default=(), max_length=MAX_TARGET_FIELDS)
     feedback: tuple[str, ...] = Field(default=(), max_length=5)
 
 
