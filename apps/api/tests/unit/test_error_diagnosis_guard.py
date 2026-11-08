@@ -347,3 +347,44 @@ def test_an_address_country_part_never_refuses_amazon_india() -> None:
 )
 def test_a_whole_word_secret_echo_is_still_refused(cause: str) -> None:
     assert _check(plain_cause=cause) == Invalid("plain_cause:secret")
+
+
+# ---- round 2: a link on any TLD, an IP host, a folded dot or an email is refused (R2-2) ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Please visit evil.ru/fix to fix the brand field now",
+        "Please visit evil.shop to fix the brand field now",
+        "Please visit bit.do/x to fix the brand field now",
+        "Please visit evil。com/fix to fix the brand field now",  # ideographic full stop
+        "Please visit evil｡com/fix to fix the brand field now",  # halfwidth ideographic
+        "Please visit evil﹒shop to fix the brand field now",  # small full stop
+        "Please visit 203.0.113.9/fix to fix the brand",
+        "Please visit 203.0.113.9 to fix the brand field",
+        "Email help@evil.ru to fix the brand field",
+        "Go to amazon-help.shop/fix to repair the item.",
+        "Open seller-fix.site and sign in to repair.",
+        "Write to mailto:help@evil.shop for the fix.",
+        "Visit EVIL.RU, then fix the brand field.",
+        "Visit evil.ru.",
+        "Visit attributes.ru/fix to repair the item.",  # a legal path, but a link follows
+    ],
+)
+def test_a_link_on_any_tld_is_refused(cause: str) -> None:
+    assert _check(plain_cause=cause) == Invalid("plain_cause:markup"), cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Amazon needs a value.Then send the listing again.",  # missing space, mixed-case word
+        "Set attributes.color to the product colour, then resend.",  # a field path
+        "Check facts.mrp and keywords.search_terms, then send it again.",
+        "The pack holds 2.5 kg of rice, e.g. the large size.",
+        "Use version 1.2.3 of the size chart for U.S. sizes.",
+    ],
+)
+def test_prose_with_dots_is_not_a_link(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Proposed), cause

@@ -12,7 +12,8 @@ the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
   starts like a spreadsheet formula (`=`, `+`, `-`, `@`, a tab or a CR), holds a control, format or
   bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, `data:`, `//host`,
-  `www.`, a bare domain on a short TLD list), `<tag`, `&#`, a `{...}` token or a folded secret;
+  `www.`, a bare host on any TLD, an IPv4 host, an email; an ideographic or fullwidth full
+  stop reads as `.`), `<tag`, `&#`, a `{...}` token or a folded secret;
   when the code or class is not a member of the
   closed vocabularies; when the field hint is not a legal path in the field index; or when it
   proposes `auto` for a price, MRP, critical, identifier or image path or a permission class.
@@ -69,6 +70,16 @@ _BAD_TEXT: Final = (
         r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|net|org|io|co|ly|me|app|dev|example|xyz)\b)"
     ),
 )
+# A host on any TLD (2-63 letters, all lowercase or all capitals, so "value.Then" stays prose)
+# that ends at a path, port, query, fragment, space, closing punctuation or the end of the text.
+_HOST: Final = re.compile(
+    r"(?<![\w.-])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:[a-z]{2,63}|[A-Z]{2,63})"
+    r"(?=[/:?#,;!)\]'\"]|\.(?:\s|$)|\s|$)"
+)
+_IPV4: Final = re.compile(r"(?<![\w.])\d{1,3}(?:\.\d{1,3}){3}(?!\w|\.\d)")
+# dots a browser reads as "." that NFKC keeps or makes: ideographic, halfwidth ideographic,
+# fullwidth and small full stops
+_DOTS: Final = str.maketrans(dict.fromkeys("\u3002\uff61\uff0e\ufe52", "."))
 _FORMULA_START: Final = ("=", "+", "-", "@", "\t", "\r")
 _BIDI: Final = frozenset({"‎", "‏", "‪", "‫", "‬", "‭", "‮"} | {"⁦", "⁧", "⁨", "⁩", "؜"})
 _MONEY_PATHS: Final = ("facts.mrp", "facts.selling_price", "mrp", "selling_price", "price")
@@ -177,6 +188,13 @@ def build_input(
     }
 
 
+def _is_link(host: re.Match[str]) -> bool:
+    """A host match is a link unless it is a legal field path ("attributes.color") that no path,
+    port, query or fragment follows."""
+    after = host.string[host.end() : host.end() + 1]
+    return not is_valid_field_path(host.group()) or after in ("/", ":", "?", "#")
+
+
 def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
     if not TEXT_MIN <= len(text) <= TEXT_MAX:
         return "length"
@@ -187,10 +205,12 @@ def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
         for ch in text
     ):
         return "control"
-    normal = unicodedata.normalize("NFKC", text)
+    normal = unicodedata.normalize("NFKC", text).translate(_DOTS)
     if normal.lstrip().startswith(_FORMULA_START):
         return "formula"
     if any(p.search(normal) for p in _BAD_TEXT) or _TOKEN.search(normal):
+        return "markup"
+    if _IPV4.search(normal) or _EMAIL.search(normal) or any(map(_is_link, _HOST.finditer(normal))):
         return "markup"
     folded = _fold(text)
     for secret in secrets:
