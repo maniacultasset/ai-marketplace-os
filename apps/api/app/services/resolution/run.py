@@ -50,6 +50,11 @@ own result committed.
    and the listing moves to `generating` on `auto_fix`; the job writes a fix version with only
    the fixed paths changed. That version is never resent on its own: a non-maker approves it
    ("Approve and resend"). Repairs planned beside it stay live and go out with that version.
+7. AI rewrites (T16): with SI10's credit gate admitting (`PlanContext.ai_allowed`), a refusal
+   the fix policy routes `ai_field` on a path the merge can keep alone takes the AI lane; with no
+   `auto_content` step, the same job runs `mode ai_field` (`target_fields`, one feedback line per
+   path): the model's result is merged so only those paths change, and the version waits for a
+   non-maker the same way. Paused AI sends those refusals to a staff content review.
 """
 
 from __future__ import annotations
@@ -467,22 +472,67 @@ async def _content_fixable(
     return frozenset() if found is None else frozenset(f.issue_id for f in found[1])
 
 
+async def _ai_allowed(uow: TenantUnitOfWork) -> bool:
+    """T16: SI10's credit gate admits AI spend now (no pause, no fresh low balance)."""
+    from datetime import UTC, datetime
+
+    from app.repositories.ai_credit import AiCreditRepository
+    from app.services.ai_credit import credit_refusal
+
+    row = await AiCreditRepository(uow.session).read()
+    return credit_refusal(row, datetime.now(UTC)) is None
+
+
+def _ai_scope(
+    listing: Any, steps: Sequence[Step], by_issue: Mapping[uuid.UUID, Any]
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """T16: the `ai_field` steps' target paths and one feedback line per path (at most 5)."""
+    from app.services.auto_fix.text import rewrite_feedback
+
+    targets: dict[str, str] = {}
+    for step in steps:
+        if step.lane != "ai_field":
+            continue
+        row = by_issue[step.issue_id]
+        targets.setdefault(
+            row.field_path,
+            rewrite_feedback(listing.marketplace, row.field_path, row.plain_message or row.message),
+        )
+    paths = tuple(sorted(targets))[:20]
+    return paths, tuple(targets[p] for p in paths)[:5]
+
+
 async def _auto_fix(
-    uow: TenantUnitOfWork, listing: Any, job: JobRun, steps: Sequence[Step]
+    uow: TenantUnitOfWork,
+    listing: Any,
+    job: JobRun,
+    steps: Sequence[Step],
+    by_issue: Mapping[uuid.UUID, Any] | None = None,
 ) -> uuid.UUID | None:
-    """T15: enqueue the auto-fix job for the `auto_content` steps and move to `generating`
-    (`auto_fix`; the job row first, as the status guard needs). A replayed key or a refused move
-    enqueues nothing."""
-    issue_ids = sorted(s.issue_id for s in steps if s.lane == "auto_content")[:50]
+    """T15/T16: enqueue the auto-fix job and move to `generating` (`auto_fix`; the job row
+    first, as the status guard needs). `auto_content` steps make the deterministic job; with
+    none, `ai_field` steps make the AI rewrite of those fields only. A replayed key or a refused
+    move enqueues nothing."""
+    lane = "auto_content" if any(s.lane == "auto_content" for s in steps) else "ai_field"
+    issue_ids = sorted(s.issue_id for s in steps if s.lane == lane)[:50]
     if not issue_ids or listing.current_version_id is None:
         return None
     version = await uow.listing_versions.get(listing.id, listing.current_version_id)
     if version is None:
         return None
     joined = ",".join(str(i) for i in issue_ids)
-    key = hashlib.sha256(f"auto_fix:{listing.id}:{version.id}:{joined}".encode()).hexdigest()
+    mode = "auto_fix" if lane == "auto_content" else "ai_field"
+    key = hashlib.sha256(f"{mode}:{listing.id}:{version.id}:{joined}".encode()).hexdigest()
+    targets, feedback = (
+        ((), ()) if mode == "auto_fix" else _ai_scope(listing, steps, by_issue or {})
+    )
     payload = AutoFixPayload(
-        listing_id=listing.id, base_version_id=version.id, issue_ids=tuple(issue_ids)
+        listing_id=listing.id,
+        mode=mode,
+        base_version_id=version.id,
+        issue_ids=tuple(issue_ids),
+        target_fields=targets,
+        feedback=feedback,
     )
     spec = EnqueueSpec(
         kind=JobKind.LISTING_GENERATE,
@@ -677,6 +727,7 @@ async def _resolve(
     content_fixable = await _content_fixable(uow, listing, rows)
     ctx = PlanContext(
         content_fixable=content_fixable,
+        ai_allowed=await _ai_allowed(uow),
         critical_keys=await uow.product_facts.critical_keys(),
         repairable=frozenset(candidates),
         repair_rejected=found.rejected,
@@ -722,8 +773,8 @@ async def _resolve(
     written = {i: candidates[i] for i in ids}
     await _audit(uow, listing, job, written, ids)
     tasks = await _human_steps(uow, listing, steps, by_issue)
-    automatic = all(s.lane in ("auto_repair", "auto_content", "retry") for s in steps)
-    content = any(s.lane == "auto_content" for s in steps)
+    automatic = all(s.lane in ("auto_repair", "auto_content", "ai_field", "retry") for s in steps)
+    content = any(s.lane in ("auto_content", "ai_field") for s in steps)
     if not steps or not automatic or not (written or content):
         return ResolutionResult(steps=steps, repairs=tuple(ids.values()), tasks=tasks)
     if cycles >= MAX_CYCLES:
@@ -732,7 +783,7 @@ async def _resolve(
     if content:
         # T15: a content fix makes a new version a non-maker approves; never a resend. The
         # repairs written beside it stay live and go out with that version (CP-D21)
-        fix_job = await _auto_fix(uow, listing, job, steps)
+        fix_job = await _auto_fix(uow, listing, job, steps, by_issue)
         return ResolutionResult(steps=steps, repairs=tuple(ids.values()), job_id=fix_job)
     next_job: uuid.UUID | None = None
     if entry == "preview":

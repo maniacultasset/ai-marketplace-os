@@ -120,6 +120,7 @@ class PersistPlan:
     origin: Literal["generation", "regeneration"] | None = None
     changed_paths: tuple[str, ...] | None = None
     closes: tuple[tuple[uuid.UUID, str], ...] = ()
+    close_resolution: Literal["deterministic_fix", "ai_correction"] = "deterministic_fix"
 
 
 def _run(
@@ -386,7 +387,10 @@ def make_persist(plan: PersistPlan) -> Any:
             current_version_id=version.id,
         )
         for issue_id, action in plan.closes:  # SI11 T15: the refusals the fix version answers
-            await uow.listing_issues.close_auto_fixed(issue_id, action)
+            if plan.close_resolution == "ai_correction":  # `resolved` (ck_listing_issues_resolved)
+                await uow.listing_issues.close_open(issue_id, "ai_correction")
+            else:
+                await uow.listing_issues.close_auto_fixed(issue_id, action)
         # SI11 T7: ask the marketplace's dry run about the new version (it never fails the save)
         await request_preview(uow, moved, version.id, trigger=plan.preview_trigger)
         log.info(

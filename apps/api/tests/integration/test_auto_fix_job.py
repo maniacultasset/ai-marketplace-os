@@ -203,3 +203,117 @@ async def test_an_auto_fix_move_without_its_job_is_refused(prev: PubWorld) -> No
             "UPDATE listings SET status = 'generating', last_event = 'auto_fix' WHERE id = %s",
             [made.listing_id],
         )
+
+
+# ---- T16: the AI rewrite of the refused field only ----
+
+
+def _banned(field: str = "content.description") -> ErrorItem:
+    return ErrorItem(
+        field=field,
+        error_code=ErrorCode.BANNED_TERM,
+        severity=Severity.ERROR,
+        message="The description uses a term Amazon does not allow.",
+        source=ErrorSource.AMAZON_ADAPTER,
+        retryable=False,
+        raw_code="8560",
+    )
+
+
+async def test_an_ai_rewrite_changes_only_the_refused_field(
+    prev: PubWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.workers import generation
+
+    seen: list[Any] = []
+    real = getattr(generation, "run_listing_pipeline")  # noqa: B009 - the module re-exports none
+
+    async def recording(ctx: Any, deps: Any) -> Any:
+        seen.append(ctx)
+        result = await real(ctx, deps)
+        if ctx.target_fields and result.listing is not None:
+            # the model rewrites the title too: the merge must keep only the description
+            content = result.listing.content.model_copy(
+                update={"title": "A different title", "description": "A clean new description."}
+            )
+            result = result.model_copy(
+                update={"listing": result.listing.model_copy(update={"content": content})}
+            )
+        return result
+
+    monkeypatch.setattr(generation, "run_listing_pipeline", recording)
+    prev.fake.preview_errors = []
+    made = await generated(prev.world, OWNER)
+    runs_before = prev.scalar(
+        "SELECT count(*) FROM agent_runs WHERE listing_id = %s", [made.listing_id]
+    )
+    prev.fake.preview_errors = [_banned()]
+    await _run_previews(prev, made.listing_id)
+    (job,) = _jobs(prev, made.listing_id, "ai_field")
+    assert job["payload_json"]["target_fields"] == ["content.description"]
+    (line,) = job["payload_json"]["feedback"]
+    assert line.startswith("Amazon refused") and line.endswith("Rewrite only this field.")
+    assert len(line) <= 500
+
+    prev.fake.preview_errors = []
+    await run_job(job["id"])
+    assert prev.job(job["id"])["status"] == "succeeded", prev.job(job["id"])["error_report_json"]
+    ctx = seen[-1]
+    assert ctx.target_fields == ["content.description"] and ctx.review_feedback[0] == line
+    row = prev.listing(made.listing_id)
+    fixed_id = row["current_version_id"]
+    assert row["status"] == "needs_review"
+    version = prev.rows(
+        "SELECT origin, changed_paths, generated_by_user_id FROM listing_versions WHERE id = %s",
+        [fixed_id],
+    )[0]
+    assert version == ("regeneration", ["content.description"], prev.world.user(OWNER))
+    base, fixed = _content(prev, made.version_id), _content(prev, fixed_id)
+    assert fixed["content"]["description"] == "A clean new description."
+    assert fixed["content"]["title"] == base["content"]["title"]
+    # every model call of the job is recorded (invariant 7)
+    runs = prev.scalar(
+        "SELECT count(*) FROM agent_runs WHERE listing_id = %s AND job_id = %s",
+        [made.listing_id, job["id"]],
+    )
+    assert runs >= 1
+    assert (
+        prev.scalar("SELECT count(*) FROM agent_runs WHERE listing_id = %s", [made.listing_id])
+        == runs_before + runs
+    )
+    assert (
+        prev.scalar(
+            "SELECT resolution FROM listing_issues WHERE listing_id = %s AND source = 'amazon_adapter' "
+            "AND field_path = 'content.description'",
+            [made.listing_id],
+        )
+        == "ai_correction"
+    )
+    assert (
+        prev.scalar(
+            "SELECT count(*) FROM job_runs WHERE listing_id = %s AND kind = 'listing_publish'",
+            [made.listing_id],
+        )
+        == 0
+    )
+
+
+async def test_paused_ai_sends_the_refusal_to_a_staff_review(prev: PubWorld) -> None:
+    prev.fake.preview_errors = [_banned()]
+    made = await generated(prev.world, OWNER)
+    prev.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = 'credit_exhausted', paused_at = now() WHERE id = 1"
+    )
+    try:
+        await _run_previews(prev, made.listing_id)
+    finally:
+        prev.conn.execute(
+            "UPDATE ai_credit_state SET paused_reason = NULL, paused_at = NULL WHERE id = 1"
+        )
+    assert _jobs(prev, made.listing_id, "ai_field") == []
+    task = prev.rows(
+        "SELECT t.target_path FROM listing_issues i JOIN human_tasks t ON t.id = i.human_task_id "
+        "WHERE i.listing_id = %s AND i.status = 'open'",
+        [made.listing_id],
+    )
+    assert task == [("account.review.content_review",)]

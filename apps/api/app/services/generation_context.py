@@ -11,7 +11,9 @@ in the job's read transaction, from rows only (the AI package fetches nothing):
 - `previous_version` = the current version's `CanonicalListing`, or None;
 - `user_instructions` = the `regenerate_requested` row's instructions when one names the job,
   else the job payload's (D3); `review_feedback` = the newest 5 reject feedbacks;
-- `locale` = the brand's `content_locale`; `max_attempts` = the configured correction cap (1..3).
+- `locale` = the brand's `content_locale`; `max_attempts` = the configured correction cap (1..3);
+- SI11 T16: `target_fields` (a field-scoped fix: only these paths may change) and `feedback`
+  (its refusal lines, ahead of the review feedback, at most 5 in all).
 
 No marketplace account, token or settings value is read. The S2 secret walk runs on the built
 context; a refusal is `VALIDATION_FAILED` and its text never reaches a log or a report.
@@ -19,6 +21,7 @@ context; a refusal is `VALIDATION_FAILED` and its text never reaches a log or a 
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from mkos_schemas.codes import ErrorCode
@@ -90,6 +93,8 @@ async def build_context(
     facts: ProductFacts,
     request_id: str,
     max_attempts: int,
+    target_fields: Sequence[str] = (),
+    feedback: Sequence[str] = (),
 ) -> GenerationContext:
     if rules.template is None:
         raise GenerationContextError(ErrorCode.CATEGORY_NOT_MAPPED, "category")
@@ -101,7 +106,8 @@ async def build_context(
     else:
         raw = (job.payload_json or {}).get("user_instructions")
         instructions = raw if isinstance(raw, str) else None
-    feedback = await uow.review_decisions.latest_reject_feedback(listing.id, 5)
+    # SI11 T16: a field-scoped fix leads with its own lines (the refusals), then the reviews
+    feedback = [*feedback, *await uow.review_decisions.latest_reject_feedback(listing.id, 5)][:5]
     try:
         return GenerationContext.model_validate(
             {
@@ -122,6 +128,7 @@ async def build_context(
                 "locale": brand.get("content_locale") or "en-IN",
                 "review_feedback": feedback,
                 "product_provenance": product_provenance(facts),
+                "target_fields": list(target_fields),
             }
         )
     except ValidationError:

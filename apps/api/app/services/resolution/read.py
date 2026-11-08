@@ -328,7 +328,9 @@ def attempts(
                     }
                 )
         for row in issues:
-            if row.status != "auto_fixed" or (row.action_taken or "").startswith("repair:"):
+            if row.resolution not in ("deterministic_fix", "ai_correction") or (
+                row.action_taken or ""
+            ).startswith("repair:"):
                 continue
             if not _within(row.resolved_at, attempt.start, end):
                 continue
@@ -337,7 +339,15 @@ def attempts(
                 {
                     "kind": kind,
                     "field": _text(row.field_path, 192),
-                    "summary": _text(row.action_taken or "Kuinn fixed this field.", 300),
+                    "summary": _text(
+                        row.action_taken
+                        or (
+                            "Kuinn rewrote this field."
+                            if kind == "ai_correction"
+                            else "Kuinn fixed this field."
+                        ),
+                        300,
+                    ),
                 }
             )
         seen: set[uuid.UUID] = set()

@@ -15,8 +15,9 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
 5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `auto_content`
    on a content or keyword path the content fix can change (`ctx.content_fixable`: the
    executor ran the same pure fixer first, T15), else `seller` (fix round 3: never a lane with
-   nothing behind it); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
-   critical, else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
+   nothing behind it); AI_FIELD -> `ai_field` when the AI is allowed (`ctx.ai_allowed`: SI10's
+   credit gate admits), the path is not critical, the row is the marketplace's and the merge can
+   keep only that path (`merge.mergeable`), else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
    marketplace error); RETRY -> `retry`; OPS -> `staff`.
 6. a `seller` step only where the inbox can ask (`seller_answers`: one image, or a fact key it
    answers, CP-D25); otherwise `staff`: `content_review` on a content or keyword path, `mapping`
@@ -47,6 +48,7 @@ from app.services.auto_fix.policy import (
     fact_key,
     route,
 )
+from app.services.resolution.merge import mergeable
 
 Lane = Literal["auto_repair", "auto_content", "ai_field", "seller", "marketplace", "retry", "staff"]
 Cause = Literal["seller_fact", "ai_content", "mapping", "image", "marketplace", "unknown"]
@@ -217,7 +219,13 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         return _seller_or_staff(path)
     if routing.route is Route.AI_FIELD:
         key = path.split(".", 1)[1] if "." in path else path
-        if ctx.ai_allowed and key not in ctx.critical_keys and not path.startswith("images"):
+        if (
+            ctx.ai_allowed
+            and key not in ctx.critical_keys
+            and not path.startswith("images")
+            and issue.source in ADAPTER_SOURCES
+            and mergeable(path)
+        ):
             return "ai_field", "ai_rewrite"
         return _seller_or_staff(path)
     if routing.route is Route.ASK:

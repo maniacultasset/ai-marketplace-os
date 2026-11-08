@@ -55,10 +55,13 @@ class AutoFixPayload(_Payload):
     the job and the human mark never takes it for a member's request."""
 
     listing_id: UUID
-    mode: Literal["auto_fix"] = "auto_fix"
+    mode: Literal["auto_fix", "ai_field"] = "auto_fix"
     base_version_id: UUID
     issue_ids: tuple[UUID, ...] = Field(default=(), max_length=50)
     trigger: Literal["resolution"] = "resolution"
+    # T16 (`ai_field`): the paths the model may rewrite and one feedback line per refusal
+    target_fields: tuple[str, ...] = Field(default=(), max_length=20)
+    feedback: tuple[str, ...] = Field(default=(), max_length=5)
 
 
 # SI11 keys left out at their default, so every payload written before SI11 (and every user job
