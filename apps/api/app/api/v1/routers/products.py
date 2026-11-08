@@ -24,6 +24,7 @@ from app.api.v1.schemas.products import (
     ColourwayOut,
     FibreOut,
     PackageIn,
+    PackageOut,
     PhotoFactOut,
     PhotoReadOut,
     ProductCreate,
@@ -154,6 +155,9 @@ def _out(view: products.ProductView) -> ProductOut:
             )
         ),
         identifier_exemption=view.identifier_exemption,
+        hsn_code=view.hsn_code,
+        package=None if view.package is None else PackageOut.model_construct(**view.package),
+        country_of_origin=view.country_of_origin,
     )
 
 

@@ -207,6 +207,73 @@ class ProductView:
     photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool = False
+    # SI12: the seller fields (single reads: own → style, origin → brand default; lists: own)
+    hsn_code: str | None = None
+    package: dict[str, Any] | None = None
+    country_of_origin: str | None = None
+
+
+PACKAGE_COLUMNS: Final = {
+    "length_cm": "package_length_cm",
+    "breadth_cm": "package_breadth_cm",
+    "height_cm": "package_height_cm",
+}
+
+
+@dataclass(frozen=True, slots=True)
+class SellerValues:
+    """SI12: the effective seller fields of one read, and which came from elsewhere."""
+
+    hsn_code: str | None = None
+    package: dict[str, Any] | None = None
+    country_of_origin: str | None = None
+    hsn_from_style: bool = False
+    dims_from_style: bool = False
+    weight_from_style: bool = False
+    country_from_style: bool = False
+    country_from_brand: bool = False
+
+
+def _own_dims(row: Any) -> dict[str, Any] | None:
+    dims = {name: getattr(row, column, None) for name, column in PACKAGE_COLUMNS.items()}
+    return dims if all(v is not None for v in dims.values()) else None
+
+
+def seller_values(row: Any, style: Any = None, brand_country: str | None = None) -> SellerValues:
+    """Own values; on a single read a missing one is the style's (the dims as one group), and a
+    missing origin is then the brand default."""
+    hsn = getattr(row, "hsn_code", None)
+    hsn_from_style = hsn is None and getattr(style, "hsn_code", None) is not None
+    if hsn_from_style:
+        hsn = style.hsn_code
+    dims = _own_dims(row)
+    dims_from_style = dims is None and style is not None and _own_dims(style) is not None
+    if dims_from_style:
+        dims = _own_dims(style)
+    weight = getattr(row, "package_weight_g", None)
+    weight_from_style = weight is None and getattr(style, "package_weight_g", None) is not None
+    if weight_from_style:
+        weight = style.package_weight_g
+    country = getattr(row, "country_of_origin", None)
+    country_from_style = country is None and getattr(style, "country_of_origin", None) is not None
+    if country_from_style:
+        country = style.country_of_origin
+    country_from_brand = country is None and brand_country is not None
+    if country_from_brand:
+        country = brand_country
+    package: dict[str, Any] | None = None
+    if dims is not None or weight is not None:
+        package = {**(dims or dict.fromkeys(PACKAGE_COLUMNS)), "weight_g": weight}
+    return SellerValues(
+        hsn_code=hsn,
+        package=package,
+        country_of_origin=country,
+        hsn_from_style=hsn_from_style,
+        dims_from_style=dims_from_style,
+        weight_from_style=weight_from_style,
+        country_from_style=country_from_style,
+        country_from_brand=country_from_brand,
+    )
 
 
 def _money(value: Any) -> str | None:
@@ -304,6 +371,7 @@ def _view(
     gender: str | None = None,
     photo_read: PhotoReadRow | None = None,
     style_exempt: bool = False,
+    seller: SellerValues | None = None,
 ) -> ProductView:
     """Total over every row the DB CHECKs accept: nothing here re-applies input rules. `images`
     are the product's live image keys in slot order (S17b CP7). SI5: a variant or standalone
@@ -345,7 +413,17 @@ def _view(
         photo_facts=photo_facts_of(facts),
         photo_read=photo_read,
         **_identifier_view(row, style_exempt),
+        **_seller_view(row if seller is None else None, seller),
     )
+
+
+def _seller_view(row: Any, seller: SellerValues | None) -> dict[str, Any]:
+    values = seller if seller is not None else seller_values(row)
+    return {
+        "hsn_code": values.hsn_code,
+        "package": values.package,
+        "country_of_origin": values.country_of_origin,
+    }
 
 
 def _is_style(row: Any) -> bool:
@@ -402,6 +480,10 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     exempt = False
     if _is_style(row):
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
+    brand_country = None
+    if row.country_of_origin is None and getattr(style, "country_of_origin", None) is None:
+        brand_country = await uow.brand_profiles.default_country()
+    seller = seller_values(row, style, brand_country)
     return _view(
         row,
         keys[row.id],
@@ -412,6 +494,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         gender=gender,
         photo_read=photo_read,
         style_exempt=exempt,
+        seller=seller,
     )
 
 

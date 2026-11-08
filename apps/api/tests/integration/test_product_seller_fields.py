@@ -283,3 +283,78 @@ async def test_variant_takes_its_own_values(api: httpx.AsyncClient, products_wor
     assert response.status_code == 200, response.text
     stored = _stored(products_world.conn, child)
     assert stored["hsn_code"] == "6204" and stored["package_length_cm"] == Decimal("30.00")
+
+
+# ---- T10: reads ----
+
+
+async def _get(api: httpx.AsyncClient, world: World, product_id: Any) -> dict[str, Any]:
+    response = await api.get(f"{PRODUCTS}/{product_id}", headers=_op(world))
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def _listed(api: httpx.AsyncClient, world: World, product_id: Any) -> dict[str, Any]:
+    response = await api.get(f"{PRODUCTS}?limit=100", headers=_op(world))
+    assert response.status_code == 200, response.text
+    found: list[dict[str, Any]] = [p for p in response.json()["data"] if p["id"] == str(product_id)]
+    assert found, "product not listed"
+    return found[0]
+
+
+def _brand_country(world: World, country: str | None) -> None:
+    world.conn.execute(
+        "INSERT INTO brand_profiles (tenant_id, default_country_of_origin, provenance) "
+        "VALUES (%s, %s, '{}') ON CONFLICT (tenant_id) DO UPDATE "
+        "SET default_country_of_origin = EXCLUDED.default_country_of_origin",
+        [world.tenant("acme"), country],
+    )
+
+
+async def test_read_shows_own_values(api: httpx.AsyncClient, products_world: World) -> None:
+    pid = await _standalone(api, products_world, "SI12-SF-R1")
+    body = await _get(api, products_world, pid)
+    assert body["hsn_code"] == "6109" and body["country_of_origin"] == "IN"
+    assert body["package"] == {
+        "length_cm": "30.00",
+        "breadth_cm": "20.50",
+        "height_cm": "4.00",
+        "weight_g": 450,
+    }
+
+
+async def test_variant_inherits_the_style_package_and_hsn(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    _, child = _family(
+        products_world,
+        hsn_code="6204",
+        package_length_cm=Decimal("31"),
+        package_breadth_cm=Decimal("21"),
+        package_height_cm=Decimal("5"),
+        package_weight_g=600,
+        country_of_origin="BD",
+    )
+    body = await _get(api, products_world, child)
+    assert body["hsn_code"] == "6204" and body["country_of_origin"] == "BD"
+    assert body["package"]["length_cm"] == "31.00" and body["package"]["weight_g"] == 600
+    response = await _patch(api, products_world, child, {"hsn_code": "620442"})
+    assert response.status_code == 200, response.text
+    assert response.json()["hsn_code"] == "620442"  # the variant's own value wins
+    listed = await _listed(api, products_world, child)
+    assert listed["hsn_code"] == "620442" and listed["package"] is None  # lists: own only
+    assert listed["country_of_origin"] is None
+
+
+async def test_origin_falls_back_to_the_brand_default(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    _brand_country(products_world, "IN")
+    response = await _create(api, products_world, "SI12-SF-R3")
+    assert response.status_code == 201, response.text
+    pid = response.json()["id"]
+    assert response.json()["country_of_origin"] == "IN"
+    assert (await _get(api, products_world, pid))["country_of_origin"] == "IN"
+    assert (await _listed(api, products_world, pid))["country_of_origin"] is None
+    assert _stored(products_world.conn, pid)["country_of_origin"] is None
