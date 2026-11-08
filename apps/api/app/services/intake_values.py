@@ -1,4 +1,6 @@
-"""Seller intake values: money, the price/MRP rule and the size chart (SI1 T3; AC1, AC3, CP11).
+"""Seller intake values: money, the price/MRP rule and the size chart (SI1 T3; AC1, AC3, CP11);
+since SI12 also HSN, package size and weight and the country of origin, shared with the CSV import
+(`app/services/imports/row_model.py` imports the patterns from here: one source).
 
 Pure: no I/O. Money on the wire is a decimal string `^(0|[1-9][0-9]{0,9})(\\.[0-9]{1,2})?$` above
 zero (`Numeric(12,2)`, `app/db/models/catalog.py`). The size chart is stored as
@@ -20,13 +22,22 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import InputError
 
 __all__ = [
+    "COUNTRY_PATTERN",
+    "DIMENSION_PATTERN",
+    "HSN_PATTERN",
+    "MAX_DIMENSION",
+    "MAX_GRAMS",
     "MEASURE_KEYS",
     "MONEY_PATTERN",
     "MoneyError",
     "PartyInput",
     "SizeChartError",
+    "check_dimension",
+    "check_grams",
+    "check_hsn",
     "check_price_le_mrp",
     "inherited_money_breach",
+    "normalize_country",
     "normalize_size_chart",
     "parse_money",
 ]
@@ -41,6 +52,14 @@ BASES: Final = frozenset({"garment", "body"})
 MAX_ROWS: Final = 40
 MAX_SIZE_CHARS: Final = 20
 MAX_MEASURE: Final = 500
+
+# The database's own bounds (DATABASE.md:1108-1112): HSN 4, 6 or 8 ASCII digits; dimensions
+# `numeric(7,2)` > 0; whole grams 1..2,000,000; ISO 3166 alpha-2 (upper-cased). Always `fullmatch`.
+HSN_PATTERN: Final = re.compile(r"[0-9]{4}|[0-9]{6}|[0-9]{8}")
+DIMENSION_PATTERN: Final = re.compile(r"[0-9]{1,5}(\.[0-9]{1,2})?")
+COUNTRY_PATTERN: Final = re.compile(r"[A-Za-z]{2}")
+MAX_GRAMS: Final = 2_000_000
+MAX_DIMENSION: Final = Decimal("99999.99")
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,3 +181,37 @@ def normalize_size_chart(raw: Mapping[str, Any]) -> dict[str, Any]:
             raise SizeChartError("each row has at least one measurement")
         out_rows.append(out)
     return {"unit": unit, "basis": basis, "rows": out_rows}
+
+
+def check_hsn(value: str) -> str:
+    """An HSN code of 4, 6 or 8 ASCII digits, unchanged."""
+    if not HSN_PATTERN.fullmatch(value):
+        raise ValueError("HSN code must be 4, 6 or 8 digits")
+    return value
+
+
+def normalize_country(value: str) -> str:
+    """An ISO 3166 alpha-2 country code, upper-cased."""
+    if not value.isascii() or not COUNTRY_PATTERN.fullmatch(value):
+        raise ValueError("country of origin must be a two-letter ISO code")
+    return value.upper()
+
+
+def check_dimension(value: Decimal) -> Decimal:
+    """A package dimension in cm: finite, above zero, at most 99999.99, at most 2 decimals."""
+    exponent = value.as_tuple().exponent
+    if (
+        not value.is_finite()
+        or not isinstance(exponent, int)
+        or exponent < -2
+        or not Decimal(0) < value <= MAX_DIMENSION
+    ):
+        raise ValueError("package dimension must be above 0 and at most 99999.99 cm")
+    return value
+
+
+def check_grams(value: int) -> int:
+    """A package weight in whole grams, 1 to 2,000,000."""
+    if not 1 <= value <= MAX_GRAMS:
+        raise ValueError(f"package weight must be 1 to {MAX_GRAMS} grams")
+    return value
