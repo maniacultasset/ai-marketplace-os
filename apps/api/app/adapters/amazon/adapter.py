@@ -48,6 +48,7 @@ from app.adapters.amazon import constants as c
 from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
+    IMAGE_NAMES,
     MappedItem,
     build,
     error,
@@ -504,7 +505,7 @@ class AmazonAdapter(MarketplaceAdapter):
             summaries, summary, states, attributes, issues = _read_listing(response.json)
         except _UnreadableReplyError:
             raise _unavailable("Amazon returned a listing it could not read.") from None
-        index = reverse_index(None)
+        index = _read_index(attributes)
         paths = sorted({p for name in attributes for p in index.get(name, ()) if p != "variants"})
         open_errors = [
             i
@@ -598,6 +599,29 @@ def _unavailable(message: str) -> MarketplaceUnavailable:
             None,
         )
     )
+
+
+def _is_child(attributes: Mapping[str, Any]) -> bool:
+    """The read item is a variation child: its `parentage_level` says `child`, or it names a
+    parent SKU (a child always sends both; mapping `family_payloads`)."""
+    if c.RELATIONSHIP_ATTRIBUTE in attributes:
+        return True
+    levels = attributes.get(c.PARENTAGE_ATTRIBUTE)
+    return isinstance(levels, list) and any(
+        isinstance(one, dict) and str(one.get("value", "")).casefold() == "child" for one in levels
+    )
+
+
+def _read_index(attributes: Mapping[str, Any]) -> Mapping[str, tuple[str, ...]]:
+    """The read-back index. `reverse_index(None)` reads image slot k as `images[k]`, which holds
+    for a standalone (every image, version order). A colour child's slots carry its own
+    colourway's images first (SI8 T4, CP-D4), and a read has no version to rebuild them from, so
+    a child's read drops the image rows: an image issue fails `listing` and no image path reads
+    as succeeded, never a wrong `images[k]` (SI8 fix round 1, R1-1)."""
+    index = reverse_index(None)
+    if not _is_child(attributes):
+        return index
+    return {name: paths for name, paths in index.items() if name not in IMAGE_NAMES}
 
 
 def _read_listing(

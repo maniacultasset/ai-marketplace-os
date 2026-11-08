@@ -281,3 +281,52 @@ async def test_status_sync_takes_every_read_error_from_a_real_read() -> None:
         ("listing", "77777"),
         ("listing", "90220"),
     ]
+
+
+# ---- SI8 fix round 1 (R1-1; CP-D4): a colour child's image slots on a read ----
+
+
+def _image_issue(name: str) -> dict[str, Any]:
+    return {"code": "90220", "message": "Bad image.", "severity": "ERROR", "attributeNames": [name]}
+
+
+async def _read_child(issues: list[Any]) -> tuple[Any, dict[str, int]]:
+    """The AC5 family (S, Z, R1, B1, R2) published to the fake; the Red child read back."""
+    from tests.adapters.amazon_support import SELLER, colour_family
+
+    app = build_fake()
+    adapter = amazon_adapter(app, rows=[_row()])
+    sent, at = colour_family()
+    await adapter.create_listing(sent)
+    (red,) = [
+        u
+        for u in sent.units()
+        if u.item_role == "child" and u.variant_attributes == {"size": "M", "color": "red"}
+    ]
+    app.state.fake.spapi_items[(SELLER, red.seller_sku)]["issues"] = issues
+    return await adapter.get_listing(red.seller_sku, listing_id=sent.listing_id), at
+
+
+async def test_amazon_read_child_image_issue_never_lands_on_the_wrong_image() -> None:
+    """Red sends main=R1, other_1=R2, other_2=Z, so `other_product_image_locator_1` is R2, not
+    images[1] (Z). A read has no version to rebuild the slots from: the issue fails `listing`,
+    and no image path of the child reads as succeeded (a retry of Z would never fix R2)."""
+    got, at = await _read_child([_image_issue("other_product_image_locator_1")])
+    images = {f.field: f.status for f in got.fields if f.field.startswith("images[")}
+    assert images == {}, images
+    assert [e.field for e in got.errors] == ["listing"]
+    assert at["Z"] == 1 and at["R2"] == 4  # the finding's layout: the old index said images[1]
+    assert got.status == "partially_published"
+
+
+async def test_amazon_read_child_text_issue_keeps_its_path() -> None:
+    got, _ = await _read_child([_image_issue("item_name")])
+    assert _field(got, "content.title").status == "failed"
+    assert [e.field for e in got.errors] == ["content.title"]
+
+
+async def test_amazon_read_standalone_image_issue_keeps_its_image_path() -> None:
+    """A standalone sends every image in version order, so slot k is images[k] (unchanged)."""
+    got = await _read([_image_issue("other_product_image_locator_1")], rows=[_row()])
+    assert _field(got, "images[1]").status == "failed"
+    assert [e.field for e in got.errors] == ["images[1]"]
