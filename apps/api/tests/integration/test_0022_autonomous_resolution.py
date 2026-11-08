@@ -72,7 +72,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     command.upgrade(cfg, REVISION)
     assert _has_column(scratch_db.libpq)
     assert _edge_count(scratch_db.libpq) == 72
-    command.check(cfg)
+    # `check` compares with the models, which are at head (0025, 0026 came after): only at head
     command.downgrade(cfg, PREVIOUS)
     assert not _has_column(scratch_db.libpq)
     assert _edge_count(scratch_db.libpq) == 63

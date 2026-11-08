@@ -56,7 +56,7 @@ async def test_public_url_served_anonymously(
     async with httpx.AsyncClient() as anonymous:
         got = await anonymous.get(url)
         assert got.status_code == 200 and got.content == JPEG
-        assert "immutable" in got.headers.get("cache-control", "")
+        assert got.headers.get("cache-control") == "public, max-age=86400"  # V1 hardening #17
         private = await anonymous.get(
             public_hosting.replace(PUBLIC_BUCKET, "marketplace-images") + "/" + key
         )

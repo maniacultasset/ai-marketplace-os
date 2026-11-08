@@ -39,7 +39,7 @@ def test_budget_indexes_exist_and_cover_the_reserving_kinds(db: psycopg.Connecti
     assert valid == (True,)
 
 
-def test_tenant_budget_sum_can_use_the_index(db: psycopg.Connection) -> None:
+def test_tenant_budget_sum_uses_a_budget_index(db: psycopg.Connection) -> None:
     db.execute("SET LOCAL enable_seqscan = off")
     plan = "\n".join(
         r[0]
@@ -50,4 +50,5 @@ def test_tenant_budget_sum_can_use_the_index(db: psycopg.Connection) -> None:
             "AND started_at >= now() - interval '1 day' AND started_at < now()"
         ).fetchall()
     )
-    assert "ix_job_runs_budget_tenant_started_at" in plan, plan
+    # either budget index serves it (the planner picks by the table's statistics), never a scan
+    assert "ix_job_runs_budget_" in plan and "Seq Scan" not in plan, plan
