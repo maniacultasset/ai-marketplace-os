@@ -68,7 +68,11 @@ async def validate_listing(
     principal: Principal,
     listing_id: uuid.UUID,
     version_id: uuid.UUID | None,
+    *,
+    on_reject: bool = False,
 ) -> ValidationSummary:
+    """`on_reject` (SI9 B5): the photo-reject re-check moves an `approved` listing only on an
+    ERROR, since a WARNING allows approval."""
     listing = await uow.listings.get_for_update(listing_id)
     if listing is None:
         raise NotFoundError("listing_id")
@@ -87,7 +91,7 @@ async def validate_listing(
     if same is not None and _same_flags(same, check.report):
         if adapter is not None and await _schema_changed(uow, listing, adapter):
             await _sync_schema(uow, listing, version.id, adapter)
-            listing = await _revalidate(uow, principal, listing, check, adapter)
+            listing = await _revalidate(uow, principal, listing, check, adapter, on_reject)
             await ask_after_check(
                 uow,
                 listing,
@@ -101,7 +105,7 @@ async def validate_listing(
     if adapter is not None:
         await _sync_schema(uow, listing, version.id, adapter)
     if current:
-        listing = await _revalidate(uow, principal, listing, check, adapter)
+        listing = await _revalidate(uow, principal, listing, check, adapter, on_reject)
         # SI4 A13: the questions of the current version's check (never of a past version's)
         await ask_after_check(
             uow,
@@ -157,10 +161,13 @@ async def _revalidate(
     listing: Any,
     check: Any,
     adapter: ErrorReport | None,
+    on_reject: bool = False,
 ) -> Any:
     """The current version's `revalidate` move, when the outcome's status differs."""
     to, reason = human_move(check.report, adapter)
     target = _target(listing, to)
+    if on_reject and listing.status == "approved" and target != "blocked":
+        target = None  # warnings only: the approval stands
     if target is not None:
         listing = await uow.listings.move(
             listing,

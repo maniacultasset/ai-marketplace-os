@@ -230,6 +230,32 @@ async def test_reject_bullet_only_hit_warns_and_approve_still_works(
     assert outcome.http_status == 200, outcome
 
 
+async def test_reject_keeps_an_approved_listing_on_a_warning_only_check(
+    photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # a WARNING allows approval, so a reject whose re-check adds only warnings keeps the approval
+    pw = photo_world
+    accepted, _ = await _listing_saying(
+        pw,
+        monkeypatch,
+        "approved",
+        title="Classic Cotton Kurta",
+        bullets=["Soft cotton", "A {value} cut", "Easy care"],
+    )
+    with pw.conn.transaction():
+        pw.conn.execute("SET LOCAL session_replication_role = replica")
+        pw.conn.execute(
+            "UPDATE listings SET approved_version_id = current_version_id WHERE id = %s",
+            [accepted.listing_id],
+        )
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert _status(pw, accepted.listing_id) == ("approved", None)
+    assert pw.world.listing(accepted.listing_id)["approved_version_id"] is not None
+    assert [(f, s) for f, s, *_ in _mismatch(pw, accepted.listing_id)] == [
+        ("content.bullets[1]", "warning")
+    ]
+
+
 async def test_reject_leaves_a_listing_that_does_not_use_the_value(
     photo_world: PhotoWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:

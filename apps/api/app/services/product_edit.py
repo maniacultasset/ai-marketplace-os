@@ -481,5 +481,5 @@ async def _update_product(
             # this request (after the refresh, so the check reads the facts as written), and the
             # review screen shows "facts changed, regenerate" at once
             for listing in await uow.listings.reviewable_for_product(row.id):
-                await validate_listing(uow, principal, listing.id, None)
+                await validate_listing(uow, principal, listing.id, None, on_reject=True)
         return await full_view(uow, row)
