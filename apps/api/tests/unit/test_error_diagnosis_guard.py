@@ -388,3 +388,36 @@ def test_a_link_on_any_tld_is_refused(cause: str) -> None:
 )
 def test_prose_with_dots_is_not_a_link(cause: str) -> None:
     assert isinstance(_check(plain_cause=cause), Proposed), cause
+
+
+# ---- round 3 (R3-1): a host on any-case TLD, whatever mark follows it ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Get the fix at Evil.Shop today please.",  # Title-case TLD
+        "Use EVIL.Shop/fix to repair it now.",  # mixed-case TLD with a path
+        "Open evil.shop—it lists the fix.",  # em dash
+        "See evil.shop... for the full fix.",  # ellipsis
+        "Look up evil.shop» for the fix.",  # closing guillemet
+        "Open evil.shop” for it now please",  # curly closing quote
+        "Open *evil.shop* for the full fix now.",  # emphasis mark
+        "Open evil.shop-now for the full fix.",  # hyphen ends a label, still a host
+        "Open evil.shop> for the full fix now.",  # angle bracket
+        "Open Value.Then/fix for the full fix.",  # an unknown TLD with a path is a link
+    ],
+)
+def test_a_host_on_any_case_tld_is_refused_whatever_follows(cause: str) -> None:
+    assert _check(plain_cause=cause) == Invalid("plain_cause:markup"), cause
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Set the value.Then send the listing again.",
+        "Check keywords.search_terms and attributes.color, then resend.",
+    ],
+)
+def test_prose_on_a_non_tld_or_field_path_stays_proposed(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Proposed), cause

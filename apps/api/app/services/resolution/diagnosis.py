@@ -12,7 +12,7 @@ the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
   starts like a spreadsheet formula (`=`, `+`, `-`, `@`, a tab or a CR), holds a control, format or
   bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, `data:`, `//host`,
-  `www.`, a bare host on any TLD, an IPv4 host, an email; an ideographic or fullwidth full
+  `www.`, a host on a real TLD in any case or any host with a path, an IPv4 host, an email; an ideographic or fullwidth full
   stop reads as `.`), `<tag`, `&#`, a `{...}` token or a folded secret;
   when the code or class is not a member of the
   closed vocabularies; when the field hint is not a legal path in the field index; or when it
@@ -33,6 +33,8 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass
 from mkos_schemas.paths import is_valid_field_path
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.services.resolution.tlds import IANA_TLDS
 
 PROMPT_VERSION: Final = "error-diagnosis-1"
 MESSAGE_MAX: Final = 1000
@@ -70,12 +72,9 @@ _BAD_TEXT: Final = (
         r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|net|org|io|co|ly|me|app|dev|example|xyz)\b)"
     ),
 )
-# A host on any TLD (2-63 letters, all lowercase or all capitals, so "value.Then" stays prose)
-# that ends at a path, port, query, fragment, space, closing punctuation or the end of the text.
-_HOST: Final = re.compile(
-    r"(?<![\w.-])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.(?:[a-z]{2,63}|[A-Z]{2,63})"
-    r"(?=[/:?#,;!)\]'\"]|\.(?:\s|$)|\s|$)"
-)
+# A host: dotted labels ending in a TLD of 2-63 letters in any case, ended by anything but a word
+# character (a dash, an ellipsis, a quote or a guillemet ends it too). `_is_link` decides.
+_HOST: Final = re.compile(r"(?<![\w.-])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.([A-Za-z]{2,63})(?!\w)")
 _IPV4: Final = re.compile(r"(?<![\w.])\d{1,3}(?:\.\d{1,3}){3}(?!\w|\.\d)")
 # dots a browser reads as "." that NFKC keeps or makes: ideographic, halfwidth ideographic,
 # fullwidth and small full stops
@@ -189,10 +188,13 @@ def build_input(
 
 
 def _is_link(host: re.Match[str]) -> bool:
-    """A host match is a link unless it is a legal field path ("attributes.color") that no path,
-    port, query or fragment follows."""
+    """A host match is a link when a path, port, query or fragment follows it, or when its TLD is
+    a real one (`IANA_TLDS`) and it is not a legal field path ("attributes.color"). So
+    "Evil.Shop" is a link and "value.Then" stays prose."""
     after = host.string[host.end() : host.end() + 1]
-    return not is_valid_field_path(host.group()) or after in ("/", ":", "?", "#")
+    if after in ("/", ":", "?", "#"):
+        return True
+    return host.group(1).lower() in IANA_TLDS and not is_valid_field_path(host.group())
 
 
 def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
