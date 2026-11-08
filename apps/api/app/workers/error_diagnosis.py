@@ -6,7 +6,9 @@ A `brand_embed` job with `entity_type 'error_proposal'` (JobKind stays closed), 
 1. One short tenant read: the sample issue (code, field, severity, message), its listing (SKUs,
    product, brand, barcode, every party value, pinned product type, and the version's title,
    bullets, description, search and hidden terms and attribute values) and the critical keys.
-2. `diagnosis.build_input`: Amazon's text redacted into `data["message"]` only.
+2. `diagnosis.build_input`: Amazon's text redacted into `data["message"]` only. The issue's
+   submitted value is redacted only when it looks private (`submitted_secrets`) and is never a
+   `check` secret: "true" or "Standard" is the value the draft has to name.
 3. `budget.reserve` of `DIAGNOSIS_RESERVATION_USD` on the attempt. A refusal finishes the proposal
    `failed/budget` (tries kept, retried in 10 minutes) and ends the job with `{"refused": scope}`.
 4. The seam call with no transaction open: the pipeline's `complete_json`, looked up lazily
@@ -28,7 +30,7 @@ from __future__ import annotations
 import importlib
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
@@ -141,12 +143,31 @@ def party_values(facts: ProductFacts | None) -> list[tuple[str, str]]:
     return [(v, "{value}") for v in sorted(found) if len(v) >= diagnosis.SECRET_MIN]
 
 
+def submitted_secrets(value: str | None, *, exact: Iterable[str]) -> list[tuple[str, str]]:
+    """Amazon's submitted value as a redaction pair, only when it looks private: it is one of the
+    `exact` tokens (SKU, brand, barcode, party values; any case), or it has `FREE_TEXT_MIN`
+    characters and a space, digit, `@` or `+`. A boolean, enum or unit value ("true", "Standard",
+    "Count") stays: the model must name the bad value to explain the fix. Never a `check` secret."""
+    shown = (value or "").strip()
+    if not shown:
+        return []
+    folded = diagnosis.fold(shown).casefold()
+    if any(diagnosis.fold(e).casefold() == folded for e in exact if e):
+        return [(shown, "{value}")]
+    if len(folded) >= diagnosis.FREE_TEXT_MIN and any(
+        ch.isspace() or ch.isdigit() or ch in "@+" for ch in folded
+    ):
+        return [(shown, "{value}")]
+    return []
+
+
 async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] | None:
     issue = await uow.listing_issues.get(sample_id)
     if issue is None:
         return None
     listing = await uow.listings.get(issue.listing_id)
     secrets: list[tuple[str, str]] = []
+    exact: list[str] = []
     fields: set[str] = set(FIXED_FIELDS)
     product_type = None
     product_id = None
@@ -164,6 +185,7 @@ async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] |
                 secrets.append((product.brand_name, "{brand}"))
             if getattr(product, "identifier_value", None):
                 secrets.append((str(product.identifier_value), "{value}"))
+        exact = [v for v, _ in secrets]  # the exact tokens, before the free text
         version_id = listing.current_version_id
         version = (
             None if version_id is None else await uow.listing_versions.get(listing.id, version_id)
@@ -176,14 +198,13 @@ async def _read(uow: TenantUnitOfWork, sample_id: uuid.UUID) -> dict[str, Any] |
             if version.category_template_id is not None:
                 pinned = await uow.templates.pinned(version.category_template_id)
                 product_type = None if pinned is None else pinned.product_type
-    if issue.value_submitted:
-        secrets.append((issue.value_submitted, "{value}"))
     return {
         "issue": issue,
         "listing_id": None if listing is None else listing.id,
         "product_id": product_id,
         "product_type": product_type,
         "secrets": secrets,
+        "redact": secrets + submitted_secrets(issue.value_submitted, exact=exact),
         "fields": sorted(fields),
         "critical": await uow.product_facts.critical_keys(),
     }
@@ -243,7 +264,7 @@ async def run_error_diagnosis(ctx: JobContext) -> Outcome:
         found["product_type"],
         issue.severity,
         issue.message or "",
-        found["secrets"],
+        found["redact"],
         fields=found["fields"],
     )
     if seam_entry() is None:

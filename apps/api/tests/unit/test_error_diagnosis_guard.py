@@ -448,3 +448,59 @@ def test_plain_english_data_colon_is_not_a_link(cause: str) -> None:
 )
 def test_a_data_uri_is_refused(cause: str) -> None:
     assert _check(plain_cause=cause) == Invalid("plain_cause:markup"), cause
+
+
+# ---- round 3 (R3-3): Amazon's submitted value is redacted only when it looks private ----
+
+
+@pytest.mark.parametrize("value", ["true", "Count", "Standard", "false", "Cotton"])
+def test_a_common_submitted_value_is_never_a_secret(value: str) -> None:
+    from app.workers.error_diagnosis import submitted_secrets
+
+    assert submitted_secrets(value, exact=[SKU, BRAND, EAN]) == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "Flat 12 MG Road",  # an address-like value with a space and a digit
+        "ops@zebra.example",
+        "+91 99999 00000",
+        "zebra mills",  # the brand, any case
+        SKU,
+    ],
+)
+def test_a_private_submitted_value_is_redacted(value: str) -> None:
+    from app.workers.error_diagnosis import submitted_secrets
+
+    pairs = submitted_secrets(value, exact=[SKU, BRAND, EAN])
+    assert pairs == [(value, "{value}")]
+    assert value not in redact(f"The value '{value}' is not allowed here.", pairs)
+
+
+@pytest.mark.parametrize(
+    ("value", "message", "cause"),
+    [
+        (
+            "true",
+            "The value must be true or false.",
+            "Set the batteries field to true or false, then resend.",
+        ),
+        (
+            "Standard",
+            "The value Standard is not valid for this size system.",
+            "Standard is not a size system Amazon takes; pick another.",
+        ),
+    ],
+)
+def test_a_common_submitted_value_never_mangles_or_refuses(
+    value: str, message: str, cause: str
+) -> None:
+    from app.services.resolution.diagnosis import secret_values
+    from app.workers.error_diagnosis import submitted_secrets
+
+    pairs = submitted_secrets(value, exact=[SKU, BRAND, EAN])
+    assert redact(message, pairs) == message
+    out = DiagnosisOut.model_validate({**GOOD, "plain_cause": cause})
+    found = check(out, field_index=INDEX, critical_keys=frozenset(), secrets=secret_values(pairs))
+    assert isinstance(found, Proposed), found

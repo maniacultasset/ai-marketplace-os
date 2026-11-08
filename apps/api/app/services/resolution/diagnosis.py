@@ -136,7 +136,7 @@ def _strip(text: str) -> str:
     return _SPACE.sub(" ", "".join(kept)).strip()
 
 
-def _fold(text: str) -> str:
+def fold(text: str) -> str:
     """NFKC with control, format and bidi characters gone: a zero-width split never hides a
     secret and a fullwidth scheme reads as `https://`."""
     return unicodedata.normalize("NFKC", _strip(text))
@@ -152,9 +152,9 @@ def redact(message: str, secrets: Iterable[tuple[str, str]]) -> str:
     """`message` folded (NFKC, control and bidi characters gone), then each (value, placeholder)
     secret replaced (longest first, folded the same way), then the ASIN, long digit, URL and
     email patterns, at most 1,000 code points."""
-    text = _fold(message or "")
+    text = fold(message or "")
     pairs = sorted(
-        {(_fold(v), p) for v, p in secrets if v and len(_fold(v)) >= SECRET_MIN},
+        {(fold(v), p) for v, p in secrets if v and len(fold(v)) >= SECRET_MIN},
         key=lambda pair: -len(pair[0]),
     )
     for value, placeholder in pairs:
@@ -216,9 +216,9 @@ def _text_problem(text: str, secrets: Iterable[str]) -> str | None:
         return "markup"
     if _IPV4.search(normal) or _EMAIL.search(normal) or any(map(_is_link, _HOST.finditer(normal))):
         return "markup"
-    folded = _fold(text)
+    folded = fold(text)
     for secret in secrets:
-        mine = _fold(secret) if secret else ""
+        mine = fold(secret) if secret else ""
         if len(mine) >= SECRET_MIN and _secret_pattern(mine).search(folded):
             return "secret"
     return None

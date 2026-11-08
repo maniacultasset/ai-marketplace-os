@@ -241,6 +241,48 @@ async def test_the_listing_text_never_reaches_the_model(
     assert row["status"] == "invalid" and row["plain_cause"] is None
 
 
+@pytest.mark.parametrize(
+    ("submitted", "message", "sent"),
+    [
+        ("true", "The value must be true or false.", "The value must be true or false."),
+        ("Standard", "Standard is not a valid value.", "Standard is not a valid value."),
+        ("Flat 12 MG Road", "The value Flat 12 MG Road is bad.", "The value {value} is bad."),
+    ],
+)
+async def test_a_submitted_value_is_redacted_only_when_private(
+    gen_world: GenWorld,
+    diagnosis_on: None,
+    monkeypatch: pytest.MonkeyPatch,
+    submitted: str,
+    message: str,
+    sent: str,
+) -> None:
+    """Round 3 fix (R3-3): a common submitted value ("true", "Standard") neither changes Amazon's
+    text nor refuses a draft that names it; a private-looking one is still redacted."""
+    from app.services.resolution.diagnosis import DiagnosisOut
+    from app.workers import error_diagnosis
+
+    seen: dict[str, Any] = {}
+
+    async def explain(**kwargs: Any) -> Any:
+        seen.update(kwargs)
+        return DiagnosisOut(
+            plain_cause=f"Amazon does not take {submitted.split()[0]} for this field here.",
+            suggested_fix="Pick a value from the allowed list, then send it again.",
+            lane_class="seller",
+        )
+
+    _made, issue = await _unknown(gen_world, value_submitted=submitted)
+    gen_world.conn.execute("UPDATE listing_issues SET message = %s WHERE id = %s", [message, issue])
+    monkeypatch.setattr(error_diagnosis, "call_complete_json", explain)
+    await _schedule()
+    ((job_id, *_),) = _jobs(gen_world)
+    await run_job(job_id)
+    assert seen["data"]["message"] == sent
+    (row,) = _proposals(gen_world)
+    assert row["status"] == "proposed", row
+
+
 async def test_model_failures_count_to_three(
     gen_world: GenWorld, diagnosis_on: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
