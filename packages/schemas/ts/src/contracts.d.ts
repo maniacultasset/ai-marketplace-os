@@ -2064,6 +2064,9 @@ export interface ModelCredentials {
 /**
  * The chart as read: one row per size, keyed by measure name (for example `chest`).
  *
+ * `unit` is `unknown` when no unit is printed or the read unit is not backed by a printed line;
+ * `unit_source_line` is that printed line when the unit is `cm` or `in` (null otherwise).
+ *
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "SizeChartReadChart".
  */
@@ -2081,7 +2084,8 @@ export interface SizeChartReadChart {
       [k: string]: string | number;
     }[]
   ];
-  unit: "cm" | "in";
+  unit: "cm" | "in" | "unknown";
+  unit_source_line?: string | null;
   [k: string]: unknown;
 }
 /**

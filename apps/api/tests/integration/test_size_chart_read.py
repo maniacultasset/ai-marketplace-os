@@ -99,12 +99,15 @@ async def test_read_enqueues_one_job_and_the_suggestion_follows(
         "image_id": str(image),
         "status": "queued",
         "chart": None,
+        "unit_source_line": None,
         "confidence": None,
         "read_at": None,
     }
     await run_image_job(uuid.UUID(body["job_id"]))
     suggestion = (await _detail(api, images_db, p))["size_chart_suggestion"]
     assert suggestion["status"] == "read" and suggestion["confidence"] == 0.9
+    assert suggestion["chart"]["unit"] == "cm"
+    assert suggestion["unit_source_line"] == "All measurements in cm"
     assert [r["size"] for r in suggestion["chart"]["rows"]] == ["S", "M", "L"]
     assert suggestion["read_at"] is not None
     after = images_db.conn.execute(
