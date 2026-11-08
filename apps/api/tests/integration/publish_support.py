@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -76,6 +77,13 @@ def insert_account(
 
 @pytest.fixture
 async def pub(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[PubWorld]:
+    async with build_pub_world(auth_db, monkeypatch) as pw:
+        yield pw
+
+
+@asynccontextmanager
+async def build_pub_world(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[PubWorld]:
+    """The publish world (`pub`), reusable by a fixture that adds to it (SI11 `prev`)."""
     from app.adapters.fake import FakeAdapter
     from app.db.queue import get_queue_app
     from app.workers import publish as publish_worker

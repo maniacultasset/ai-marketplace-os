@@ -935,6 +935,21 @@ export interface GenerationContext {
     | [string, string, string, string]
     | [string, string, string, string, string];
   schema_version?: string;
+  /**
+   * @maxItems 10
+   */
+  target_fields?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string];
   tenant_id: string;
   user_instructions?: string | null;
   [k: string]: unknown;

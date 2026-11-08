@@ -14,6 +14,7 @@ mappings, never a client, a token or a socket (`.importlinter` `pure-mapping-no-
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from mkos_schemas.enums import Marketplace
 
@@ -44,4 +45,15 @@ def live_url(marketplace: Marketplace | str, external_id: str | None) -> str | N
     listings API does not return (believed, DW1), so no URL is guessed."""
     if Marketplace(marketplace) is Marketplace.AMAZON:
         return amazon_mapping.live_url(external_id)
+    return None
+
+
+def repairer(marketplace: Marketplace | str) -> Any:
+    """SI11 (CP-D20): the marketplace's pure repair-rule module (`propose`, `RepairContext`,
+    `digest`, `source_value`), or None when it has none. Services reach repairs only here."""
+    name = Marketplace(marketplace)
+    if name is Marketplace.AMAZON:
+        from app.adapters.amazon import repairs
+
+        return repairs
     return None

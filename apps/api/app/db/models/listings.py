@@ -96,6 +96,8 @@ class Listing(TenantScoped, Base):
             to_version("listings", pointer, listing_column="id", deferrable=True)
             for pointer in VERSION_POINTERS
         ),
+        # 0022 (SI11): the version the marketplace dry run judged
+        to_version("listings", "remote_check_version_id", listing_column="id", deferrable=True),
         Index(
             conv("ix_listings_tenant_id_status_marketplace"), "tenant_id", "status", "marketplace"
         ),
@@ -180,6 +182,10 @@ class Listing(TenantScoped, Base):
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     sync_poll_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    # 0022 (SI11): the marketplace dry-run verdict (pending, clean, issues, failed) on one version
+    remote_check_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    remote_check_status: Mapped[str | None] = mapped_column(Text)
+    remote_check_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     marketplace_account_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     paused_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     paused_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)

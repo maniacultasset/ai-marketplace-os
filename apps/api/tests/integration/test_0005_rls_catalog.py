@@ -53,6 +53,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "image_candidates": TEMPLATE,
     # 0021 (SI10): one platform row with no tenant data; the guard trigger owns the clear
     "ai_credit_state": frozenset({"acs_read", "acs_write", "t_platform", "t_migrator"}),
+    # 0022 (SI11): the plain template
+    "listing_repairs": TEMPLATE,
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}

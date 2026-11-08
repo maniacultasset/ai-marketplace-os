@@ -67,6 +67,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any, Final
+from uuid import UUID
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, Marketplace, RetryClass, Severity
@@ -77,6 +78,7 @@ from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.amazon import constants as c
 from app.adapters.amazon import schema_check
+from app.adapters.amazon.repairs import apply_repairs
 from app.adapters.base import (
     FACT_SPEC_KEYS,
     PRICE_PATHS,
@@ -112,6 +114,10 @@ class MappedItem:
     errors: tuple[ErrorItem, ...] = ()
     paths: tuple[str, ...] = field(default=())
     """Every field path this item answers for: `submitted` + `skipped`, sorted."""
+    repaired: tuple[tuple[UUID, str, bytes, bytes], ...] = ()
+    """SI11: the repairs applied (id, field path, from digest, to digest)."""
+    stale_repairs: tuple[UUID, ...] = ()
+    """SI11: the repairs whose seller value changed since (retired by the publish job)."""
     image_names: Mapping[str, str] = field(default_factory=dict)
     """SI8 CP-D4: the Amazon image attribute -> the `images[<version index>]` path it carries,
     for each image this item sent (a child's slots do not line up with the version index)."""
@@ -710,6 +716,10 @@ def item_payload(
         if axes is not None and axes in c.AMAZON_THEMES:
             attributes[c.THEME_ATTRIBUTE] = [{"name": c.AMAZON_THEMES[axes]}]
 
+    # SI11 (T10): the listing's adapter-side repairs, while their seller value is unchanged
+    applied = apply_repairs(attributes, listing, unit)
+    attributes = applied.attributes
+    sent += [path for _id, path, _from, _to in applied.repaired]
     payload: Payload = {
         "productType": template.product_type if mapped is not None and template else None,
         "requirements": (
@@ -724,6 +734,8 @@ def item_payload(
         skipped=tuple(sorted(set(skipped) - set(sent))),
         errors=tuple(errors),
         paths=tuple(sorted(set(sent) | set(skipped))),
+        repaired=applied.repaired,
+        stale_repairs=applied.stale,
         image_names=image_names,
     )
 

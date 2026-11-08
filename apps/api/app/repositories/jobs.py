@@ -84,6 +84,9 @@ class EnqueueSpec:
     # S17b (PLAN D15(b)): a procrastinate lock; jobs sharing one never run at the same time,
     # and a waiting one stays unfetched (`todo`), holding no worker slot
     lock: str | None = None
+    # SI11: a system job's own key (64 hex), for a job no HTTP key names (the dry run, an
+    # automatic resend); a second enqueue with the same key returns the first job
+    job_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -443,12 +446,14 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         payload = dict(spec.payload or {})
         if _payload_bytes(payload) > MAX_PAYLOAD_BYTES:
             raise ValueError(f"payload exceeds {MAX_PAYLOAD_BYTES} bytes")
+        if spec.job_key is not None and spec.http_key is not None:
+            raise ValueError("a job is keyed by an HTTP key or its own key, not both")
         key = (
             job_idempotency_key(
                 spec.http_key, kind.value, spec.listing_id, await self._key_began(spec.http_key)
             )
             if spec.http_key is not None
-            else None
+            else spec.job_key
         )
         values: dict[str, Any] = {
             "tenant_id": self.tenant_id,
@@ -515,6 +520,22 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             JobRun.listing_id == listing_id,
             JobRun.kind == JobKind(kind).value,
             JobRun.status.in_(LIVE),
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def latest_preview(self, listing_id: uuid.UUID, version_id: uuid.UUID) -> JobRun | None:
+        """The newest marketplace dry run (`listing_status_sync`, `op = "preview"`) of one
+        listing version (SI11 fix round 3)."""
+        stmt = (
+            self._select()
+            .where(
+                JobRun.listing_id == listing_id,
+                JobRun.kind == JobKind.LISTING_STATUS_SYNC.value,
+                JobRun.payload_json["op"].astext == "preview",
+                JobRun.payload_json["version_id"].astext == str(version_id),
+            )
+            .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
+            .limit(1)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 

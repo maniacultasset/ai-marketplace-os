@@ -63,6 +63,19 @@ def listing_fields(listing: Any) -> dict[str, Any]:
         "status_changed_at": listing.status_changed_at,
         "created_at": listing.created_at,
         "updated_at": listing.updated_at,
+        "remote_check": remote_check(listing),
+    }
+
+
+def remote_check(listing: Any) -> dict[str, Any] | None:
+    """SI11: the `RemoteCheckOut` fields of the marketplace dry run, or None when none ran."""
+    version_id = getattr(listing, "remote_check_version_id", None)
+    if version_id is None:
+        return None
+    return {
+        "version_id": version_id,
+        "status": listing.remote_check_status,
+        "at": listing.remote_check_at,
     }
 
 

@@ -3340,6 +3340,8 @@ export interface components {
             action_taken?: string | null;
             /** Auto Fixable */
             auto_fixable: boolean;
+            /** Cause */
+            cause?: ("seller_fact" | "ai_content" | "mapping" | "image" | "marketplace" | "unknown") | null;
             /**
              * Created At
              * Format: date-time
@@ -3362,6 +3364,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Lane */
+            lane?: ("auto_repair" | "auto_content" | "ai_field" | "seller" | "marketplace" | "retry" | "staff") | null;
             /**
              * Last Seen At
              * Format: date-time
@@ -3565,6 +3569,8 @@ export interface components {
              * Format: uuid
              */
             product_id: string;
+            /** @description SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran. */
+            remote_check?: components["schemas"]["RemoteCheckOut"] | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Status Changed At
@@ -3625,6 +3631,8 @@ export interface components {
              * Format: uuid
              */
             product_id: string;
+            /** @description SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran. */
+            remote_check?: components["schemas"]["RemoteCheckOut"] | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Status Changed At
@@ -4550,6 +4558,24 @@ export interface components {
         RegenerateRequest: {
             /** Instructions */
             instructions?: string | null;
+        };
+        /**
+         * RemoteCheckOut
+         * @description The marketplace's dry-run verdict (Amazon VALIDATION_PREVIEW) on one version.
+         */
+        RemoteCheckOut: {
+            /** At */
+            at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "clean" | "issues" | "failed";
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
         };
         /**
          * RequirementsOut

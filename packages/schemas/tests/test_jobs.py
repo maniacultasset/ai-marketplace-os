@@ -884,3 +884,36 @@ def test_secret_walk_still_runs_with_photo_targets() -> None:
         _context(photo_targets=[_target()], product={"title": "P", "api_key": "x"})
     with pytest.raises(ValidationError):
         _context(photo_targets=[_target(allowed_values=['{"api_key": "x"}'])])
+
+
+# ---- SI11: GenerationContext.target_fields (2.1.0, AI seam) ----
+
+
+def test_target_fields_default_empty() -> None:
+    assert _context().target_fields == []
+
+
+def test_target_fields_accepts_paths() -> None:
+    ctx = _context(target_fields=["content.title", "content.description"])
+    assert ctx.target_fields == ["content.title", "content.description"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "content.title",  # a string, not a list
+        ["content.nope"],  # not a canonical path
+        ["content.title", "content.title"],  # a duplicate
+        [f"content.bullets[{i}]" for i in range(5)] + ["content.title"] * 6,  # 11 paths
+    ],
+)
+def test_target_fields_refused(value: object) -> None:
+    with pytest.raises(ValidationError):
+        _context(target_fields=value)
+
+
+def test_target_fields_eleven_distinct_refused() -> None:
+    paths = ["content.title", "content.description", *[f"content.bullets[{i}]" for i in range(9)]]
+    assert len(set(paths)) == 11
+    with pytest.raises(ValidationError):
+        _context(target_fields=paths)

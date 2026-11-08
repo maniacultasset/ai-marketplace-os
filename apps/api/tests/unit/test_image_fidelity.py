@@ -135,6 +135,53 @@ def test_uniform_border_erased_sleeve_fails_on_holes_with_good_iou() -> None:
     assert result.hole_share > fid.HOLE_MAX and not result.passed
 
 
+BEIGE = (214, 198, 172)
+
+
+def _white_padded(
+    colour: tuple[int, int, int] = RED, inset: int = 0
+) -> tuple[Image.Image, Image.Image, Image.Image]:
+    """A 384 x 512 beige photo padded with white, and the matching edit (white, product kept or
+    drawn `inset` px smaller on each side)."""
+    photo = Image.new("RGB", (384, SIDE), BEIGE)
+    ImageDraw.Draw(photo).rectangle((92, 156, 292, 356), fill=RED)
+    original = pad_square(photo, fid.PAD_COLOUR)
+    edit = Image.new("RGB", (SIDE, SIDE), WHITE)
+    box = (156 + inset, 156 + inset, 356 - inset, 356 - inset)
+    ImageDraw.Draw(edit).rectangle(box, fill=colour)
+    return photo, original, edit
+
+
+def test_white_padded_photo_is_judged_inside_the_photo() -> None:
+    photo, original, edit = _white_padded()
+    prof = _profile(photo)
+    assert prof.uniform and not prof.near_white
+    result = judge(original, edit, prof, photo_size=photo.size)
+    assert result.passed and result.mask_iou is not None and result.mask_iou >= 0.95
+    # Without the photo's size the white bars read as product (far from beige) and IOU fails.
+    blind = judge(original, edit, prof)
+    assert blind.mask_iou is not None and blind.mask_iou < fid.IOU_MIN
+
+
+def test_white_padded_photo_still_fails_a_changed_product() -> None:
+    photo, original, scaled = _white_padded(inset=20)
+    prof = _profile(photo)
+    small = judge(original, scaled, prof, photo_size=photo.size)
+    assert small.mask_iou is not None and small.mask_iou < fid.IOU_MIN and not small.passed
+    _, _, recoloured = _white_padded(colour=_hue(RED, 30))
+    result = judge(original, recoloured, prof, photo_size=photo.size)
+    assert not result.passed and result.colour_distance > fid.HIST_MAX
+
+
+def test_composite_of_a_white_padded_photo_pastes_no_padding_colour() -> None:
+    _, original, edit = _white_padded()
+    stray = edit.copy()
+    ImageDraw.Draw(stray).rectangle((0, 0, 40, SIDE), fill=BEIGE)  # the model kept a bar
+    out = composite(original, stray)
+    assert out.getpixel((10, 200)) == WHITE  # the seller's padding is white, not beige
+    assert out.getpixel((256, 256)) == original.getpixel((256, 256)) == RED
+
+
 @pytest.mark.parametrize(
     ("scores", "passed"),
     [
@@ -164,6 +211,7 @@ def test_constants_are_pinned() -> None:
     assert (fid.ORIG_DIST, fid.COLOUR_TOL, fid.HIST_BINS) == (24, 32, 8)
     assert (fid.AGREEMENT_MIN, fid.HIST_MAX, fid.IOU_MIN) == (0.90, 0.15, 0.80)
     assert (fid.HOLE_PAD, fid.PALETTE_MIN, fid.HOLE_MAX) == (0.05, 0.02, 0.10)
+    assert (fid.PAD_COLOUR, fid.PHOTO_EDGE) == ((255, 255, 255), 2)
 
 
 def test_aspect_tolerance_pair() -> None:

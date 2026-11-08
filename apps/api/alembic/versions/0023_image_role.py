@@ -12,7 +12,7 @@ Downgrade (local and CI only) refuses while any image has a role or any `size_ch
 exists, else drops everything above.
 
 Revision ID: 0023_image_role
-Revises: 0021_ai_credit_state
+Revises: 0022_autonomous_resolution
 Create Date: 2026-11-08
 
 """
@@ -26,9 +26,9 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0023_image_role"
-# The single head on main at build (SI11's 0022_autonomous_resolution is not on main yet); the
-# lane that merges second re-chains.
-down_revision: str | Sequence[str] | None = "0021_ai_credit_state"
+# Chained on `0021_ai_credit_state` at build; re-chained on SI11's 0022_autonomous_resolution at
+# the 2026-11-08 merge of main.
+down_revision: str | Sequence[str] | None = "0022_autonomous_resolution"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

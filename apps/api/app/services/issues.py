@@ -31,7 +31,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from mkos_schemas.enums import ErrorSource, FixAction, RetryClass, Severity
@@ -80,8 +80,21 @@ def resolution_for(cause: str) -> str:
     return RESOLUTIONS.get(cause, "revalidated_clean")
 
 
-def dedupe_key(source: str, item: ErrorItem, listing_item_id: uuid.UUID | None = None) -> str:
-    """DATABASE.md:1331, exactly; `|item:<id>` when the item names a SKU."""
+PREVIEW_SUFFIX: Final = "|preview"
+Channel = Literal["live", "preview"]
+
+
+def dedupe_key(
+    source: str,
+    item: ErrorItem,
+    listing_item_id: uuid.UUID | None = None,
+    *,
+    channel: Channel = "live",
+) -> str:
+    """DATABASE.md:1331, exactly; `|item:<id>` when the item names a SKU. SI11 (CP-D4): an issue
+    of the marketplace's dry run (`channel="preview"`) ends `|preview`, after everything else, so
+    the `source|field|code|` prefix (`li_key_prefix`) still holds and a status read or a write
+    result never closes it."""
     term = ""
     if item.rule_id is not None:
         term = str(item.rule_id)
@@ -90,7 +103,9 @@ def dedupe_key(source: str, item: ErrorItem, listing_item_id: uuid.UUID | None =
     elif source == "rules_engine" and item.field.startswith(TEMPLATE_PREFIX):
         term = "template:" + item.field.removeprefix(TEMPLATE_PREFIX)
     key = f"{source}|{item.field}|{item.error_code.value}|{term}"
-    return key if listing_item_id is None else f"{key}|item:{listing_item_id}"
+    if listing_item_id is not None:
+        key = f"{key}|item:{listing_item_id}"
+    return key + PREVIEW_SUFFIX if channel == "preview" else key
 
 
 def classify(
@@ -171,17 +186,20 @@ async def sync_issues(
     job_id: uuid.UUID | None = None,
     listing_item_ids: Mapping[str, uuid.UUID] | None = None,
     close: bool = True,
+    channel: Channel = "live",
 ) -> SyncResult:
     """Steps 1-3 (module docstring). SI4 A17: `listing_item_ids` (dedupe key → the SKU's
     `listing_items` id) is set on a new row only (the key keeps today's shape); `close=False`
-    opens and repeats but closes nothing (a status read of a `failed` listing, CP-D16)."""
+    opens and repeats but closes nothing (a status read of a `failed` listing, CP-D16). SI11:
+    `channel="preview"` keys the rows of the marketplace's dry run apart; the close then touches
+    only preview rows, and a live sync never closes one."""
     if source not in ISSUE_SOURCES:
         raise ValueError(f"{source} is not an issue source")
     items: dict[str, ErrorItem] = {}
     for item in report.errors:
         if scope_fields is not None and item.field not in scope_fields:
             continue
-        items.setdefault(dedupe_key(source, item), item)
+        items.setdefault(dedupe_key(source, item, channel=channel), item)
     opened = repeated = 0
     for key, item in items.items():
         new = _issue(
@@ -208,6 +226,7 @@ async def sync_issues(
             list(items),
             resolution_for(cause),
             field_paths=scope_fields,
+            channel=channel,
         )
     result = SyncResult(opened=opened, repeated=repeated, closed=closed)
     if opened or closed:

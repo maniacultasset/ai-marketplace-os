@@ -7,10 +7,12 @@ the image children's environment allow-list and limits. It reads one JSON reques
 `{"ok": false, "reason", "fidelity"?}`. Every reply image is a fresh JPEG q92 with no metadata.
 
 Ops:
-- `prepare`: the vision copy padded to a square with its border colour, JPEG q90, at most 1024 px
-  (the model's input, CP-D5).
-- `finish_white`: decode the model output (PNG, JPEG or WebP only, pixel and side caps), judge it
-  against the padded clean copy (`fidelity`), keep the seller's pixels (`composite`), whiten a
+- `prepare`: the vision copy padded to a square with white, JPEG q90, at most 1024 px (the model's
+  input, CP-D5). `border` is still the photo's own border.
+- `finish_white`: decode the model output (PNG, JPEG or WebP only, pixel and side caps), refuse a
+  coloured border at the frame edge or at the photo's own edge (`not_white`), judge it
+  against the clean copy padded with white as the model's input was (`fidelity`), keep the
+  seller's pixels (`composite`; the padding it may paste back is white), whiten a
   near-white uniform background left by the model, frame it and run the main-image checks.
 - `fix`: frame the clean copy (`image_fix.fix`) and run the main-image checks.
 - `size_chart`: render the size chart.
@@ -44,7 +46,7 @@ from PIL import Image, ImageOps
 
 from app.services.image_check_child import set_limits
 from app.services.image_checks import MAX_PIXELS, MAX_SIDE, check_image
-from app.services.image_fidelity import composite, judge, pad_square
+from app.services.image_fidelity import PAD_COLOUR, composite, judge, pad_square
 from app.services.image_fix import (
     BorderProfile,
     FixRefused,
@@ -164,10 +166,22 @@ def _prepare(inputs: Mapping[str, Any]) -> dict[str, Any]:
     if img is None:
         return _refused("source_unusable")
     prof = border_profile(img)
-    square = pad_square(img, prof.colour)
+    square = pad_square(img, PAD_COLOUR)
     if square.width > MODEL_INPUT_PX:
         square = square.resize((MODEL_INPUT_PX, MODEL_INPUT_PX), Image.Resampling.LANCZOS)
     return _ok(square, _jpeg(square, MODEL_INPUT_QUALITY), border=_border_json(prof))
+
+
+def _photo_area(output: Image.Image, photo: tuple[int, int]) -> Image.Image:
+    """The part of the model's output where the seller's photo sat inside the white padding."""
+    w, h = photo
+    side = max(w, h)
+    if w == h:
+        return output
+    sx, sy = output.width / side, output.height / side
+    x0, y0 = (side - w) // 2, (side - h) // 2
+    box = (round(x0 * sx), round(y0 * sy), round((x0 + w) * sx), round((y0 + h) * sy))
+    return output.crop(box)
 
 
 def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[str, Any]:
@@ -180,14 +194,18 @@ def _finish_white(inputs: Mapping[str, Any], params: Mapping[str, Any]) -> dict[
     output_border = border_profile(output)
     if not output_border.near_white:  # the edit left a coloured background
         return _refused("not_white")
+    # The padding is white, so a kept backdrop may not reach the frame edge: the photo's own edge
+    # in the output must be near white too.
+    if not border_profile(_photo_area(output, clean.size)).near_white:
+        return _refused("not_white")
     if output_border.uniform:  # a near-white grey the model left becomes white, as `fix` does
         # a product that is itself near-white leaks: judge the output as it came
         with contextlib.suppress(FixRefused):
             output = whiten_border(output, output_border)
 
     prof = border_profile(clean)
-    original = pad_square(clean, prof.colour)
-    score = judge(original, output, prof)
+    original = pad_square(clean, PAD_COLOUR)
+    score = judge(original, output, prof, photo_size=clean.size)
     fidelity = score.as_json()
     if not score.passed:
         return _refused("fidelity", fidelity=fidelity)

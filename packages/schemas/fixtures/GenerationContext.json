@@ -102,5 +102,6 @@
       ],
       "min_confidence": 0.7
     }
-  ]
+  ],
+  "target_fields": []
 }

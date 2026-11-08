@@ -42,7 +42,7 @@ def _register_owned_hooks() -> None:
     from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
     from app.services.image_candidate_hooks import on_image_requeue, on_image_terminal
     from app.services.publish_outcome import on_publish_requeue, on_publish_terminal
-    from app.services.status_sync_outcome import count_failed_poll, refuse_requeue
+    from app.services.status_sync_outcome import refuse_requeue
 
     TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_requeue)
@@ -55,8 +55,44 @@ def _register_owned_hooks() -> None:
     # SI7 T11: a candidate job that ends without its image leaves `queued`; no staff requeue
     TERMINAL_HOOKS.setdefault(JobKind.IMAGE_COMPLIANCE, on_image_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.IMAGE_COMPLIANCE, on_image_requeue)
-    TERMINAL_HOOKS.setdefault(JobKind.LISTING_STATUS_SYNC, count_failed_poll)
+    # SI11 T7: one kind, two bodies (the status read and the marketplace dry run)
+    TERMINAL_HOOKS.setdefault(JobKind.LISTING_STATUS_SYNC, on_sync_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.LISTING_STATUS_SYNC, refuse_requeue)
+
+
+async def on_sync_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
+    """The `listing_status_sync` terminal hook (SI11 T7): a dry run's (`op = preview`) own end,
+    never a counted poll (CP-D16); a status read's failed-poll count as before. After every
+    terminal of the kind, a check left `pending` behind this job gets its own job (CP-D5)."""
+    from app.services import remote_preview
+    from app.services.status_sync_outcome import count_failed_poll
+
+    if remote_preview.is_preview(job):
+        await remote_preview.on_terminal(session, job, outcome)
+    else:
+        await count_failed_poll(session, job, outcome)
+        if job.status == "succeeded":
+            await _read_entry(session, job)
+    await remote_preview.enqueue_pending(session, job)
+
+
+async def _read_entry(session: Any, job: JobRun) -> None:
+    """SI11 T13: a status read that left adapter issues open on a `failed` (rejected) or
+    `published` (BUYABLE with ERROR issues) listing runs the resolution engine; so does one the
+    read moved to `blocked/marketplace_action_required` (T18: the marketplace lane opens the
+    Seller Central step; it never enqueues a job)."""
+    from app.repositories.uow import repositories_on
+    from app.services.resolution.run import resolve
+
+    if job.listing_id is None:
+        return
+    uow = repositories_on(session, job.tenant_id)
+    listing = await uow.listings.get(job.listing_id)
+    if listing is not None and (
+        listing.status in ("failed", "published")
+        or (listing.status == "blocked" and listing.status_reason == "marketplace_action_required")
+    ):
+        await resolve(uow, listing, entry="read", job=job)
 
 
 async def run_terminal_hook(

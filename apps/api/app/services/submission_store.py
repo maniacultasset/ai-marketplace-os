@@ -106,6 +106,20 @@ def snapshot_bytes(
             key: [str(i) for i in ids] for key, ids in sorted(item.colour_image_ids.items())
         },
     }
+    if item.repairs:  # SI11: the adapter-side repairs change what is sent (left out when none)
+        body["repairs"] = sorted(
+            (
+                {
+                    "id": str(r.id),
+                    "attribute": r.attribute,
+                    "field_path": r.field_path,
+                    "seller_sku": r.seller_sku,
+                    "to_digest": r.to_digest.hex(),
+                }
+                for r in item.repairs
+            ),
+            key=lambda r: r["id"],
+        )
     return json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 

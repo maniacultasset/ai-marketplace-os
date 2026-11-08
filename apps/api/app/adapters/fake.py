@@ -23,6 +23,10 @@ order, before anything is applied); `raise_after_write` (one error raised after 
 mutating call was applied: an ambiguous answer); `calls` (every mutating call: operation and
 {seller_sku: paths}); and `read_states` (what `get_listing` reads per SKU, or `gone`, or SI9's
 `not_buyable`: `inactive` with `ListingRead.not_buyable`).
+
+SI11: `preview_remote` is the dry run: `clean` unless a test sets `preview_errors` (then
+`issues` with those items) or `preview_status` (`failed`, with `preview_applied`). It stores
+nothing and counts `preview_calls`.
 """
 
 from __future__ import annotations
@@ -54,6 +58,7 @@ from app.adapters.base import (
     MarketplaceAdapter,
     PerformanceDay,
     PreviewItem,
+    RemotePreview,
     UpdateFields,
     fields_by_sku,
     submitted_fields,
@@ -105,6 +110,11 @@ class FakeAdapter(MarketplaceAdapter):
         self._store: dict[str, _Stored] = {}
         self._lock = asyncio.Lock()
         self.creates = 0
+        # SI11: the dry run's scripted verdict
+        self.preview_errors: list[ErrorItem] = []
+        self.preview_status: str | None = None
+        self.preview_applied = False
+        self.preview_calls = 0
 
     # ---- inspection (tests only) ----
 
@@ -320,6 +330,21 @@ class FakeAdapter(MarketplaceAdapter):
 
     async def publish_listing(self, item: AdapterListing) -> ListingResult:
         return await self._once(item, self._all(item), create=True)
+
+    async def preview_remote(self, item: AdapterListing) -> RemotePreview:
+        self.preview_calls += 1
+        scope = tuple(p for p in submitted_fields(item.listing) if not p.startswith("images"))
+        per_sku = {u.seller_sku: "VALID" for u in item.units()}
+        if self.preview_status == "failed":
+            return RemotePreview(
+                status="failed", applied=self.preview_applied, per_sku=per_sku, scope=scope
+            )
+        if self.preview_errors:
+            per_sku = dict.fromkeys(per_sku, "INVALID")
+            return RemotePreview(
+                status="issues", errors=tuple(self.preview_errors), per_sku=per_sku, scope=scope
+            )
+        return RemotePreview(status="clean", per_sku=per_sku, scope=scope)
 
     async def get_performance(
         self, listing_id: UUID, from_date: date, to_date: date

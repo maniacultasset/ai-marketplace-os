@@ -231,6 +231,21 @@ def reject(app: Any, fail: Any) -> None:
             app.state.fake.spapi_reject[name] = (code, text)
 
 
+def seed_error_rows() -> list[Any]:
+    """The committed Amazon error map (`error_map.amazon.json`) as `ErrorMapRow`s (SI11)."""
+    from app.adapters.error_map import ErrorMapRow
+    from app.cli import ERROR_MAP_AMAZON_PATH
+    from app.db.platform_loads import load_error_map_file
+
+    names = [f.name for f in dataclasses.fields(ErrorMapRow)]
+    rows = []
+    for r in load_error_map_file(ERROR_MAP_AMAZON_PATH):
+        values = {name: getattr(r, name) for name in names if hasattr(r, name)}
+        values["marketplace"] = r.marketplace.value
+        rows.append(ErrorMapRow(**values))
+    return rows
+
+
 def colour_family(
     *, green: bool = False, extra_red: int = 0
 ) -> tuple[AdapterListing, dict[str, int]]:

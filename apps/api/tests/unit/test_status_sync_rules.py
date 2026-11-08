@@ -16,6 +16,9 @@ from app.services.status_sync import (
 )
 from hypothesis import given
 from hypothesis import strategies as st
+from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import ErrorSource, Severity
+from mkos_schemas.errors import ErrorItem
 
 GAPS_MIN = [2, 8, 20, 30, 120, 180, 360, 720, 2880]
 
@@ -100,6 +103,35 @@ def test_status_sync_decision_rejected() -> None:
         "marketplace_rejected",
         "rejected",
     )
+
+
+def _read_error(code: ErrorCode) -> ErrorItem:
+    return ErrorItem(
+        field="listing",
+        error_code=code,
+        severity=Severity.ERROR,
+        message="The marketplace refused this listing.",
+        source=ErrorSource.AMAZON_ADAPTER,
+        retryable=False,
+    )
+
+
+def test_status_sync_decision_permission_needs_the_marketplace() -> None:
+    """SI11 T18: an account-permission read error is a marketplace step, never a rejection."""
+    error = _read_error(ErrorCode.ACCOUNT_PERMISSION_DENIED)
+    d = _decide([ItemRead("A", "rejected", errors=(error,))])
+    assert (d.listing_to, d.reason, d.event, d.submission_to) == (
+        "blocked",
+        "marketplace_action_required",
+        "marketplace_action_required",
+        "rejected",
+    )
+
+
+def test_status_sync_decision_invalid_attribute_stays_rejected() -> None:
+    error = _read_error(ErrorCode.VALUE_NOT_ALLOWED)
+    d = _decide([ItemRead("A", "rejected", errors=(error,))])
+    assert (d.listing_to, d.event) == ("failed", "marketplace_rejected")
 
 
 @pytest.mark.parametrize("state", ["inactive", None])

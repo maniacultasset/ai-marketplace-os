@@ -73,7 +73,7 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
     try:
         reader = await open_reader(ctx.tenant_id, account)
     except AccountInactive:
-        raise JobFailed(_auth_expired()) from None
+        raise JobFailed(auth_expired_report()) from None
     except ReadFailed:
         raise RetryableJobError(ErrorCode.MARKETPLACE_UNAVAILABLE) from None
     reads: list[ItemRead] = []
@@ -114,7 +114,7 @@ def _read_errors(got: Any) -> list[ErrorItem]:
     return [f.error for f in got.fields if f.error is not None]
 
 
-def _auth_expired() -> ErrorReport:
+def auth_expired_report() -> ErrorReport:
     message = "The marketplace account must reconnect."
     return ErrorReport(
         status="failed",
