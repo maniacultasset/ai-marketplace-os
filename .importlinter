@@ -405,6 +405,8 @@ source_modules =
     app.adapters.flipkart.constants
     app.adapters.error_map
     app.adapters.registry
+    app.adapters.amazon.repairs
+    app.adapters.amazon.aliases
 forbidden_modules =
     httpx
     socket

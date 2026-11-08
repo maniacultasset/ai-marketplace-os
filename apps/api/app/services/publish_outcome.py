@@ -92,6 +92,8 @@ class AttemptCtx:
     listing_sku: bool = True
     """False for a family with no parent row on its marketplace (Flipkart, S22 C9): the listing
     keeps `marketplace_sku` NULL; its children carry their own SKUs (DATABASE.md:754-755)."""
+    stale_repairs: tuple[uuid.UUID, ...] = ()
+    """SI11 (T10): repairs whose seller value changed since; retired `source_changed` here."""
 
 
 def _aggregate(states: Sequence[str]) -> str:
@@ -208,6 +210,8 @@ async def apply_decision(uow: TenantUnitOfWork, ctx: AttemptCtx, decision: Decis
     listing = await uow.listings.get_for_update(ctx.listing_id)
     if listing is None:
         return False
+    if ctx.stale_repairs:  # SI11 T10: the seller changed what these stood on
+        await uow.listing_repairs.retire(ctx.stale_repairs, "source_changed")
     item_ids, states = await _items(uow, ctx, decision)
     await _field_rows(uow, ctx, decision, item_ids)
     # SI4 A15 (C:118): the marketplace's own adapter source, never `amazon_adapter` for all

@@ -52,6 +52,7 @@ from mkos_schemas.publish import ListingResult
 from app.adapters.base import (
     AdapterError,
     AdapterListing,
+    AdapterRepair,
     AuthExpired,
     ListingNotFound,
     MarketplaceAdapter,
@@ -65,7 +66,7 @@ from app.adapters.base import (
     fact_paths,
     submitted_fields,
 )
-from app.adapters.registry import family_has_parent
+from app.adapters.registry import family_has_parent, repairer
 from app.adapters.storage import (
     StorageNotFound,
     StorageObjectTooLarge,
@@ -92,6 +93,7 @@ from app.services.publish_rules import (
     choose_operation,
     submission_key,
 )
+from app.services.repair_input import adapter_repairs
 from app.services.submission_store import (
     BufferedSink,
     snapshot_bytes,
@@ -171,6 +173,8 @@ class Prepared:
     ptd_parent: ProductTypeSchema | None = None
     # SI2 T14/T15: the style's and each child's resolved facts (the pins and the adapter input)
     family_facts: FamilyFacts | None = None
+    # SI11 T10: the listing's live adapter-side repairs (the adapter applies the unchanged ones)
+    repairs: tuple[AdapterRepair, ...] = ()
 
 
 def _fail(
@@ -249,6 +253,8 @@ async def _read(ctx: JobContext, payload: PublishJobPayload) -> Prepared:
             prep.open_row_job_ended = owner is None or owner.status in TERMINAL_JOB
             if open_row.job_id != ctx.job_run_id and not prep.open_row_job_ended:
                 raise _fail(ErrorCode.SUBMISSION_IN_FLIGHT, "another job's submission is open")
+        skus = {row.id: row.seller_sku for row in await uow.listing_items.for_listing(listing.id)}
+        prep.repairs = adapter_repairs(await uow.listing_repairs.live_for_listing(listing.id), skus)
         prep.count = await uow.submissions.count_for_version(listing.id, version)
         prep.prev = await uow.submissions.last_for_version(listing.id, version)
         prep.retry_paths = await uow.field_results.retry_payload(listing.id, version)
@@ -471,6 +477,7 @@ def _adapter_listing(
         product_type_schema=prep.ptd,
         parent_type_schema=prep.ptd_parent,
         allow_http_images=get_settings().app_env == "local",
+        repairs=prep.repairs,
     )
 
 
@@ -595,7 +602,17 @@ def _ctx_for(
         sent_paths=tuple(sorted({p for paths in sent.values() for p in paths})),
         fence_job=fence_job,
         listing_sku=_listing_sku(prep),
+        stale_repairs=_stale_repairs(prep.listing.marketplace, item),
     )
+
+
+def _stale_repairs(marketplace: str, item: AdapterListing) -> tuple[uuid.UUID, ...]:
+    """SI11 T10: the repairs of `item` no unit can apply (their seller value changed)."""
+    module = repairer(marketplace)
+    if module is None or not item.repairs:
+        return ()
+    found: tuple[uuid.UUID, ...] = module.stale_ids(item)
+    return found
 
 
 def _finish(attempt_ctx: AttemptCtx, decision: Decision) -> Outcome:

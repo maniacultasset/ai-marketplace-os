@@ -520,6 +520,14 @@ class AmazonAdapter(MarketplaceAdapter):
         for position, one in enumerate(ordered):
             scope = _expand(per_sku[one.unit.seller_sku], index, one.paths)
             blocked = {e.field: e for e in errors if e.field in scope}
+            # SI11 (T10): a repaired attribute rides with its field path; a dropped one
+            # (`drop_locked`) is simply not in the payload, so no `delete` op is sent
+            repaired_ids = {rid for rid, _path, _from, _to in one.repaired}
+            repaired = {
+                r.attribute
+                for r in item.repairs
+                if r.id in repaired_ids and r.field_path in scope and r.value is not None
+            }
             names = sorted(
                 {
                     name
@@ -527,6 +535,7 @@ class AmazonAdapter(MarketplaceAdapter):
                     if name in one.payload["attributes"]
                     and any(p in scope and p not in blocked for p in feeds)
                 }
+                | (repaired & set(one.payload["attributes"]))
             )
             sent = [p for p in scope if p in one.submitted and p not in blocked]
             if not names:
