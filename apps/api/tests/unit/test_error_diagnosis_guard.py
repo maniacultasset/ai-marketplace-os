@@ -504,3 +504,61 @@ def test_a_common_submitted_value_never_mangles_or_refuses(
     out = DiagnosisOut.model_validate({**GOOD, "plain_cause": cause})
     found = check(out, field_index=INDEX, critical_keys=frozenset(), secrets=secret_values(pairs))
     assert isinstance(found, Proposed), found
+
+
+# ---- round 4 (R4-1, R4-3): a non-ASCII, punycode or dot-led host is a link ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Open bücher.de to fix the weight value.",  # IDN label
+        "Open еvil.shop to fix the weight value.",  # Cyrillic e, ASCII .shop  # noqa: RUF001
+        "Visit пример.рф to fix this listing.",  # IDN label and TLD
+        "Open 例子.中国 to fix the weight value.",  # uncased script
+        "See the guide...evil.shop for the fix.",  # after '...'
+        "See the guide…evil.shop for the fix.",  # after an ellipsis (NFKC '...')
+        "Open münchen.de/fix to repair the item.",
+        "Open evil.xn--p1ai to repair the item.",  # punycode TLD
+        "Open xn--80ak6aa92e.com to repair the item.",  # punycode label
+        "Open EVIL.XN--P1AI to repair the item.",
+        "Open _evil.shop to repair the item now.",  # after '_'
+        "Visit evil.ru:8080 to fix the brand field.",  # a port
+        "Open evil.name?x=1 to repair the item.",  # a query on a field-noun TLD
+        "Visit weight.It#fix to repair the item.",  # a fragment on a sentence-word TLD
+        "Open product.Name/fix to repair the item.",  # a path on a sentence-word TLD
+        "Open a.weight.It to fix the weight.",  # three labels
+        "Open bücher.Name to fix the weight.",  # non-ASCII beats the sentence-word rule
+        "Visit evil.it to fix the brand field.",  # a lowercase ccTLD word is a link
+        "Visit Evil.Shop to fix the brand field.",  # Shop is not a sentence word
+    ],
+)
+def test_round4_a_unicode_punycode_or_dot_led_host_is_a_link(cause: str) -> None:
+    assert _check(plain_cause=cause) == Invalid("plain_cause:markup"), cause
+    assert _check(suggested_fix=cause) == Invalid("suggested_fix:markup"), cause
+
+
+# ---- round 4 (R4-2): a field path, a ':' with no port and a missed space are prose ----
+
+
+@pytest.mark.parametrize(
+    "cause",
+    [
+        "Set attributes.color: navy, then resend it.",  # ':' with no digit is not a port
+        "Set attributes.color:navy and resend it.",
+        "Set attributes.color/attributes.size to match.",  # a field path, not on a real TLD
+        "Check content.bullets[0] and facts.mrp, then resend.",
+        "Enter the weight:(in grams) and send it again.",  # not a `scheme:x(` call
+        "Use the style.name attribute for this item.",  # a lowercase field noun
+        "Add the weight.It must be in grams.",  # a missed space after a period
+        "Use the product.Name field for the title.",
+        "Set the weight.In grams, please resend.",
+        "Pick a size.Now send the listing again.",
+        "The listing lacks required data: add the item weight.",
+        "Missing data:(weight) is the cause here.",
+        "Amazon needs a value.Then send the listing again.",
+    ],
+)
+def test_round4_field_paths_and_missed_spaces_stay_proposed(cause: str) -> None:
+    assert isinstance(_check(plain_cause=cause), Proposed), cause
+    assert isinstance(_check(suggested_fix=cause), Proposed), cause

@@ -16,6 +16,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.paths import is_valid_field_path
 
 from app.services.resolution.plan import PlanContext, lane_for
@@ -29,6 +30,10 @@ LABELS: Final[Mapping[str, str]] = {
     "marketplace": "Marketplace",
     "staff": "Kuinn team",
 }
+# a code Amazon reports with the attribute it names (`attributeNames`), so the live issue sits at
+# `attributes.<name>`: with no field hint the table labels it there, not at `listing`
+_ATTRIBUTE_CODES: Final = frozenset({ErrorCode.MISSING_ATTRIBUTE.value})
+_ATTRIBUTE_PATH: Final = "attributes.value"
 HEADER: Final = ("Marketplace", "Code", "Who fixes it", "Error code", "What it means", "Doc")
 FORMULA_START: Final = ("=", "+", "-", "@", "\t", "\r")
 
@@ -57,11 +62,15 @@ def _doc(policy_ref: Any) -> str:
 
 
 def who(row: Any) -> str:
-    """The lane label at the row's field hint (as the adapter builds the issue path). When a
+    """The lane label at the row's field hint (as the adapter builds the issue path; with no hint,
+    `attributes.<name>` for a code Amazon reports per attribute, else `listing`). When a
     listing the seller may still recategorise takes another lane than one that has been live
     (CATEGORY_MISMATCH: seller, then staff), both show: `Seller (Kuinn team once live)`."""
     hint = getattr(row, "field_hint", None)
-    path = hint if isinstance(hint, str) and is_valid_field_path(hint) else "listing"
+    if isinstance(hint, str) and is_valid_field_path(hint):
+        path = hint
+    else:
+        path = _ATTRIBUTE_PATH if row.error_code in _ATTRIBUTE_CODES else "listing"
     source = f"{row.marketplace}_adapter"
     live = lane_for(row.error_code, row.error_class, source, field_path=path)
     fresh = lane_for(

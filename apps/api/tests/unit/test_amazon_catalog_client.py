@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 import pytest
+from app.adapters.amazon.client import UNFOLLOWED_TOKEN, SpApiResponse
 from tests.adapters.amazon_support import SELLER, FixedRng, spapi_client
 from tests.support.fake_marketplace import build_fake
 
@@ -215,3 +216,33 @@ async def test_a_failed_later_page_keeps_the_token() -> None:
     response = await spapi_client(app).search_catalog(eans, "EAN")
     assert len(response.json["items"]) == 20
     assert response.json["pagination"] == {"nextToken": "o20"}
+
+
+# ---- a next token the client will not follow still marks the search partial ----
+
+
+@pytest.mark.parametrize("token", ["x" * 3000, "o20\n", "bad\x00token"])
+async def test_an_unfollowable_next_token_still_marks_the_search_partial(token: str) -> None:
+    client = spapi_client(build_fake())
+    body = {"items": [], "pagination": {"nextToken": token}}
+    calls: list[Any] = []
+
+    async def fake_call(route: Any, payload: Any) -> SpApiResponse:
+        calls.append(route)
+        return SpApiResponse(status=200, json=body, headers={}, raw=b"")
+
+    client._call = fake_call
+    merged = await client.search_catalog([EAN], "EAN")
+    assert len(calls) == 1  # the refused token is never sent
+    assert merged.json["pagination"] == {"nextToken": UNFOLLOWED_TOKEN}
+
+
+async def test_no_next_token_is_a_complete_search() -> None:
+    client = spapi_client(build_fake())
+
+    async def fake_call(route: Any, payload: Any) -> SpApiResponse:
+        return SpApiResponse(status=200, json={"items": [], "pagination": {}}, headers={}, raw=b"")
+
+    client._call = fake_call
+    merged = await client.search_catalog([EAN], "EAN")
+    assert "pagination" not in merged.json

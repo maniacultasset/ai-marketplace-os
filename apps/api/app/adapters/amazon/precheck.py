@@ -58,8 +58,11 @@ _TOKEN_SPLIT: Final = re.compile(r"[^\w]+")
 # Marks dropped before folding: NFKC turns "\u2122" into "TM" (one token "zebratm").
 _BRAND_MARKS: Final = dict.fromkeys(map(ord, "\u2122\u2120\u00ae"))
 # An apostrophe is read both ways: dropped ("Haldiram's" = "Haldirams") and as a separator
-# ("Haldiram's" ~ "Haldiram", "L'Oreal Paris" ~ "L Oreal").
-_APOSTROPHES: Final = dict.fromkeys(map(ord, "'\u2019"))
+# ("Haldiram's" ~ "Haldiram", "L'Oreal Paris" ~ "L Oreal"). The modifier letters U+02BC and U+02BB
+# are word characters, so they are named here too, with the left quote, backtick and acute accent.
+_APOSTROPHE_CHARS: Final = "'\u2019\u2018\u02bc\u02bb\u0060\u00b4\uff07"
+_APOSTROPHES: Final = dict.fromkeys(map(ord, _APOSTROPHE_CHARS))
+_APOSTROPHE_SPACES: Final = dict.fromkeys(map(ord, _APOSTROPHE_CHARS), " ")
 _RELATION_RANK: Final[dict[str, int]] = {"same": 0, "similar": 1, "other": 2}
 OTHER_BRAND_MESSAGE: Final = (
     "This barcode belongs to another brand on Amazon. Check the barcode, or claim a GTIN exemption."
@@ -77,7 +80,7 @@ def _tokens(value: str) -> tuple[str, ...]:
 
 
 def _readings(value: str) -> set[tuple[str, ...]]:
-    return {_tokens(value.translate(_APOSTROPHES)), _tokens(value)}
+    return {_tokens(value.translate(_APOSTROPHES)), _tokens(value.translate(_APOSTROPHE_SPACES))}
 
 
 def brand_relation(ours: str, theirs: str) -> BrandRelation:

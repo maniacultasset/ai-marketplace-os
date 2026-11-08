@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from app.services.resolution.export import rows, to_csv, to_md
+from app.services.resolution.plan import lane_for
 
 DOC = {"source": "sp-api-docs", "doc": "https://developer-docs.amazon.com/x", "observed": False}
 
@@ -101,3 +102,16 @@ def test_the_lane_follows_the_field_hint_and_the_recategorise_context() -> None:
     assert who["100980"] == who["4005015"] == "Seller"
     assert who["4000003"] == who["101158"] == "Seller (Kuinn team once live)"
     assert who["9"] in {"Auto", "Seller", "Marketplace", "Kuinn team"}
+
+
+def test_a_missing_attribute_with_no_hint_takes_the_live_attribute_lane() -> None:
+    """Amazon names the attribute of a MISSING_ATTRIBUTE issue, so the live issue sits at
+    `attributes.<name>`: the table says Seller, as the planner does, not Kuinn team."""
+    (out,) = rows([Row("90220", "MISSING_ATTRIBUTE", "missing_data")])
+    assert lane_for("MISSING_ATTRIBUTE", "missing_data", field_path="attributes.color") == "seller"
+    assert out.who == "Seller"
+
+
+def test_a_code_with_no_hint_and_no_attribute_stays_at_listing() -> None:
+    (out,) = rows([Row("4005013", "SKU_CONFLICT", "identifier_error")])
+    assert out.who == "Kuinn team"

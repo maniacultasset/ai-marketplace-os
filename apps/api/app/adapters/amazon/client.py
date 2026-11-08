@@ -97,6 +97,8 @@ class SpApiResponse:
 
 
 _PAGE_TOKEN_MAX: Final = 2048
+# marks a partial search whose next token was refused (not a credential)
+UNFOLLOWED_TOKEN: Final = "unfollowed"  # noqa: S105
 
 
 def _next_token(body: Mapping[str, Any]) -> str | None:
@@ -106,6 +108,12 @@ def _next_token(body: Mapping[str, Any]) -> str | None:
     if isinstance(token, str) and 0 < len(token) <= _PAGE_TOKEN_MAX and token.isprintable():
         return token
     return None
+
+
+def _has_more(body: Mapping[str, Any]) -> bool:
+    """True when the reply names any next page, even one `_next_token` refuses to follow."""
+    pagination = body.get("pagination")
+    return isinstance(pagination, dict) and bool(pagination.get("nextToken"))
 
 
 def backoff_delay(k: int, rng: Rng) -> float:
@@ -243,8 +251,9 @@ class SpApiClient:
         the marketplace and `pageSize=20`; refused before the limiter or a token when any value
         is not a plain 8-14 digit barcode. Follows `pagination.nextToken` (`pageToken`, each page
         through the limiter) for at most `CATALOG_MAX_PAGES` pages and merges the items. When a
-        later page fails or the bound is hit, the merged reply keeps `pagination.nextToken`, so
-        the caller knows the search is partial; a failed first call raises as before."""
+        later page fails, the bound is hit or a next token is refused (too long, not printable),
+        the merged reply keeps a `pagination.nextToken`, so the caller knows the search is partial; a failed first call raises as before.
+        """
         values = list(identifiers) if not isinstance(identifiers, str) else []
         if not values or len(values) > c.CATALOG_MAX_IDENTIFIERS:
             raise ValueError("1 to 20 barcodes per search")
@@ -263,6 +272,7 @@ class SpApiClient:
         body = first.json if isinstance(first.json, dict) else {}
         items = list(body.get("items") or []) if isinstance(body.get("items"), list) else []
         token = _next_token(body)
+        unfollowed = token is None and _has_more(body)
         pages = 1
         while token is not None and pages < c.CATALOG_MAX_PAGES:
             route = self._read_route(
@@ -277,11 +287,14 @@ class SpApiClient:
                 break
             items += found["items"]
             token = _next_token(found)
+            unfollowed = token is None and _has_more(found)
             pages += 1
         merged: dict[str, Any] = {**body, "items": items}
         merged.pop("pagination", None)
         if token is not None:
             merged["pagination"] = {"nextToken": token}
+        elif unfollowed:  # a next page the client will not follow: still a partial search
+            merged["pagination"] = {"nextToken": UNFOLLOWED_TOKEN}
         return SpApiResponse(status=first.status, json=merged, headers=first.headers, raw=first.raw)
 
     async def get_restrictions(self, asin: str) -> SpApiResponse:

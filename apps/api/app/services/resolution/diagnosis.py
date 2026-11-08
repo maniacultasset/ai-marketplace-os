@@ -12,8 +12,10 @@ the guard on its answer (SI13 T11; P:B1-B2, D4-D5). Pure: no I/O, no model call.
 - `check` refuses a draft (`Invalid`, no text kept) when a text is outside 10..300 characters,
   starts like a spreadsheet formula (`=`, `+`, `-`, `@`, a tab or a CR), holds a control, format or
   bidi character, or, after NFKC, holds a link (any `scheme://`, `javascript:`, a `data:` URI, `//host`,
-  `www.`, a host on a real TLD in any case or any host with a path, an IPv4 host, an email; an ideographic or fullwidth full
-  stop reads as `.`), `<tag`, `&#`, a `{...}` token or a folded secret;
+  `www.`, a host on a real TLD in any case or any host with a path, a non-ASCII or punycode host,
+  an IPv4 host, an email; an ideographic or fullwidth full stop reads as `.`; a legal field path
+  and a missed-space join like "weight.It" are prose, see `_is_link`), `<tag`, `&#`, a `{...}`
+  token or a folded secret;
   when the code or class is not a member of the
   closed vocabularies; when the field hint is not a legal path in the field index; or when it
   proposes `auto` for a price, MRP, critical, identifier or image path or a permission class.
@@ -65,18 +67,37 @@ _SPACE: Final = re.compile(r"\s+")
 _TOKEN: Final = re.compile(r"\{[^{}]*\}")
 _BAD_TEXT: Final = (
     re.compile(r"(?i)https?://|www\.|<[a-z/!]|&#|\{|\}"),
-    # any scheme link (`ftp://`, `javascript:alert(`), a protocol-relative `//host`, a `data:` URI
-    # (`data:text/html;`, `data:,`; "lacks required data: add" is prose), or a bare domain on a
-    # short TLD list; the general `\w+\.[a-z]{2,}` would refuse "value.Then"
+    # any scheme link (`ftp://`, `javascript:alert(`; "the weight:(in grams)" is prose), a
+    # protocol-relative `//host` or a `data:` URI (`data:text/html;`, `data:,`; "lacks required
+    # data: add" is prose). Bare hosts are `_HOST`'s.
     re.compile(
-        r"(?i)(?:[a-z][a-z0-9+.-]*:(?://|[^\s]*\()|//\S|\bjavascript:"
-        r"|\bdata:(?:[a-z-]+/[\w.+-]+)?[;,]"
-        r"|\b[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:com|in|net|org|io|co|ly|me|app|dev|example|xyz)\b)"
+        r"(?i)(?:[a-z][a-z0-9+.-]*:(?://|[^\s(]+\()|//\S|\bjavascript:"
+        r"|\bdata:(?:[a-z-]+/[\w.+-]+)?[;,])"
     ),
 )
-# A host: dotted labels ending in a TLD of 2-63 letters in any case, ended by anything but a word
-# character (a dash, an ellipsis, a quote or a guillemet ends it too). `_is_link` decides.
-_HOST: Final = re.compile(r"(?<![\w.-])[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.([A-Za-z]{2,63})(?!\w)")
+# A host: dotted labels of letters (any script), digits and hyphens, ending in a TLD of 2-63
+# letters (any script, any case) or a punycode `xn--` TLD. A '.', '_' or an ellipsis may come
+# before it ("guide...evil.shop", "_evil.shop"); a dash, a quote or a guillemet may end it.
+# `_is_link` decides.
+_LABEL: Final = r"(?:[^\W_]|-)+"
+_HOST: Final = re.compile(
+    rf"(?<![^\W_]){_LABEL}(?:\.{_LABEL})*\.((?i:xn--)(?:[^\W_]|-)+|[^\W\d_]{{2,63}})(?!\w)"
+)
+# Title-case words a missed space after a period puts in a TLD's place ("weight.It must",
+# "product.Name field"): prose unless the host has 3+ labels or a path, query or fragment follows
+_SENTENCE_WORDS: Final = (
+    frozenset(
+        {
+            *("am", "as", "at", "be", "best", "buy", "by", "care", "day", "do", "fit", "free"),
+            *("fun", "here", "how", "in", "is", "it", "life", "live", "love", "me", "my"),
+            *("name", "new", "next", "no", "now", "one", "open", "so", "style", "to", "top"),
+            *("us", "win", "you"),
+        }
+    )
+    & IANA_TLDS
+)
+# lowercase field nouns ("the style.name attribute"); a lowercase ccTLD ("amazon.in") stays a link
+_FIELD_WORDS: Final = frozenset({"name", "style", "care", "fit"}) & IANA_TLDS
 _IPV4: Final = re.compile(r"(?<![\w.])\d{1,3}(?:\.\d{1,3}){3}(?!\w|\.\d)")
 # dots a browser reads as "." that NFKC keeps or makes: ideographic, halfwidth ideographic,
 # fullwidth and small full stops
@@ -190,13 +211,34 @@ def build_input(
 
 
 def _is_link(host: re.Match[str]) -> bool:
-    """A host match is a link when a path, port, query or fragment follows it, or when its TLD is
-    a real one (`IANA_TLDS`) and it is not a legal field path ("attributes.color"). So
-    "Evil.Shop" is a link and "value.Then" stays prose."""
-    after = host.string[host.end() : host.end() + 1]
-    if after in ("/", ":", "?", "#"):
+    """A host match is a link when:
+    - any label is non-ASCII (IDN, a Cyrillic look-alike) or punycode (`xn--`);
+    - it is a legal field path ("attributes.color: ...") only when a path, query or fragment
+      follows and its last label is a real TLD ("attributes.ru/fix");
+    - otherwise when a path, query, fragment or port (':' and a digit) follows, or when its TLD is
+      a real one (`IANA_TLDS`) and not a common word in a missed-space join: a Title-case
+      `_SENTENCE_WORDS` TLD ("weight.It", "product.Name") or a lowercase `_FIELD_WORDS` one
+      ("style.name") on a two-label host is prose. So "Evil.Shop" and "amazon.in" are links and
+      "value.Then" stays prose."""
+    text = host.group()
+    tld = host.group(1)
+    rest = host.string[host.end() : host.end() + 2]
+    follows = rest[:1] in ("/", "?", "#")
+    lower = tld.lower()
+    if not text.isascii() or "xn--" in text.lower():
         return True
-    return host.group(1).lower() in IANA_TLDS and not is_valid_field_path(host.group())
+    if is_valid_field_path(text):
+        return follows and lower in IANA_TLDS
+    if follows or (rest[:1] == ":" and rest[1:2].isdigit()):
+        return True
+    if lower not in IANA_TLDS:
+        return False
+    if text.count(".") >= 2:
+        return True
+    title = tld[:1].isupper() and tld[1:].islower()
+    if title and lower in _SENTENCE_WORDS:
+        return False
+    return not (tld.islower() and lower in _FIELD_WORDS)
 
 
 def _text_problem(text: str, secrets: Iterable[str]) -> str | None:

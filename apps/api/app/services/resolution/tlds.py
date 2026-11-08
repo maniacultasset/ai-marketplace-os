@@ -1,6 +1,6 @@
 """The IANA root-zone TLDs with ASCII letters only, lowercased: the diagnosis link guard reads
 "word.Word" as a link when the last label is one of these (SI13 R3-1). Punycode (`xn--`) TLDs are
-left out: the guard's host pattern never matches them.
+left out: the guard reads any `xn--` or non-ASCII host as a link without this list (R4).
 
 Source: https://data.iana.org/TLD/tlds-alpha-by-domain.txt, version 2026072500
 (updated 2026-07-25).

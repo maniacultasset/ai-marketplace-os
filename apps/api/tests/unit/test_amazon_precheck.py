@@ -83,6 +83,12 @@ def _with(sent: AdapterListing, **over: Any) -> AdapterListing:
         ("L'Oreal Paris", "L Oreal", "similar"),
         ("L'Oreal", "LOreal", "same"),
         ("Haldiram's", "Bikaji's", "other"),
+        # a modifier-letter apostrophe (U+02BC) is a word character, read as an apostrophe too
+        ("Haldiram\u02bcs", "Haldiram", "similar"),
+        ("Haldiram\u02bcs", "Haldirams", "same"),
+        ("L\u02bcOreal Paris", "L'Oreal", "similar"),
+        ("Haldiram\u2018s", "Haldiram", "similar"),
+        ("Haldiram\u02bcs", "Bikaji", "other"),
         ("Zeb", "Zebra", "other"),
     ],
 )
