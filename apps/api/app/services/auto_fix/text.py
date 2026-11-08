@@ -268,6 +268,11 @@ _STAFF_STEPS: Final[Mapping[str, tuple[str, str]]] = {
         "The marketplace refused a product fact the seller's inbox cannot answer; a person "
         "checks the mapping.",
     ),
+    "content_review": (
+        "Review a listing text or keyword the marketplace refused.",
+        "The marketplace refused this listing's text or keywords; Kuinn does not change content "
+        "on its own yet, so a person edits it and another person approves the new version.",
+    ),
     "ops": (
         "Review a marketplace error Kuinn routes to staff.",
         "The marketplace refused this listing with an error only staff can act on.",

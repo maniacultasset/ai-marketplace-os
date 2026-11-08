@@ -150,3 +150,25 @@ def test_ai_provenance_is_ai_content() -> None:
 def test_lane_for_has_no_listing_context() -> None:
     assert lane_for("MARKETPLACE_UNKNOWN_ERROR", "unknown") == "staff"
     assert lane_for("VALUE_NOT_ALLOWED", "account_permission") == "marketplace"
+
+
+@pytest.mark.parametrize("path", ["keywords.search_terms", "content.title", "content.bullets[0]"])
+@pytest.mark.parametrize("source", SOURCES)
+@pytest.mark.parametrize("code", sorted(ErrorCode, key=str))
+def test_a_content_path_never_takes_a_lane_without_a_writer(
+    code: ErrorCode, source: str, path: str
+) -> None:
+    """Fix round 3 (R3-2..R3-4): until the content auto-fix (T15) and the AI rewrite (T16) are
+    built, a content or keyword error never lands in `auto_content` or `ai_field` (nothing writes
+    for them), nor in `seller` (the seller's inbox asks only about facts and images): it goes
+    to a staff content review."""
+    steps = plan([_issue(field_path=path, error_code=code.value, source=source)], PlanContext())
+    assert all(s.lane not in ("auto_content", "ai_field", "seller") for s in steps), steps
+    assert lane_for(code.value, "content_error") != "auto_content"
+
+
+def test_a_keyword_length_error_is_a_staff_content_review() -> None:
+    issue = _issue(field_path="keywords.search_terms", error_code="FIELD_TOO_LONG",
+                   error_class="invalid_value")  # fmt: skip
+    (step,) = plan([issue], PlanContext())
+    assert (step.lane, step.action) == ("staff", "content_review")

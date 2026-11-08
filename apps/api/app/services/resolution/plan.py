@@ -12,12 +12,14 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    approve a brand or category);
 4. an issue the marketplace's repairer could fix (`ctx.repairable`) -> `auto_repair` (the
    repairer already refused text, price, MRP and party values);
-5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC on a content or
-   keyword path -> `auto_content`, on a fact path -> `seller`; AI_FIELD -> `ai_field` when the AI
-   is allowed and the path is not critical, else `seller`; ASK -> `seller` (a fact or an image),
-   `staff` (an unknown marketplace error); RETRY -> `retry`; OPS -> `staff`.
-6. a `seller` step on a fact path the seller cannot answer (outside `facts.attributes.*`,
-   `facts.gender` and `facts.brand_name`, CP-D25) -> `staff`.
+5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `seller`
+   (`auto_content` stays declared but unplanned until its writer, the content auto-fix T15,
+   is built: fix round 3); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
+   critical, else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
+   marketplace error); RETRY -> `retry`; OPS -> `staff`.
+6. a `seller` step on a content or keyword path (the inbox asks only about facts and images)
+   -> `staff` (`content_review`); on a fact path the seller cannot answer (outside
+   `facts.attributes.*`, `facts.gender` and `facts.brand_name`, CP-D25) -> `staff`.
 
 `cause` says whose value was wrong (P:D16). `lane_for(code, class)` is the issue-free lane of the
 error catalogue (T19).
@@ -156,7 +158,10 @@ def cause_of(issue: IssueView, lane: Lane, provenance: Mapping[str, str]) -> Cau
 
 def _seller_or_staff(path: str) -> tuple[Lane, str]:
     """A question the seller can answer, else staff (CP-D25: never a question the inbox cannot
-    take)."""
+    take). The inbox asks only about facts and images, so a content or keyword path goes to a
+    staff content review."""
+    if path.startswith(_CONTENT_ROOTS):
+        return "staff", "content_review"
     if path.startswith("facts.") and not answerable(path):
         return "staff", "unanswerable_fact"
     return "seller", "ask"
@@ -177,8 +182,8 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
     routing = route(_item(issue), source=issue.source, critical_keys=ctx.critical_keys)
     path = issue.field_path
     if routing.route is Route.DETERMINISTIC:
-        if path.startswith(_CONTENT_ROOTS):
-            return "auto_content", "deterministic"
+        # fix round 3: `auto_content` waits for its writer (the content auto-fix, T15, not built):
+        # until then a content or keyword path is a staff content review, never a silent lane
         return _seller_or_staff(path)
     if routing.route is Route.AI_FIELD:
         key = path.split(".", 1)[1] if "." in path else path

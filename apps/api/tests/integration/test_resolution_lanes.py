@@ -159,3 +159,23 @@ async def test_another_tenants_listing_gets_no_task(api: httpx.AsyncClient, prev
     )
     assert other[0][0] == 0
     assert _tasks(prev, made.listing_id)
+
+
+@pytest.mark.parametrize(
+    ("field", "code", "raw"),
+    [
+        ("keywords.search_terms", ErrorCode.FIELD_TOO_LONG, "8560"),
+        ("content.title", ErrorCode.BANNED_TERM, "8560"),
+    ],
+)
+async def test_a_content_rejection_opens_the_staff_content_review(
+    prev: PubWorld, field: str, code: ErrorCode, raw: str
+) -> None:
+    """Fix round 3 (R3-3): a marketplace error on a keyword or content path opens a staff task
+    and links the issue (the content auto-fix, T15, is not built yet), never a silent lane."""
+    made = await _previewed(prev, [_error(field, code, raw, "This value is not accepted here.")])
+    tasks = _tasks(prev, made.listing_id)
+    assert [(t["kind"], t["target_path"], t["field_path"]) for t in tasks] == [
+        ("marketplace_error_review", "account.review.content_review", field)
+    ]
+    assert "text or keyword" in tasks[0]["question"]
