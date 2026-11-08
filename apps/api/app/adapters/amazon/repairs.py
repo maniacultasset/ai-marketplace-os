@@ -444,3 +444,41 @@ def trail(listing: AdapterListing) -> tuple[tuple[str, str, str, str], ...]:
         for m in mapped
         for _id, path, before, after in m.repaired
     )
+
+
+# ---- SI11 T15: the content limit a content refusal is fixed against ----
+
+_LIMIT_TEXT: Final = re.compile(
+    r"(?:longer than|more than|exceeds?(?: the)?(?: maximum| limit)?(?: length)?(?: of)?"
+    r"|maximum(?: length)?(?: of| is)?|at most|up to)\s+(\d{1,5})\s+(?:characters|chars)\b",
+    re.IGNORECASE,
+)
+
+
+def _content_attribute(path: str) -> str | None:
+    base = path.split("[", 1)[0]
+    if base in c.KEYWORD_PATHS:
+        return c.KEYWORD_ATTRIBUTE
+    return c.CONTENT_FIELDS.get(base)
+
+
+def content_limit(schema: Mapping[str, Any] | None, path: str, text: str) -> int | None:
+    """The character limit of a content or keyword path: the stored Product Type Definition's
+    `maxLength` of its attribute's value, else the limit the marketplace's refusal states
+    (`... longer than 150 characters`), else None (no deterministic fix)."""
+    attribute = _content_attribute(path)
+    if attribute is None:
+        return None
+    if schema is not None:
+        spec = (schema.get("properties") or {}).get(attribute)
+        items = spec.get("items") if isinstance(spec, dict) else None
+        props = items.get("properties") if isinstance(items, dict) else None
+        value = props.get("value") if isinstance(props, dict) else None
+        limit = value.get("maxLength") if isinstance(value, dict) else None
+        if isinstance(limit, int) and not isinstance(limit, bool) and limit > 0:
+            return limit
+    found = _LIMIT_TEXT.search(text or "")
+    if found is None:
+        return None
+    stated = int(found.group(1))
+    return stated if stated > 0 else None

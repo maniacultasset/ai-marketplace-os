@@ -115,6 +115,11 @@ class PersistPlan:
     template: CategoryTemplate | None = None
     # SI11: the dry run the saved version asks for (`resolution` after an automatic fix)
     preview_trigger: Literal["system", "resolution"] = "system"
+    # SI11 T15: an auto-fix version (`regeneration` with only `changed_paths` changed, its
+    # parent the base version) and the marketplace rows it fixed, closed `deterministic_fix`
+    origin: Literal["generation", "regeneration"] | None = None
+    changed_paths: tuple[str, ...] | None = None
+    closes: tuple[tuple[uuid.UUID, str], ...] = ()
 
 
 def _run(
@@ -303,8 +308,9 @@ def make_persist(plan: PersistPlan) -> Any:
                     r.model_dump(mode="json", by_alias=True) for r in plan.image_reports
                 ],
                 generated_by_user_id=plan.created_by,
-                origin="regeneration" if regeneration else "generation",
+                origin=plan.origin or ("regeneration" if regeneration else "generation"),
                 parent_version_id=listing.current_version_id,
+                changed_paths=plan.changed_paths,
                 locale=content.locale,
                 rules_version=plan.pins.rules_version,
                 category_template_id=plan.pins.template_id,
@@ -379,6 +385,8 @@ def make_persist(plan: PersistPlan) -> Any:
             actor=JobActor(plan.job_id),
             current_version_id=version.id,
         )
+        for issue_id, action in plan.closes:  # SI11 T15: the refusals the fix version answers
+            await uow.listing_issues.close_auto_fixed(issue_id, action)
         # SI11 T7: ask the marketplace's dry run about the new version (it never fails the save)
         await request_preview(uow, moved, version.id, trigger=plan.preview_trigger)
         log.info(

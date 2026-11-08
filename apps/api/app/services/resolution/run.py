@@ -43,7 +43,13 @@ own result committed.
      shares the write path's `account.error_review`), the rows linked to it.
    Each row is linked to its task, so the inbox and the read name who acts next.
 
-Content and AI fixes (a new version a non-maker approves) are the auto-fix job's (T15-T16).
+6. Content fixes (T15): a content or keyword refusal the deterministic content fix can change
+   (`resolution.content.prepare` on the current version) is planned `auto_content`. When every
+   blocking step is automatic and the cap allows it, one `listing_generate` job (`mode
+   auto_fix`, `trigger resolution`, the base version's generator as `created_by`) is enqueued
+   and the listing moves to `generating` on `auto_fix`; the job writes a fix version with only
+   the fixed paths changed. That version is never resent on its own: a non-maker approves it
+   ("Approve and resend"). Repairs planned beside it stay live and go out with that version.
 """
 
 from __future__ import annotations
@@ -79,7 +85,7 @@ from app.services.resolution.plan import (
     seller_answers,
     staff_action,
 )
-from app.workers.payloads import PublishJobPayload, dump
+from app.workers.payloads import AutoFixPayload, PublishJobPayload, dump
 
 log = get_logger(__name__)
 
@@ -447,6 +453,76 @@ async def _auto_resubmit(
     return enqueued.job.id
 
 
+async def _content_fixable(
+    uow: TenantUnitOfWork, listing: Any, rows: Sequence[Any]
+) -> frozenset[uuid.UUID]:
+    """T15: the rows the deterministic content fix can change on the current version."""
+    from app.services.resolution.content import fixable, prepare
+
+    candidates = [r for r in rows if fixable(r)]
+    if not candidates or listing.current_version_id is None:
+        return frozenset()
+    version = await uow.listing_versions.get(listing.id, listing.current_version_id)
+    found = await prepare(uow, listing, version, candidates)
+    return frozenset() if found is None else frozenset(f.issue_id for f in found[1])
+
+
+async def _auto_fix(
+    uow: TenantUnitOfWork, listing: Any, job: JobRun, steps: Sequence[Step]
+) -> uuid.UUID | None:
+    """T15: enqueue the auto-fix job for the `auto_content` steps and move to `generating`
+    (`auto_fix`; the job row first, as the status guard needs). A replayed key or a refused move
+    enqueues nothing."""
+    issue_ids = sorted(s.issue_id for s in steps if s.lane == "auto_content")[:50]
+    if not issue_ids or listing.current_version_id is None:
+        return None
+    version = await uow.listing_versions.get(listing.id, listing.current_version_id)
+    if version is None:
+        return None
+    joined = ",".join(str(i) for i in issue_ids)
+    key = hashlib.sha256(f"auto_fix:{listing.id}:{version.id}:{joined}".encode()).hexdigest()
+    payload = AutoFixPayload(
+        listing_id=listing.id, base_version_id=version.id, issue_ids=tuple(issue_ids)
+    )
+    spec = EnqueueSpec(
+        kind=JobKind.LISTING_GENERATE,
+        entity_type="listing",
+        entity_id=listing.id,
+        listing_id=listing.id,
+        created_by=version.generated_by_user_id,
+        job_key=key,
+        payload=payload.model_dump(mode="json"),  # `trigger` kept: the cap counts this job
+    )
+    try:
+        async with uow.session.begin_nested():
+            enqueued = await uow.job_runs.enqueue(spec)
+            if not enqueued.created:
+                raise _Replay
+            await uow.listings.move(
+                listing,
+                to="generating",
+                event="auto_fix",
+                actor=JobActor(job.id),
+                clear_approval=True,
+            )
+    except _Replay:
+        return None
+    except DomainError as exc:  # the status guard said no: the rows stay open for a human
+        log.info(
+            "resolution.auto_fix_refused",
+            listing_id=str(listing.id),
+            error_code=getattr(getattr(exc, "code", None), "value", type(exc).__name__),
+        )
+        return None
+    log.info(
+        "resolution.auto_fix",
+        listing_id=str(listing.id),
+        job_run_id=str(enqueued.job.id),
+        issues=len(issue_ids),
+    )
+    return enqueued.job.id
+
+
 async def _audit(
     uow: TenantUnitOfWork,
     listing: Any,
@@ -598,7 +674,9 @@ async def _resolve(
         [r.recurrence_of_id for r in rows if r.recurrence_of_id is not None]
     )
     cycles = await uow.resolution.cycles_since_human(listing.id)
+    content_fixable = await _content_fixable(uow, listing, rows)
     ctx = PlanContext(
+        content_fixable=content_fixable,
         critical_keys=await uow.product_facts.critical_keys(),
         repairable=frozenset(candidates),
         repair_rejected=found.rejected,
@@ -644,12 +722,18 @@ async def _resolve(
     written = {i: candidates[i] for i in ids}
     await _audit(uow, listing, job, written, ids)
     tasks = await _human_steps(uow, listing, steps, by_issue)
-    automatic = all(s.lane in ("auto_repair", "retry") for s in steps)
-    if not steps or not automatic or not written:
+    automatic = all(s.lane in ("auto_repair", "auto_content", "retry") for s in steps)
+    content = any(s.lane == "auto_content" for s in steps)
+    if not steps or not automatic or not (written or content):
         return ResolutionResult(steps=steps, repairs=tuple(ids.values()), tasks=tasks)
     if cycles >= MAX_CYCLES:
         await _cap(uow, listing, job)
         return ResolutionResult(steps=steps, repairs=tuple(ids.values()), capped=True, tasks=tasks)
+    if content:
+        # T15: a content fix makes a new version a non-maker approves; never a resend. The
+        # repairs written beside it stay live and go out with that version (CP-D21)
+        fix_job = await _auto_fix(uow, listing, job, steps)
+        return ResolutionResult(steps=steps, repairs=tuple(ids.values()), job_id=fix_job)
     next_job: uuid.UUID | None = None
     if entry == "preview":
         fresh = await uow.listings.get(listing.id)

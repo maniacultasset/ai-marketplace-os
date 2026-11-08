@@ -228,6 +228,10 @@ async def _refusal_failure(ctx: JobContext, refusal: EmbedRefusal, **kw: Any) ->
 
 
 async def run_listing_generate(ctx: JobContext) -> Outcome:
+    if ctx.payload.get("mode") == "auto_fix":  # SI11 T15: the deterministic content fix
+        from app.workers.auto_fix_job import run_auto_fix
+
+        return await run_auto_fix(ctx)
     settings = get_settings()
     tenant, job_id = ctx.tenant_id, ctx.job_run_id
     try:

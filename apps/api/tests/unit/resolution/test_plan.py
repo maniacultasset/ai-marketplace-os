@@ -163,8 +163,8 @@ def test_lane_for_has_no_listing_context() -> None:
 def test_a_content_path_never_takes_a_lane_without_a_writer(
     code: ErrorCode, source: str, path: str
 ) -> None:
-    """Fix round 3 (R3-2..R3-4): until the content auto-fix (T15) and the AI rewrite (T16) are
-    built, a content or keyword error never lands in `auto_content` or `ai_field` (nothing writes
+    """Fix round 3 (R3-2..R3-4), kept by T15: a content or keyword error the content fix cannot
+    change (no `content_fixable`) never lands in `auto_content` or `ai_field` (nothing writes
     for them), nor in `seller` (the seller's inbox asks only about facts and images): it goes
     to a staff content review."""
     steps = plan([_issue(field_path=path, error_code=code.value, source=source)], PlanContext())
@@ -255,3 +255,20 @@ def test_a_path_with_no_question_is_staff(path: str, action: str) -> None:
     issue = _issue(field_path=path, error_code="MISSING_ATTRIBUTE", error_class="missing_data")
     (step,) = plan([issue], PlanContext())
     assert (step.lane, step.action) == ("staff", action)
+
+
+# ---- SI11 T15: the content fix lane ----
+
+
+@pytest.mark.parametrize("path", ["content.title", "content.bullets[1]", "keywords.search_terms"])
+def test_a_fixable_content_refusal_takes_auto_content(path: str) -> None:
+    issue = _issue(field_path=path, error_code="FIELD_TOO_LONG", error_class="invalid_value")
+    (step,) = plan([issue], PlanContext(content_fixable=frozenset({issue.id})))
+    assert (step.lane, step.action, step.cause) == ("auto_content", "content_fix", "ai_content")
+
+
+def test_content_fixable_never_moves_a_fact_or_an_unfixable_row() -> None:
+    fact = _issue(field_path="attributes.color", error_code="FIELD_TOO_LONG")
+    other = _issue(field_path="content.title", error_code="FIELD_TOO_LONG")
+    steps = plan([fact, other], PlanContext(content_fixable=frozenset({fact.id})))
+    assert [s.lane for s in steps] == ["seller", "staff"]

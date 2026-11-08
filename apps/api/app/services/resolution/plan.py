@@ -12,9 +12,10 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    approve a brand or category);
 4. an issue the marketplace's repairer could fix (`ctx.repairable`) -> `auto_repair` (the
    repairer already refused text, price, MRP and party values);
-5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `seller`
-   (`auto_content` stays declared but unplanned until its writer, the content auto-fix T15,
-   is built: fix round 3); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
+5. the SI4 fix policy (`policy.route`, safety overrides first): DETERMINISTIC -> `auto_content`
+   on a content or keyword path the content fix can change (`ctx.content_fixable`: the
+   executor ran the same pure fixer first, T15), else `seller` (fix round 3: never a lane with
+   nothing behind it); AI_FIELD -> `ai_field` when the AI is allowed and the path is not
    critical, else `seller`; ASK -> `seller` (a fact or an image), `staff` (an unknown
    marketplace error); RETRY -> `retry`; OPS -> `staff`.
 6. a `seller` step only where the inbox can ask (`seller_answers`: one image, or a fact key it
@@ -83,6 +84,8 @@ class PlanContext:
     approved_current: bool = False
     cycles_used: int = 0
     ai_allowed: bool = False
+    content_fixable: frozenset[uuid.UUID] = frozenset()
+    """Content and keyword issues the deterministic content fix can change (T15)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,8 +210,10 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
     routing = route(_item(issue), source=issue.source, critical_keys=ctx.critical_keys)
     path = issue.field_path
     if routing.route is Route.DETERMINISTIC:
-        # fix round 3: `auto_content` waits for its writer (the content auto-fix, T15, not built):
-        # until then a content or keyword path is a staff content review, never a silent lane
+        # T15: only an issue the content fix can change takes `auto_content` (its writer, the
+        # auto-fix job); any other content or keyword path is a staff content review (round 3)
+        if issue.id in ctx.content_fixable and path.startswith(_CONTENT_ROOTS):
+            return "auto_content", "content_fix"
         return _seller_or_staff(path)
     if routing.route is Route.AI_FIELD:
         key = path.split(".", 1)[1] if "." in path else path
