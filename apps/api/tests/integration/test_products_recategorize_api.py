@@ -189,6 +189,22 @@ async def test_recategorize_generating_listing_409_busy(
     assert response.json()["error"]["type"] == "LISTING_BUSY"
 
 
+async def test_recategorize_locked_listing_409_busy_never_waits(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    # a generation persist holds the listing and then wants the product: recategorize must not
+    # wait on the listing while it holds the product (a lock-order deadlock)
+    import asyncio
+
+    product, listing_id = await _made(gen_world)
+    with gen_world.conn.transaction():
+        gen_world.conn.execute("SELECT 1 FROM listings WHERE id = %s FOR UPDATE", [listing_id])
+        response = await asyncio.wait_for(_post(api, gen_world, product, {"category": NEW}), 10)
+    assert response.status_code == 409, response.text
+    assert response.json()["error"]["type"] == "LISTING_BUSY"
+    assert _category(gen_world, product) == OLD
+
+
 async def test_recategorize_same_category_writes_nothing(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:

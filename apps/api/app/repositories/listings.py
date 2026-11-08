@@ -228,15 +228,22 @@ class ListingRepository(TenantScopedRepository[Listing]):
         return (await self.db.execute(stmt)).first() is not None
 
     async def for_product_for_update(self, product_id: uuid.UUID) -> list[Listing]:
-        """Every listing of the product, locked in id order (SI9 recategorize)."""
+        """Every listing of the product, locked in id order with NOWAIT (SI9 recategorize). The
+        caller already holds the product row, and a generation persist takes the listing before
+        the product, so waiting here could deadlock: a held listing is `LISTING_BUSY` (409)."""
         stmt = (
             self._select()
             .where(Listing.product_id == product_id)
             .order_by(Listing.id)
-            .with_for_update()
+            .with_for_update(nowait=True)
             .execution_options(populate_existing=True)
         )
-        return list((await self.db.execute(stmt)).scalars())
+        try:
+            return list((await self.db.execute(stmt)).scalars())
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == "55P03":
+                raise ConflictError(ErrorCode.LISTING_BUSY, "listings") from exc
+            raise
 
     async def set_category(self, listing_id: uuid.UUID, category: str) -> None:
         """SI9 recategorize: the listing's category (its next generation uses that category's
