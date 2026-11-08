@@ -157,6 +157,14 @@ async def test_a_refused_repair_goes_to_staff_not_auto_repair(
         result = await resolve(uow, listing, entry="submission", job=job)
     assert result is not None and not result.repairs
     assert [(s.lane, s.action) for s in result.steps] == [("staff", "repair_rejected")]
+    # fix round 2 (R2-1): the staff step is a task someone sees, linked to the open issue
+    linked = prev.rows(
+        "SELECT t.kind, t.target_path, t.status FROM listing_issues i "
+        "JOIN human_tasks t ON t.id = i.human_task_id "
+        "WHERE i.listing_id = %s AND i.status = 'open' AND i.field_path = 'attributes.color'",
+        [made.listing_id],
+    )
+    assert linked == [("marketplace_error_review", "account.review.repair_rejected", "open")]
 
 
 async def test_a_refused_insert_is_never_left_in_auto_repair(

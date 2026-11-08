@@ -34,8 +34,16 @@ own result committed.
    from `validated`, `needs_review` or `failed` the listing moves to `blocked/corrections_exhausted`;
    from `blocked` it stays (CP-D9) and the read says `stopped`.
 
-Content and AI fixes (a new version a non-maker approves), seller questions and marketplace or
-staff tasks are the other lanes' writers (T15-T18).
+5. The human lanes' writers (fix round 2), for every planned step, before any automatic job:
+   - `seller` -> one Inbox question per fact or image (`open_questions` over those rows only,
+     CP-D25); no status move (the open row already blocks, and the dry run stays reachable);
+   - `marketplace` -> one `permission_decision` account task with the Seller Central step (T18;
+     the same target as the write path's, so a write and a read share one task);
+   - `staff` -> one `marketplace_error_review` account task per planner action (an unknown code
+     shares the write path's `account.error_review`), the rows linked to it.
+   Each row is linked to its task, so the inbox and the read name who acts next.
+
+Content and AI fixes (a new version a non-maker approves) are the auto-fix job's (T15-T16).
 """
 
 from __future__ import annotations
@@ -60,6 +68,7 @@ from app.repositories.listings import JobActor
 from app.repositories.repairs import NewRepair
 from app.repositories.uow import TenantUnitOfWork
 from app.services.adapter_input import build_adapter_listing
+from app.services.auto_fix.text import seller_central_step, staff_step
 from app.services.issues import adapter_source
 from app.services.remote_preview import request_preview
 from app.services.resolution.plan import IssueView, PlanContext, Step, plan
@@ -85,6 +94,8 @@ class ResolutionResult:
     job_id: uuid.UUID | None = None
     capped: bool = False
     notes: Mapping[str, str] = field(default_factory=dict)
+    tasks: Mapping[str, Sequence[uuid.UUID]] = field(default_factory=dict)
+    """lane -> the task ids the human lanes' writers opened or reused (step 5)."""
 
 
 def _view(row: Any, recurrence: Mapping[uuid.UUID, str]) -> IssueView:
@@ -452,6 +463,94 @@ async def _audit(
         )
 
 
+STAFF_TARGETS: Final[Mapping[str, str]] = {"review": "account.error_review"}
+PERMISSION_TARGET: Final = "account.category_approvals"
+
+
+def staff_target(action: str) -> str:
+    """The staff task's target for a planner action (`ck_human_tasks_target_path`)."""
+    return STAFF_TARGETS.get(action, f"account.review.{action}")
+
+
+async def _human_steps(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    steps: Sequence[Step],
+    by_issue: Mapping[uuid.UUID, Any],
+) -> dict[str, list[uuid.UUID]]:
+    """Step 5 of the module docstring: the seller, marketplace and staff lanes' tasks. Returns
+    lane -> the task ids opened or reused."""
+    from app.services.issue_questions import open_questions
+
+    opened: dict[str, list[uuid.UUID]] = {}
+    seller = [by_issue[s.issue_id] for s in steps if s.lane == "seller"]
+    if seller:
+        source = await uow.listings.preview_source(listing.id)
+        pinned = None if source is None else source.template
+        asked = await open_questions(
+            uow,
+            listing,
+            critical_keys=await uow.product_facts.critical_keys(),
+            template=None if pinned is None else pinned.template,
+            images=await _images(uow, listing),
+            rows=seller,
+        )
+        # no `human_task_opened` move: the open marketplace row already blocks the listing
+        # (`blocked/validation_errors` or `failed`), and a status that keeps the dry run and the
+        # revalidate reachable lets a fact fixed outside the inbox clear it (the shared
+        # blocking rule: a question never blocks by itself)
+        opened["seller"] = asked
+    account_steps: dict[tuple[str, str], list[Step]] = {}
+    for step in steps:
+        if step.lane == "marketplace":
+            target = f"{PERMISSION_TARGET}.{listing.category}"[:120]
+            account_steps.setdefault(("permission_decision", target), []).append(step)
+        elif step.lane == "staff":
+            target = staff_target(step.action)
+            account_steps.setdefault(("marketplace_error_review", target), []).append(step)
+    if not account_steps:
+        return opened
+    account = listing.marketplace_account_id or await uow.marketplace_accounts.active_for_publish(
+        listing.marketplace, None
+    )
+    if account is None:
+        log.info("resolution.no_account_for_task", listing_id=str(listing.id))
+        return opened
+    for (kind, target), group in sorted(account_steps.items()):
+        if kind == "permission_decision":
+            row = by_issue[group[0].issue_id]
+            question, reason = seller_central_step(row.marketplace_code, listing.category)
+        else:
+            question, reason = staff_step(group[0].action)
+        task_id = await uow.human_tasks.open_account_task(
+            kind, account, target, question, reason, {"kind": "acknowledge"}
+        )
+        if task_id is None:
+            continue
+        await uow.listing_issues.link_ids([s.issue_id for s in group], task_id)
+        opened.setdefault("marketplace" if kind == "permission_decision" else "staff", []).append(
+            task_id
+        )
+    log.info(
+        "resolution.tasks_opened",
+        listing_id=str(listing.id),
+        lanes=",".join(sorted(opened)),
+        tasks=sum(len(v) for v in opened.values()),
+    )
+    return opened
+
+
+async def _images(uow: TenantUnitOfWork, listing: Any) -> Sequence[Any]:
+    """The current version's `ImageRef`s (`images[<i>]` -> image id for an image question)."""
+    from app.services.generation_context import previous_listing
+
+    if listing.current_version_id is None:
+        return ()
+    version = await uow.listing_versions.get(listing.id, listing.current_version_id)
+    canonical = None if version is None else previous_listing(listing, version)
+    return () if canonical is None else canonical.images
+
+
 async def _resolve(
     uow: TenantUnitOfWork, listing: Any, *, entry: Entry, job: JobRun
 ) -> ResolutionResult:
@@ -516,12 +615,13 @@ async def _resolve(
     )
     written = {i: candidates[i] for i in ids}
     await _audit(uow, listing, job, written, ids)
+    tasks = await _human_steps(uow, listing, steps, by_issue)
     automatic = all(s.lane in ("auto_repair", "retry") for s in steps)
     if not steps or not automatic or not written:
-        return ResolutionResult(steps=steps, repairs=tuple(ids.values()))
+        return ResolutionResult(steps=steps, repairs=tuple(ids.values()), tasks=tasks)
     if cycles >= MAX_CYCLES:
         await _cap(uow, listing, job)
-        return ResolutionResult(steps=steps, repairs=tuple(ids.values()), capped=True)
+        return ResolutionResult(steps=steps, repairs=tuple(ids.values()), capped=True, tasks=tasks)
     next_job: uuid.UUID | None = None
     if entry == "preview":
         fresh = await uow.listings.get(listing.id)

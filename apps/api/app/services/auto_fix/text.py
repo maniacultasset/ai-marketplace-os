@@ -247,3 +247,55 @@ def affected(listings: Sequence[tuple[str, str]]) -> str:
     if len(text) > AFFECTED_MAX:
         text = text[: AFFECTED_MAX - 4].rstrip(" ,") + " ..."
     return text
+
+
+# ---- SI11 T18 and the staff lane: the next step of a listing Kuinn cannot fix itself ----
+
+LINK_MAX: Final = 2048
+_STAFF_STEPS: Final[Mapping[str, tuple[str, str]]] = {
+    "repair_rejected": (
+        "Review a marketplace error Kuinn's automatic fix did not clear.",
+        "The marketplace refused the value Kuinn's adapter fix sent, so Kuinn stopped guessing "
+        "(one automatic try per attribute); a person decides the next value.",
+    ),
+    "recurrence": (
+        "Review a marketplace error that came back after Kuinn fixed it.",
+        "The marketplace raised an error Kuinn had already fixed once, so Kuinn stopped "
+        "retrying it; a person decides the next step.",
+    ),
+    "unanswerable_fact": (
+        "Review a marketplace error on a product fact the seller cannot set.",
+        "The marketplace refused a product fact the seller's inbox cannot answer; a person "
+        "checks the mapping.",
+    ),
+    "ops": (
+        "Review a marketplace error Kuinn routes to staff.",
+        "The marketplace refused this listing with an error only staff can act on.",
+    ),
+}
+STAFF_DEFAULT: Final = "ops"
+
+
+def staff_step(action: str) -> tuple[str, str]:
+    """The question and the reason of the staff review task for one planner action."""
+    question, reason = _STAFF_STEPS.get(action, _STAFF_STEPS[STAFF_DEFAULT])
+    return _fit(question), _fit(reason)
+
+
+def seller_central_step(
+    code: str | None, category: str | None, link: str | None = None
+) -> tuple[str, str]:
+    """T18 (T54: templated): the clear next step of a marketplace-only error, 5..500 characters.
+    A link is added only when the issue carries one that is `https://` and at most 2048 long."""
+    where = f" for the {category.replace('_', ' ')} category" if category else ""
+    question = f"Request approval in Seller Central{where}, then resume publishing."
+    shown = f" (code {code})" if code else ""
+    reason = (
+        f"Only the marketplace can approve this brand or category{shown}; Kuinn does not retry "
+        "until a person closes this task."
+    )
+    if link and link.startswith("https://") and len(link) <= LINK_MAX:
+        step = f" See {link}"
+        if len(question) + len(step) <= QUESTION_MAX:
+            question += step
+    return _fit(question), _fit(reason)
