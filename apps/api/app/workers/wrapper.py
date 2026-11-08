@@ -84,6 +84,8 @@ CRASH_LOGGER = f"{__name__}.crash"
 ignore_logger(CRASH_LOGGER)
 _crash_log = get_logger(CRASH_LOGGER)
 STACK_FRAMES = 30
+# V1 hardening #13: kinds whose system failures (timeout, crash) each send `job_dead_lettered`
+ALERT_EVERY_FAILURE = frozenset({JobKind.LISTING_PUBLISH})
 _rand = secrets.SystemRandom()
 OK_STATUSES = frozenset({"succeeded"})
 
@@ -228,6 +230,7 @@ async def _execute(
             None,
             failure(ErrorCode.JOB_TIMEOUT, f"the job exceeded its {policy.timeout_s} s timeout"),
             zero_reservation=True,  # SI10 (CP-D19): every terminal path releases the hold
+            alert_failure=kind in ALERT_EVERY_FAILURE,
         )
         return "timeout", None
     except JobFailed as exc:
@@ -281,6 +284,7 @@ async def _execute(
             None,
             failure(ErrorCode.INTERNAL_ERROR, f"the job failed ({name})"),
             zero_reservation=True,  # SI10 (CP-D19)
+            alert_failure=kind in ALERT_EVERY_FAILURE,
         )
         return "failed", name
     await _finish(
@@ -331,6 +335,7 @@ async def _finish(
     persist: Persist | None = None,
     zero_reservation: bool = False,
     result: dict[str, Any] | None = None,
+    alert_failure: bool = False,
 ) -> None:
     """The one terminal transaction (module docstring, steps 5-6). `result` is the failure
     path's `result_json` (SI3; read after `persist` ran, so it may add keys; an empty dict is
@@ -367,7 +372,10 @@ async def _finish(
     # a shutdown arriving during the terminal write never leaves it half done
     try:
         written = await asyncio.shield(write())
-        if written and status == "dead_letter":  # after the commit only (S23 T23)
+        # after the commit only (S23 T23). V1 hardening #13: a publish that ends `failed` on a
+        # timeout or a crash alerts like a dead letter, since at launch volume the error-rate
+        # check (20 jobs minimum) never sees it
+        if written and (status == "dead_letter" or alert_failure):
             code = None if report is None or report.error_code is None else report.error_code.value
             await alert_dead_letter(head.tenant_id, job_id, head.kind, code)
     except Exception as exc:  # the terminal transaction rolled back whole

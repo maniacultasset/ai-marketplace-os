@@ -235,6 +235,31 @@ async def test_wrapper_crash_reaches_sentry_tagged_with_a_stack(
     assert "request_id" in event["tags"]
 
 
+async def test_publish_style_failures_alert_every_time(
+    jobs_db: JobWorld, override_body: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1 hardening #13: a kind in ALERT_EVERY_FAILURE (listing_publish) sends the dead-letter
+    alert for a crash or a timeout that ends `failed`; other kinds keep the error-rate check."""
+    assert JobKind.LISTING_PUBLISH in wrapper.ALERT_EVERY_FAILURE
+    sent: list[tuple[Any, ...]] = []
+
+    async def record(*args: Any) -> None:
+        sent.append(args)
+
+    async def body(ctx: JobContext) -> Outcome:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(wrapper, "alert_dead_letter", record)
+    override_body(KIND, body)
+    quiet = insert_job(jobs_db.conn, jobs_db.tenant("acme"))
+    await wrapper.run_job(str(quiet))
+    assert job_row(jobs_db.conn, quiet)["status"] == "failed" and sent == []
+    monkeypatch.setattr(wrapper, "ALERT_EVERY_FAILURE", frozenset({KIND}))
+    loud = insert_job(jobs_db.conn, jobs_db.tenant("acme"))
+    await wrapper.run_job(str(loud))
+    assert sent == [(jobs_db.tenant("acme"), loud, KIND.value, "INTERNAL_ERROR")]
+
+
 async def test_wrapper_no_body_failed(jobs_db: JobWorld, override_body: Any) -> None:
     from app.workers import registry
 
