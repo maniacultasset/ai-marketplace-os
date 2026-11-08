@@ -643,29 +643,17 @@ async def run_value_maps(min_listings: int) -> int:
 
 
 async def run_errors_export(fmt: str, marketplace: str | None) -> int:
-    from sqlalchemy import select, text
-
     from app.core.request_context import new_request_id
     from app.core.request_context import request_context as request_scope
-    from app.db.models.platform import MarketplaceErrorMap
     from app.db.session import dispose_engine, platform_scope
+    from app.repositories.error_catalog import map_rows, unmapped_count
     from app.services.resolution.export import rows, to_csv, to_md
 
-    m = MarketplaceErrorMap
     try:
         with request_scope(new_request_id()):
             async with platform_scope() as session:
-                stmt = select(m)
-                if marketplace is not None:
-                    stmt = stmt.where(m.marketplace == marketplace)
-                found = list((await session.execute(stmt)).scalars())
-                count = text(
-                    "SELECT count(DISTINCT (marketplace, marketplace_code)) FROM "
-                    "public.marketplace_error_catalog WHERE NOT mapped AND marketplace_code IS NOT "
-                    "NULL AND (CAST(:m AS text) IS NULL OR marketplace = :m)"
-                )
-                unmapped = int((await session.execute(count, {"m": marketplace})).scalar_one() or 0)
-                table = rows(found, unmapped)
+                unmapped = await unmapped_count(session, marketplace)
+                table = rows(await map_rows(session, marketplace), unmapped)
     except Exception as exc:  # class and SQLSTATE only, never the message
         sys.stderr.write(f"errors export: failed ({_describe(exc)})\n")
         return EXIT_FAILED

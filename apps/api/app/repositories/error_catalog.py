@@ -110,3 +110,29 @@ async def newest_sample(session: Any, marketplace: str, code: str) -> tuple[Any,
     """(issue id, tenant id) of the newest issue with this code; ids only."""
     row = (await session.execute(_NEWEST, {"marketplace": marketplace, "code": code})).first()
     return None if row is None else (row.id, row.tenant_id)
+
+
+# ---- SI13 T16: the export's reads ----
+
+_UNMAPPED_COUNT: Final = text(
+    "SELECT count(DISTINCT (marketplace, marketplace_code)) FROM public.marketplace_error_catalog "
+    "WHERE NOT mapped AND marketplace_code IS NOT NULL "
+    "AND (CAST(:m AS text) IS NULL OR marketplace = :m)"
+)
+
+
+async def unmapped_count(session: Any, marketplace: str | None) -> int:
+    """How many distinct marketplace codes no map row matched yet."""
+    return int((await session.execute(_UNMAPPED_COUNT, {"m": marketplace})).scalar_one() or 0)
+
+
+async def map_rows(session: Any, marketplace: str | None) -> list[Any]:
+    """Every error-map row (enabled or not) of the marketplace, for the export."""
+    from sqlalchemy import select
+
+    from app.db.models.platform import MarketplaceErrorMap as M
+
+    stmt = select(M).order_by(M.marketplace, M.match_on, M.raw_value, M.version)
+    if marketplace is not None:
+        stmt = stmt.where(M.marketplace == marketplace)
+    return list((await session.execute(stmt)).scalars())
