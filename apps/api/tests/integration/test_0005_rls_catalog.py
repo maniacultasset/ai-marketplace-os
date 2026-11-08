@@ -65,6 +65,7 @@ NO_RLS = frozenset(
     {
         "category_templates",
         "marketplace_error_map",
+        "marketplace_error_proposals",
         "attribute_definitions",
         "attribute_columns",
         "category_attributes",

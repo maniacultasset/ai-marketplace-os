@@ -116,6 +116,52 @@ class MarketplaceErrorMap(Base):
     created_at: Mapped[datetime] = created_at_column()
 
 
+class MarketplaceErrorProposal(Base):
+    """`marketplace_error_proposals` (revision 0024, SI13; DATABASE.md §5.2): an AI-drafted
+    error-map row for a marketplace code with no row. Platform-global (no tenant_id); the worker
+    drafts it, only the migrator's `errors proposals approve|reject` reviews it, and nothing on the
+    issue, planner, task or seller path reads it. The ids are soft references. CHECKs and the
+    drafting guard live in the revision."""
+
+    __tablename__ = "marketplace_error_proposals"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_marketplace_error_proposals")),
+        UniqueConstraint(
+            "marketplace",
+            "match_on",
+            "raw_value",
+            name=conv("uq_marketplace_error_proposals_key"),
+        ),
+        Index(conv("ix_marketplace_error_proposals_status"), "status", "next_try_at"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    marketplace: Mapped[str] = mapped_column(Text)
+    match_on: Mapped[str] = mapped_column(Text)
+    raw_value: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text)
+    tries: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    next_try_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failure_reason: Mapped[str | None] = mapped_column(Text)
+    plain_cause: Mapped[str | None] = mapped_column(Text)
+    suggested_fix: Mapped[str | None] = mapped_column(Text)
+    lane_class: Mapped[str | None] = mapped_column(Text)
+    error_code: Mapped[str | None] = mapped_column(Text)
+    error_class: Mapped[str | None] = mapped_column(Text)
+    field_hint: Mapped[str | None] = mapped_column(Text)
+    model_used: Mapped[str | None] = mapped_column(Text)
+    prompt_version: Mapped[str | None] = mapped_column(Text)
+    agent_run_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    sample_issue_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    review_note: Mapped[str | None] = mapped_column(Text)
+    error_map_version: Mapped[int | None] = mapped_column(Integer)
+
+
 class AttributeDefinition(Base):
     __tablename__ = "attribute_definitions"
     __table_args__ = (PrimaryKeyConstraint("key", name=conv("pk_attribute_definitions")),)
