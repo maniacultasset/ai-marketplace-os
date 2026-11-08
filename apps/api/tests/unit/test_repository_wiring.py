@@ -41,6 +41,7 @@ PLATFORM_READERS = frozenset(
         "CategoryTemplateRepository",
         "DictionaryRevisionRepository",
         "ErrorMapRepository",
+        "ErrorProposalRepository",  # SI13: platform-global, no tenant data
         "ProductTypeDefinitionRepository",
     }
 )

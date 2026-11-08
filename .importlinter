@@ -396,6 +396,8 @@ name = the resolution planner does no I/O
 type = forbidden
 source_modules =
     app.services.resolution.plan
+    app.services.resolution.reassign
+    app.services.resolution.diagnosis
 forbidden_modules =
     sqlalchemy
     psycopg
