@@ -18,6 +18,8 @@ from app.adapters.amazon.precheck import (
     link_in,
 )
 from app.adapters.base import AdapterItem, AdapterListing
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from mkos_schemas.enums import Severity
 from tests.adapters.amazon_support import (
     SELLER_FACTS,
@@ -177,6 +179,31 @@ def test_every_other_brand_asin_is_kept_once() -> None:
     ]
     _, _, others = from_catalog(sent, sent.units(), entries)
     assert others == ["B0BBBBBBBB", "B0CCCCCCCC"]
+
+
+_BRANDS = st.sampled_from([BRAND, "Test Brand Co", "Acme Traders", "Zeta Goods", None])
+
+
+@settings(max_examples=150, deadline=None)
+@given(st.lists(_BRANDS, min_size=1, max_size=5), st.randoms(use_true_random=False))
+def test_round3_the_catalog_verdict_never_depends_on_amazons_order(
+    brands: list[str | None], rnd: Any
+) -> None:
+    """Round 3 re-check of R2-3: any shuffle of the same ASINs gives the same item, the same
+    other-brand set and a same-brand match only when every ASIN is ours."""
+    sent = amazon_item()
+    entries = [_entry(EAN, b, f"B0{i:08d}") for i, b in enumerate(brands)]
+    shuffled = entries[:]
+    rnd.shuffle(shuffled)
+    a_items, a_matched, a_others = from_catalog(sent, sent.units(), entries)
+    b_items, b_matched, b_others = from_catalog(sent, sent.units(), shuffled)
+    assert [(i.severity, i.raw_code) for i in a_items] == [
+        (i.severity, i.raw_code) for i in b_items
+    ]
+    assert set(a_others) == set(b_others)
+    assert bool(a_matched) == bool(b_matched) == all(b == BRAND for b in brands)
+    if any(b in ("Acme Traders", "Zeta Goods") for b in brands):
+        assert a_items[0].severity is Severity.ERROR
 
 
 def test_no_hit_and_garbage_give_nothing() -> None:
