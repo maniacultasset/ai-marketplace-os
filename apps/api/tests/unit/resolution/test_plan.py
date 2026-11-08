@@ -6,6 +6,8 @@ import uuid
 from typing import Any
 
 import pytest
+from app.services.auto_fix.policy import fact_key
+from app.services.issue_questions import _image_index
 from app.services.resolution.plan import (
     AUTOMATIC,
     IssueView,
@@ -223,6 +225,26 @@ def test_a_seller_step_is_always_one_the_inbox_can_ask(
             assert seller_answers(path), (path, code)
         if step.lane == "staff" and step.action in ("mapping", "unanswerable_fact"):
             assert not seller_answers(path)
+
+
+@settings(max_examples=400, deadline=None)
+@given(
+    path=st.one_of(_PATHS, st.text(max_size=40)),
+    code=st.sampled_from(sorted(ErrorCode, key=str)),
+    source=st.sampled_from(SOURCES),
+    klass=st.sampled_from(sorted(ErrorClass, key=str)),
+    ai_allowed=st.booleans(),
+)
+def test_no_seller_step_without_a_fact_key_or_an_image_index(
+    path: str, code: ErrorCode, source: str, klass: ErrorClass, ai_allowed: bool
+) -> None:
+    """The seller inbox opens a question only from a fact key or an image index; a path with
+    neither is never planned `seller` (it would open nothing and stall)."""
+    if fact_key(path) is not None or _image_index(path) is not None:
+        return
+    issue = _issue(field_path=path, error_code=code.value, source=source, error_class=klass.value)
+    for step in plan([issue], PlanContext(ai_allowed=ai_allowed)):
+        assert step.lane != "seller", (path, code, source, klass)
 
 
 @pytest.mark.parametrize(
