@@ -32,6 +32,7 @@ FLOWS: dict[str, tuple[str, ...]] = {
     "auto_fix": ("auto_fix.sh",),  # SI4 A19
     "photo_facts": ("photo_facts.sh",),  # SI3
     "team": ("team_access.sh",),  # SI5 (ADR-0029)
+    "brief_gaps": ("brief_gaps.sh",),  # SI13: category, barcode, brand and unknown codes
 }
 # the steps that may read the database (`psql` through the compose postgres), each with its reason;
 # every one is read-only (no write SQL), names as built
