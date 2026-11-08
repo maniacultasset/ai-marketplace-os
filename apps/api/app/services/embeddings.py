@@ -168,6 +168,11 @@ class EmbeddingFailed(Exception):  # noqa: N818 - the S16 CODE-PLAN name
 
 
 OPENAI_BASE_URL: Final = "https://api.openai.com/v1"
+EMBEDDING_PROVIDER_ROUTE: Final = {
+    "only": ["openai"],
+    "allow_fallbacks": False,
+    "data_collection": "deny",
+}
 
 
 def _gateway_key(settings: Settings) -> str | None:
@@ -193,7 +198,10 @@ class OpenAIEmbedder:
             base_url, self._request_model = OPENROUTER_BASE_URL, gateway_openai_model(self.model)
             # Route brand text only to providers that neither keep nor train on it, as the
             # generation calls do; a provider set that cannot honour it fails the call closed.
-            self._extra_body = {"provider": {"data_collection": "deny"}}
+            # V1 hardening #18: pinned to the vendor the privacy policy names (OpenAI, United
+            # States) with no fallback, as the image edit is pinned, so OpenRouter can never
+            # serve the embedding from another host.
+            self._extra_body = {"provider": EMBEDDING_PROVIDER_ROUTE}
         # base_url is one of two pinned constants so an OPENAI_BASE_URL in the environment can
         # never redirect brand text; max_retries=0 so the SDK never hides a call (CP8). The SDK's
         # own client reads HTTPS_PROXY/SSL_CERT_FILE and follows redirects, so the key's client
