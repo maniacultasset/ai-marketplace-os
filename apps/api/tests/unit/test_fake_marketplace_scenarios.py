@@ -267,3 +267,150 @@ async def test_unknown_scenario_name_ignored(fake: Fake) -> None:
     client, _, app = fake
     await _scenario(client, "X-1", "teleport")
     assert app.state.fake.spapi_scenario == {}
+
+
+# ---- SI13 (T2): read-side signals, category and child-axis writes ----
+
+
+async def test_wrong_product_type_read(fake: Fake) -> None:
+    client, _, _ = fake
+    await _scenario(client, "W-1", "wrong_product_type")
+    written = await _put(fake, "W-1", item_name=_v("Kurta"))
+    assert (written["status"], written["issues"]) == ("ACCEPTED", [])
+    read = (await _get(fake, "W-1")).json()
+    assert read["summaries"][0]["productType"] == "PANTS"
+    assert read["issues"] == []
+
+
+async def test_reassign_burst_read(fake: Fake) -> None:
+    client, _, _ = fake
+    await _scenario(client, "B-1", "reassign_burst")
+    assert (await _put(fake, "B-1", item_name=_v("Kurta")))["status"] == "ACCEPTED"
+    read = (await _get(fake, "B-1")).json()
+    assert _codes(read) == [
+        ("90220", ["fabric_type"]),
+        ("90220", ["neck_style"]),
+        ("90220", ["sleeve_type"]),
+    ]
+    assert {i["categories"][0] for i in read["issues"]} == {"MISSING_ATTRIBUTE"}
+
+
+async def test_category_code_clears_on_a_new_type(fake: Fake) -> None:
+    client, token, _ = fake
+    await _scenario(client, "C-1", "category_code")
+    first = await _put(fake, "C-1", item_name=_v("Kurta"))
+    assert first["status"] == "INVALID" and _codes(first) == [("4000003", [])]
+    again = await _put(fake, "C-1", item_name=_v("Kurta"))
+    assert again["status"] == "INVALID"
+    body = _body(item_name=_v("Kurta")) | {"productType": "PANTS"}
+    moved = await client.put(f"{BASE}/C-1", params=Q, json=body, headers=_h(token))
+    assert moved.json()["status"] == "ACCEPTED"
+
+
+async def test_child_missing_axis_clears_once_sent(fake: Fake) -> None:
+    client, token, _ = fake
+    await _scenario(client, "K-1", "child_missing_axis")
+    first = await _put(fake, "K-1", size=_v("M"), item_name=_v("Kurta"))
+    assert first["status"] == "ACCEPTED" and _codes(first) == [("90220", ["size_name"])]
+    assert _codes((await _get(fake, "K-1")).json()) == [("90220", ["size_name"])]
+    patched = await client.patch(
+        f"{BASE}/K-1", params=Q, json=_patch(size_name=_v("M")), headers=_h(token)
+    )
+    assert patched.json()["issues"] == []
+    assert (await _get(fake, "K-1")).json()["issues"] == []
+
+
+# ---- SI13 (T2): Catalog Items search and Listings Restrictions ----
+
+CATALOG = "/catalog/2022-04-01/items"
+RESTRICTIONS = "/listings/2021-08-01/restrictions"
+
+
+async def _catalog(fake: Fake, *eans: str) -> httpx.Response:
+    client, token, _ = fake
+    query = Q | {
+        "identifiers": ",".join(eans),
+        "identifiersType": "EAN",
+        "includedData": "summaries,identifiers",
+    }
+    return await client.get(CATALOG, params=query, headers=_h(token))
+
+
+async def _script(fake: Fake, ean: str, **spec: str) -> None:
+    client, _, _ = fake
+    response = await client.post("/__control", json={"spapi_catalog": {ean: spec}})
+    assert response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("scenario", "brand"),
+    [
+        ("other_brand_ean", "Acme Traders"),
+        ("similar_brand_ean", "Zebra Co"),
+        ("same_brand_ean", "Zebra"),
+        ("no_brand_ean", None),
+    ],
+)
+async def test_catalog_scenarios(fake: Fake, scenario: str, brand: str | None) -> None:
+    from tests.support.fake_marketplace import catalog_asin
+
+    await _script(fake, "8901234567890", scenario=scenario, brand="Zebra")
+    reply = (await _catalog(fake, "8901234567890", "8900000000017")).json()
+    (item,) = reply["items"]
+    assert item["asin"] == catalog_asin("8901234567890")
+    assert item["summaries"][0].get("brand") == brand
+    assert item["identifiers"][0]["identifiers"][0]["identifier"] == "8901234567890"
+
+
+async def test_catalog_no_match_and_5xx(fake: Fake) -> None:
+    assert (await _catalog(fake, "8900000000017")).json() == {"numberOfResults": 0, "items": []}
+    await _script(fake, "8901234567890", scenario="catalog_5xx")
+    assert (await _catalog(fake, "8901234567890")).status_code == 500
+
+
+async def test_catalog_needs_a_token_and_identifiers(fake: Fake) -> None:
+    client, _, _ = fake
+    assert (await client.get(CATALOG, params=Q | {"identifiers": "1"})).status_code == 403
+    assert (await _catalog(fake)).status_code == 400
+    assert (await _catalog(fake, *[f"89000000000{i:02d}" for i in range(21)])).status_code == 400
+
+
+@pytest.mark.parametrize(
+    ("restriction", "scheme"),
+    [("brand_restricted", "https://"), ("brand_restricted_bad_link", "http://")],
+)
+async def test_restrictions(fake: Fake, restriction: str, scheme: str) -> None:
+    from tests.support.fake_marketplace import catalog_asin
+
+    client, token, _ = fake
+    await _script(
+        fake, "8901234567890", scenario="same_brand_ean", brand="Zebra", restriction=restriction
+    )
+    query = Q | {"asin": catalog_asin("8901234567890"), "sellerId": "A1SELLER"}
+    reply = (await client.get(RESTRICTIONS, params=query, headers=_h(token))).json()
+    (reason,) = reply["restrictions"][0]["reasons"]
+    assert reason["reasonCode"] == "APPROVAL_REQUIRED"
+    assert reason["links"][0]["resource"].startswith(scheme + "sellercentral.amazon.in/")
+
+
+async def test_restrictions_none_and_5xx(fake: Fake) -> None:
+    from tests.support.fake_marketplace import catalog_asin
+
+    client, token, _ = fake
+    query = Q | {"asin": "B0AAAAAAAA", "sellerId": "A1SELLER"}
+    assert (await client.get(RESTRICTIONS, params=query, headers=_h(token))).json() == {
+        "restrictions": []
+    }
+    await _script(fake, "8901234567890", scenario="same_brand_ean", restriction="restrictions_5xx")
+    query = Q | {"asin": catalog_asin("8901234567890"), "sellerId": "A1SELLER"}
+    assert (await client.get(RESTRICTIONS, params=query, headers=_h(token))).status_code == 500
+
+
+async def test_catalog_and_restriction_calls_recorded(fake: Fake) -> None:
+    client, token, app = fake
+    await _catalog(fake, "8901234567890")
+    await client.get(
+        RESTRICTIONS, params=Q | {"asin": "B0AAAAAAAA", "sellerId": "A1"}, headers=_h(token)
+    )
+    paths = [c["path"] for c in app.state.fake.calls]
+    assert paths == [CATALOG, RESTRICTIONS]

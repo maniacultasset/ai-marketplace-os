@@ -267,6 +267,10 @@ class Settings(BaseSettings):
     # Off unless set: production turns it on only after the deliberate-error runbook passes on
     # Amazon India (its preview support is unconfirmed, F:61).
     amazon_validation_preview_enabled: bool = False
+    # SI13: inside that dry-run job, also search Amazon's catalog by EAN and read the brand
+    # restrictions of a matched ASIN (needs the preview flag too). Off unless set: production
+    # turns it on only after the deliberate-error runbook (T9-T10) passes.
+    amazon_catalog_precheck_enabled: bool = False
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None
@@ -276,6 +280,11 @@ class Settings(BaseSettings):
     flipkart_api_base: str = "https://api.flipkart.net/sellers"
     flipkart_oauth_redirect_uri: str = "http://localhost:8000/api/v1/marketplaces/flipkart/callback"
     flipkart_enabled: bool = False  # S22 D1: Flipkart connect, refresh and adapter stay off
+
+    # ---- SI13: AI drafts for marketplace codes with no error-map row ----
+    # The periodic scheduler drafts a staff-review proposal per unmapped code (one model call
+    # each, through the SI10 budget). Proposals never act. Off unless set.
+    marketplace_error_diagnosis_enabled: bool = False
 
     # ---- observability ----
     sentry_dsn: str | None = Field(default=None, repr=False)
