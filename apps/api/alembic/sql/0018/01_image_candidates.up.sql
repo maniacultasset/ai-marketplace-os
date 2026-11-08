@@ -2,7 +2,8 @@
 -- SI7 (ADR-0030 proposed): a proposed product image (a white-background edit, a deterministic
 -- re-frame or a size-chart render). It becomes an `images` row only when the seller accepts it.
 -- `job_id` has no FK (job rows are pruned); the cache index leaves out the retryable failures, so
--- a seller can try again after an outage or a refused budget, never after a verdict.
+-- a seller can try again after an outage, a refused budget or a source that changed or went away
+-- (`source_changed`), never after a verdict on the pixels.
 CREATE TABLE public.image_candidates (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL,
@@ -54,7 +55,7 @@ CREATE TABLE public.image_candidates (
     CHECK (status IN ('queued', 'ready', 'failed', 'accepted', 'rejected')),
   CONSTRAINT ck_image_candidates_failure_reason CHECK (failure_reason IN (
     'fidelity', 'not_white', 'too_small', 'source_unusable', 'no_size_chart', 'model_failed',
-    'credit_used_up', 'budget')),
+    'credit_used_up', 'budget', 'source_changed')),
   CONSTRAINT ck_image_candidates_failed CHECK ((status = 'failed') = (failure_reason IS NOT NULL)),
   CONSTRAINT ck_image_candidates_source CHECK ((kind = 'size_chart') = (source_image_id IS NULL)),
   CONSTRAINT ck_image_candidates_source_hash CHECK (source_hash ~ '^[0-9a-f]{64}$'),
@@ -74,7 +75,8 @@ CREATE TABLE public.image_candidates (
 
 CREATE UNIQUE INDEX uq_image_candidates_cache
   ON public.image_candidates (tenant_id, product_id, kind, source_hash, generator_key)
-  WHERE NOT (status = 'failed' AND failure_reason IN ('model_failed', 'credit_used_up', 'budget'));
+  WHERE NOT (status = 'failed'
+    AND failure_reason IN ('model_failed', 'credit_used_up', 'budget', 'source_changed'));
 CREATE INDEX ix_image_candidates_product
   ON public.image_candidates (tenant_id, product_id, created_at DESC);
 CREATE INDEX ix_image_candidates_tenant_id_created_at

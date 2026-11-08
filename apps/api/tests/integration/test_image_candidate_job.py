@@ -89,7 +89,7 @@ async def test_size_chart_changed_since_create(images_db: JobWorld, store: FakeS
     candidate, job = await enqueue_candidate(tenant, p, None, "0" * 64, kind="size_chart")
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
-    assert (row["status"], row["failure_reason"]) == ("failed", "source_unusable")
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
 
 
 async def test_source_replaced_before_the_job(images_db: JobWorld, store: FakeStorage) -> None:
@@ -101,7 +101,7 @@ async def test_source_replaced_before_the_job(images_db: JobWorld, store: FakeSt
     )
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
-    assert (row["status"], row["failure_reason"]) == ("failed", "source_unusable")
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
 
 
 async def test_storage_outage_is_retried(images_db: JobWorld, store: FakeStorage) -> None:
@@ -588,3 +588,22 @@ async def test_served_provider_on_the_row_and_the_log(
     assert candidate_row(images_db.conn, candidate)["served_provider"] == "Google"
     (record,) = [r for r in logs.records if "image_candidate.model_done" in r.getMessage()]
     assert "Google" in str(record.__dict__)
+
+
+# ---- review fixes ----
+
+
+async def test_edit_source_replaced_before_the_job_is_not_cached(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    candidate, job, _ = await _edit(images_db, store)
+    images_db.conn.execute(
+        "UPDATE images SET clean_content_hash = %s WHERE id = ("
+        "SELECT source_image_id FROM image_candidates WHERE id = %s)",
+        ["b" * 64, candidate],
+    )
+    seen = _stub_with(edit_on, lambda r, q: r)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
+    assert seen == [] and _reserved(images_db.conn, job) == 0

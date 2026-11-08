@@ -2093,7 +2093,8 @@
                   "no_size_chart",
                   "model_failed",
                   "credit_used_up",
-                  "budget"
+                  "budget",
+                  "source_changed"
                 ],
                 "type": "string"
               },

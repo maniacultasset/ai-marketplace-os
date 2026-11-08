@@ -5,8 +5,9 @@ A candidate job is an `image_compliance` job whose payload names a `candidate_id
 
 1. One short read: the candidate (gone, owned by another job or not `queued` → `succeeded`
    with `skipped`); for `fix` the source row (still the live `main`, same `clean_content_hash`,
-   else `failed/source_unusable`); for `size_chart` the product's chart (none → `no_size_chart`;
-   changed → `source_unusable`).
+   with its clean copy, else `failed/source_changed`); for `size_chart` the product's chart (gone
+   or changed → `source_changed`). `source_changed` is a state, not a verdict: it stays outside
+   the cache index, so asking again makes a new candidate.
 2. GET the clean copy (10 MiB cap; a store outage is retried).
 3. The child op in the killable child. A verdict is stored (`too_small`, `source_unusable`,
    `not_white`); an infrastructure failure (`CandidateChildFailed`) is retried, and after the
@@ -54,6 +55,8 @@ log = get_logger(__name__)
 MAX_IMAGE_BYTES: Final = 10_485_760
 # the hard deadline over the seam call: the credentials' timeout plus this grace
 SEAM_GRACE_S: Final = 15
+# the source changed or went away before the job ran (never cached, unlike a child verdict)
+SOURCE_CHANGED: Final = "source_changed"
 
 
 def candidate_id_of(ctx: JobContext) -> UUID:
@@ -175,13 +178,13 @@ async def _deterministic(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
     async with tenant_uow(ctx.tenant_id) as uow:
         product = await uow.products.get_by_id(candidate.product_id)
         if product is None:
-            return await fail(ctx, candidate.id, "source_unusable")
+            return await fail(ctx, candidate.id, SOURCE_CHANGED)
         if candidate.kind == "size_chart":
             source = size_chart_source(product.attributes)
             if source is None:
-                return await fail(ctx, candidate.id, "no_size_chart")
+                return await fail(ctx, candidate.id, SOURCE_CHANGED)
             if source.source_hash != candidate.source_hash:
-                return await fail(ctx, candidate.id, "source_unusable")
+                return await fail(ctx, candidate.id, SOURCE_CHANGED)
             params = {"chart": dict(source.chart), "fibres": source.fibres}
             op = "size_chart"
             clean_key = None
@@ -192,11 +195,11 @@ async def _deterministic(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
                 else await uow.images.get_live(candidate.source_image_id)
             )
             if not source_is_current(candidate, row):
-                return await fail(ctx, candidate.id, "source_unusable")
+                return await fail(ctx, candidate.id, SOURCE_CHANGED)
             assert row is not None  # noqa: S101 - source_is_current
             clean_key = clean_key_of(ctx.tenant_id, row)
             if clean_key is None:
-                return await fail(ctx, candidate.id, "source_unusable")
+                return await fail(ctx, candidate.id, SOURCE_CHANGED)
             params = {
                 "rules": await main_rules(uow, ctx, product.category),
                 "image_id": str(candidate.id),
@@ -207,7 +210,7 @@ async def _deterministic(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
         try:
             inputs["clean"] = await read_object(clean_key)
         except (StorageNotFound, StorageObjectTooLarge):
-            return await fail(ctx, candidate.id, "source_unusable")
+            return await fail(ctx, candidate.id, SOURCE_CHANGED)
     try:
         reply = await image_runner.run_candidate_isolated(op, inputs, params)
     except CandidateChildFailed as error:
@@ -364,7 +367,7 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
     inputs = await _edit_inputs(ctx, candidate)
     if inputs is None:
-        return await _ai_fail(ctx, candidate.id, "source_unusable", zero=True)
+        return await _ai_fail(ctx, candidate.id, SOURCE_CHANGED, zero=True)
     try:
         reserved = await reserve(
             ctx.tenant_id,
@@ -381,7 +384,7 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
         vision = await read_object(inputs.vision_key)
         clean = await read_object(inputs.clean_key)
     except (StorageNotFound, StorageObjectTooLarge):
-        return await _ai_fail(ctx, candidate.id, "source_unusable", zero=True)
+        return await _ai_fail(ctx, candidate.id, SOURCE_CHANGED, zero=True)
     except RetryableJobError:
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
     try:

@@ -224,6 +224,7 @@ async def _register(
     the main replacement, the row, the job and the audit rows."""
     tenant = principal.tenant_id
     replaced: list[uuid.UUID] = []
+    candidate_keys: list[str] = []
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = _uow_on(session, tenant)
@@ -241,6 +242,8 @@ async def _register(
             if old is not None:
                 await uow.images.soft_delete(old.id)
                 replaced.append(old.id)
+                # SI7: its open candidates can no longer be accepted (as a delete does)
+                candidate_keys.extend(await uow.image_candidates.fail_for_source(old.id))
                 await _audit(
                     uow,
                     principal,
@@ -271,6 +274,7 @@ async def _register(
     _status, body = await idempotent(principal, idem_key, "POST", UPLOAD_PATH, payload, handler)
     for old_id in replaced:  # SI1 T21: the replaced main's copies go after the commit
         await remove_objects_after_commit(principal, old_id)
+    await delete_candidate_objects(candidate_keys)
     log.info(
         "image.accepted",
         tenant_id=str(tenant),
@@ -520,11 +524,17 @@ async def delete_image(principal: Principal, image_id: uuid.UUID) -> None:
         # SI7 (CODE-PLAN §12 LOW 8): its open candidates can no longer be accepted
         candidate_keys = await uow.image_candidates.fail_for_source(image_id)
     await remove_objects_after_commit(principal, image_id)
-    for key in candidate_keys:
+    await delete_candidate_objects(candidate_keys)
+
+
+async def delete_candidate_objects(keys: list[str]) -> None:
+    """After the commit: delete the objects of retired candidates; a store outage leaves them for
+    the 30-day candidate sweep, which deletes them by key."""
+    for key in keys:
         try:
             await get_storage().delete(images_bucket(), key)
-        except StorageUnavailable:  # the 30-day candidate sweep deletes it by key later
-            log.info("image_candidate.object_kept", image_id=str(image_id), reason="store_down")
+        except StorageUnavailable:
+            log.info("image_candidate.object_kept", reason="store_down")
 
 
 # ---- T12: the report ----

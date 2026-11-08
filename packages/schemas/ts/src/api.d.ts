@@ -2764,7 +2764,7 @@ export interface components {
              */
             created_at: string;
             /** Failure Reason */
-            failure_reason?: ("fidelity" | "not_white" | "too_small" | "source_unusable" | "no_size_chart" | "model_failed" | "credit_used_up" | "budget") | null;
+            failure_reason?: ("fidelity" | "not_white" | "too_small" | "source_unusable" | "no_size_chart" | "model_failed" | "credit_used_up" | "budget" | "source_changed") | null;
             fidelity?: components["schemas"]["FidelityOut"] | null;
             /** Height */
             height?: number | null;

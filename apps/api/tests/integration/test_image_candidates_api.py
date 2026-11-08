@@ -770,5 +770,70 @@ async def test_deleting_the_source_fails_its_open_candidates(
     )
     assert response.status_code == 204
     row = candidate_row(images_db.conn, candidate)
-    assert (row["status"], row["failure_reason"]) == ("failed", "source_unusable")
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
     assert key not in store.objects
+
+
+# ---- review fixes: a candidate answers a create only for its own live source ----
+
+
+@pytest.mark.parametrize("decided", ["ready", "rejected"])
+async def test_same_photo_on_a_new_main_is_a_new_candidate(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, decided: str
+) -> None:
+    from datetime import UTC, datetime
+
+    candidate, p, src = await _ready(api, images_db, store)
+    if decided == "rejected":
+        assert (await _decide(api, images_db, candidate, "reject")).status_code == 200
+    key = candidate_row(images_db.conn, candidate)["storage_key"]
+    images_db.conn.execute(
+        "UPDATE images SET deleted_at = %s WHERE id = %s", [datetime.now(UTC), src]
+    )
+    _, again_src, _ = source_main(images_db.conn, store, images_db.tenant("acme"), product_id=p)
+    again = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(again_src)})
+    assert again.status_code == 202, again.text
+    assert again.json()["candidate_id"] != str(candidate)
+    assert again.json()["status"] == "queued" and again.json()["job_id"] is not None
+    old = candidate_row(images_db.conn, candidate)
+    assert (old["status"], old["failure_reason"]) == ("failed", "source_changed")
+    assert key not in store.objects
+    await run_image_job(uuid.UUID(again.json()["job_id"]))
+    fresh = uuid.UUID(again.json()["candidate_id"])
+    assert (await _decide(api, images_db, fresh, "accept")).status_code == 202
+
+
+async def test_a_main_upload_retires_the_old_mains_candidates(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    from datetime import UTC, datetime
+
+    from app.services.image_keys import image_object_key
+
+    from .images_support import picture, register_key
+
+    candidate, p, _ = await _ready(api, images_db, store)
+    key = candidate_row(images_db.conn, candidate)["storage_key"]
+    image_id = uuid.uuid4()
+    upload_key = image_object_key(images_db.tenant("acme"), p, image_id)
+    store.objects[upload_key] = (picture(1000, 1000), "image/jpeg", datetime.now(UTC))
+    upload = await register_key(api, headers(images_db), p, upload_key)
+    assert upload.status_code == 202, upload.text
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "source_changed")
+    assert key not in store.objects
+
+
+async def test_delete_then_reupload_of_the_same_photo_can_try_again(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    candidate, p, src = await _ready(api, images_db, store)
+    deleted = await api.delete(
+        f"/api/v1/images/{src}", headers=as_member(images_db, "operator@acme.test")
+    )
+    assert deleted.status_code == 204
+    _, again_src, _ = source_main(images_db.conn, store, images_db.tenant("acme"), product_id=p)
+    again = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(again_src)})
+    assert again.status_code == 202, again.text
+    assert again.json()["candidate_id"] != str(candidate)
+    assert again.json()["status"] == "queued"

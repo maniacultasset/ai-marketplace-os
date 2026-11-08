@@ -251,7 +251,7 @@ async def test_fail_for_source_returns_keys(images_db: JobWorld) -> None:
         keys = await uow.image_candidates.fail_for_source(src)
         row = await uow.image_candidates.get(ready)
     assert keys == ["k1"]
-    assert row is not None and (row.status, row.failure_reason) == ("failed", "source_unusable")
+    assert row is not None and (row.status, row.failure_reason) == ("failed", "source_changed")
 
 
 async def test_list_for_product_newest_first(images_db: JobWorld) -> None:

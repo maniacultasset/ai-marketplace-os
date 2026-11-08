@@ -179,10 +179,13 @@ class Image(TenantScoped, Base):
     updated_at: Mapped[datetime] = updated_at_column()
 
 
-# The failures a seller may retry: they stay outside the cache index (CP-D19).
-RETRYABLE_FAILURES = ("model_failed", "credit_used_up", "budget")
+# The failures a seller may retry: they stay outside the cache index (CP-D19). `source_changed`
+# is a source that changed or went away before the candidate could be made or accepted: a state,
+# not a verdict on the pixels, so the same photo asked for again is a new candidate.
+RETRYABLE_FAILURES = ("model_failed", "credit_used_up", "budget", "source_changed")
 CANDIDATE_CACHE_WHERE = (
-    "NOT (status = 'failed' AND failure_reason IN ('model_failed', 'credit_used_up', 'budget'))"
+    "NOT (status = 'failed' AND failure_reason IN "
+    "('model_failed', 'credit_used_up', 'budget', 'source_changed'))"
 )
 
 

@@ -26,6 +26,7 @@ FailureReason = Literal[
     "model_failed",
     "credit_used_up",
     "budget",
+    "source_changed",
 ]
 MAX_CANDIDATES_LISTED: Final = 50
 _PHOTO_KINDS: Final = frozenset({"white_background", "fix"})

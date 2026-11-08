@@ -47,6 +47,7 @@ from app.services.images import (
     IMAGE_JOB_LOCK,
     MAX_LIVE_IMAGES_PER_PRODUCT,
     accepted_body,
+    delete_candidate_objects,
     enforce_live_image_cap,
     insert_image_and_job,
     remove_objects_after_commit,
@@ -132,6 +133,20 @@ def _accepted(row: ImageCandidate, *, with_job: bool) -> dict[str, Any]:
         "job_id": None if job is None else str(job),
         "poll_url": None if job is None else f"{API_V1}/jobs/{job}",
     }
+
+
+# a cached row still open for a decision: it answers only for its own live source
+_OPEN: Final = frozenset({"queued", "ready", "rejected"})
+
+
+def _other_source(row: ImageCandidate, body: CandidateRequest) -> bool:
+    """The cached row was made from another image with the same pixels (a main replaced by a
+    re-upload of the same photo): it can never be accepted for this source (`_still_current`)."""
+    return (
+        row.source_image_id is not None
+        and row.source_image_id != body.source_image_id
+        and row.status in _OPEN
+    )
 
 
 async def _cache_answer(uow: TenantUnitOfWork, row: ImageCandidate) -> dict[str, Any] | None:
@@ -222,6 +237,8 @@ async def create_candidate(
         {"kind": body.kind, "source_image_id": str(body.source_image_id or "")}, sort_keys=True
     ).encode()
 
+    retired: list[str] = []
+
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, tenant)
         await uow.images.lock_tenant_image_jobs()
@@ -230,6 +247,10 @@ async def create_candidate(
         cached = await uow.image_candidates.find_cached(
             product_id, body.kind, key.source_hash, key.generator_key
         )
+        if cached is not None and _other_source(cached, body):
+            # retired out of the cache index, so this source gets its own candidate
+            retired.extend(await uow.image_candidates.retire(cached.id))
+            cached = None
         if cached is not None:
             answer = await _cache_answer(uow, cached)
             if answer is not None:
@@ -294,6 +315,7 @@ async def create_candidate(
         }
 
     _status, answer = await idempotent(principal, idem_key, "POST", path, payload, handler)
+    await delete_candidate_objects(retired)
     log.info(
         "image_candidate.create",
         tenant_id=str(tenant),

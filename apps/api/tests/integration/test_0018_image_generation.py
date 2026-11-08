@@ -177,7 +177,7 @@ def test_cache_index_refuses_a_second_ready_row(db: Conn) -> None:
 def test_cache_index_skips_retryable_failures(db: Conn) -> None:
     tenant, product, source = _source(db)
     key = {"source_hash": "c" * 64, "generator_key": "fix/v1"}
-    for reason in ("model_failed", "model_failed", "credit_used_up", "budget"):
+    for reason in ("model_failed", "model_failed", "credit_used_up", "budget", "source_changed"):
         f.image_candidate(
             db, tenant, product, source, status="failed", failure_reason=reason, **key
         )

@@ -294,23 +294,34 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
         return await self._write(stmt)
 
     async def fail_for_source(self, source_image_id: UUID) -> builtins.list[str]:
-        """A deleted source: its open candidates become `failed/source_unusable`. Returns the
-        object keys they held, for the caller to delete after the commit."""
+        """A deleted or replaced source: its open candidates become `failed/source_changed`
+        (outside the cache index, so the same photo asked for again is a new candidate). Returns
+        the object keys they held, for the caller to delete after the commit."""
+        return await self._retire(
+            ImageCandidate.source_image_id == _uuid("source_image_id", source_image_id)
+        )
+
+    async def retire(self, candidate_id: UUID) -> builtins.list[str]:
+        """One open candidate whose source is no longer its live main: `failed/source_changed`,
+        as `fail_for_source` does. Returns the object key it held, if any."""
+        return await self._retire(ImageCandidate.id == _uuid("candidate_id", candidate_id))
+
+    async def _retire(self, match: Any) -> builtins.list[str]:
         self._own_session()
         stmt = self._scoped_write(
             update(ImageCandidate)
             .where(
-                ImageCandidate.source_image_id == _uuid("source_image_id", source_image_id),
+                match,
                 ImageCandidate.status.in_(_DECIDABLE),
                 self._tenant_criterion(include_platform=False),
             )
-            .values(status="failed", failure_reason="source_unusable", storage_key=None)
+            .values(status="failed", failure_reason="source_changed", storage_key=None)
             .returning(ImageCandidate.id)
         )
         before = (
             self._select()
             .where(
-                ImageCandidate.source_image_id == source_image_id,
+                match,
                 ImageCandidate.status.in_(_DECIDABLE),
                 ImageCandidate.storage_key.is_not(None),
             )
