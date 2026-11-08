@@ -472,15 +472,15 @@ async def _content_fixable(
     return frozenset() if found is None else frozenset(f.issue_id for f in found[1])
 
 
-async def _ai_allowed(uow: TenantUnitOfWork) -> bool:
-    """T16: SI10's credit gate admits AI spend now (no pause, no fresh low balance)."""
+async def _ai_allowed(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> bool:
+    """T16: the claim's own admission rule admits one generation now (SI10 D4: no credit
+    pause or fresh low balance, the tenant's and the platform's daily caps; fix round 1), so a
+    rewrite the claim would refuse is never planned: those refusals go to staff or the seller."""
     from datetime import UTC, datetime
 
-    from app.repositories.ai_credit import AiCreditRepository
-    from app.services.ai_credit import credit_refusal
+    from app.workers.budget import admission_on
 
-    row = await AiCreditRepository(uow.session).read()
-    return credit_refusal(row, datetime.now(UTC)) is None
+    return await admission_on(uow.session, tenant_id, datetime.now(UTC)) is None
 
 
 def _ai_scope(
@@ -736,7 +736,7 @@ async def _resolve(
     content_fixable = await _content_fixable(uow, listing, rows)
     ctx = PlanContext(
         content_fixable=content_fixable,
-        ai_allowed=await _ai_allowed(uow),
+        ai_allowed=await _ai_allowed(uow, listing.tenant_id),
         critical_keys=await uow.product_facts.critical_keys(),
         repairable=frozenset(candidates),
         repair_rejected=found.rejected,

@@ -105,17 +105,44 @@ async def admission(
 ) -> Refusal | None:
     """The one admission read (D4): the credit row and the tenant's day in a short tenant read,
     then the platform sum only when those pass. Nothing is written."""
-    day = _day(now)
     async with unit_of_work(tenant_id) as session:
-        credit = await AiCreditRepository(session).read()
-        own = await BudgetRepository(session, tenant_id).tenant_state(
-            day, default_cap=tenant_default_cap()
-        )
+        credit, own = await _admission_reads(session, tenant_id, _day(now))
+    return await _admission_rest(credit, own, now, amount)
+
+
+async def admission_on(
+    session: Any,
+    tenant_id: UUID,
+    now: datetime,
+    *,
+    amount: Decimal = GENERATION_RESERVATION_USD,
+) -> Refusal | None:
+    """`admission` for a caller already inside a tenant transaction (SI11: the resolution
+    executor in a terminal hook): the credit row and the tenant's day read on `session`, the
+    platform sum in a separate read-only `platform_scope()` session only when those pass (as
+    `reserve` reads it while it holds the tenant transaction). Nothing is written."""
+    credit, own = await _admission_reads(session, tenant_id, _day(now))
+    return await _admission_rest(credit, own, now, amount)
+
+
+async def _admission_reads(
+    session: Any, tenant_id: UUID, day: date
+) -> tuple[CreditRow, BudgetState]:
+    credit = await AiCreditRepository(session).read()
+    own = await BudgetRepository(session, tenant_id).tenant_state(
+        day, default_cap=tenant_default_cap()
+    )
+    return credit, own
+
+
+async def _admission_rest(
+    credit: CreditRow, own: BudgetState, now: datetime, amount: Decimal
+) -> Refusal | None:
     refusal = admission_refusal(credit, own, None, amount=amount, now=now)
     if refusal is not None:
         return refusal
     async with platform_scope() as platform:
-        everyone = await global_state(platform, day, cap=platform_cap())
+        everyone = await global_state(platform, _day(now), cap=platform_cap())
     return admission_refusal(credit, own, everyone, amount=amount, now=now)
 
 
