@@ -802,8 +802,8 @@ def test_0021_is_the_single_head() -> None:
     # the image public copies (SI1) on top of the PTD table, team access (SI5) on top of them, the
     # image candidates (SI7) on top of team access, status truth (SI9) on top of that, the `baby`
     # audience (SI8) on top of that, the AI credit state (SI10) on top of those, and autonomous
-    # resolution (SI11) on top of the AI credit state
-    assert revisions - parents == {"0022_autonomous_resolution"}
+    # resolution (SI11) on top of the AI credit state, then the budget indexes (V1 hardening #10)
+    assert revisions - parents == {"0025_jobruns_budget_idx"}
 
 
 @pytest.mark.parametrize(
