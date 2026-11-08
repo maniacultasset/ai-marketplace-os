@@ -1804,7 +1804,8 @@ export interface paths {
          *     image editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or
          *     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
          *     image until it is accepted. The same source asked again answers the same candidate; 202 names
-         *     its job only when a new one started (poll `poll_url`).
+         *     its job only when a new one started (poll `poll_url`). A new AI edit while AI is paused
+         *     for every brand is 503 with the pause's code and no `Retry-After` (SI10).
          */
         post: operations["image_candidates_create"];
         delete?: never;
@@ -35167,6 +35168,45 @@ export interface operations {
                      *         "message": "Too many requests.",
                      *         "status": 429,
                      *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The marketplace is unavailable; try again. Codes: `AI_CREDIT_EXHAUSTED`, `AI_PROVIDER_KEY_INVALID`. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "AI_CREDIT_EXHAUSTED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "AI_CREDIT_EXHAUSTED",
+                     *               "field": "request",
+                     *               "message": "The marketplace is unavailable; try again.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The marketplace is unavailable; try again.",
+                     *         "status": 503,
+                     *         "type": "AI_CREDIT_EXHAUSTED"
                      *       }
                      *     }
                      */

@@ -145,19 +145,32 @@ class ImageEditLimits:
         )
 
 
+async def platform_image_spend(day: date) -> Decimal:
+    """Today's image-edit spend of the whole platform, in its own short read-only session."""
+    async with platform_scope() as platform:
+        return await image_edit_spend(platform, day)
+
+
 async def image_edit_refusal(
-    session: Any, tenant_id: UUID, day: date, limits: ImageEditLimits, amount: Decimal
+    session: Any,
+    tenant_id: UUID,
+    day: date,
+    limits: ImageEditLimits,
+    amount: Decimal,
+    *,
+    platform_spent: Decimal | None = None,
 ) -> ImageScope | None:
     """The D21 checks, in the caller's tenant transaction under the budget locks: the tenant's
     count of today's AI candidates, then the platform's image spend plus `amount` against its
-    share of the platform cap (read in a separate read-only platform session)."""
+    share of the platform cap. The worker's claim reads that spend in a separate read-only
+    platform session while it holds the locks; the API passes `platform_spent`, read before
+    its transaction, so a request never holds two pooled connections (the claim re-checks)."""
     count = await ImageCandidateRepository(session, tenant_id).count_ai_today(
         day, exclude_id=limits.exclude_id
     )
     if count >= limits.tenant_daily_limit:
         return "image_tenant"
-    async with platform_scope() as platform:
-        spent = await image_edit_spend(platform, day)
+    spent = platform_spent if platform_spent is not None else await platform_image_spend(day)
     if spent + amount > limits.platform_share * platform_cap():
         return "image_global"
     return None

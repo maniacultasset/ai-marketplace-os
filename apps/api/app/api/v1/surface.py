@@ -458,6 +458,8 @@ _401: Final = MappingProxyType({401: (E.UNAUTHENTICATED,)})
 _AI_ADMISSION: Final = MappingProxyType(
     {429: (E.BUDGET_EXCEEDED,), 503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)}
 )
+# SI10 D4: an AI image edit while AI is paused (a daily cap is a `failed/budget` candidate)
+_AI_PAUSED: Final = MappingProxyType({503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)})
 # S22 D2: a marketplace that is not configured or is switched off (FLIPKART_ENABLED=false).
 _501: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 # DPP-1: the public challenge routes (a wrong code or burned challenge is 401; 501 under `off`)
@@ -744,7 +746,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Make an image candidate from a photo or the size chart", "SI7",
               path_id="product_id", has_body=True, body_ids=("source_image_id",),
               idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
-              action=A.PRODUCT_IMPORT),
+              action=A.PRODUCT_IMPORT, extra_codes=_AI_PAUSED),
     Operation("image_candidates_list", "GET", "/products/{product_id}/image-candidates", 200,
               ImageCandidatePage, "images", "The product's image candidates", "SI7",
               path_id="product_id", action=A.TENANT_READ),

@@ -347,12 +347,39 @@ async def _store_runs(ctx: JobContext, candidate: ImageCandidate, trusted: EditT
     )
 
 
+def _refused_reason(refused: Any) -> str:
+    """A claim refusal's candidate reason: the AI pause for its credit reason, else the cap."""
+    if refused.scope == "credit":
+        return "credit_used_up" if refused.reason == "credit_exhausted" else "model_failed"
+    return "budget"
+
+
+async def _provider_refusal(ctx: JobContext, code: ErrorCode | None, checked: EditTrusted) -> str:
+    """A failed edit's candidate reason, and the platform pause on a provider account refusal
+    (SI10 D5): a credit refusal (the 402, as `AI_CREDIT_EXHAUSTED` or the legacy
+    `BUDGET_EXCEEDED`) pauses AI for everyone; a key refusal pauses only once OpenRouter's
+    `/key` confirms it (a 401/403 may be a moderation refusal of tenant input)."""
+    from app.services.ai_credit import EmbedRefusal, classify_refusal
+    from app.workers import budget
+
+    said: EmbedRefusal | None = None
+    if code in (ErrorCode.AI_CREDIT_EXHAUSTED, ErrorCode.BUDGET_EXCEEDED):
+        said = "credit"
+    elif code is ErrorCode.AI_PROVIDER_KEY_INVALID:
+        said = "key_suspect"
+    refusal = classify_refusal(checked.records, said)
+    if refusal == "credit":
+        await budget.pause_ai("credit_exhausted", job_id=ctx.job_run_id)
+        return "credit_used_up"
+    if refusal == "key_suspect" and await budget.confirm_key_refusal():
+        await budget.pause_ai("key_invalid", job_id=ctx.job_run_id)
+    return "model_failed"
+
+
 async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
     """One paid edit, never retried (`max_attempts=1`). The reservation is zeroed whenever no
     model call was made or its record is stored; an untrusted result, a seam exception or a
     timeout keeps it counted (the call may have been billed, its record is lost)."""
-    from mkos_schemas.codes import ErrorCode as Code
-
     from app.core.config import get_settings
     from app.services.pipeline_deps import SeamPortError
     from app.workers.budget import (
@@ -376,8 +403,8 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
             amount=IMAGE_EDIT_RESERVATION_USD,
             image_edit=ImageEditLimits.from_settings(settings, exclude_id=candidate.id),
         )
-    except BudgetRefused:
-        return await _ai_fail(ctx, candidate.id, "budget", zero=True)
+    except BudgetRefused as refused:  # SI10 D4: AI paused is not the daily budget
+        return await _ai_fail(ctx, candidate.id, _refused_reason(refused), zero=True)
     if not reserved:  # the fence moved: a newer attempt owns the row
         raise _failed("the candidate job lost its claim", ctx)
     try:
@@ -429,7 +456,7 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
     edit = checked.result
     if edit.status == "failed" or edit.image_b64 is None:
         code = edit.error.error_code if edit.error is not None else None
-        reason = "credit_used_up" if code is Code.BUDGET_EXCEEDED else "model_failed"
+        reason = await _provider_refusal(ctx, code, checked)
         return await _ai_fail(ctx, candidate.id, reason, zero=True)
     output = base64.b64decode(edit.image_b64)
     params = {

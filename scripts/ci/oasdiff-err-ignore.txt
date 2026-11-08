@@ -2539,7 +2539,8 @@ PATCH /api/v1/tenants/me added the new `MFA_STEP_UP_REQUIRED` enum value to the 
 PATCH /api/v1/tenants/me added the new `MFA_STEP_UP_REQUIRED` enum value to the `error/type` response property for the response status `default`
 # Contract 2.1.0 (SI10; Tech Lead via chat 2026-11-07, relayed by the conductor; a recorded one-time
 # out-of-window MAJOR exception, packages/schemas/CHANGELOG.md): every op's error code enums gain
-# AI_CREDIT_EXHAUSTED, AI_PROVIDER_KEY_INVALID and TENANT_SUSPENDED, copied from the oasdiff run.
+# AI_CREDIT_EXHAUSTED, AI_PROVIDER_KEY_INVALID and TENANT_SUSPENDED, copied from the oasdiff run
+# (re-run after the merge with main that brought the SI5 and SI7 operations).
 # Remove these lines once main carries SI10.
 DELETE /api/v1/auth/devices/{device_id} added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
 DELETE /api/v1/auth/devices/{device_id} added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
@@ -7824,3 +7825,1074 @@ POST /api/v1/tasks/{task_id}/answer added the new `TENANT_SUSPENDED` enum value 
 POST /api/v1/tasks/{task_id}/answer added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
 POST /api/v1/tasks/{task_id}/answer added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
 POST /api/v1/tasks/{task_id}/answer added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/admin/tenants added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/activate added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/admin/tenants/{target_tenant_id}/extend-trial added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/auth/password/reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/image-candidates/{candidate_id}/reject added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `501`
+POST /api/v1/invites/accept added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `501`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `501`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `501`
+POST /api/v1/invites/accept added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/join added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/join added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/lookup added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/invites/{invite_id}/revoke added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/members/{user_id}/password-reset added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+GET /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_CREDIT_EXHAUSTED` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `AI_PROVIDER_KEY_INVALID` enum value to the `error/type` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/error_code/anyOf[subschema #1: ErrorCode]/` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/error_report/errors/items/error_code` response property for the response status `default`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `400`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `401`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `403`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `404`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `409`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `413`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
+POST /api/v1/products/{product_id}/image-candidates added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`

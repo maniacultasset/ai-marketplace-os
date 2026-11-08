@@ -853,3 +853,112 @@ async def test_accept_a_size_chart_at_the_image_cap(
     assert response.status_code == 202, response.text
     live = [r for r in _images(images_db, p) if r["deleted_at"] is None]
     assert len(live) == MAX_LIVE_IMAGES_PER_PRODUCT
+
+
+# ---- SI10 D4 (joint test, SI10 merged after SI7): an AI edit passes the one admission rule ----
+
+
+def _pause(jw: JobWorld, reason: str = "credit_exhausted") -> None:
+    jw.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = %s, paused_at = now() WHERE id = 1", [reason]
+    )
+
+
+@pytest.mark.parametrize(
+    ("reason", "code"),
+    [("credit_exhausted", "AI_CREDIT_EXHAUSTED"), ("key_invalid", "AI_PROVIDER_KEY_INVALID")],
+)
+async def test_white_background_while_ai_paused_is_503_and_writes_nothing(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+    reason: str,
+    code: str,
+) -> None:
+    tenant = images_db.tenant("acme")
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    _pause(images_db, reason)
+    tables = ("image_candidates", "job_runs", "idempotency_keys")
+    before = [count(images_db.conn, f"SELECT count(*) FROM {t}") for t in tables]  # noqa: S608
+    body = {"kind": "white_background", "source_image_id": str(src)}
+    response = await _create(api, images_db, p, body)
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["type"] == code
+    assert "retry-after" not in response.headers
+    after = [count(images_db.conn, f"SELECT count(*) FROM {t}") for t in tables]  # noqa: S608
+    assert after == before
+
+
+async def test_fix_while_ai_paused_is_still_queued(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, credit_reset: None
+) -> None:
+    """A zero-token kind spends no AI, so the pause never refuses it."""
+    p, src, _ = source_main(images_db.conn, store, images_db.tenant("acme"))
+    _pause(images_db)
+    response = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(src)})
+    assert response.status_code == 202 and response.json()["status"] == "queued"
+
+
+async def test_ready_edit_still_answers_while_ai_paused(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+) -> None:
+    p, src, _ = source_main(images_db.conn, store, images_db.tenant("acme"))
+    body = {"kind": "white_background", "source_image_id": str(src)}
+    first = (await _create(api, images_db, p, body)).json()
+    await run_image_job(uuid.UUID(first["job_id"]))
+    _pause(images_db)
+    again = await _create(api, images_db, p, body)
+    assert again.status_code == 202, again.text
+    assert (again.json()["candidate_id"], again.json()["status"]) == (
+        first["candidate_id"],
+        "ready",
+    )
+
+
+async def test_white_background_past_the_brand_cap_is_failed_budget_with_no_job(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+) -> None:
+    tenant = images_db.tenant("acme")
+    p, src, _ = source_main(images_db.conn, store, tenant)
+    images_db.conn.execute("UPDATE tenants SET llm_daily_budget_usd = 0.05 WHERE id = %s", [tenant])
+    body = {"kind": "white_background", "source_image_id": str(src)}
+    response = await _create(api, images_db, p, body)
+    assert response.status_code == 202, response.text
+    assert (response.json()["status"], response.json()["job_id"]) == ("failed", None)
+    row = candidate_row(images_db.conn, uuid.UUID(response.json()["candidate_id"]))
+    assert row["failure_reason"] == "budget"
+    assert _jobs_for(images_db, response.json()["candidate_id"]) == 0
+
+
+async def test_white_background_on_one_pooled_connection(
+    images_db: JobWorld,
+    api: httpx.AsyncClient,
+    store: FakeStorage,
+    edit_on: pytest.MonkeyPatch,
+    credit_reset: None,
+) -> None:
+    """The admission read runs before the idempotent transaction, so one connection is enough
+    (nested, it would wait out `pool_timeout` into a 500)."""
+    from app.core.config import get_settings
+    from app.db.session import dispose_engine
+
+    p, src, _ = source_main(images_db.conn, store, images_db.tenant("acme"))
+    edit_on.setenv("DATABASE_POOL_SIZE", "1")
+    edit_on.setenv("DATABASE_MAX_OVERFLOW", "0")
+    edit_on.setenv("DATABASE_POOL_TIMEOUT", "1")
+    get_settings.cache_clear()
+    await dispose_engine()
+    body = {"kind": "white_background", "source_image_id": str(src)}
+    response = await _create(api, images_db, p, body)
+    assert response.status_code == 202, response.text
+    assert response.json()["status"] == "queued"
