@@ -170,6 +170,20 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         reason=f"{canary} The photos suggest maroon, but not clearly enough to use it.",
         expected_answer={"kind": "enum", "allowed_values": ["black", "maroon", "navy blue"]},
     )
+    # SI9: an open account task on the tenant's marketplace account, the one task kind
+    # `tasks_close` closes (a fact question is 422 there by design)
+    account_task_id = f.insert(
+        conn,
+        "human_tasks",
+        tenant_id=t,
+        kind="marketplace_error_review",
+        target_path="account.listing_error",
+        marketplace_account_id=account_id,
+        question=f"{canary} Review the error Amazon reported for this listing.",
+        reason=f"{canary} Amazon refused the listing for a reason only the seller can check.",
+        expected_answer={"kind": "acknowledge"},
+        resume_from="publish",
+    )
     # SI5 (ADR-0029): a pending invite of the tenant (the revoke op's path id)
     invite_id = f.insert(
         conn,
@@ -192,6 +206,7 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         "document_id": document_id,
         "issue_id": issue_id,
         "task_id": task_id,
+        "account_task_id": account_task_id,
         "invite_id": invite_id,
         "user_id": operator,
         "target_tenant_id": t,
@@ -246,6 +261,10 @@ def resolve_id(world: World2, slug: str, name: str) -> Any:
     return world.side(slug).ids[key]
 
 
+# The world id an op's path names where the op takes one kind of row only
+PATH_ID_KEY = {"tasks_close": "account_task_id"}
+
+
 def call_for(op: Operation, world: World2, slug: str) -> Call:
     """`valid_request(op)` with every path and body id naming `slug`'s rows."""
     from tests.api_requests import valid_request
@@ -253,7 +272,7 @@ def call_for(op: Operation, world: World2, slug: str) -> Call:
     call = valid_request(op)
     side = world.side(slug)
     if op.path_id:
-        value = str(side.ids[op.path_id])
+        value = str(side.ids[PATH_ID_KEY.get(op.op_id, op.path_id)])
         placeholder = "0b1c2d3e-0000-4000-8000-00000000abcd"
         call.url = call.url.replace(placeholder, value)
     if call.json is not None:
