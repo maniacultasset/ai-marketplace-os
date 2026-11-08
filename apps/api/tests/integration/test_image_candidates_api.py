@@ -837,3 +837,19 @@ async def test_delete_then_reupload_of_the_same_photo_can_try_again(
     assert again.status_code == 202, again.text
     assert again.json()["candidate_id"] != str(candidate)
     assert again.json()["status"] == "queued"
+
+
+async def test_accept_a_size_chart_at_the_image_cap(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    from app.services.images import MAX_LIVE_IMAGES_PER_PRODUCT
+
+    candidate, p, _ = await _ready(api, images_db, store, kind="size_chart")
+    tenant = images_db.tenant("acme")
+    image_row(images_db.conn, tenant, p, slot="size_chart")
+    for _ in range(MAX_LIVE_IMAGES_PER_PRODUCT - 1):
+        image_row(images_db.conn, tenant, p)
+    response = await _decide(api, images_db, candidate, "accept")
+    assert response.status_code == 202, response.text
+    live = [r for r in _images(images_db, p) if r["deleted_at"] is None]
+    assert len(live) == MAX_LIVE_IMAGES_PER_PRODUCT

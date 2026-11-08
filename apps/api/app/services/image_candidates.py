@@ -511,7 +511,18 @@ async def accept_candidate(
         source = await _still_current(uow, row)
         main = row.kind != "size_chart"
         await enforce_live_image_cap(uow.images, adding=2 if main else 1)
-        if await uow.images.count_live(row.product_id) >= MAX_LIVE_IMAGES_PER_PRODUCT:
+        charts = (
+            []
+            if main
+            else [
+                d.image_id
+                for d in await uow.images.details_for_product(row.product_id)
+                if d.slot == "size_chart" and d.colourway_id is None
+            ]
+        )
+        # a new size chart replaces the live one, so the old one leaves the per-product count
+        live = await uow.images.count_live(row.product_id) - len(charts)
+        if live >= MAX_LIVE_IMAGES_PER_PRODUCT:
             raise InputError(ErrorCode.VALIDATION_FAILED, "images")
         if main:
             assert source is not None  # noqa: S101 - _still_current
@@ -540,18 +551,17 @@ async def accept_candidate(
             )
             slot, colourway = ImageSlot.MAIN, source.colourway_id
         else:
-            for detail in await uow.images.details_for_product(row.product_id):
-                if detail.slot == "size_chart" and detail.colourway_id is None:
-                    await uow.images.soft_delete(detail.image_id)
-                    replaced.append(detail.image_id)
-                    await _audit_image(
-                        uow,
-                        principal,
-                        "image.replaced",
-                        detail.image_id,
-                        before={"deleted_at": None},
-                        after={"deleted_at": datetime.now(UTC).isoformat()},
-                    )
+            for chart_id in charts:
+                await uow.images.soft_delete(chart_id)
+                replaced.append(chart_id)
+                await _audit_image(
+                    uow,
+                    principal,
+                    "image.replaced",
+                    chart_id,
+                    before={"deleted_at": None},
+                    after={"deleted_at": datetime.now(UTC).isoformat()},
+                )
             slot, colourway = ImageSlot.SIZE_CHART, None
         job_id = await insert_image_and_job(
             uow,
