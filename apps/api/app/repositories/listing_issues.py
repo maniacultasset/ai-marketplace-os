@@ -25,9 +25,9 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
-from sqlalchemy import exists, func, literal, literal_column, select, text, tuple_, update
+from sqlalchemy import exists, func, literal, literal_column, not_, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
@@ -38,6 +38,8 @@ from app.repositories.base import TenantScopedRepository
 
 PAGE_LIMIT_MAX: Final = 200
 OPEN: Final = "open"
+# SI11 (CP-D4): the dry run's rows (`services.issues.PREVIEW_SUFFIX`); `|` is not a LIKE wildcard
+PREVIEW_KEY_LIKE: Final = "%|preview"
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,10 +163,15 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         return builtins.list((await self.db.execute(stmt)).scalars())
 
     async def open_errors(
-        self, listing_id: uuid.UUID, sources: Sequence[str]
+        self,
+        listing_id: uuid.UUID,
+        sources: Sequence[str],
+        *,
+        channel: Literal["live", "preview"] | None = None,
     ) -> builtins.list[ListingIssue]:
         """SI4 A13: this listing's open blocking (`error`) rows of the given sources, oldest
-        first: the rows a question may stand behind (a warning never asks, Approval record)."""
+        first: the rows a question may stand behind (a warning never asks, Approval record).
+        SI11: `channel` keeps only the dry run's rows (`preview`) or only the others (`live`)."""
         stmt = (
             self._select()
             .where(
@@ -175,6 +182,9 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             )
             .order_by(ListingIssue.created_at, ListingIssue.id)
         )
+        if channel is not None:
+            is_preview = ListingIssue.dedupe_key.like(PREVIEW_KEY_LIKE)
+            stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         return builtins.list((await self.db.execute(stmt)).scalars())
 
     async def live_task_ids(self, listing_id: uuid.UUID) -> builtins.list[uuid.UUID]:
@@ -280,8 +290,11 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         resolver: uuid.UUID | None = None,
         *,
         field_paths: Sequence[str] | None = None,
+        channel: Literal["live", "preview"] = "live",
     ) -> int:
-        """Close this listing's open rows of `source` whose key is absent (module docstring)."""
+        """Close this listing's open rows of `source` whose key is absent (module docstring).
+        SI11 (CP-D4): only rows of `channel`: a preview row (key ending `|preview`) closes only by
+        a later preview, a live row never by a preview."""
         self._own_session()
         if field_paths is not None and not field_paths:
             return 0
@@ -297,6 +310,8 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             stmt = stmt.where(ListingIssue.dedupe_key.not_in(list(keep_keys)))
         if field_paths is not None:
             stmt = stmt.where(ListingIssue.field_path.in_(list(field_paths)))
+        is_preview = ListingIssue.dedupe_key.like(PREVIEW_KEY_LIKE)
+        stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         stmt = self._scoped_write(
             stmt.values(
                 status=status,
