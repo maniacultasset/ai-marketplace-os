@@ -41908,10 +41908,13 @@
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
                   "status": "queued"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SizeChartReadOut"
                 }
               }
             },
-            "description": "OK"
+            "description": "Done; answered from a result already stored (no new job)."
           },
           "202": {
             "content": {

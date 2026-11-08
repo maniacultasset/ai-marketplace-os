@@ -387,7 +387,11 @@ def success_response(op: Operation) -> dict[int | str, dict[str, Any]]:
         "content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}
     }
     if op.also_status is not None:
-        also = {"content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}}}
+        also = {
+            "model": op.response_model,
+            "description": "Done; answered from a result already stored (no new job).",
+            "content": {"application/json": {"example": SUCCESS_EXAMPLES[op.op_id]}},
+        }
         return {op.status: entry, op.also_status: also}
     if op.etag:
         entry["headers"] = {

@@ -36379,7 +36379,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
+            /** @description Done; answered from a result already stored (no new job). */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -36393,7 +36393,7 @@ export interface operations {
                      *       "status": "queued"
                      *     }
                      */
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["SizeChartReadOut"];
                 };
             };
             /** @description Successful Response */
