@@ -71,7 +71,23 @@ async def on_sync_terminal(session: Any, job: JobRun, outcome: Outcome | None) -
         await remote_preview.on_terminal(session, job, outcome)
     else:
         await count_failed_poll(session, job, outcome)
+        if job.status == "succeeded":
+            await _read_entry(session, job)
     await remote_preview.enqueue_pending(session, job)
+
+
+async def _read_entry(session: Any, job: JobRun) -> None:
+    """SI11 T13: a status read that left adapter issues open on a `failed` (rejected) or
+    `published` (BUYABLE with ERROR issues) listing runs the resolution engine."""
+    from app.repositories.uow import repositories_on
+    from app.services.resolution.run import resolve
+
+    if job.listing_id is None:
+        return
+    uow = repositories_on(session, job.tenant_id)
+    listing = await uow.listings.get(job.listing_id)
+    if listing is not None and listing.status in ("failed", "published"):
+        await resolve(uow, listing, entry="read", job=job)
 
 
 async def run_terminal_hook(

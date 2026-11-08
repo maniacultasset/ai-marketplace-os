@@ -258,6 +258,12 @@ async def on_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> Non
     result = job.result_json if isinstance(job.result_json, dict) else {}
     if result.get("preview_applied") is True and result.get("account_id"):
         await open_breaker(uow, uuid.UUID(str(result["account_id"])))
+        return
+    if result.get("remote_check") == "issues":
+        from app.services.resolution.run import resolve  # T12: the pre-approval entry
+
+        fresh = await uow.listings.get(listing.id)
+        await resolve(uow, fresh, entry="preview", job=job)
 
 
 async def enqueue_pending(session: Any, job: JobRun) -> None:

@@ -9,16 +9,25 @@ criterion for every table it names (`_criterion_for` + `_scoped_read`, as the an
   `result_json.preview_applied` finished after the newest close of such a task (a crash between
   the job and its task).
 - `open_severities(listing_id)`: the severities of the listing's open issue rows.
+- `human_mark(listing_id)` (CP-D8): the newest human event on the listing: a review decision, an
+  `edit` version, an answered or applied task linked through its issues, or a generate or publish
+  job a member requested (`trigger` absent or `user`). `cycles_since_human` counts the listing's
+  jobs marked `trigger = "resolution"` queued after it, any status (invariant 9).
+- `recurrence_resolutions(ids)`: the resolution of each closed row a recurrence points at.
 """
 
 from __future__ import annotations
 
+import builtins
 import uuid
+from collections.abc import Sequence
+from datetime import datetime
 from typing import Final
 
-from sqlalchemy import exists, func, select
+from sqlalchemy import exists, func, or_, select
 
 from app.db.models.issues import HumanTask, ListingIssue
+from app.db.models.listings import ListingVersion, ReviewDecision
 from app.db.models.ops import JobRun
 from app.db.models.resolution import ListingRepair
 from app.repositories.base import TenantScopedRepository
@@ -85,3 +94,59 @@ class ResolutionRepository(TenantScopedRepository[ListingRepair]):
             )
         )
         return bool((await self.db.execute(self._scoped_read(stmt))).scalar())
+
+    async def human_mark(self, listing_id: uuid.UUID) -> datetime | None:
+        d, v, t, i, j = ReviewDecision, ListingVersion, HumanTask, ListingIssue, JobRun
+        decided = select(func.max(d.decided_at)).where(
+            self._criterion_for(ReviewDecision), d.listing_id == listing_id
+        )
+        edited = select(func.max(v.created_at)).where(
+            self._criterion_for(ListingVersion), v.listing_id == listing_id, v.origin == "edit"
+        )
+        answered = (
+            select(func.max(func.greatest(t.answered_at, t.applied_at)))
+            .join(i, (i.human_task_id == t.id) & (i.tenant_id == t.tenant_id))
+            .where(
+                self._criterion_for(HumanTask),
+                self._criterion_for(ListingIssue),
+                i.listing_id == listing_id,
+                t.status.in_(("answered", "applied")),
+            )
+        )
+        requested = select(func.max(j.queued_at)).where(
+            self._criterion_for(JobRun),
+            j.listing_id == listing_id,
+            j.kind.in_(("listing_generate", "listing_publish")),
+            j.created_by.is_not(None),
+            or_(
+                j.payload_json["trigger"].as_string().is_(None),
+                j.payload_json["trigger"].as_string() == "user",
+            ),
+        )
+        marks = []
+        for stmt in (decided, edited, answered, requested):
+            marks.append((await self.db.execute(self._scoped_read(stmt))).scalar_one_or_none())
+        found = [m for m in marks if m is not None]
+        return max(found) if found else None
+
+    async def cycles_since_human(self, listing_id: uuid.UUID) -> int:
+        j = JobRun
+        mark = await self.human_mark(listing_id)
+        stmt = select(func.count()).where(
+            self._criterion_for(JobRun),
+            j.listing_id == listing_id,
+            j.payload_json["trigger"].as_string() == "resolution",
+        )
+        if mark is not None:
+            stmt = stmt.where(j.queued_at > mark)
+        return int((await self.db.execute(self._scoped_read(stmt))).scalar_one())
+
+    async def recurrence_resolutions(self, ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, str]:
+        if not ids:
+            return {}
+        i = ListingIssue
+        stmt = select(i.id, i.resolution).where(
+            self._criterion_for(ListingIssue), i.id.in_(builtins.list(ids))
+        )
+        rows = (await self.db.execute(self._scoped_read(stmt))).all()
+        return {row.id: row.resolution for row in rows if row.resolution is not None}

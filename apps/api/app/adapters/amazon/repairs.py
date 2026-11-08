@@ -371,3 +371,36 @@ def stale_ids(listing: AdapterListing) -> tuple[UUID, ...]:
         ):
             out.append(repair.id)
     return tuple(out)
+
+
+def units_as_built(listing: AdapterListing) -> list[tuple[AdapterItem, dict[str, Any]]]:
+    """Each unit and the attributes its payload carries, as built with no stored repair (what
+    `propose` reads)."""
+    import dataclasses
+
+    from app.adapters.amazon.mapping import build
+
+    plain = dataclasses.replace(listing, repairs=())
+    mapped, _errors = build(plain, schema=False, require_identifier=False)
+    return [(m.unit, dict(m.payload["attributes"])) for m in mapped]
+
+
+def attributes_for(listing: AdapterListing, field_path: str) -> list[str]:
+    """The marketplace attributes the canonical `field_path` feeds (the issue's way back)."""
+    from app.adapters.amazon.mapping import reverse_index
+
+    template = listing.template.template if listing.template is not None else None
+    return [n for n, feeds in reverse_index(template).items() if field_path in feeds]
+
+
+def trail(listing: AdapterListing) -> tuple[tuple[str, str, str, str], ...]:
+    """(seller SKU, field path, from digest hex, to digest hex) of every repair the payload
+    applies: the `corrections_json` of an automatic resend (T41)."""
+    from app.adapters.amazon.mapping import build
+
+    mapped, _errors = build(listing, schema=False, require_identifier=False)
+    return tuple(
+        (m.unit.seller_sku, path, before.hex(), after.hex())
+        for m in mapped
+        for _id, path, before, after in m.repaired
+    )

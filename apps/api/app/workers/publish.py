@@ -175,6 +175,10 @@ class Prepared:
     family_facts: FamilyFacts | None = None
     # SI11 T10: the listing's live adapter-side repairs (the adapter applies the unchanged ones)
     repairs: tuple[AdapterRepair, ...] = ()
+    # SI11 T13: an automatic resend (`trigger = resolution`) and the repairs its payload applies
+    # (seller SKU, field path, from digest, to digest)
+    trigger: str = "user"
+    trail: tuple[tuple[str, str, str, str], ...] = ()
 
 
 def _fail(
@@ -371,6 +375,7 @@ def _image_tags(prep: Prepared) -> dict[uuid.UUID, str]:
 async def _write_ahead(ctx: JobContext, prep: Prepared, plan: Attempt, snapshot: bytes) -> None:
     storage = get_storage()
     key, digest = await write_snapshot(storage, ctx.tenant_id, plan.submission_id, snapshot)
+    system = prep.trigger == "resolution" and plan.attempt > 1
     try:
         async with tenant_uow(ctx.tenant_id, user_id=prep.created_by) as uow:
             listing = await uow.listings.get_for_update(prep.listing.id)
@@ -408,7 +413,26 @@ async def _write_ahead(ctx: JobContext, prep: Prepared, plan: Attempt, snapshot:
                     payload_storage_key=key,
                     facts_digest=prep.approve_digest or b"",
                     idempotency_key=plan.key,
-                    requested_by_user_id=prep.created_by,
+                    requested_by_user_id=(
+                        prep.prev.requested_by_user_id
+                        if system and prep.prev is not None
+                        else prep.created_by
+                    ),
+                    actor_type="system" if system else "user",
+                    corrections=(
+                        [
+                            {
+                                "field": path,
+                                "seller_sku": sku,
+                                "from_digest": before,
+                                "to_digest": after,
+                                "source": "adapter_remap",
+                            }
+                            for sku, path, before, after in prep.trail
+                        ]
+                        if system
+                        else None
+                    ),
                     field_paths=(
                         None
                         if plan.per_sku is None
@@ -547,7 +571,12 @@ def _plan_new(ctx: JobContext, prep: Prepared, payload: PublishJobPayload) -> At
         raise _fail(ErrorCode.SUBMISSION_ATTEMPTS_EXHAUSTED, "This version was submitted 3 times.")
     justification: str | None = None
     previous: uuid.UUID | None = None
-    if attempt > 1:
+    if attempt > 1 and prep.trigger == "resolution":
+        # SI11 T13 (T41): the adapter changed the payload; nothing else justifies a system resend
+        if prep.prev is None or not prep.trail:
+            raise _fail(ErrorCode.DUPLICATE_SUBMISSION_BLOCKED, "The resend changes nothing.")
+        justification, previous = "changed_input", prep.prev.id
+    elif attempt > 1:
         if prep.prev is None or prep.justification is None:
             raise _fail(ErrorCode.DUPLICATE_SUBMISSION_BLOCKED, "The retry is not justified.")
         justification, previous = prep.justification, prep.prev.id
@@ -563,6 +592,12 @@ def _plan_new(ctx: JobContext, prep: Prepared, payload: PublishJobPayload) -> At
         if (payload.mode == "retry_fields" or keep_patch or partly_applied) and prep.retry_paths
         else None
     )
+    if prep.trigger == "resolution" and payload.mode == "retry_fields" and prep.trail:
+        # CP-D12: the failed paths plus the repaired ones, per SKU
+        merged: dict[str, set[str]] = {sku: set(paths) for sku, paths in (per_sku or {}).items()}
+        for sku, path, _before, _after in prep.trail:
+            merged.setdefault(sku, set()).add(path)
+        per_sku = {sku: tuple(sorted(paths)) for sku, paths in merged.items()}
     previously = (
         prep.listing.published_version_id is not None or prep.applied_before or prep.listing_applied
     )
@@ -689,6 +724,11 @@ async def _publish(
         if resent is not None:
             return resent
         prep = await _read(ctx, payload)  # the row is resolved: plan the next attempt afresh
+    prep.trigger = payload.trigger
+    module = repairer(prep.listing.marketplace)
+    if payload.trigger == "resolution" and module is not None and prep.repairs:
+        plain = _adapter_listing(prep, image_refs={}, idempotency_key="trail", attempt=1)
+        prep.trail = module.trail(plain)
     plan = _plan_new(ctx, prep, payload)
     snapshot_item = _adapter_listing(
         prep, image_refs={}, idempotency_key="pending", attempt=plan.attempt

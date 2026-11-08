@@ -346,6 +346,20 @@ def refusal_report(code: ErrorCode, field: str, message: str, attempt: int = 1) 
 
 
 async def on_publish_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
+    """The publish terminal hook: the S21 move of a job that ended without a verdict, then SI11's
+    resolution entry (T13) for a listing the attempt left `failed` (in its own savepoint)."""
+    await _publish_terminal(session, job, outcome)
+    if job.listing_id is None:
+        return
+    from app.services.resolution.run import resolve
+
+    uow = repositories_on(session, job.tenant_id)
+    listing = await uow.listings.get(job.listing_id)
+    if listing is not None and listing.status == "failed":
+        await resolve(uow, listing, entry="submission", job=job)
+
+
+async def _publish_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # S13 `Hook`: branch on the final status only
     if job.status not in ENDED or job.listing_id is None:
         return
