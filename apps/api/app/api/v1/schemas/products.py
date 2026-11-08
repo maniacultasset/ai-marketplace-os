@@ -197,6 +197,12 @@ class ProductPatch(StrictModel):
         return self
 
 
+class RecategorizeIn(StrictModel):
+    """SI9: the new category of a product that already has listings (never a published one)."""
+
+    category: Slug
+
+
 class FibreOut(WireModel):
     fibre: str
     percent: float

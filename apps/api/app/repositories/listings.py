@@ -40,7 +40,7 @@ from sqlalchemy import exists, func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, RowCountError
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
 from app.db.job_context import bind_job_actor, unbind_job_actor
@@ -226,6 +226,28 @@ class ListingRepository(TenantScopedRepository[Listing]):
             .limit(1)
         )
         return (await self.db.execute(stmt)).first() is not None
+
+    async def for_product_for_update(self, product_id: uuid.UUID) -> list[Listing]:
+        """Every listing of the product, locked in id order (SI9 recategorize)."""
+        stmt = (
+            self._select()
+            .where(Listing.product_id == product_id)
+            .order_by(Listing.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
+    async def set_category(self, listing_id: uuid.UUID, category: str) -> None:
+        """SI9 recategorize: the listing's category (its next generation uses that category's
+        template); never on a listing the marketplace has seen (the service checks)."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing).where(Listing.id == listing_id, criterion).values(category=category)
+        ).returning(Listing.id)
+        if (await self.db.execute(stmt)).scalar_one_or_none() is None:
+            raise RowCountError(1, 0)
 
     async def reviewable_for_product(self, product_id: uuid.UUID) -> list[Listing]:
         """SI9 B5 (CP-D15): the product's listings a reject re-validates (`validated`,

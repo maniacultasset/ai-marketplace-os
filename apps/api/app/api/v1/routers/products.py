@@ -30,13 +30,14 @@ from app.api.v1.schemas.products import (
     ProductOut,
     ProductPage,
     ProductPatch,
+    RecategorizeIn,
     SizeChart,
     SizeChartRow,
 )
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
-from app.services import product_edit, products
+from app.services import product_edit, product_recategorize, products
 from app.services.images import CreateUpload
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
@@ -232,6 +233,21 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
         else:
             out[name] = value
     return out
+
+
+@route(router, OPS["products_recategorize"])
+async def products_recategorize(
+    product_id: Annotated[UUID, PathParam()],
+    body: RecategorizeIn,
+    principal: CurrentPrincipal,
+    response: Response,
+) -> ProductOut:
+    """Change the category of a product that already has listings. Its unpublished listings take
+    the new category and are superseded until regenerated; a listing the marketplace has seen is
+    never touched (409 INVALID_STATUS_TRANSITION). The same category is 200, nothing written."""
+    view = await product_recategorize.recategorize_product(principal, product_id, body.category)
+    response.headers["ETag"] = view.etag
+    return _out(view)
 
 
 @route(router, OPS["products_update"])

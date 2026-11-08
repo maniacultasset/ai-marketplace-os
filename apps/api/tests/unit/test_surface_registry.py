@@ -65,6 +65,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("products_get", "GET", "/products/{product_id}"),
     # SI1: the product edit (75 + 1)
     ("products_update", "PATCH", "/products/{product_id}"),
+    ("products_recategorize", "POST", "/products/{product_id}/recategorize"),  # SI9
     ("products_bulk", "POST", "/products/bulk"),
     ("imports_get", "GET", "/imports/{import_id}"),
     ("imports_rows", "GET", "/imports/{import_id}/rows"),
@@ -105,6 +106,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("tasks_list", "GET", "/tasks"),
     # SI3: the fact-question answer (79 + 1)
     ("tasks_answer", "POST", "/tasks/{task_id}/answer"),
+    ("tasks_close", "POST", "/tasks/{task_id}/close"),  # SI9
     ("analytics_get", "GET", "/analytics"),
     ("analytics_summary", "GET", "/analytics/summary"),
     # ADR-0019: self-serve sign-up and the platform admin's queue (50 + 5)
@@ -120,7 +122,7 @@ E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 80
+    assert len(FROZEN) == 82
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -248,6 +250,7 @@ D9_IDEMPOTENT = {
     "issues_dismiss",  # S19
     "listings_refresh_status",  # S21
     "tasks_answer",  # SI3
+    "tasks_close",  # SI9
 }
 
 
@@ -402,8 +405,8 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_80_operations() -> None:
-    assert len(OPS) == 80
+def test_82_operations() -> None:
+    assert len(OPS) == 82
 
 
 def test_error_codes_per_d2() -> None:
@@ -421,6 +424,8 @@ def test_error_codes_per_d2() -> None:
         "listings_preview": (E.LISTING_BUSY,),
         "issues_dismiss": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_answer": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -499,7 +504,7 @@ def test_error_codes_per_d2() -> None:
 def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
-        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3",
+        "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI9",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

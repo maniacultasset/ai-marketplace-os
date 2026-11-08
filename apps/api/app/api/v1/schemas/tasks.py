@@ -5,15 +5,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from mkos_schemas.base import StrictModel, WireModel
-from pydantic import AwareDatetime, model_validator
+from pydantic import AwareDatetime, Field, StringConstraints, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.products import AnswerScalar
+from app.core.text import has_control_char
 
 TaskStatus = Literal["open", "answered", "applied", "cancelled"]
 TaskKind = Literal[
@@ -47,6 +48,11 @@ class TaskOut(WireModel):
     applied_at: AwareDatetime | None = None
     resume_batch_id: UUID | None = None
     cancelled_reason: str | None = None
+    resolution: Literal["done", "dismissed"] | None = Field(
+        default=None,
+        description="SI9: how an account task (marketplace_error_review, permission_decision) "
+        "was closed; null for every other task.",
+    )
     created_at: AwareDatetime
     updated_at: AwareDatetime
 
@@ -69,4 +75,18 @@ class TaskAnswerIn(StrictModel):
         )
         if sent_null or (self.value is None) == (self.skip is None):
             raise PydanticCustomError("mkos_invalid", "Send exactly one of `value` and `skip`.")
+        return self
+
+
+class TaskCloseIn(StrictModel):
+    """SI9: close an account task (`marketplace_error_review`, `permission_decision`): `done`
+    (the seller acted) or `dismissed` (nothing to do), with an optional note."""
+
+    resolution: Literal["done", "dismissed"]
+    note: Annotated[str, StringConstraints(min_length=1, max_length=500)] | None = None
+
+    @model_validator(mode="after")
+    def _note_text(self) -> TaskCloseIn:
+        if self.note is not None and (not self.note.strip() or has_control_char(self.note)):
+            raise PydanticCustomError("mkos_invalid", "The note must be plain text.")
         return self
