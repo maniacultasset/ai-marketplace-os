@@ -53,7 +53,7 @@ from mkos_schemas.classify import (
 )
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.adapters.storage import get_storage
 from app.core.logging import get_logger
@@ -200,7 +200,10 @@ async def _request(ctx: JobContext, job: _Job) -> ClassifyRequest:
 def _checked(ctx: JobContext, job: _Job, result: object) -> ClassifyResult | str:
     """The answer re-validated through JSON with its records trusted and restamped, or the name
     of the check it failed."""
-    if not isinstance(result, ClassifyResult):
+    # The pipeline pins an older contracts package and returns its own copy of ClassifyResult, so the
+    # class is not ours: any pydantic model is accepted here and the JSON round trip below is the
+    # real check (field names follow the pipeline's contract 1.1.0).
+    if not isinstance(result, BaseModel):
         return "type"
     try:
         checked = ClassifyResult.model_validate_json(result.model_dump_json())

@@ -184,3 +184,26 @@ async def test_a_second_run_on_a_ready_map_is_a_no_op(
     outcome = await run_column_map(ctx)
     assert outcome.result is not None and outcome.result["status"] == "skipped"
     assert await _get(api, jobs_db, map_id) == before
+
+
+async def test_a_result_of_the_pipelines_own_class_is_accepted(
+    jobs_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The pinned pipeline returns its own copy of ColumnMapResult (it pins an older contracts
+    package), so the worker must not insist on our class: the JSON round trip is the check."""
+    from app.workers import column_map_seam
+    from pydantic import BaseModel, ConfigDict
+
+    class PipelineColumnMapResult(BaseModel):
+        model_config = ConfigDict(extra="allow")
+
+    async def foreign(request: Any, credentials: Any) -> Any:
+        real = await stub.map_columns(request, credentials)
+        return PipelineColumnMapResult.model_validate(real.model_dump(mode="json"))
+
+    monkeypatch.setattr(column_map_seam, "call_map_columns", foreign)
+    map_id, job = await _made(api, jobs_db, [*REQUIRED, LOWCONF])
+    await run_image_job(job)
+    assert job_row(jobs_db.conn, job)["status"] == "succeeded"
+    low = (await _get(api, jobs_db, map_id))["mappings"][3]
+    assert (low["key"], low["method"]) == ("style_number", "ai")
