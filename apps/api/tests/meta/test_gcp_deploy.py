@@ -2626,3 +2626,62 @@ def test_si14_switches_reach_both_roles(toolkit: Path, tmp_path: Path) -> None:
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0
     assert "PHOTO_QA_ENABLED must be true or false" in result.stderr
+
+
+# ---- V1 hardening #9: the worker's size and its parallel image check children ----
+
+
+def test_prod_worker_size_and_image_children(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """prod.env sizes the worker at 2 vCPU / 4 GiB with two image children, and the worker env
+    carries the limit and still boots."""
+    _set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF=PIPELINE_SHA)
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    spec: dict[str, Any] = _worker_spec(out)
+    container = spec["spec"]["template"]["spec"]["containers"][0]
+    assert container["resources"]["limits"] == {"cpu": "2", "memory": "4Gi"}
+    env, secrets = _worker_container(out)
+    assert env["IMAGE_CHECK_CONCURRENCY"] == "2"
+    assert "IMAGE_CHECK_CONCURRENCY" not in _api_env(out)
+    monkeypatch.setattr("app.core.config._pipeline_stub_installed", lambda: False)
+    _boot(monkeypatch, env, secrets)
+    flags = _run(
+        toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    line = next(line for line in flags.splitlines() if "run worker-pools deploy" in line)
+    assert "--cpu=2 " in line and "--memory=4Gi " in line
+
+
+def test_staging_worker_keeps_one_image_child(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    env, _secrets = _worker_container(out)
+    assert "IMAGE_CHECK_CONCURRENCY" not in env
+
+
+@pytest.mark.parametrize(
+    ("values", "message"),
+    [
+        ({"IMAGE_CHECK_CONCURRENCY": "5"}, "IMAGE_CHECK_CONCURRENCY must be 1 to 4"),
+        ({"IMAGE_CHECK_CONCURRENCY": "two"}, "IMAGE_CHECK_CONCURRENCY must be 1 to 4"),
+        (
+            {"IMAGE_CHECK_CONCURRENCY": "2", "WORKER_MEMORY": "2Gi"},
+            "IMAGE_CHECK_CONCURRENCY=2 needs WORKER_MEMORY of at least 3Gi",
+        ),
+        (
+            {"IMAGE_CHECK_CONCURRENCY": "2", "WORKER_MEMORY": "4096Mi"},
+            "IMAGE_CHECK_CONCURRENCY=2 needs WORKER_MEMORY of at least 3Gi",
+        ),
+        (
+            {"IMAGE_CHECK_CONCURRENCY": "2", "WORKER_CPU": "1"},
+            "IMAGE_CHECK_CONCURRENCY=2 needs WORKER_CPU of at least 2",
+        ),
+    ],
+)
+def test_image_children_need_the_memory_and_cpu(
+    toolkit: Path, tmp_path: Path, values: dict[str, str], message: str
+) -> None:
+    _set_env(toolkit, "prod", **values)
+    result = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert message in result.stderr

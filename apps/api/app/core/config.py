@@ -266,6 +266,9 @@ class Settings(BaseSettings):
     llm_tenant_daily_budget_usd: float = Field(default=2.5, allow_inf_nan=False)
     # the most `listing_generate` jobs one tenant may hold queued or running (enqueue-time cap)
     generation_live_jobs_per_tenant: int = Field(default=10, ge=1, le=200)
+    # V1 hardening #9: the image check and derive children one worker process runs at once (each
+    # may map up to 1 GiB; `deploy.sh` refuses a worker with less than this many GiB plus 1).
+    image_check_concurrency: int = Field(default=1, ge=1, le=4)
     # SI7 (ADR-0030 proposed): the AI white-background edit. Off until the user's live call;
     # the model id is an OpenRouter `vendor/model`; the two limits keep edits from starving
     # listing generation (AI candidates per tenant per UTC day, and the platform's share of
