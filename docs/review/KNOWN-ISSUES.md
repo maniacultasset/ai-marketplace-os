@@ -190,7 +190,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   `AMAZON_CATALOG_PRECHECK_ENABLED`) and the AI diagnosis of unknown codes (staff-review proposals that never act,
   off by default: `MARKETPLACE_ERROR_DIAGNOSIS_ENABLED`).
 - **SI13 left out of the error map:** 8541, 8542, 8572 (not on Amazon's public troubleshooting page; their help
-  pages need a login). Added: 4000003, 101158, 100980, 4005015, 4005007, 4005008, 4005006, 4005038, 4005013,
+  pages need a login). 8542 has a row since the prod-codes fix below; 8541 and 8572 stay out on purpose. Added: 4000003, 101158, 100980, 4005015, 4005007, 4005008, 4005006, 4005038, 4005013,
   101168, 4005033.
 - **SI13 open:** child-level value-map pairs (a child refusal has no live counterpart: counted unpaired); a
   category change from `blocked` or for a family with live variants (staff); the rejected listing keeps `failed`
@@ -205,6 +205,13 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   8541, 8542, 8572, 18028, 5665 and 5461 were left out (their help pages need a login) and reach the seller through
   the category rows or as `MARKETPLACE_UNKNOWN_ERROR`. Replace with observed version 2 rows once the prod issue codes
   are pulled (checklist §6 item 8).
+- **Prod codes mapped (doc-sourced, version 1):** 5665 and 5461 (Amazon's public seller page, brand approval, marketplace
+  lane), and 8542, 8560, 99010, 8105, whose Amazon help needs a Seller Central login. Those four use generic seller
+  text from the meaning the public integrator guides agree on (`policy_ref.source` `public-integrator-docs`, with a
+  `note`), and Amazon's own message is still shown after it. 8542 left the planner's qualification codes: it is a
+  catalog conflict on a matched barcode, so it takes the identifier lanes. 8541 and 8572 stay unmapped on purpose,
+  and 8541 is still in the qualification codes. Replace any of these with an observed version 2 row when the real
+  prod issue text says otherwise.
 
 ## S16 follow-ups
 

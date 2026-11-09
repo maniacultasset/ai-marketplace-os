@@ -66,7 +66,8 @@ Lane = Literal["auto_repair", "auto_content", "ai_field", "seller", "marketplace
 Cause = Literal["seller_fact", "ai_content", "mapping", "image", "marketplace", "unknown"]
 AUTOMATIC: Final = frozenset({"auto_repair", "auto_content", "ai_field", "retry"})
 FIXED_RESOLUTIONS: Final = frozenset({"deterministic_fix", "ai_correction"})
-QUALIFICATION_CODES: Final = frozenset({"99320", "5665", "5461", "8541", "8542"})
+# 8542 is a catalog conflict on a matched barcode, not an approval: it takes the identifier lanes
+QUALIFICATION_CODES: Final = frozenset({"99320", "5665", "5461", "8541"})
 # SI13: Amazon's codes for a SKU whose identity is locked (F:62): a SKU cannot be renamed
 LOCKED_SKU_CODES: Final = frozenset({"4005013", "101168"})
 SKU_CODES: Final = frozenset({ErrorCode.SKU_CONFLICT.value, ErrorCode.SELLER_SKU_CONFLICT.value})
