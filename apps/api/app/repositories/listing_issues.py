@@ -187,6 +187,34 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def open_error_counts(
+        self, versions: Sequence[tuple[uuid.UUID, uuid.UUID | None]]
+    ) -> dict[uuid.UUID, int]:
+        """The open blocking (`error`) rows per listing, of the given `(listing_id,
+        current_version_id)` pairs: one grouped query for a whole page (the display state). A
+        row of an older version is history and is not counted; a row with no version (a
+        listing-level answer) is."""
+        if not versions:
+            return {}
+        current = dict(versions)
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id.in_(tuple(current)),
+                ListingIssue.status == OPEN,
+                ListingIssue.severity == "error",
+            )
+            .with_only_columns(
+                ListingIssue.listing_id, ListingIssue.listing_version_id, func.count()
+            )
+            .group_by(ListingIssue.listing_id, ListingIssue.listing_version_id)
+        )
+        counts: dict[uuid.UUID, int] = {}
+        for listing_id, version_id, n in (await self.db.execute(stmt)).all():
+            if version_id is None or version_id == current.get(listing_id):
+                counts[listing_id] = counts.get(listing_id, 0) + int(n)
+        return counts
+
     async def open_adapter_category_issue(
         self, listing_id: uuid.UUID, version_id: uuid.UUID | None
     ) -> uuid.UUID | None:

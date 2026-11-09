@@ -12,6 +12,16 @@ refresh query and `open_adapter`) asks the same question the same way:
 - `not_enabled_report(marketplace)`: the same refusal as the one `ErrorReport` (source `system`),
   for the worker side (`MarketplaceDisabled`).
 
+- `publish_enabled(marketplace, settings)`: the publish kill switch, one per marketplace. Amazon
+  follows `AMAZON_PUBLISH_ENABLED` (on in code, off in production until the owner says go);
+  Flipkart has no switch of its own yet. Off: no write call reaches the marketplace (listing PUT,
+  PATCH and the VALIDATION_PREVIEW dry run are refused in the SP-API client itself), no publish,
+  retry or automatic resend is enqueued, and a queued publish job fails before it writes or
+  sends anything. Reads (GET listingsItem, the status sync, OAuth connect, the seller check, the
+  catalog search and the restrictions read) stay allowed.
+- `PublishingPaused` / `publishing_paused_report(marketplace)`: that refusal, the same 501
+  `NOT_IMPLEMENTED` shape as a switched-off marketplace with its own message.
+
 The message names the marketplace only: never a URL, an id or a setting value.
 """
 
@@ -27,6 +37,10 @@ if TYPE_CHECKING:
     from app.core.config import Settings
 
 NOT_ENABLED_MESSAGE: Final = "Flipkart is not enabled"
+PAUSED_MESSAGE: Final = (
+    "Publishing to Amazon is paused for this workspace. Nothing was sent to Amazon."
+)
+PAUSED_REASON: Final = "publishing_paused"
 
 
 def marketplace_enabled(marketplace: Marketplace | str, settings: Settings) -> bool:
@@ -38,6 +52,19 @@ def marketplace_enabled(marketplace: Marketplace | str, settings: Settings) -> b
 
 def enabled_marketplaces(settings: Settings) -> tuple[str, ...]:
     return tuple(m.value for m in Marketplace if marketplace_enabled(m, settings))
+
+
+def publish_enabled(marketplace: Marketplace | str, settings: Settings) -> bool:
+    """The publish kill switch (module docstring): False means no marketplace write."""
+    market = Marketplace(marketplace)
+    if market is Marketplace.AMAZON:
+        return bool(settings.amazon_publish_enabled)
+    return True
+
+
+def publishing_paused_message(marketplace: Marketplace | str) -> str:
+    market = Marketplace(marketplace)
+    return PAUSED_MESSAGE.replace("Amazon", market.value.capitalize())
 
 
 def not_enabled_message(marketplace: Marketplace | str) -> str:
@@ -52,15 +79,28 @@ class MarketplaceNotEnabled(Exception):  # noqa: N818 - a 501, not a failure of 
         self.marketplace = Marketplace(marketplace)
         super().__init__(self.marketplace.value)
 
+    def message(self) -> str:
+        return not_enabled_message(self.marketplace)
 
-def not_enabled_report(marketplace: Marketplace | str) -> ErrorReport:
+
+class PublishingPaused(MarketplaceNotEnabled):
+    """Publishing to the marketplace is paused here (`publish_enabled` is False): the same 501
+    NOT_IMPLEMENTED answer with the pause's message."""
+
+    def message(self) -> str:
+        return publishing_paused_message(self.marketplace)
+
+
+def not_enabled_report(
+    marketplace: Marketplace | str, *, message: str | None = None
+) -> ErrorReport:
     code = ErrorCode.NOT_IMPLEMENTED
     meta = ERROR_CODE_META[code]
     retryable = meta.retry_class in (RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT)
     item = ErrorItem(
         field="listing",
         error_code=code,
-        message=not_enabled_message(marketplace),
+        message=message or not_enabled_message(marketplace),
         source=ErrorSource.SYSTEM,
         retryable=retryable,
         marketplace=Marketplace(marketplace),
@@ -68,3 +108,9 @@ def not_enabled_report(marketplace: Marketplace | str) -> ErrorReport:
         retry_class=meta.retry_class,
     )
     return ErrorReport(status="failed", error_code=code, retryable=retryable, errors=[item])
+
+
+def publishing_paused_report(marketplace: Marketplace | str) -> ErrorReport:
+    """The publish kill switch's refusal as the one `ErrorReport` (NOT_IMPLEMENTED, source
+    `system`, not retryable): nothing was sent."""
+    return not_enabled_report(marketplace, message=publishing_paused_message(marketplace))
