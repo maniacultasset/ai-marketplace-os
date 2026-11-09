@@ -2,8 +2,9 @@
 
 - `create_product`: refusals that need no database come first, before any transaction:
   a NUL character in `sku`, `title` or a string attribute value (PostgreSQL rejects it as 22021,
-  which would be a 500) -> 422; no `category` -> 422 (`products.category` is NOT NULL,
-  DATABASE.md:410, so a NULL category cannot be stored); any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
+  which would be a 500) -> 422; no `category` is allowed since SI14 D3 (0027 made
+  `products.category` nullable: the row has no category and no `category` provenance until the
+  seller sets one, and no listing until then); any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
   one `tenant_uow`: resolve the attribute keys, build the seller facts, insert the row, write the
   `product.created` audit row with the created facts. The SKU unique is the natural key: a
   duplicate or a lost-response retry is 409 `SKU_CONFLICT`.
@@ -184,7 +185,7 @@ class ProductView:
     sku: str
     title: str
     status: Literal["draft", "active"]
-    category: str  # products.category is NOT NULL (DATABASE.md:410)
+    category: str | None  # NULL until the seller sets one (0027, SI14 D3)
     attributes: dict[str, FlatValue]
     images: list[str]
     parent_product_id: uuid.UUID | None
@@ -667,8 +668,6 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
 
 async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     _refuse_nul(cmd)
-    if cmd.category is None:
-        raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     if cmd.images:
         raise NotFoundError("images[0]")
     check_price_le_mrp(cmd.selling_price, cmd.mrp)
@@ -709,6 +708,8 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
                 raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
             facts[SIZE_CHART_KEY] = size_chart_fact(cmd.size_chart, now=now)
         provenance = seller_provenance(now=now)
+        if cmd.category is None:  # a NULL fact column carries no provenance (0027)
+            provenance.pop("category", None)
         try:
             row = await uow.products.create(
                 sku=cmd.sku,

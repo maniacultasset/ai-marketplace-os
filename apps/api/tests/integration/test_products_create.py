@@ -76,13 +76,11 @@ _VALIDATION: dict[str, Any] = {
     "nul_sku": site_body("S12-\u0000"),
     "nul_title": site_body("S12-V5", title="Kurta\u0000"),
     "nul_attr_value": site_body("S12-V6", attributes={"color": "red\u0000"}),
-    "no_category": {"sku": "S12-V7", "title": "T"},
 }
 _NUL_LOC = {
     "nul_sku": ["body", "sku"],
     "nul_title": ["body", "title"],
     "nul_attr_value": ["body", "attributes", "color"],
-    "no_category": ["body", "category"],
 }
 
 
@@ -104,9 +102,9 @@ async def test_products_create_validation(
     error = response.json()["error"]
     assert error["type"] == "VALIDATION_FAILED"
     if case in _NUL_LOC:
-        # a missing category is refused by the request model since T115, the NULs by the service
-        msg = "Field required" if case == "no_category" else "Invalid value."
-        assert error["details"] == [{"loc": _NUL_LOC[case], "msg": msg}]
+        # the NULs are refused by the service (SI14 D3: a missing category is now accepted,
+        # test_products_null_category.py)
+        assert error["details"] == [{"loc": _NUL_LOC[case], "msg": "Invalid value."}]
     assert "\u0000" not in response.text
     assert counts(auth_db) == before
 

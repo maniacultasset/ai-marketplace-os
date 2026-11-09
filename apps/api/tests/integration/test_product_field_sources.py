@@ -86,13 +86,16 @@ async def test_api_value_is_you_and_hsn_suggestion(
     assert response.status_code == 201, response.text
     pid = response.json()["id"]
     body = await _get(api, products_world, pid)
-    assert body["suggestions"] == {"hsn_code": {"value": "6109", "basis": "category"}}
+    assert body["suggestions"] == {
+        "hsn_code": {"value": "6109", "basis": "category"},
+        "category": None,
+    }
     assert body["field_sources"]["color"]["kind"] == "you"
     assert body["field_sources"]["category"]["kind"] == "you"
     assert "hsn_code" not in body["field_sources"]
     response = await _patch(api, products_world, pid, {"hsn_code": "61091000"})
     assert response.status_code == 200, response.text
-    assert response.json()["suggestions"] == {"hsn_code": None}
+    assert response.json()["suggestions"] == {"hsn_code": None, "category": None}
     assert response.json()["field_sources"]["hsn_code"]["kind"] == "you"
 
 
@@ -100,7 +103,10 @@ async def test_unseeded_category_no_suggestion(
     api: httpx.AsyncClient, products_world: World
 ) -> None:
     pid = f.product(products_world.conn, products_world.tenant("acme"), category="kurtas")
-    assert (await _get(api, products_world, pid))["suggestions"] == {"hsn_code": None}
+    assert (await _get(api, products_world, pid))["suggestions"] == {
+        "hsn_code": None,
+        "category": None,
+    }
 
 
 async def test_photo_value_then_confirmed(api: httpx.AsyncClient, products_world: World) -> None:
@@ -206,6 +212,6 @@ async def test_list_has_the_empty_defaults_and_reads_write_nothing(
     listed = await api.get(f"{PRODUCTS}?limit=100", headers=_op(products_world))
     item = next(p for p in listed.json()["data"] if p["id"] == str(pid))
     assert item["field_sources"] == {}
-    assert item["suggestions"] == {"hsn_code": None}
+    assert item["suggestions"] == {"hsn_code": None, "category": None}
     assert item["size_chart_suggestion"] is None
     assert _row(products_world.conn, pid) == before

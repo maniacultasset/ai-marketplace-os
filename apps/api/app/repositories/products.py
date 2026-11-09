@@ -262,7 +262,7 @@ class ProductRepository(TenantScopedRepository[Product]):
         *,
         sku: str,
         title: str,
-        category: str,
+        category: str | None,
         attributes: Mapping[str, Any],
         provenance: Mapping[str, Any],
         created_by: uuid.UUID | None,
