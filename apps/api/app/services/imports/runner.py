@@ -55,6 +55,7 @@ from app.core.errors import InputError, RowCountError
 from app.core.logging import get_logger
 from app.db.models.ops import Import
 from app.repositories.brand_profile import BrandPromptRepository
+from app.repositories.column_maps import ImportColumnMapRepository
 from app.repositories.facts import FactWriter
 from app.repositories.imports import (
     ImportRepository,
@@ -67,6 +68,7 @@ from app.repositories.parties import BrandProfileRepository, BusinessPartyReposi
 from app.repositories.products import ProductRepository, ProductUpsert
 from app.repositories.transactions import RowDbError, row_savepoint, unit_of_work
 from app.repositories.variants import ColourwayRepository, MatrixCellRepository
+from app.services.imports.column_map import Renamer, apply_map
 from app.services.imports.csv_file import CsvRow, ImportFileError, iter_rows
 from app.services.imports.db_errors import column_for_field, row_db_item
 from app.services.imports.row_model import (
@@ -140,12 +142,15 @@ class Unit:
         return sum(1 for p in self.rows if not p.skip)
 
 
-def _prepare(csv_row: CsvRow, brands: Sequence[str]) -> Prepared:
+def _prepare(csv_row: CsvRow, brands: Sequence[str], renamer: Renamer | None = None) -> Prepared:
     if csv_row.error is not None:
         code, message = csv_row.error
         item = row_error(code, message)
         return Prepared(csv_row.row_number, {}, None, None, RowResult(None, [item]), [item])
-    norm = normalize_row(csv_row.cells)
+    # SI14: a confirmed column map renames the cells; `raw` keeps the file's own keys (the
+    # seller's file is the audit truth), so a rows retry renames them again the same way
+    cells = csv_row.cells if renamer is None else renamer.row(csv_row.cells)
+    norm = normalize_row(cells)
     result = validate_row(norm, brands=brands)
     return Prepared(
         csv_row.row_number,
@@ -158,12 +163,16 @@ def _prepare(csv_row: CsvRow, brands: Sequence[str]) -> Prepared:
 
 
 def build_units(
-    rows: Iterable[CsvRow], skip: Collection[int] = (), *, brands: Sequence[str]
+    rows: Iterable[CsvRow],
+    skip: Collection[int] = (),
+    *,
+    brands: Sequence[str],
+    renamer: Renamer | None = None,
 ) -> list[Unit]:
     """Units in file order; the rows numbered in `skip` (a rows retry's imported family
     members) join their family for its checks only. `brands` (SI8): the tenant's own brand
     names, read once per job."""
-    prepared = [_prepare(r, brands) for r in sorted(rows, key=lambda r: r.row_number)]
+    prepared = [_prepare(r, brands, renamer) for r in sorted(rows, key=lambda r: r.row_number)]
     for p in prepared:
         p.skip = p.row_number in skip
     families = {p.parent_sku for p in prepared if p.parent_sku}
@@ -289,6 +298,7 @@ class Loaded:
     retry_rows: list[CsvRow] | None = None
     imported_skus: dict[str, int] = field(default_factory=dict)
     context_rows: set[int] = field(default_factory=set)
+    renamer: Renamer | None = None  # SI14: the confirmed column map of the upload
 
 
 async def _load(ctx: JobContext) -> Loaded:
@@ -305,10 +315,11 @@ async def _load(ctx: JobContext) -> Loaded:
         imp = await imports.get_for_job(job.entity_id, ctx.job_run_id)
         if imp is None:
             raise _failure(ErrorCode.IMPORT_FAILED, "the import belongs to another job", ctx)
+        renamer = await _renamer(session, ctx, imp)
         await imports.mark_running(imp.id, ctx.job_run_id)
         rows = ImportRowRepository(session, ctx.tenant_id)
         if not ctx.payload.get("retry"):
-            return Loaded(imp, await rows.finished_row_numbers(imp.id))
+            return Loaded(imp, await rows.finished_row_numbers(imp.id), renamer=renamer)
         # A row the parser refused (more cells than the header, an over-long cell) was stored
         # with no cells (`_prepare`): a retry cannot fix it without a new file, so it keeps its
         # stored error report and is not re-run (KNOWN-ISSUES §E, S26 fix round 1).
@@ -320,7 +331,17 @@ async def _load(ctx: JobContext) -> Loaded:
             for r in [*failed, *family]
         ]
         imported = await rows.imported_skus(imp.id)
-        return Loaded(imp, set(), retry, imported, {r.row_number for r in family})
+        return Loaded(imp, set(), retry, imported, {r.row_number for r in family}, renamer)
+
+
+async def _renamer(session: Any, ctx: JobContext, imp: Import) -> Renamer | None:
+    """SI14: the upload's confirmed column map as a renamer (no map, no renamer)."""
+    if imp.column_map_id is None:
+        return None
+    row = await ImportColumnMapRepository(session, ctx.tenant_id).get(imp.column_map_id)
+    if row is None or row.status != "confirmed":
+        raise _failure(ErrorCode.IMPORT_FAILED, "the column map is missing", ctx)
+    return apply_map(list(row.headers or []), list(row.mappings or []))
 
 
 async def _read_object(run_ctx: JobContext, imp: Import) -> bytes:
@@ -349,7 +370,7 @@ async def run_import(ctx: JobContext) -> Outcome:
         csv_rows = retry_rows
     async with unit_of_work(ctx.tenant_id) as session:  # SI8: one read per job
         brands = await BrandPromptRepository(session, ctx.tenant_id).brand_choices()
-    units = build_units(csv_rows, loaded.context_rows, brands=brands)
+    units = build_units(csv_rows, loaded.context_rows, brands=brands, renamer=loaded.renamer)
     mark_duplicates(units, loaded.imported_skus)
     todo = [u for u in units if u.size and not u.row_numbers <= finished]
     run = Run(ctx, imp, Facts(fact_stamp(datetime.now(UTC))), total=sum(u.size for u in units))

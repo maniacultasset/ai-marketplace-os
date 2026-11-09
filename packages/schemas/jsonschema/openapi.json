@@ -824,6 +824,19 @@
       },
       "Body_products_bulk": {
         "properties": {
+          "column_map_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI14: a confirmed column map (`POST /imports/column-maps`); the file's header must be the map's. 422 IMPORT_FAILED (at `request`) when it is not a confirmed map of this brand.",
+            "title": "Column Map Id"
+          },
           "file": {
             "contentMediaType": "application/octet-stream",
             "description": "The CSV file (multipart only, 10 MiB cap).",
@@ -41833,7 +41846,7 @@
     },
     "/api/v1/products/bulk": {
       "post": {
-        "description": "Start a CSV import: 202 with the import and its job. Bad rows are isolated, never failing\nthe batch, and the import does not start generation.",
+        "description": "Start a CSV import: 202 with the import and its job. Bad rows are isolated, never failing\nthe batch, and the import does not start generation. With `column_map_id` the seller's own\nheader names are mapped by the confirmed map; the file is stored as sent.",
         "operationId": "products_bulk",
         "parameters": [
           {

@@ -59,6 +59,7 @@ class ImportRepository(TenantScopedRepository[Import]):
         filename: str,
         job_id: uuid.UUID,
         created_by: uuid.UUID,
+        column_map_id: uuid.UUID | None = None,
     ) -> Import:
         row = Import(
             id=import_id,
@@ -70,6 +71,7 @@ class ImportRepository(TenantScopedRepository[Import]):
             failed_rows=0,
             job_id=job_id,
             created_by=created_by,
+            column_map_id=column_map_id,
         )
         return await self.add(row)
 

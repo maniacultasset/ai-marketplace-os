@@ -11,7 +11,7 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 
@@ -286,13 +286,24 @@ async def products_bulk(
     idempotency_key: IdempotencyKey,
     principal: CurrentPrincipal,
     request: Request,
+    column_map_id: Annotated[
+        UUID | None,
+        Form(
+            description=(
+                "SI14: a confirmed column map (`POST /imports/column-maps`); the file's header "
+                "must be the map's. 422 IMPORT_FAILED (at `request`) when it is not a "
+                "confirmed map of this brand."
+            )
+        ),
+    ] = None,
 ) -> ImportAccepted:
     """Start a CSV import: 202 with the import and its job. Bad rows are isolated, never failing
-    the batch, and the import does not start generation."""
+    the batch, and the import does not start generation. With `column_map_id` the seller's own
+    header names are mapped by the confirmed map; the file is stored as sent."""
     data = await file.read()
     try:
         result = await upload.accept_upload(
-            principal, idempotency_key, request.url.path, file.filename, data
+            principal, idempotency_key, request.url.path, file.filename, data, column_map_id
         )
     except ConflictError as exc:
         if exc.code is not ErrorCode.IDEMPOTENCY_KEY_REUSED:

@@ -17,6 +17,13 @@ open while the file is parsed or the object is written:
 
 The request hash covers `POST <path>`, NUL and the file part's bytes (Q3). Logs carry ids and
 counts only, never a cell or the filename.
+
+SI14 (AC8): with `column_map_id`, the confirmed column map of this brand renames the seller's own
+header before the check. A missing, foreign or unconfirmed map is 422 `IMPORT_FAILED` at
+`column_map_id` (one answer for all three, so no map's existence leaks); a header row that differs
+from the map's (the same names, in any order) is 422 at `file.header`. The stored object stays the
+seller's original file: the import job applies the same renamer to every row. The request hash
+then also covers the map id. Without the field nothing changes.
 """
 
 from __future__ import annotations
@@ -34,14 +41,16 @@ from mkos_schemas.errors import ErrorReport
 from app.adapters.storage import csv_bucket, get_storage, import_object_key
 from app.core.logging import get_logger
 from app.core.rbac import Principal
+from app.repositories.column_maps import ImportColumnMapRepository
 from app.repositories.idempotency import IdempotencyKeyRepository, Mismatch, Replay
 from app.repositories.imports import ImportRepository
 from app.repositories.jobs import EnqueueSpec, JobRunRepository
 from app.repositories.transactions import unit_of_work
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.services.imports.cap import enforce_live_cap
-from app.services.imports.csv_file import ImportFileError, parse_upload
-from app.services.imports.headers import check_header, header_report
+from app.services.imports.column_map import Renamer, apply_map
+from app.services.imports.csv_file import ImportFileError, file_report, parse_upload
+from app.services.imports.headers import HEADER_FIELD, check_header, header_report, normalize_header
 
 log = get_logger(__name__)
 API_V1: Final = "/api/v1"
@@ -108,30 +117,82 @@ PARSE_CONCURRENCY: Final = 2
 _PARSE_LIMITER: Final = anyio.CapacityLimiter(PARSE_CONCURRENCY)
 
 
-def _file_problem(data: bytes) -> tuple[ErrorReport | None, int]:
+@dataclass(frozen=True, slots=True)
+class _ConfirmedMap:
+    headers: list[str]
+    renamer: Renamer
+
+
+# `ErrorItem.field` is a closed vocabulary (mkos_schemas.paths): the map refusal names the
+# request, and its message says which input it is about
+MAP_FIELD: Final = "request"
+
+
+def _file_problem(
+    data: bytes, column_map: _ConfirmedMap | None = None
+) -> tuple[ErrorReport | None, int]:
     try:
         parsed = parse_upload(data)
     except ImportFileError as exc:
         return exc.report, 0
-    problems = check_header(parsed.columns)
+    columns = parsed.columns
+    if column_map is not None:
+        names = [normalize_header(c) for c in columns]
+        if len(names) != len(column_map.headers) or set(names) != set(column_map.headers):
+            report = file_report("the headers differ from the confirmed column map", HEADER_FIELD)
+            return report, parsed.row_count
+        columns = column_map.renamer.header(columns)
+    problems = check_header(columns)
     return (header_report(problems) if problems else None), parsed.row_count
 
 
+async def _confirmed_map(principal: Principal, map_id: uuid.UUID) -> _ConfirmedMap | None:
+    """The brand's confirmed map, or None for a missing, foreign or unconfirmed one."""
+    async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
+        row = await ImportColumnMapRepository(session, principal.tenant_id).get(map_id)
+        if row is None or row.status != "confirmed":
+            return None
+        headers = list(row.headers or [])
+        return _ConfirmedMap(headers, apply_map(headers, list(row.mappings or [])))
+
+
+def hashed_body(data: bytes, column_map_id: uuid.UUID | None) -> bytes:
+    """The bytes the Idempotency-Key hash covers: the file, and with SI14 the map id."""
+    if column_map_id is None:
+        return data
+    return data + b"\x00column_map_id=" + str(column_map_id).encode()
+
+
 async def accept_upload(
-    principal: Principal, key: str, path: str, filename: str | None, data: bytes
+    principal: Principal,
+    key: str,
+    path: str,
+    filename: str | None,
+    data: bytes,
+    column_map_id: uuid.UUID | None = None,
 ) -> UploadResult:
-    replayed = await _peek_and_precheck(principal, key, path, data)
+    hashed = hashed_body(data, column_map_id)
+    replayed = await _peek_and_precheck(principal, key, path, hashed)
     if replayed is not None:
         return replayed
 
-    report, row_count = await anyio.to_thread.run_sync(_file_problem, data, limiter=_PARSE_LIMITER)
+    column_map = None if column_map_id is None else await _confirmed_map(principal, column_map_id)
+    if column_map_id is not None and column_map is None:
+        report: ErrorReport | None = file_report(
+            "column_map_id is not a confirmed column map of this brand", MAP_FIELD
+        )
+        row_count = 0
+    else:
+        report, row_count = await anyio.to_thread.run_sync(
+            _file_problem, data, column_map, limiter=_PARSE_LIMITER
+        )
     if report is not None:
         refused = {"report": report.model_dump(mode="json")}
 
         async def store(_session: Any) -> tuple[int, dict[str, Any]]:
             return 422, refused
 
-        status, body = await idempotent(principal, key, "POST", path, data, store)
+        status, body = await idempotent(principal, key, "POST", path, hashed, store)
         log.info("import.refused", tenant_id=str(principal.tenant_id), status=status)
         return UploadResult(status, body)
 
@@ -159,10 +220,11 @@ async def accept_upload(
             filename=name,
             job_id=enqueued.job.id,
             created_by=principal.user_id,
+            column_map_id=column_map_id,
         )
         return 202, accepted_body(import_id, enqueued.job.id)
 
-    status, body = await idempotent(principal, key, "POST", path, data, handler)
+    status, body = await idempotent(principal, key, "POST", path, hashed, handler)
     log.info(
         "import.accepted",
         tenant_id=str(tenant),
