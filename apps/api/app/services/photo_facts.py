@@ -39,6 +39,7 @@ __all__ = [
     "PHOTO_PROMPT_PREFIX",
     "PHOTO_SLOTS",
     "PIECES_ASK_FLOOR",
+    "SET_WORDS",
     "SYNONYMS",
     "V1_KEYS",
     "VOCAB",
@@ -50,6 +51,7 @@ __all__ = [
     "build_targets",
     "canonical",
     "fold",
+    "multi_piece",
     "photo_read_skip",
     "photo_set",
     "same_as_rejected",
@@ -72,6 +74,10 @@ V1_KEYS: Final = (
 STANDALONE_ONLY: Final = frozenset({"color", "pattern"})
 # Critical: never written from a photo, only a question.
 CHECK_ONLY: Final = frozenset({"number_of_pieces"})
+# A piece count is asked only for a multi-piece category (a kurta set): a category slug holding
+# one of these words. A T-shirt template lists `number_of_pieces` (Amazon `number_of_items`, for a
+# multipack) too, but its photo always shows one piece, so asking "how many pieces" is noise.
+SET_WORDS: Final = frozenset({"set", "sets", "combo", "combos"})
 # A template listing none of these is not apparel (lamps): no targets, no vision call.
 APPAREL_SIGNAL: Final = frozenset({"neckline", "sleeve_length", "fit"})
 # Product photos only: a packaging label or a size chart is never cited.
@@ -445,6 +451,12 @@ def template_spelling(key: str, value: str, template: CategoryTemplate) -> str:
     return value
 
 
+def multi_piece(template: CategoryTemplate) -> bool:
+    """Whether the template's category sells a set of pieces (`SET_WORDS`), the only kind whose
+    photos are asked for a piece count."""
+    return not SET_WORDS.isdisjoint(template.category.split("_"))
+
+
 def _template_keys(template: CategoryTemplate) -> set[str]:
     return {
         *template.required_attributes,
@@ -493,7 +505,7 @@ def build_targets(
     for key in V1_KEYS:
         if key in STANDALONE_ONLY and facts.level != "standalone":
             continue
-        if key == "number_of_pieces" and key not in listed:
+        if key == "number_of_pieces" and (key not in listed or not multi_piece(template)):
             continue
         if not allowed_for(key, template):
             continue  # a listed enum no vocabulary value fits

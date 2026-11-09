@@ -261,13 +261,48 @@ def expected_answer(
     return {"kind": "text", "max_length": TEXT_ANSWER_MAX}
 
 
+# Prod demo 9 Nov: the reason named raw check codes ("BACKGROUND OFF, RESOLUTION LOW, WRONG
+# ASPECT"). Each code (an `ImageIssueCode`, the row's `marketplace_code`) and each check name (the
+# Pillow and vision `CheckName`) in seller words; anything else reads as the generic last entry.
+IMAGE_PROBLEMS: Final[Mapping[str, str]] = {
+    "BACKGROUND_OFF": "the background is not plain white",
+    "RESOLUTION_LOW": "the photo is smaller than the marketplace asks for",
+    "WRONG_ASPECT": "the photo is not the shape the marketplace asks for",
+    "TEXT_DETECTED": "there is text on the photo",
+    "WATERMARK": "the photo has a watermark",
+    "FILL_RATIO_LOW": "the product fills too little of the photo",
+    "FORMAT_UNSUPPORTED": "the file type is not accepted (use JPEG or PNG)",
+    "FILE_TOO_LARGE": "the file is too large",
+    "CORRUPT": "the file could not be opened",
+    "LOGO_PROHIBITED": "the photo shows a logo the marketplace does not allow",
+    "background": "the background is not plain white",
+    "resolution": "the photo is smaller than the marketplace asks for",
+    "aspect_ratio": "the photo is not the shape the marketplace asks for",
+    "text_overlay": "there is text on the photo",
+    "watermark": "the photo has a watermark",
+    "fill_ratio": "the product fills too little of the photo",
+    "format": "the file type is not accepted (use JPEG or PNG)",
+    "file_size": "the file is too large",
+    "corruption": "the file could not be opened",
+    "logo": "the photo shows a logo the marketplace does not allow",
+    "exif_orientation": "the photo is turned on its side",
+}
+IMAGE_PROBLEM_DEFAULT: Final = "it does not meet the marketplace photo rules"
+
+
+def image_problem(check: str) -> str:
+    """One failed image check or code in seller words."""
+    return IMAGE_PROBLEMS.get(check, IMAGE_PROBLEM_DEFAULT)
+
+
 def image_question(slot: str, checks: Sequence[str]) -> tuple[str, str]:
-    """The question and the reason for an image that failed its marketplace checks."""
-    names = ", ".join(c.replace("_", " ") for c in checks) or "the marketplace image checks"
+    """The question and the reason for an image that failed its marketplace checks: each problem
+    once, in plain words (never the check code)."""
+    problems = list(dict.fromkeys(image_problem(c) for c in checks)) or [IMAGE_PROBLEM_DEFAULT]
     question = f"Upload a new {slot.replace('_', ' ')} image for this product."
-    reason = f"The current image failed these checks: {names}."
+    reason = "The current photo can't be used: " + "; ".join(problems) + "."
     if len(reason) > QUESTION_MAX:
-        reason = reason[: QUESTION_MAX - 4].rstrip(" ,") + " ..."
+        reason = reason[: QUESTION_MAX - 4].rstrip(" ,;") + " ..."
     return _fit(question), _fit(reason)
 
 
