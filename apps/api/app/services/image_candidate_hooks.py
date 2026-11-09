@@ -17,6 +17,9 @@
   ended other than `succeeded` stores `category_suggestion = {status: failed}` on the product,
   never over another job's settled suggestion, so the seller can ask again; its staff requeue is
   refused (a paid model call must not repeat silently).
+- SI14: a column-map job (`entity_type='column_map'`, entity = the map) that ended other than
+  `succeeded` settles a map still `mapping` to `failed` with its deterministic mappings, so the
+  seller maps the rest; its staff requeue is refused alike.
 """
 
 from __future__ import annotations
@@ -26,6 +29,7 @@ from typing import Any, Final
 
 from app.core.logging import get_logger
 from app.db.models.ops import JobRun
+from app.repositories.column_maps import ImportColumnMapRepository
 from app.repositories.image_candidates import ImageCandidateRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import NotEligibleError
@@ -33,6 +37,7 @@ from app.repositories.products import ProductRepository
 from app.workers.policy import (
     CANDIDATE_ENTITY,
     CATEGORY_SUGGESTION_ENTITY,
+    COLUMN_MAP_ENTITY,
     SIZE_CHART_READ_ENTITY,
 )
 from app.workers.registry import Outcome
@@ -89,12 +94,24 @@ async def _category_suggestion_failed(session: Any, job: JobRun) -> None:
         )
 
 
+async def _column_map_failed(session: Any, job: JobRun) -> None:
+    maps = ImportColumnMapRepository(session, job.tenant_id)
+    row = await maps.get(job.entity_id)
+    if row is None or row.status != "mapping" or row.job_id != job.id:
+        return
+    if await maps.set_result(row.id, status="failed", mappings=list(row.mappings or [])):
+        log.info("column_map.failed", map_id=str(row.id), job_run_id=str(job.id))
+
+
 async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # branch on the final status only
     if job.status == "succeeded":
         return
     if job.entity_type == CATEGORY_SUGGESTION_ENTITY:
         await _category_suggestion_failed(session, job)
+        return
+    if job.entity_type == COLUMN_MAP_ENTITY:
+        await _column_map_failed(session, job)
         return
     if job.entity_type == SIZE_CHART_READ_ENTITY:
         await _size_chart_read_failed(session, job)
@@ -116,6 +133,9 @@ async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) 
 
 async def on_image_requeue(session: Any, old: JobRun, new: JobRun) -> None:
     del session, new
+    if old.entity_type == COLUMN_MAP_ENTITY:
+        log.info("column_map.requeue_refused", job_run_id=str(old.id))
+        raise NotEligibleError("map the columns again through the API")
     if old.entity_type == CATEGORY_SUGGESTION_ENTITY:
         log.info("category_suggestion.requeue_refused", job_run_id=str(old.id))
         raise NotEligibleError("ask for the category suggestion again through the API")
