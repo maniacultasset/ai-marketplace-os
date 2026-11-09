@@ -376,3 +376,10 @@ def redact[T](value: T) -> T:
     """A redacted copy of `value` (dicts, lists, tuples and strings are rebuilt; the input is
     never mutated). Other types come back as they are."""
     return cast(T, _walk(value, 0))
+
+
+def mask_seller(seller_id: str) -> str:
+    """Enough of a marketplace seller id to recognise the account: never the whole id."""
+    if len(seller_id) <= 6:
+        return "*" * len(seller_id)
+    return f"{seller_id[:3]}...{seller_id[-3:]}"
