@@ -61,6 +61,10 @@ LIVE: Final = ("open", "answered")
 MISSING_FACT: Final = "missing_fact"
 IMAGE_REPLACEMENT: Final = "image_replacement"
 FILE_ANSWER: Final = {"kind": "file"}
+# SI14: one live category review per product (`human_tasks_one_category_review`, 0027)
+CATEGORY_REVIEW: Final = "category_review"
+CATEGORY_REVIEW_QUESTION: Final = "Which category fits this product?"
+_LIVE_REVIEW: Final = text("kind = 'category_review' AND status IN ('open', 'answered')")
 
 
 def _rowcount(result: Any) -> int:
@@ -427,6 +431,52 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
             .values(status="applied", applied_at=text("now()"))
         )
         return _rowcount(await self.db.execute(applied))
+
+    async def open_category_review(
+        self,
+        product_id: uuid.UUID,
+        *,
+        reason: str,
+        allowed: builtins.list[str],
+        suggestions: builtins.list[str],
+    ) -> bool:
+        """SI14: the product's category review; False when one is already live. The conflict
+        target is inferred from the partial unique index (a partial index cannot be named in
+        `ON CONFLICT ON CONSTRAINT`)."""
+        stmt = (
+            insert(HumanTask)
+            .values(
+                tenant_id=self.tenant_id,
+                kind=CATEGORY_REVIEW,
+                product_id=product_id,
+                question=CATEGORY_REVIEW_QUESTION,
+                reason=reason,
+                expected_answer={"kind": "enum", "allowed": allowed},
+                suggestions=suggestions[:10],
+                resume_from="generate",
+            )
+            .on_conflict_do_nothing(
+                index_elements=[HumanTask.tenant_id, HumanTask.product_id],
+                index_where=_LIVE_REVIEW,
+            )
+            .returning(HumanTask.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def live_category_review(self, product_id: uuid.UUID) -> HumanTask | None:
+        """SI14: the product's open or answered category review, row-locked."""
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.product_id == product_id,
+                HumanTask.kind == CATEGORY_REVIEW,
+                HumanTask.status.in_(LIVE),
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        found: HumanTask | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
 
     async def cancel_reconnect(self, account_id: uuid.UUID) -> int:
         return _rowcount(await self.db.execute(_CANCEL, {"t": self.tenant_id, "a": account_id}))

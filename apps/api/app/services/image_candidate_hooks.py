@@ -13,6 +13,10 @@
   other than `succeeded` stores `metadata.size_chart_read = {status: failed}` on the image (CP-D4),
   fenced on the image's clean hash and never over another job's settled result, so the seller can
   ask again; its staff requeue is refused alike.
+- SI14: a classification job (`entity_type='category_suggestion'`, entity = the product) that
+  ended other than `succeeded` stores `category_suggestion = {status: failed}` on the product,
+  never over another job's settled suggestion, so the seller can ask again; its staff requeue is
+  refused (a paid model call must not repeat silently).
 """
 
 from __future__ import annotations
@@ -25,11 +29,18 @@ from app.db.models.ops import JobRun
 from app.repositories.image_candidates import ImageCandidateRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import NotEligibleError
-from app.workers.policy import CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY
+from app.repositories.products import ProductRepository
+from app.workers.policy import (
+    CANDIDATE_ENTITY,
+    CATEGORY_SUGGESTION_ENTITY,
+    SIZE_CHART_READ_ENTITY,
+)
 from app.workers.registry import Outcome
 
 log = get_logger(__name__)
 CANDIDATE_FAILED: Final = "model_failed"
+# a suggestion another job settled is never overwritten by this job's failure
+SETTLED_SUGGESTION: Final = frozenset({"suggested", "confirmed", "overridden"})
 
 
 async def _size_chart_read_failed(session: Any, job: JobRun) -> None:
@@ -52,9 +63,38 @@ async def _size_chart_read_failed(session: Any, job: JobRun) -> None:
         )
 
 
+async def _category_suggestion_failed(session: Any, job: JobRun) -> None:
+    products = ProductRepository(session, job.tenant_id)
+    product = await products.get_by_id(job.entity_id)
+    if product is None:
+        return
+    stored = product.category_suggestion if isinstance(product.category_suggestion, dict) else {}
+    settled_by_other = stored.get("status") in SETTLED_SUGGESTION and stored.get("job_id") != str(
+        job.id
+    )
+    if settled_by_other:
+        return
+    value = {
+        "status": "failed",
+        "candidates": [],
+        "job_id": str(job.id),
+        "at": datetime.now(UTC).isoformat(),
+    }
+    if await products.write_category_suggestion(product.id, value):
+        log.info(
+            "category_suggestion.failed",
+            product_id=str(product.id),
+            job_run_id=str(job.id),
+            job_status=job.status,
+        )
+
+
 async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # branch on the final status only
     if job.status == "succeeded":
+        return
+    if job.entity_type == CATEGORY_SUGGESTION_ENTITY:
+        await _category_suggestion_failed(session, job)
         return
     if job.entity_type == SIZE_CHART_READ_ENTITY:
         await _size_chart_read_failed(session, job)
@@ -76,6 +116,9 @@ async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) 
 
 async def on_image_requeue(session: Any, old: JobRun, new: JobRun) -> None:
     del session, new
+    if old.entity_type == CATEGORY_SUGGESTION_ENTITY:
+        log.info("category_suggestion.requeue_refused", job_run_id=str(old.id))
+        raise NotEligibleError("ask for the category suggestion again through the API")
     if old.entity_type == SIZE_CHART_READ_ENTITY:
         log.info("size_chart_read.requeue_refused", job_run_id=str(old.id))
         raise NotEligibleError("ask for the size-chart read again through the API")

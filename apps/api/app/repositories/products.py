@@ -16,7 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, tuple_
+from sqlalchemy import case, cast, func, literal, literal_column, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -109,6 +109,22 @@ class ProductRepository(TenantScopedRepository[Product]):
             .execution_options(populate_existing=True)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def write_category_suggestion(
+        self, product_id: uuid.UUID, value: Mapping[str, Any] | None
+    ) -> bool:
+        """SI14: store the classifier's suggestion (only this column; never the category, the
+        facts or provenance). False when the product is gone."""
+        stmt = self._scoped_write(
+            update(Product)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                Product.id == product_id,
+                Product.deleted_at.is_(None),
+            )
+            .values(category_suggestion=None if value is None else dict(value))
+        )
+        return int(getattr(await self.db.execute(stmt), "rowcount", 0) or 0) == 1
 
     async def live_child_ids(self, style_id: uuid.UUID) -> builtins.list[uuid.UUID]:
         """The live children of `style_id`, in id order (SI1 T20: each is a sellable unit)."""
