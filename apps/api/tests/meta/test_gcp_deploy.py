@@ -506,6 +506,9 @@ def test_env_files_hold_no_secret(repo_root: Path, env_name: str) -> None:
     # prod left the sandbox once the Amazon app cleared (2026-11-05); staging stays on it.
     sandbox = {"staging": "true", "prod": "false"}[env_name]
     assert values["FLIPKART_ENABLED"] == "false" and values["AMAZON_USE_SANDBOX"] == sandbox
+    # The publish kill switch: the owner's real seller account gets no publishes until they say
+    # go (2026-11-09), so prod pins it off; staging talks to the sandbox and publishes.
+    assert values["AMAZON_PUBLISH_ENABLED"] == {"staging": "true", "prod": "false"}[env_name]
     # The placeholder until the dashboard is hosted, then the committed https origins (runbook).
     for name in ("ALLOWED_ORIGINS", "DASHBOARD_BASE_URL"):
         for origin in values[name].split(","):
@@ -1450,6 +1453,41 @@ def test_size_chart_read_switch_reaches_both_roles(toolkit: Path, tmp_path: Path
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0
     assert "SIZE_CHART_READ_ENABLED must be true or false" in result.stderr
+
+
+def test_prod_pins_amazon_publishing_off(repo_root: Path) -> None:
+    """The owner asked on 2026-11-09 that the real seller account receives no publishes until
+    they say go: prod.env ships the kill switch off, with the reason next to it."""
+    text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
+    assert re.findall(r"^AMAZON_PUBLISH_ENABLED=(.*)$", text, re.MULTILINE) == ["false"]
+    assert "2026-11-09" in text.split("AMAZON_PUBLISH_ENABLED=")[0].rsplit("\n\n", 1)[-1]
+
+
+def test_publish_switch_reaches_every_role(toolkit: Path, tmp_path: Path) -> None:
+    """The api, the worker and the maintenance job read one switch, so no process that could
+    reach Amazon runs with the code default (on)."""
+    _set_env(toolkit, "staging", AMAZON_PUBLISH_ENABLED="false")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    blocks = [yaml.safe_load(block) for block in _blocks(out, "env file")]
+    assert len(blocks) >= 2  # the api and the maintenance job
+    for env in blocks:
+        assert env["AMAZON_PUBLISH_ENABLED"] == "false"
+    assert _api_env(out)["AMAZON_PUBLISH_ENABLED"] == "false"
+    assert _worker_container(out)[0]["AMAZON_PUBLISH_ENABLED"] == "false"
+    _set_env(toolkit, "staging", AMAZON_PUBLISH_ENABLED="true")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["AMAZON_PUBLISH_ENABLED"] == "true"
+    assert _worker_container(out)[0]["AMAZON_PUBLISH_ENABLED"] == "true"
+
+
+@pytest.mark.parametrize("value", ["", "no", "False", "0", "yes"])
+def test_bad_publish_switch_refused(toolkit: Path, tmp_path: Path, value: str) -> None:
+    """Anything but true or false never deploys: a missing or misspelt value is refused before
+    any gcloud call, never read as the code default (on)."""
+    _set_env(toolkit, "prod", AMAZON_PUBLISH_ENABLED=value)
+    result = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "AMAZON_PUBLISH_ENABLED must be true or false" in result.stderr
 
 
 def test_staging_worker_keeps_the_direct_route(toolkit: Path, tmp_path: Path) -> None:

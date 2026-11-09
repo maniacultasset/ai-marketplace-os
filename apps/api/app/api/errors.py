@@ -417,7 +417,8 @@ def marketplace_not_enabled(marketplace: str) -> ApiError:
 
 async def _not_enabled(request: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, MarketplaceNotEnabled)  # noqa: S101
-    return await _api_error(request, marketplace_not_enabled(exc.marketplace.value))
+    # the same 501 for a switched-off marketplace and a paused publish, each with its message
+    return await _api_error(request, ApiError(501, ErrorCode.NOT_IMPLEMENTED, exc.message()))
 
 
 def install_error_handlers(app: FastAPI) -> None:

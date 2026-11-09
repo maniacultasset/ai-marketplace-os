@@ -3,7 +3,8 @@
 1. One short read transaction: the listing, its current version's adapter input (no images,
    CP-D23: a preview never makes or sends a public image copy) and the live repairs. A version
    that is no longer current, a listing no longer pre-approval, or an account that is not
-   `active` ends the job `{"skipped": ...}` with no marketplace call.
+   `active` ends the job `{"skipped": ...}` with no marketplace call; so does the publish kill
+   switch (`AMAZON_PUBLISH_ENABLED=false`: `{"skipped": "publishing_paused"}`).
 2. Outside any transaction: `PreviewView.preview_remote` (the only marketplace write-shaped call
    this body can make, and it saves nothing; `.importlinter` `remote-preview-preview-only`).
    SI13: with both `AMAZON_VALIDATION_PREVIEW_ENABLED` and `AMAZON_CATALOG_PRECHECK_ENABLED` on
@@ -27,6 +28,7 @@ from mkos_schemas.errors import MAX_ERROR_ITEMS
 
 from app.adapters.base import PrecheckResult, RemotePreview
 from app.core.config import get_settings
+from app.core.flags import PAUSED_REASON, publish_enabled
 from app.core.logging import get_logger
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.adapter_input import build_adapter_listing
@@ -57,6 +59,14 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
             or not previewable(listing, payload.trigger, recheck=True)
         ):
             return Outcome("succeeded", result={"skipped": "stale"})
+        if not publish_enabled(listing.marketplace, get_settings()):
+            # the publish kill switch: VALIDATION_PREVIEW is a write-mode call, so a dry run
+            # queued before the switch went off makes no call (its `pending` check settles
+            # `failed` in the kind's terminal step, `enqueue_pending`)
+            log.warning(
+                "preview.paused", job_run_id=str(ctx.job_run_id), listing_id=str(listing.id)
+            )
+            return Outcome("succeeded", result={"skipped": PAUSED_REASON})
         account = await uow.marketplace_accounts.active_for_publish(
             listing.marketplace, listing.marketplace_account_id
         )
