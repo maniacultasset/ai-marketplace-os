@@ -51,6 +51,7 @@ from app.core.text import has_control_char
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
+from app.services.category_gate import category_enabled
 
 log = get_logger(__name__)
 
@@ -181,6 +182,10 @@ async def _generate_one(
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     listing = await uow.listings.get_by_pair_for_update(product.id, marketplace)
     if listing is None:
+        # SI14 (PLAN E, D11): while CATEGORY_LAMPS_ENABLED is off no new lamps listing is made;
+        # an existing one regenerates, corrects and publishes as before (the other branch)
+        if not category_enabled(category, get_settings()):
+            raise InputError(ErrorCode.VALIDATION_FAILED, "category")
         listing = await uow.listings.create(product.id, marketplace, category)
     if listing.category != category:
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")

@@ -386,3 +386,19 @@ def test_si5_seed_barcodes_cover_every_sellable_sku() -> None:
         assert set(barcodes) == skus and DEMO_FAMILY_SKU not in barcodes
         assert len(set(barcodes.values())) == len(barcodes)
         assert all(check("ean", v) is None and len(v) == 13 for v in barcodes.values())
+
+
+def test_si14_lamp_templates_ship_and_their_keys_are_in_the_dictionary() -> None:
+    """SI14 (AC11): the lamps category is seeded on both marketplaces; every required lamp
+    attribute is a dictionary key, so the switch only has to open the category."""
+    from app.db.seed_templates import flipkart_seed_templates, seed_templates
+
+    keys = {entry["key"] for entry in DICTIONARY["attributes"]}
+    lamps = [
+        t.template
+        for t in (*seed_templates(), *flipkart_seed_templates())
+        if t.template.category == "home_decor_lamps"
+    ]
+    assert sorted(t.marketplace.value for t in lamps) == ["amazon", "flipkart"]
+    for template in lamps:
+        assert set(template.required_attributes) <= keys, template.marketplace
