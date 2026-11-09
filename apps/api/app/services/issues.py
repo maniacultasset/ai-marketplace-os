@@ -351,8 +351,11 @@ async def list_issues(
     principal: Principal, filters: IssueFilter, *, after: Keyset | None, limit: int
 ) -> tuple[list[dict[str, Any]], bool, Keyset | None]:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        from app.services.listing_display import recheck_queue
         from app.services.resolution.read import labels_for
 
+        if after is None and filters.status == "open":
+            await recheck_queue(uow, principal)  # a stale "passed" opens its issues first
         rows, more = await uow.listing_issues.page(filters, after=after, limit=limit)
         found = await labels_for(uow, rows)
     next_key = (rows[-1].created_at, rows[-1].id) if more and rows else None

@@ -39,6 +39,7 @@ from app.services.adapter_check import adapter_check
 from app.services.generation_context import previous_listing
 from app.services.issue_questions import ask_after_check
 from app.services.issues import sync_issues
+from app.services.listing_display import needs_you_counts
 from app.services.listings import human_move, insert_run, rules_check, to_detail
 from app.services.seller_facts import FACTUAL_KEYS
 
@@ -110,7 +111,8 @@ async def edit_content(
     changed = _changed(old, new)
     if not changed:
         summary = await uow.validation_runs.summary_for(parent.id)
-        return to_detail(listing, old, summary)
+        counts = await needs_you_counts(uow, [listing])
+        return to_detail(listing, old, summary, counts.get(listing.id, 0))
     return await save_edit(uow, principal, listing, parent, new, changed)
 
 
@@ -200,7 +202,8 @@ async def save_edit(
         status=to,
         changed=len(changed),
     )
-    return to_detail(listing, stored, summary_of([run]))
+    counts = await needs_you_counts(uow, [listing])
+    return to_detail(listing, stored, summary_of([run]), counts.get(listing.id, 0))
 
 
 async def edit(

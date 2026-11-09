@@ -16,6 +16,7 @@ from app.api.pagination import Page
 from app.api.v1.schemas.batches import Instructions
 from app.api.v1.schemas.resolution import RemoteCheckOut
 from app.core.text import CONTROL_CHAR_MESSAGE, has_control_char
+from app.services.listing_display import DisplayState
 
 
 class ListingOut(WireModel):
@@ -24,6 +25,22 @@ class ListingOut(WireModel):
     marketplace: Marketplace
     status: ListingStatus
     status_reason: str | None = None
+    display_state: DisplayState = Field(
+        default="draft",
+        description=(
+            "The state every screen shows, computed by the server. `needs_you`: open blocking "
+            "issues on the current version (`needs_you_count` of them) keep a person from "
+            "approving it, whatever `status` says. The other values follow `status` (validated "
+            "is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is "
+            "error). A stale reviewable listing is checked again with today's rules on read. "
+            "Always sent; an older payload without it reads as its status's value."
+        ),
+    )
+    needs_you_count: int = Field(
+        default=0,
+        ge=0,
+        description="Open blocking issues on the current version (the seller's fixes).",
+    )
     marketplace_state: MarketplaceState
     category: Slug | None = None
     current_version_id: UUID | None = None
@@ -48,6 +65,19 @@ class ListingOut(WireModel):
     status_changed_at: AwareDatetime
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _display_from_status(cls, data: Any) -> Any:
+        # an older payload (or example) without the display state reads as its status's value
+        if isinstance(data, dict) and "display_state" not in data and "status" in data:
+            from app.services.listing_display import display_state
+
+            class _Row:
+                status = str(data["status"])
+
+            return {**data, "display_state": display_state(_Row, 0)}
+        return data
 
 
 class ListingDetail(ListingOut):
@@ -75,6 +105,17 @@ class ListingPage(Page[ListingOut]):
     pass
 
 
+class AuditReviewOut(WireModel):
+    """The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab)."""
+
+    listing_version_id: UUID | None = None
+    version: int | None = Field(default=None, ge=1, description="The version's number.")
+    reason_code: str | None = Field(
+        default=None,
+        description="The reject reason. The reviewer's free-text feedback is never sent here.",
+    )
+
+
 class AuditEventOut(WireModel):
     """One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
     read, and both are personal data (DATABASE.md §5.2)."""
@@ -91,6 +132,13 @@ class AuditEventOut(WireModel):
     request_id: str | None = None
     job_id: UUID | None = None
     occurred_at: AwareDatetime
+    review: AuditReviewOut | None = Field(
+        default=None,
+        description=(
+            "For `listing.approved` and `listing.rejected`: the version decided on and the "
+            "reason code (never the free-text feedback). Null for other events."
+        ),
+    )
 
 
 class ListingHistoryPage(Page[AuditEventOut]):
