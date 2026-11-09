@@ -151,6 +151,40 @@ async def test_an_attribute_answer_behind_a_refusal_also_makes_the_fact_version(
     assert version == ("edit", ["facts.attributes.color"])
 
 
+async def test_an_attribute_answer_version_is_checked_on_the_answered_facts(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    """QA: the check of the answer's version read the facts from before the answer, so its pins
+    went stale and Approve and resend was a 409 STALE_VERSION until a manual re-check."""
+    made = await _asked(prev, "attributes.color")
+    task_id = _task_id(prev, made.listing_id, "facts.attributes.color")
+    response = await _answer(api, prev, task_id, "Red", OWNER, str(uuid.uuid4()))
+    assert response.status_code == 200, response.text
+    fact_version = prev.listing(made.listing_id)["current_version_id"]
+    assert fact_version != made.version_id
+    await _run_previews(prev, made.listing_id)
+    fixed = Made(made.listing_id, fact_version, made.job_id)
+    other = await post_approve(api, prev.world, REVIEWER, [item(fixed)])
+    assert other.json()["items"][0]["http_status"] == 200, other.text
+
+
+async def test_a_question_behind_an_open_error_reads_blocking(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    """QA: the inbox said "This doesn't block your listing" for a question an open listing
+    ERROR waits on; the list read now says so."""
+    made = await _asked(prev, "attributes.color")
+    task_id = _task_id(prev, made.listing_id, "facts.attributes.color")
+    headers = prev.world.headers(OWNER)
+    listed = (await api.get("/api/v1/tasks", headers=headers)).json()["data"]
+    assert {r["id"]: r["blocking"] for r in listed}[str(task_id)] is True
+    response = await _answer(api, prev, task_id, "Red", OWNER, str(uuid.uuid4()))
+    assert response.status_code == 200, response.text
+    assert response.json()["blocking"] is False
+    applied = (await api.get("/api/v1/tasks", headers=headers, params={"status": "applied"})).json()
+    assert {r["id"]: r["blocking"] for r in applied["data"]}[str(task_id)] is False
+
+
 async def test_a_second_open_question_waits_for_both_answers(
     api: httpx.AsyncClient, prev: PubWorld
 ) -> None:

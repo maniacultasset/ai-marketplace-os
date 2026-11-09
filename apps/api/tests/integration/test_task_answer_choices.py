@@ -110,7 +110,14 @@ async def test_rules_question_offers_the_template_subset(
     expected = task[0]
     assert expected["kind"] == "enum"
     spec = _spec(gen_world, "color")
-    spellings = [*(spec.get("allowed_values") or []), *sorted(spec.get("value_map") or {})]
-    assert expected["allowed_values"] == list(dict.fromkeys(spellings))
+    # QA 2026-11-09: the allowed values once each; the value_map keys are aliases, never
+    # choices of their own (the colour question offered 40 with Grey and gray)
+    allowed = list(spec.get("allowed_values") or [])
+    assert expected["allowed_values"] == list(dict.fromkeys(allowed))
+    folded = [v.strip().casefold() for v in expected["allowed_values"]]
+    assert len(folded) == len(set(folded))
+    assert not {k.strip().casefold() for k in spec.get("value_map") or {}} - {
+        v.strip().casefold() for v in allowed
+    } & set(folded)
     # the question's hint matches the enum answer spec
     assert str(task[1]).endswith(" Pick one of the listed values.")

@@ -279,9 +279,18 @@ BYTE_RULE_IDS = {
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
 
-def test_rules_seed_count_84() -> None:
-    """78 rows, plus SI8's six Amazon bullet and description limits."""
-    assert sum(len(s.rules) for s in _load()) == 84
+# QA 2026-11-09: resolution on secondary and lifestyle photos (Amazon 7-10, Flipkart 8-11)
+EXTRA_PHOTO_RULE_IDS = {f"5eed0000-0000-4000-8000-00070100000{n}" for n in "789a"} | {
+    f"5eed0000-0000-4000-8000-00070200000{n}" for n in "89ab"
+}
+
+
+def test_rules_seed_count_92() -> None:
+    """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
+    secondary and lifestyle resolution rows (QA 2026-11-09)."""
+    assert sum(len(s.rules) for s in _load()) == 92
+    ids = {str(r.id) for s in _load() for r in s.rules}
+    assert ids >= EXTRA_PHOTO_RULE_IDS
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -323,7 +332,13 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     digest; a seed row that sets a gate changes the digest.
     """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
-    new_ids = set(BYTE_RULE_IDS.values()) | CONTACT_RULE_IDS | CLAIM_RULE_IDS | SI8_TEXT_RULE_IDS
+    new_ids = (
+        set(BYTE_RULE_IDS.values())
+        | CONTACT_RULE_IDS
+        | CLAIM_RULE_IDS
+        | SI8_TEXT_RULE_IDS
+        | EXTRA_PHOTO_RULE_IDS
+    )
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
         rule_def = dict(rule["rule_def"])

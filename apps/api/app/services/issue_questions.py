@@ -81,6 +81,24 @@ def _image_index(field: str) -> int | None:
     return int(raw) if raw.isdigit() else None
 
 
+async def _refused_values(uow: Any, owner: uuid.UUID, key: str, group: list[Any]) -> list[str]:
+    """QA 2026-11-09: the values a marketplace just refused for `key` (the row's sent value,
+    else the product's current fact), so the question never offers them back."""
+    refusals = [
+        r
+        for r in group
+        if str(r.source).endswith("_adapter") and r.error_code == ErrorCode.VALUE_NOT_ALLOWED.value
+    ]
+    if not refusals:
+        return []
+    out = [str(r.value_submitted) for r in refusals if getattr(r, "value_submitted", None)]
+    product = await uow.products.get_by_id(owner)
+    fact = (getattr(product, "attributes", None) or {}).get(key) if product is not None else None
+    if isinstance(fact, dict) and isinstance(fact.get("value"), str):
+        out.append(fact["value"])
+    return out
+
+
 async def open_questions(
     uow: TenantUnitOfWork,
     listing: Any,
@@ -132,7 +150,8 @@ async def open_questions(
             if definition is None or definition.key != key:
                 continue  # no dictionary target: the row stays an open issue (P:§2.6)
             # SI9 CP-D23: a template enum key offers the template's accepted values only
-            choices = answer_choices(definition.vocabulary, template, key)
+            refused = await _refused_values(uow, owner, key, group)
+            choices = answer_choices(definition.vocabulary, template, key, exclude=refused)
             value_type = definition.value_type
             if value_type == "text" and choices is not None and not definition.vocabulary:
                 value_type = "enum"

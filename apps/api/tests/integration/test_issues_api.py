@@ -56,6 +56,9 @@ async def test_issues_inbox(api: httpx.AsyncClient, gen_world: GenWorld) -> None
     assert second["page"]["has_more"] is False
     row = second["data"][0]
     assert not {"dedupe_key", "rule_id", "validation_run_id", "job_id"} & set(row)
+    # QA: an inbox row names its product (the SKU), so four look-alike rows can be told apart
+    product = gen_world.scalar("SELECT product_id FROM listings WHERE id = %s", [made.listing_id])
+    assert row["product_id"] == str(product)
     bharat = (await _get(api, gen_world, "reviewer@bharat.test")).json()
     assert bharat["data"] == []
 

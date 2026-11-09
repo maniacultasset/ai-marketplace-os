@@ -346,6 +346,8 @@ def test_seller_action_picks_recategorize_first() -> None:
         error_code: str
         status: str = "open"
         severity: str = "error"
+        source: str = "amazon_adapter"
+        field_path: str = "listing"
 
     cat, ean, other = Row(T(), "CATEGORY_MISMATCH"), Row(T(), "IDENTIFIER_DUPLICATE"), Row(T(), "X")
     lanes: dict[uuid.UUID, Any] = {
@@ -356,6 +358,13 @@ def test_seller_action_picks_recategorize_first() -> None:
     assert seller_action([ean, cat, other], lanes) == "recategorize"
     assert seller_action([ean], lanes) == "edit_identifier"
     assert seller_action([ean], {ean.id: ("staff", "mapping")}) is None
+    # QA: the seller's own text over Kuinn's limit is an edit, after the two others
+    title = Row(T(), "FIELD_TOO_LONG", source="rules_engine", field_path="content.title")
+    lanes[title.id] = ("seller", "ai_content")
+    assert seller_action([title], lanes) == "edit_content"
+    assert seller_action([title, ean], lanes) == "edit_identifier"
+    step = next_step("needs_you", ReadFacts(status="blocked", seller_action="edit_content"))
+    assert step["kind"] == "edit_content" and "Edit the listing" in step["text"]
 
 
 def test_next_step_kind_accepts_only_the_two_new_members() -> None:
@@ -366,3 +375,65 @@ def test_next_step_kind_accepts_only_the_two_new_members() -> None:
         assert NextStepOut(kind=kind).kind == kind
     with pytest.raises(ValidationError):
         NextStepOut(kind="rename_sku")
+
+
+# ---- QA 2026-11-09 ----
+
+
+def test_a_blocked_listing_with_every_question_answered_asks_for_a_regenerate() -> None:
+    """QA: answering the last question left `blocked/human_task_open` reading `idle` with no
+    step, so the seller had no way forward."""
+    facts = ReadFacts(status="blocked", status_reason="human_task_open")
+    assert state_of(facts) == "needs_you"
+    step = next_step("needs_you", facts)
+    assert step["kind"] == "regenerate" and "Generate the listing again" in step["text"]
+    still_open = replace(facts, seller_tasks=(T(),))
+    assert next_step(state_of(still_open), still_open)["kind"] == "answer"
+
+
+def test_a_checked_answer_version_after_a_refusal_waits_for_approval() -> None:
+    """QA: the fact version an answer makes after a refusal read "Nothing to do right now"
+    while the footer offered Approve and resend."""
+    facts = ReadFacts(status="validated", answer_ready=True)
+    assert state_of(facts) == "fix_ready"
+    step = next_step("fix_ready", facts)
+    assert step["kind"] == "approve" and "A teammate who did not make it" in step["text"]
+    kuinn = ReadFacts(status="validated", fix_ready=True)
+    assert next_step("fix_ready", kuinn)["text"].startswith("Kuinn prepared a fix")
+
+
+def test_sends_are_numbered_across_versions() -> None:
+    """QA: version 2's first send read "Sent 1" again (`attempt` counts within a version)."""
+    v1, v2 = uuid.uuid4(), uuid.uuid4()
+    versions = {
+        v1: VersionRow(v1, 1, "generation", None, None),
+        v2: VersionRow(v2, 2, "edit", None, None),
+    }
+    newest_first = [
+        Sub(NOW + timedelta(minutes=9), v2, 1, "user", "live"),
+        Sub(NOW, v1, 1, "user", "rejected"),
+    ]
+    out = attempts(
+        jobs=[],
+        submissions=newest_first,
+        issues=[],
+        repairs=[],
+        tasks=[],
+        versions=versions,
+        lanes={},
+    )
+    assert [(a["number"], a["version"], a["outcome"]) for a in out] == [
+        (2, 2, "live"),
+        (1, 1, "rejected"),
+    ]
+    paged = attempts(
+        jobs=[],
+        submissions=newest_first,
+        issues=[],
+        repairs=[],
+        tasks=[],
+        versions=versions,
+        lanes={},
+        total_submissions=12,
+    )
+    assert [a["number"] for a in paged] == [12, 11]

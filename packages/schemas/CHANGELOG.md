@@ -20,6 +20,18 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- QA fixes, 9 Nov (additive optional response fields and one member on the unreleased SI11 `NextStepOut.kind`, under the open 2.1.0 heading; no new error code or operation).
+  - `TaskOut.blocking` (default false): an open listing ERROR waits on this answer, so the question blocks a listing. A photo question can block too, so the FE reads this flag and stops assuming "a photo question never blocks". Set on `tasks_list`.
+  - `IssueOut.product_id?` (default null): the listing's product, so an inbox issue row can name its SKU. Set on `issues_list`.
+  - `NextStepOut.kind` gains `edit_content`: the seller's own text (an edit over a limit) failed Kuinn's pre-send check. Only the seller's next edit fixes it, and no inbox question opens. The issue row now reads `lane: seller` and no longer says staff.
+  - **Behaviour (no contract change):**
+    - The resolution read gives `needs_you` with next step `regenerate` for a listing blocked on questions that are all answered. A seller's checked fact version after a refused send gives `fix_ready` with next step `approve`.
+    - `AttemptOut.number` counts sends across the listing's versions (description changed), so a resend of version 2 reads 2, not 1 again.
+    - A fact answer's version is audited as `listing.fact_answered`, not `listing.edited`, because no text changed.
+    - Answer choices are offered once each (template `value_map` keys are aliases, never extra choices) and never include the value the marketplace just refused.
+    - The image rules seed checks resolution on secondary and lifestyle photos too: 500 px minimum (error) and 1000 px recommended (warning) on Amazon and Flipkart.
+  - **FE:** read `TaskOut.blocking` in the inbox copy, show the SKU from `product_id` on issue rows, add an "Edit the listing" action for `edit_content`, and add a history label for `listing.fact_answered`.
+
 - Publish kill switch (additive optional response field under the open 2.1.0 heading; no new error code, no new operation, no member on any vocabulary). The owner connects a real Amazon seller account and asked on 2026-11-09 that it receives no publishes until they say go.
   - **Read model.** `MarketplaceAccountOut.publishing_enabled: bool` (default true) on `marketplaces_list` and the account reads: false while this deployment may not publish to the account's marketplace (`AMAZON_PUBLISH_ENABLED=false` for Amazon; production ships false).
   - **Behaviour (no contract change).** While it is false: `listings_publish` answers each Amazon item 501 `NOT_IMPLEMENTED` "Publishing to Amazon is paused for this workspace. Nothing was sent to Amazon." (the existing switched-off shape) and the listing does not move; `listings_publish_retry_fields` answers the same 501 for the whole request; no job is enqueued, no submission attempt is used, and SI11 skips its automatic resend and the marketplace dry run (a write-mode call). A publish job already queued fails `NOT_IMPLEMENTED` before it reads, writes or sends anything. Reads (the listing read, status sync, connect, the catalog search) still work.

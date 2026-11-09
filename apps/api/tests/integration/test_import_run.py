@@ -135,6 +135,26 @@ async def test_import_duplicate_sku_in_file(imports_db: JobWorld, api: httpx.Asy
     assert title == "Cotton Kurta 1"
 
 
+async def test_import_duplicate_of_an_invalid_row_fails(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """QA: an invalid first row still claims its SKU, so a later repeat fails as a duplicate."""
+    bad = row(1, selling_price="1500", mrp="1299")
+    data = csv_bytes([bad, row(2), row(1, product_name="Again"), row(3)])
+    import_id, job_id = await import_fixture(imports_db, api, data)
+    await run_job(job_id)
+    assert failed_codes(imports_db.conn, import_id) == {
+        2: ["PRICE_ABOVE_MRP"],
+        4: ["DUPLICATE_SKU_IN_FILE"],
+    }
+    count = one(
+        imports_db.conn,
+        "SELECT count(*) FROM products WHERE tenant_id = %s AND sku = 'SKU-00001'",
+        [imports_db.tenant("acme")],
+    )
+    assert count == 0
+
+
 async def test_import_trailing_empty_column_imports_every_row(
     imports_db: JobWorld, api: httpx.AsyncClient
 ) -> None:

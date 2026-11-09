@@ -39,6 +39,10 @@ TEXT_SLOTS: Final = frozenset({"content.title", "content.description"})
 KEYWORD_SLOTS: Final = frozenset({"keywords.search_terms", "keywords.hidden_terms"})
 _BULLET_PREFIX: Final = "content.bullets["
 TRAILING_PUNCTUATION: Final = " ,;:-\u2013\u2014/&"
+# QA 2026-11-09: a cut never ends on a connector ("... Kurta Set for")
+TRAILING_STOP_WORDS: Final = frozenset(
+    {"a", "an", "and", "at", "by", "for", "from", "in", "of", "on", "or", "the", "to", "with"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,13 +193,25 @@ def _record(
     )
 
 
+def _drop_trailing_connectors(text: str) -> str:
+    """`text` with trailing connector words and punctuation removed (only ever shorter)."""
+    out = text.rstrip(TRAILING_PUNCTUATION)
+    while out:
+        head, _sep, last = out.rpartition(" ")
+        if last.casefold() not in TRAILING_STOP_WORDS:
+            break
+        out = head.rstrip(TRAILING_PUNCTUATION)
+    return out
+
+
 def _trim_text(cleaned: str, limit: int, unit: Unit) -> str | None:
-    """The longest prefix cut at a space that fits, trailing punctuation stripped; else None."""
+    """The longest prefix cut at a space that fits, trailing punctuation and connector words
+    stripped; else None."""
     cut = cleaned.rfind(" ")
     while cut > 0:
         prefix = cleaned[:cut]
         if measure(prefix, unit) <= limit:
-            out = prefix.rstrip(TRAILING_PUNCTUATION)
+            out = _drop_trailing_connectors(prefix)
             return out or None
         cut = cleaned.rfind(" ", 0, cut)
     return None
