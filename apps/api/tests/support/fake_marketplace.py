@@ -85,6 +85,12 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   `spapi_catalog_page_5xx: true` fails every page after the first. Restriction `brand_restricted` (APPROVAL_REQUIRED with a Seller Central https
   link), `brand_restricted_bad_link` (an `http://` link), `restrictions_5xx`. An unscripted EAN has
   no match and an unscripted ASIN no restriction. Both are recorded in `/__calls`.
+- The Amazon connection check: Sellers v1 `GET /sellers/v1/marketplaceParticipations` (no query)
+  answers `{payload: [{marketplace: {id, countryCode, name, ...}, participation:
+  {isParticipating, hasSuspendedListings}, storeName}]}` for the token's seller, with the
+  `x-amzn-RateLimit-Limit` header Amazon sends. `/__control spapi_participations` (sticky):
+  `participating` (the default: Amazon.in), `suspended` (Amazon.in with suspended listings),
+  `not_participating` (Amazon.in, `isParticipating: false`), `other_only` (Amazon.ae only).
 
 Flipkart Seller API listings v3 (S22 T9; believed, DW1) under `/flipkart/sellers`:
 `POST /listings/v3` (create, a batch), `POST /listings/v3/update` (named attributes only) and
@@ -232,6 +238,7 @@ class FakeState:
     spapi_catalog: dict[str, dict[str, str]] = field(default_factory=dict)
     spapi_catalog_page_5xx: bool = False  # a request with a pageToken answers 500
     spapi_first_type: dict[str, str] = field(default_factory=dict)
+    spapi_participations: str = "participating"  # the connection check (Sellers v1)
     # ---- S26 failure injection ----
     spapi_drop_after_write: set[str] = field(default_factory=set)
     spapi_bad_seller: set[str] = field(default_factory=set)  # V1 hardening #11
@@ -446,6 +453,9 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
     async def restrictions(request: Request) -> Response:
         return _restrictions(state, request)
 
+    async def participations(request: Request) -> Response:
+        return _participations(state, request)
+
     async def calls(request: Request) -> Response:
         marketplace = request.query_params.get("marketplace")
         if marketplace is None:
@@ -471,6 +481,7 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             Route("/__calls", calls, methods=["GET"]),
             Route(CATALOG_ROUTE, catalog, methods=["GET"]),
             Route(RESTRICTIONS_ROUTE, restrictions, methods=["GET"]),
+            Route(PARTICIPATIONS_ROUTE, participations, methods=["GET"]),
             Route(SPAPI_ROUTE, spapi, methods=["GET", "PUT", "PATCH"]),
             Route(PTD_GET_ROUTE, ptd_get, methods=["GET"]),
             Route(PTD_SCHEMA_ROUTE, ptd_schema, methods=["GET"]),
@@ -547,6 +558,8 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
         for ean, spec in catalog.items():
             if isinstance(spec, dict) and spec.get("scenario") in CATALOG_SCENARIOS:
                 state.spapi_catalog[str(ean)] = {k: str(v) for k, v in spec.items()}
+    if body.get("spapi_participations") in PARTICIPATION_SCENARIOS:
+        state.spapi_participations = body["spapi_participations"]
     if isinstance(body.get("spapi_catalog_page_5xx"), bool):
         state.spapi_catalog_page_5xx = body["spapi_catalog_page_5xx"]
     replies = body.get("spapi_preview_reply")
@@ -1149,6 +1162,58 @@ def _restrictions(state: FakeState, request: Request) -> Response:
                 }
             ]
         }
+    )
+
+
+# ---- Sellers v1 getMarketplaceParticipations (the Amazon connection check) ----
+
+PARTICIPATIONS_ROUTE: Final = "/sellers/v1/marketplaceParticipations"
+PARTICIPATION_SCENARIOS: Final = frozenset(
+    {"participating", "suspended", "not_participating", "other_only"}
+)
+PARTICIPATIONS_RATE: Final = "0.016"
+_MARKETPLACES: Final = {
+    "A21TJRUUN4KGV": ("IN", "Amazon.in", "INR", "en_IN", "www.amazon.in"),
+    "A2VIGQ35RCS4UG": ("AE", "Amazon.ae", "AED", "en_AE", "www.amazon.ae"),
+}
+
+
+def _participation(marketplace_id: str, *, participating: bool, suspended: bool) -> dict[str, Any]:
+    country, name, currency, language, domain = _MARKETPLACES[marketplace_id]
+    return {
+        "marketplace": {
+            "id": marketplace_id,
+            "countryCode": country,
+            "name": name,
+            "defaultCurrencyCode": currency,
+            "defaultLanguageCode": language,
+            "domainName": domain,
+        },
+        "participation": {
+            "isParticipating": participating,
+            "hasSuspendedListings": suspended,
+        },
+        "storeName": "Fake Store",
+    }
+
+
+def _participations(state: FakeState, request: Request) -> Response:
+    _record(state, request)
+    if request.headers.get("x-amz-access-token", "") not in state.access_tokens:
+        return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    scenario = state.spapi_participations
+    if scenario == "other_only":
+        payload = [_participation("A2VIGQ35RCS4UG", participating=True, suspended=False)]
+    else:
+        payload = [
+            _participation(
+                "A21TJRUUN4KGV",
+                participating=scenario != "not_participating",
+                suspended=scenario == "suspended",
+            )
+        ]
+    return JSONResponse(
+        {"payload": payload}, headers={"x-amzn-RateLimit-Limit": PARTICIPATIONS_RATE}
     )
 
 
