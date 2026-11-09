@@ -231,8 +231,9 @@ def test_token_enc_has_no_canary_bytes(flow: dict[str, Any]) -> None:
 
 def test_token_enc_decrypts_only_via_adapter_path() -> None:
     """Only `app.adapters.credentials` calls a key unwrapper's `unwrap` for seller tokens, and
-    `unseal` is called only by the two worker paths that need a live token (the adapter session
-    and the refresh job). DPP-1 (ADR-0021): `app.adapters.mfa_secrets` is the one other unwrapper,
+    `unseal` is called only by the worker paths that need a live token (the adapter session, the
+    refresh job and the read-only Amazon connection check, which refreshes in memory and sends
+    GET only). DPP-1 (ADR-0021): `app.adapters.mfa_secrets` is the one other unwrapper,
     for the MFA data-key label only; the import-linter contract
     `mfa-secret-unseal-only-in-mfa-service` keeps it behind `app.services.mfa`, and it never
     imports the token path."""
@@ -255,7 +256,11 @@ def test_token_enc_decrypts_only_via_adapter_path() -> None:
         alias.name for n in ast.walk(mfa_tree) if isinstance(n, ast.Import) for alias in n.names
     } | {n.module or "" for n in ast.walk(mfa_tree) if isinstance(n, ast.ImportFrom)}
     assert not any(m.startswith("app.adapters.credentials") for m in mfa_imports), mfa_imports
-    assert unseal_callers <= {"workers/adapters.py", "workers/token_refresh.py"}, unseal_callers
+    assert unseal_callers <= {
+        "workers/adapters.py",
+        "workers/token_refresh.py",
+        "workers/amazon_check.py",
+    }, unseal_callers
 
 
 async def test_every_pushed_generation_context_passes_seam_walk(

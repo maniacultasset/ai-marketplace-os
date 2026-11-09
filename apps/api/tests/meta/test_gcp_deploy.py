@@ -32,6 +32,7 @@ SUBCOMMANDS = (
     "smoke",
     "tenant",
     "templates",
+    "amazon-check",
     "status",
     "edge",
 )
@@ -2180,6 +2181,83 @@ def test_templates_keeps_a_comma_in_a_reason(toolkit: Path, tmp_path: Path) -> N
         "--staff-email", "s@b.test", "--reason", "first load, KURTA", "--dry-run", "--sha", SHA,
     ).stdout  # fmt: skip
     assert "|--reason=first load, KURTA" in _ptd_deploy(out).replace("\\", "")
+
+
+# ---- the read-only Amazon connection check (app.workers.amazon_check) ----
+
+
+def _check_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-amazon-check" in line)
+
+
+def test_amazon_check_runs_as_the_worker_with_two_secrets(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    out = _run(
+        toolkit, tmp_path, "prod", "amazon-check", "--slug", "acme", "--staff-email", "s@b.test",
+        "--ean", "8901234567890", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    job = _check_deploy(out)
+    # the worker identity already opens tenant tokens; the job mounts only what the check reads
+    assert "--service-account=aimos-worker@" in job
+    assert _secret_names(job) == ["DATABASE_URL", "AMAZON_CLIENT_SECRET"]
+    assert "--max-retries=0" in job
+    args = job.replace("\\", "")
+    assert (
+        "--args=^|^-m|app.cli|ops|amazon-check|--tenant-slug=acme|--staff-email=s@b.test"
+        "|--ean=8901234567890" in args
+    )
+    assert "gcloud run jobs execute aimos-amazon-check" in out
+    loaded = yaml.safe_load(_blocks(out, "amazon-check env file")[0])
+    env = {str(k): str(v) for k, v in loaded.items()}
+    assert env["APP_ROLE"] == "shell" and env["APP_ENV"] == "production"
+    assert env["AMAZON_APP_ID"] == AMAZON_APP and env["AMAZON_CLIENT_ID"] == AMAZON_CLIENT
+    assert env["AMAZON_USE_SANDBOX"] == "false"
+    assert env["AMAZON_SPAPI_ENDPOINT"] == "https://sellingpartnerapi-eu.amazon.com"
+    assert env["KMS_KEY_URI"].endswith("/cryptoKeys/oauth-token-key")
+    # the job's settings boot as the shell role in production, with the Amazon app configured
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("AMAZON_CLIENT_SECRET", SECRET_VALUES["AMAZON_CLIENT_SECRET"])
+    from app.adapters.oauth import get_oauth_client
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        assert get_oauth_client("amazon", get_settings()) is not None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_amazon_check_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path: Path) -> None:
+    result = _run_fail(
+        toolkit, tmp_path, "staging", "amazon-check", "--slug", "acme", "--staff-email",
+        "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "amazon-check needs the Amazon app" in result.stderr
+    assert "aimos-amazon-check" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--slug", "acme"),
+        ("--staff-email", "s@b.test"),
+        ("--slug", "acme", "--staff-email", "s@b.test", "--reason", "x"),
+        ("--slug", "a|b", "--staff-email", "s@b.test"),
+        ("--slug",),
+    ],
+)
+def test_amazon_check_refuses_bad_flags(
+    toolkit: Path, tmp_path: Path, args: tuple[str, ...]
+) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(toolkit, tmp_path, "prod", "amazon-check", *args, "--dry-run", "--sha", SHA)
+    assert "amazon-check" in result.stderr
+    assert "run jobs deploy" not in result.stdout
 
 
 def test_usage_prints_every_subcommand_line(repo_root: Path) -> None:

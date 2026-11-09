@@ -143,6 +143,20 @@ or a link).
 | bad arguments (argparse)             | stderr | 2    |
 | no such version, or the version needs `--digest` | stderr | 4 |
 
+`ops amazon-check --tenant-slug S --staff-email E [--ean EAN] [--asin ASIN]` starts the read-only
+Amazon connection check (`app.workers.amazon_check`) for the tenant: it resolves the slug
+(read-only, `platform_scope`) and replaces this process with `python -m app.workers.amazon_check
+--tenant-id ...` (`os.execv`). The check opens a tenant token, so it runs as a worker process: this
+module never imports the decrypt path or the SP-API client. The worker prints the table and sets
+the exit code (0 no step failed, 1 a step failed).
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| handed over to the worker check      | -      | the check's |
+| any failure before the hand-over     | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| no such tenant                       | stderr | 4    |
+
 `templates diff --product-type T [--requirements R] [--from-file PATH]` reports the believed
 Amazon wire names (the adapter's constants and `PLATFORM_TEMPLATES_PATH`) against the stored
 current definition (read-only on `DATABASE_URL`) or a saved schema file. Value-free lines.
@@ -704,6 +718,73 @@ async def run_photo_accuracy(days: int, *, now: datetime | None = None) -> int:
             f"{row.accept_rate!s:>6} {mean:>5}\n"
         )
     sys.stdout.write(f"ops photo-accuracy: {len(found)} key(s) over {days} day(s)\n")
+    return EXIT_OK
+
+
+_EAN_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
+_ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
+AMAZON_CHECK_MODULE: Final = "app.workers.amazon_check"
+
+
+def _ean(value: str) -> str:
+    if not _EAN_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--ean must be 8 to 14 digits")
+    return value
+
+
+def _asin(value: str) -> str:
+    if not _ASIN_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--asin must be 10 of [A-Z0-9]")
+    return value
+
+
+async def _tenant_by_slug(slug: str) -> uuid.UUID | None:
+    from sqlalchemy import select
+
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.models.tenancy import Tenant
+    from app.db.session import dispose_engine, platform_scope
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                found = await session.execute(select(Tenant.id).where(Tenant.slug == slug))
+                tenant_id: uuid.UUID | None = found.scalar_one_or_none()
+                return tenant_id
+    finally:
+        await dispose_engine()
+
+
+def amazon_check_argv(args: argparse.Namespace, tenant_id: uuid.UUID) -> list[str]:
+    """The worker entrypoint's command line (flags only from the validated arguments)."""
+    argv = [sys.executable, "-m", AMAZON_CHECK_MODULE, "--tenant-id", str(tenant_id)]
+    argv += ["--staff-email", args.staff_email]
+    if args.ean is not None:
+        argv += ["--ean", args.ean]
+    if args.asin is not None:
+        argv += ["--asin", args.asin]
+    return argv
+
+
+# Tests swap this for a recorder; the real one never returns.
+EXEC: Callable[[str, list[str]], Any] = os.execv
+
+
+def run_amazon_check(args: argparse.Namespace) -> int:
+    """Resolve the tenant, then hand the process over to the worker's connection check."""
+    try:
+        tenant_id = asyncio.run(_tenant_by_slug(args.tenant_slug))
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"amazon check: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    if tenant_id is None:
+        sys.stderr.write("amazon check: no such tenant\n")
+        return EXIT_NOT_ELIGIBLE
+    argv = amazon_check_argv(args, tenant_id)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    EXEC(argv[0], argv)
     return EXIT_OK
 
 
@@ -1671,6 +1752,13 @@ def build_parser() -> argparse.ArgumentParser:
         "photo-accuracy", help="how sellers confirmed, rejected or changed photo-read values"
     )
     accuracy.add_argument("--days", type=_days, default=30)
+    check = ops_commands.add_parser(
+        "amazon-check", help="the read-only Amazon connection check of one tenant (GET only)"
+    )
+    check.add_argument("--tenant-slug", type=_slug, required=True)
+    check.add_argument("--staff-email", type=_staff_email, required=True)
+    check.add_argument("--ean", type=_ean, default=None, help="the EAN to search the catalog by")
+    check.add_argument("--asin", type=_asin, default=None, help="the ASIN to read restrictions of")
     _add_onboarding(groups)
     return parser
 
@@ -1739,6 +1827,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_dead_letter_list(args.tenant, args.limit))
     if args.group == "seed":
         return asyncio.run(run_seed(args.profile, reset=args.reset))
+    if args.group == "ops" and args.command == "amazon-check":
+        return run_amazon_check(args)
     if args.group == "ops":
         return asyncio.run(run_photo_accuracy(args.days))
     return run_migrate(alembic_config())

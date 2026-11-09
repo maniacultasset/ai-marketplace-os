@@ -15,6 +15,8 @@
 #   smoke       GET /healthz and /readyz on the service URL
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
+#   amazon-check  --slug S --staff-email E [--ean EAN] [--asin ASIN]: the read-only Amazon connection
+#               check of one tenant (GET only, worker identity, one-off job)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
 #               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, maintenance), cors and status, ADR-0025)
@@ -50,7 +52,7 @@ MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SEN
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
-  sed -n '5,20p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,22p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -147,6 +149,9 @@ PTD_JOB="${PTD_JOB:-aimos-ptd}"
 # token on the shared ops identity would be readable by every staff job.
 SA_PTD="${SA_PTD:-aimos-ptd}"
 PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
+# The read-only Amazon connection check (app.workers.amazon_check): a one-off job under the worker
+# identity, which already opens the tenant tokens (KMS) and reads DATABASE_URL and the LWA secret.
+AMZCHECK_JOB="${AMZCHECK_JOB:-aimos-amazon-check}"
 SA_MAINT="${SA_MAINT:-aimos-maint}"
 SA_SCHED="${SA_SCHED:-aimos-sched}"
 MAINT_SCHEDULE="${MAINT_SCHEDULE:-0 3 * * *}"
@@ -1699,6 +1704,58 @@ cmd_templates() {
   say "templates $action done: the job log names the product type, version and digest prefix only"
 }
 
+# ---- amazon-check (the read-only Amazon connection check) ----
+# `amazon-check --slug S --staff-email E [--ean EAN] [--asin ASIN]` runs `python -m app.cli ops
+# amazon-check` (it resolves the slug, then execs `python -m app.workers.amazon_check`) in
+# AMZCHECK_JOB as the worker identity (SA_WORKER: Cloud SQL client, the token
+# key's decrypt, DATABASE_URL and AMAZON_CLIENT_SECRET), under the shell role. It sends GET only to
+# SP-API (plus the one LWA token refresh), writes one audit row naming the staff email, and prints
+# a PASS / WARN / FAIL table with no token in it. Only while AMAZON_APP_ID is set.
+cmd_amazon_check() {
+  local usage_line="usage: amazon-check --slug S --staff-email E [--ean EAN] [--asin ASIN]"
+  local image url args="-m|app.cli|ops|amazon-check" slug="" staff="" flag value
+  set -- ${REST[@]+"${REST[@]}"}
+  [ $# -ge 1 ] || die "$usage_line"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --*=*) flag="${1%%=*}" value="${1#*=}"; shift ;;
+      --*) [ $# -ge 2 ] || die "$usage_line"; flag="$1" value="$2"; shift 2 ;;
+      *) die "$usage_line" ;;
+    esac
+    case "$value" in *"|"* | "") die "amazon-check: $flag needs a value without '|'" ;; esac
+    case "$flag" in
+      --slug) slug="$value"; args="$args|--tenant-slug=$value" ;;
+      --staff-email) staff="$value"; args="$args|--staff-email=$value" ;;
+      --ean | --asin) args="$args|$flag=$value" ;;
+      *) die "amazon-check: unknown flag $flag ($usage_line)" ;;
+    esac
+  done
+  [ -n "$slug" ] && [ -n "$staff" ] || die "$usage_line"
+  [ -n "$AMAZON_APP_ID" ] || die "amazon-check needs the Amazon app: set AMAZON_APP_ID in $ENV_NAME.env"
+  image="$(image_ref)"
+  url="$(api_url)"
+  env_file shell "$url" "$WORK/amazon-check-env.yaml"
+  # the Amazon app's public ids and consent page (app_env adds them for the api and worker only)
+  {
+    printf 'AMAZON_APP_ID: %s\n' "$(yaml_quote "$AMAZON_APP_ID")"
+    printf 'AMAZON_CLIENT_ID: %s\n' "$(yaml_quote "$AMAZON_CLIENT_ID")"
+    printf 'AMAZON_AUTHORIZE_URL: %s\n' "$(yaml_quote "$AMAZON_AUTHORIZE_URL")"
+  } >>"$WORK/amazon-check-env.yaml"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "amazon-check env file $WORK/amazon-check-env.yaml:"
+    sed 's/^/    /' "$WORK/amazon-check-env.yaml"
+  fi
+  gc run jobs deploy "$AMZCHECK_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_WORKER")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$WORK/amazon-check-env.yaml" \
+    --set-secrets="$(secret_refs "DATABASE_URL AMAZON_CLIENT_SECRET")" \
+    --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=512Mi \
+    --labels="$LABELS"
+  run_job "$AMZCHECK_JOB"
+  say "amazon-check passed (no step failed). The table is in the job log:"
+  job_logs_hint "$AMZCHECK_JOB"
+}
+
 # ---- edge (DPP-2) ----
 # The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
 # Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
@@ -2400,6 +2457,7 @@ case "$CMD" in
   smoke) cmd_smoke ;;
   tenant) cmd_tenant ;;
   templates) cmd_templates ;;
+  amazon-check) cmd_amazon_check ;;
   status) cmd_status ;;
   edge) cmd_edge ;;
   *) usage ;;
