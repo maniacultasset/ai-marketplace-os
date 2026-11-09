@@ -13,6 +13,8 @@ from pydantic import BaseModel
 
 from .agent import AgentRunRecord
 from .auth import JWTClaims
+from .classify import ClassifyRequest, ClassifyResult
+from .columns import ColumnMapRequest, ColumnMapResult
 from .errors import ErrorReport
 from .image_edit import ImageEditRequest, ImageEditResult
 from .images import ImageReport
@@ -60,6 +62,10 @@ MODELS: Final[tuple[type[BaseModel], ...]] = (
     ImageEditResult,
     SizeChartReadRequest,
     SizeChartReadResult,
+    ClassifyRequest,
+    ClassifyResult,
+    ColumnMapRequest,
+    ColumnMapResult,
 )
 
 

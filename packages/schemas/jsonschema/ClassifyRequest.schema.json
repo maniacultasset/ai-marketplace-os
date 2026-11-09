@@ -1,0 +1,263 @@
+{
+  "$defs": {
+    "CategoryOption": {
+      "description": "One category the backend offers (it has a current template).",
+      "properties": {
+        "category": {
+          "pattern": "^[a-z0-9_]{2,64}$",
+          "title": "Category",
+          "type": "string"
+        },
+        "key_attributes": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 30,
+          "title": "Key Attributes",
+          "type": "array"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "template_version": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Template Version"
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "title": "CategoryOption",
+      "type": "object"
+    },
+    "ContextImage": {
+      "description": "One product or label image the pipeline may look at (1.2.0).\n\nNot `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and\nthe label must still reach the extractor. Only base64 bytes for now; no URL field.",
+      "properties": {
+        "colourway_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Colourway Id"
+        },
+        "data_b64": {
+          "title": "Data B64",
+          "type": "string"
+        },
+        "height": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Height",
+          "type": "integer"
+        },
+        "image_id": {
+          "format": "uuid",
+          "title": "Image Id",
+          "type": "string"
+        },
+        "role": {
+          "anyOf": [
+            {
+              "enum": [
+                "back",
+                "close_up"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Role"
+        },
+        "slot": {
+          "$ref": "#/$defs/ImageSlot"
+        },
+        "width": {
+          "maximum": 1024,
+          "minimum": 1,
+          "title": "Width",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "image_id",
+        "slot",
+        "width",
+        "height",
+        "data_b64"
+      ],
+      "title": "ContextImage",
+      "type": "object"
+    },
+    "ImageSlot": {
+      "enum": [
+        "main",
+        "secondary",
+        "lifestyle",
+        "size_chart",
+        "packaging_label"
+      ],
+      "title": "ImageSlot",
+      "type": "string"
+    },
+    "ProductText": {
+      "description": "The product's own words: title, description, brand, the seller's category words and the\nfor-prompt attribute facts as text (no party, no contact).",
+      "properties": {
+        "attributes": {
+          "maxProperties": 40,
+          "patternProperties": {
+            "^[a-z][a-z0-9_]{0,63}$": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "brand": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Brand"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "seller_category": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seller Category"
+        },
+        "title": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "ProductText",
+      "type": "object"
+    }
+  },
+  "$id": "https://schemas.mkos.internal/ClassifyRequest.schema.json",
+  "properties": {
+    "categories": {
+      "items": {
+        "$ref": "#/$defs/CategoryOption"
+      },
+      "maxItems": 40,
+      "minItems": 1,
+      "title": "Categories",
+      "type": "array"
+    },
+    "images": {
+      "items": {
+        "$ref": "#/$defs/ContextImage"
+      },
+      "maxItems": 6,
+      "title": "Images",
+      "type": "array"
+    },
+    "job_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Job Id"
+    },
+    "product_id": {
+      "format": "uuid",
+      "title": "Product Id",
+      "type": "string"
+    },
+    "request_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Request Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "2.1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "tenant_id": {
+      "format": "uuid",
+      "title": "Tenant Id",
+      "type": "string"
+    },
+    "text": {
+      "$ref": "#/$defs/ProductText"
+    }
+  },
+  "required": [
+    "tenant_id",
+    "product_id",
+    "request_id",
+    "text",
+    "categories"
+  ],
+  "title": "ClassifyRequest",
+  "type": "object"
+}

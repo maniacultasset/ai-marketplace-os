@@ -58,7 +58,7 @@ def test_no_orphan_fixtures() -> None:
 
 
 def test_every_module_with_models_is_covered() -> None:
-    assert len(MODELS) == 24
+    assert len(MODELS) == 28
 
 
 def test_fixtures_hold_no_secrets() -> None:
