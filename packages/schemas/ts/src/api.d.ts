@@ -3421,6 +3421,7 @@ export interface components {
              */
             check: "format" | "corruption" | "resolution" | "aspect_ratio" | "file_size" | "exif_orientation" | "background" | "fill_ratio" | "text_overlay" | "watermark" | "logo" | "product_visibility";
             code: components["schemas"]["ImageIssueCode"];
+            severity?: components["schemas"]["Severity"] | null;
             /** Suggestion */
             suggestion: string;
         };

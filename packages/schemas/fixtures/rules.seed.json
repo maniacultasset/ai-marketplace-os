@@ -485,6 +485,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -525,6 +526,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": 1,
             "ratio_h": 1,
             "min_fill": null,
@@ -565,6 +567,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -609,6 +612,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": 0.85,
@@ -649,6 +653,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -693,6 +698,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -733,6 +739,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -773,6 +780,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -813,6 +821,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -853,6 +862,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -980,6 +990,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -1020,6 +1031,421 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000101",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image longest side below 500 px",
+          "suggestion": "Upload a photo at least 500 px on its longest side; 1000 px or more lets shoppers zoom",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product image requirements (longest side over 500 px; 1,000 px or more enables zoom)",
+            "url": "https://sellercentral.amazon.com/gp/help/external/GT8RSE9S9NK4LP6Z",
+            "section": "image size",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "min_resolution",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "side": "longer",
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-00070100000d",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image longest side below 1000 px, so shoppers cannot zoom",
+          "suggestion": "Upload a photo at least 1000 px on its longest side so shoppers can zoom",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon Clothing & Accessories image style guide (MAIN: pure white, at least 1,000 px on the longest side for zoom, 10:13 display ratio)",
+            "url": "https://m.media-amazon.com/images/G/65/SG3P/LISTING_GUIDES/Amazon_Fashion_Clothing_Image_Style_Guide.pdf",
+            "section": "main image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "recommended_resolution",
+          "params": {
+            "min_px": 1000,
+            "max_px": null,
+            "side": "longer",
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000102",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1, 3:4 or 10:13",
+          "suggestion": "Crop the photo to a square, 3:4 or 10:13 so it shows large on the page",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon Clothing & Accessories image style guide (MAIN: pure white, at least 1,000 px on the longest side for zoom, 10:13 display ratio)",
+            "url": "https://m.media-amazon.com/images/G/65/SG3P/LISTING_GUIDES/Amazon_Fashion_Clothing_Image_Style_Guide.pdf",
+            "section": "main image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": 1,
+            "ratio_h": 1,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-00070100000e",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1, 3:4 or 10:13",
+          "suggestion": "Crop the photo to a square, 3:4 or 10:13 so it shows large on the page",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "aspect_alt",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon Clothing & Accessories image style guide (MAIN: pure white, at least 1,000 px on the longest side for zoom, 10:13 display ratio)",
+            "url": "https://m.media-amazon.com/images/G/65/SG3P/LISTING_GUIDES/Amazon_Fashion_Clothing_Image_Style_Guide.pdf",
+            "section": "main image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": 3,
+            "ratio_h": 4,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-00070100000f",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1, 3:4 or 10:13",
+          "suggestion": "Crop the photo to a square, 3:4 or 10:13 so it shows large on the page",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "aspect_tall",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon Clothing & Accessories image style guide (MAIN: pure white, at least 1,000 px on the longest side for zoom, 10:13 display ratio)",
+            "url": "https://m.media-amazon.com/images/G/65/SG3P/LISTING_GUIDES/Amazon_Fashion_Clothing_Image_Style_Guide.pdf",
+            "section": "main image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": 10,
+            "ratio_h": 13,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000103",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image background is not pure white",
+          "suggestion": "Use a pure white background (RGB 255, 255, 255) for the main photo",
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon Clothing & Accessories image style guide (MAIN: pure white, at least 1,000 px on the longest side for zoom, 10:13 display ratio)",
+            "url": "https://m.media-amazon.com/images/G/65/SG3P/LISTING_GUIDES/Amazon_Fashion_Clothing_Image_Style_Guide.pdf",
+            "section": "main image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "background",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": [
+              255,
+              255,
+              255
+            ]
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000107",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "image longest side below 500 px",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product image requirements (longest side over 500 px; 1,000 px or more enables zoom)",
+            "url": "https://sellercentral.amazon.com/gp/help/external/GT8RSE9S9NK4LP6Z",
+            "section": "image size",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "secondary",
+          "check": "min_resolution",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "side": "longer",
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000108",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "image longest side below 1000 px, so shoppers cannot zoom",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product image requirements (longest side over 500 px; 1,000 px or more enables zoom)",
+            "url": "https://sellercentral.amazon.com/gp/help/external/GT8RSE9S9NK4LP6Z",
+            "section": "image size",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "secondary",
+          "check": "recommended_resolution",
+          "params": {
+            "min_px": 1000,
+            "max_px": null,
+            "side": "longer",
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000109",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "error",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "image longest side below 500 px",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product image requirements (longest side over 500 px; 1,000 px or more enables zoom)",
+            "url": "https://sellercentral.amazon.com/gp/help/external/GT8RSE9S9NK4LP6Z",
+            "section": "image size",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "lifestyle",
+          "check": "min_resolution",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "side": "longer",
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-00070100010a",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "image longest side below 1000 px, so shoppers cannot zoom",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product image requirements (longest side over 500 px; 1,000 px or more enables zoom)",
+            "url": "https://sellercentral.amazon.com/gp/help/external/GT8RSE9S9NK4LP6Z",
+            "section": "image size",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "lifestyle",
+          "check": "recommended_resolution",
+          "params": {
+            "min_px": 1000,
+            "max_px": null,
+            "side": "longer",
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -1980,6 +2406,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2020,6 +2447,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2060,6 +2488,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": 1,
             "ratio_h": 1,
             "min_fill": null,
@@ -2100,6 +2529,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": 3,
             "ratio_h": 4,
             "min_fill": null,
@@ -2118,7 +2548,7 @@
         "field": "images",
         "severity": "warning",
         "version": 1,
-        "enabled": true,
+        "enabled": false,
         "rule_def": {
           "message": "main image background is not white",
           "suggestion": null,
@@ -2140,6 +2570,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2184,6 +2615,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2228,6 +2660,7 @@
           "params": {
             "min_px": null,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2268,6 +2701,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2308,6 +2742,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2348,6 +2783,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2388,6 +2824,7 @@
           "params": {
             "min_px": 1000,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2428,6 +2865,7 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
             "min_fill": null,
@@ -2468,8 +2906,91 @@
           "params": {
             "min_px": 500,
             "max_px": null,
+            "side": null,
             "ratio_w": null,
             "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000103",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1 or 3:4",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart image guidelines (integration partner copy: at least 1000x1000, no aspect ratio stated)",
+            "url": "https://documentation.fynd.com/commerce/docs/openapi/listings-management/flipkart/image-guidelines-flipkart",
+            "section": "image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": 1,
+            "ratio_h": 1,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000104",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 2,
+        "enabled": true,
+        "rule_def": {
+          "message": "main image is not 1:1 or 3:4",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "aspect_alt",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Flipkart image guidelines (integration partner copy: at least 1000x1000, no aspect ratio stated)",
+            "url": "https://documentation.fynd.com/commerce/docs/openapi/listings-management/flipkart/image-guidelines-flipkart",
+            "section": "image",
+            "retrieved_on": "2026-11-09"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "aspect_ratio",
+          "params": {
+            "min_px": null,
+            "max_px": null,
+            "side": null,
+            "ratio_w": 3,
+            "ratio_h": 4,
             "min_fill": null,
             "max_bytes": null,
             "allowed_formats": [],

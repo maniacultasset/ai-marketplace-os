@@ -187,6 +187,9 @@ class Condition(WireModel):
 class ImageRequirementParams(StrictModel):
     min_px: int | None = Field(default=None, gt=0)
     max_px: int | None = Field(default=None, gt=0)
+    # 2.1.0: which side `min_px` measures. None is the shorter side (every rule before 2.1.0);
+    # "longer" is the longest side, as Amazon measures it.
+    side: Literal["shorter", "longer"] | None = None
     ratio_w: int | None = Field(default=None, gt=0)
     ratio_h: int | None = Field(default=None, gt=0)
     min_fill: float | None = Field(default=None, ge=0.0, le=1.0)

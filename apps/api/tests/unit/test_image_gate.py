@@ -233,3 +233,32 @@ def test_image_issue_report_passing_issue_is_a_warning_and_empty_is_passed() -> 
     assert [e.severity.value for e in warn.errors] == ["warning"]
     assert warn.status == "passed"
     assert image_issue_report(listing(image), {}, []).errors == []
+
+
+def test_each_issue_blocks_at_its_own_severity() -> None:
+    """Photo rules 2.1.0 (prod demo 9 Nov): one blocking check made every problem of the photo
+    block. A report written now carries each issue's severity; a warning stays a warning."""
+    image = uuid.uuid4()
+    stored = report(image, passed=False, issues=("BACKGROUND_OFF", "RESOLUTION_LOW"))
+    stored = stored.model_copy(
+        update={
+            "issues": [
+                stored.issues[0].model_copy(update={"severity": Severity.ERROR}),
+                stored.issues[1].model_copy(update={"severity": Severity.WARNING}),
+            ]
+        }
+    )
+    gate = evaluate_image_gate(listing(image), {image: stored}, [])
+    assert [i.raw_code for i in gate.blocking] == ["BACKGROUND_OFF"]
+    assert [(i.raw_code, i.severity) for i in gate.warnings] == [
+        ("RESOLUTION_LOW", Severity.WARNING)
+    ]
+
+
+def test_a_report_without_severities_keeps_the_old_reading() -> None:
+    image = uuid.uuid4()
+    failed = report(image, passed=False, issues=("BACKGROUND_OFF", "RESOLUTION_LOW"))
+    assert len(evaluate_image_gate(listing(image), {image: failed}, []).blocking) == 2
+    passed = report(image, passed=True, issues=("RESOLUTION_LOW",))
+    gate = evaluate_image_gate(listing(image), {image: passed}, [])
+    assert (gate.blocking, len(gate.warnings)) == ((), 1)

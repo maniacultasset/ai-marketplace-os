@@ -169,7 +169,12 @@ class _Checks:
                 continue
             worst = min(failing, key=lambda e: _SEVERITY_RANK[e.severity])
             issues.append(
-                ImageIssue(code=CHECK_CODES[check], check=check, suggestion=worst.suggestion)
+                ImageIssue(
+                    code=CHECK_CODES[check],
+                    check=check,
+                    suggestion=worst.suggestion,
+                    severity=worst.severity,
+                )
             )
             if worst.severity is Severity.ERROR:
                 passed_all = False
@@ -435,7 +440,8 @@ def _decode(
 def _resolution(checks: _Checks, selected: list[_Selected], width: int, height: int) -> None:
     for rule, req in selected:
         p = req.params
-        if p.min_px is not None and min(width, height) < p.min_px:
+        measured = max(width, height) if p.side == "longer" else min(width, height)
+        if p.min_px is not None and measured < p.min_px:
             checks.add("resolution", False, rule)
         elif p.max_px is not None and max(width, height) > p.max_px:
             checks.add("resolution", False, rule, default=_DOWNSCALE)

@@ -1500,6 +1500,7 @@ export interface ImageRequirementParams {
   ratio_h?: number | null;
   ratio_w?: number | null;
   rgb?: [unknown, unknown, unknown] | null;
+  side?: ("shorter" | "longer") | null;
 }
 /**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
@@ -1960,6 +1961,7 @@ export interface ImageIssue {
     | "logo"
     | "product_visibility";
   code: ImageIssueCode;
+  severity?: Severity | null;
   suggestion: string;
   [k: string]: unknown;
 }

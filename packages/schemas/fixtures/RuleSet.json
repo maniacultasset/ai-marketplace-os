@@ -278,6 +278,7 @@
         "params": {
           "min_px": 1000,
           "max_px": null,
+          "side": null,
           "ratio_w": null,
           "ratio_h": null,
           "min_fill": null,

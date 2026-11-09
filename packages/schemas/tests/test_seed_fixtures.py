@@ -285,13 +285,40 @@ EXTRA_PHOTO_RULE_IDS = {f"5eed0000-0000-4000-8000-00070100000{n}" for n in "789a
 }
 
 
-def test_rules_seed_count_96() -> None:
+# Photo rules 2.1.0 (prod demo 9 Nov): new versions of the Amazon main size, shape and
+# background rows and the extra-photo size rows (longest side), Amazon's main zoom warning and
+# 3:4 and 10:13 shapes, and Flipkart's shape rows as warnings. Flipkart's white-background row
+# is retired in place (`enabled` false, the one mutable column).
+PHOTO_RULES_2_1_IDS = {
+    f"5eed0000-0000-4000-8000-{n}"
+    for n in (
+        "000701000101",
+        "00070100000d",
+        "000701000102",
+        "00070100000e",
+        "00070100000f",
+        "000701000103",
+        "000701000107",
+        "000701000108",
+        "000701000109",
+        "00070100010a",
+        "000702000103",
+        "000702000104",
+    )
+}
+RETIRED_PHOTO_RULE_IDS = {"5eed0000-0000-4000-8000-000702000005"}
+
+
+def test_rules_seed_count_108() -> None:
     """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
     secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
-    warnings (text overlay and watermark, Amazon and Flipkart main)."""
-    assert sum(len(s.rules) for s in _load()) == 96
+    warnings (text overlay and watermark, Amazon and Flipkart main), plus the twelve photo
+    rules 2.1.0 rows."""
+    assert sum(len(s.rules) for s in _load()) == 108
     ids = {str(r.id) for s in _load() for r in s.rules}
-    assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS
+    assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS | PHOTO_RULES_2_1_IDS
+    retired = [r for s in _load() for r in s.rules if str(r.id) in RETIRED_PHOTO_RULE_IDS]
+    assert [r.enabled for r in retired] == [False]
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -329,8 +356,8 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     """Kurta and tshirts keep every pre-A2 row exactly; only the byte, contact and claim rows are
     new.
 
-    The 1.2.0 `gate` key (null on every seed row) is the additive default and is left out of the
-    digest; a seed row that sets a gate changes the digest.
+    The 1.2.0 `gate` key and the 2.1.0 image `params.side` key (null on every older row) are
+    additive defaults and are left out of the digest; a seed row that sets one changes it.
     """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
     new_ids = (
@@ -340,12 +367,18 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
         | SI8_TEXT_RULE_IDS
         | SI14_PHOTO_QA_RULE_IDS
         | EXTRA_PHOTO_RULE_IDS
+        | PHOTO_RULES_2_1_IDS
     )
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
         rule_def = dict(rule["rule_def"])
         if rule_def.get("gate", "unset") is None:
             del rule_def["gate"]
+        params = rule_def.get("params")
+        if isinstance(params, dict) and params.get("side", "unset") is None:
+            rule_def["params"] = {k: v for k, v in params.items() if k != "side"}  # 2.1.0 default
+        if rule["id"] in RETIRED_PHOTO_RULE_IDS:
+            rule = {**rule, "enabled": True}  # retired in place; its content is unchanged
         return {**rule, "rule_def": rule_def}
 
     apparel = [

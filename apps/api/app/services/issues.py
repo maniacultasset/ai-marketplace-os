@@ -172,6 +172,11 @@ def _issue(
     )
 
 
+# A stored photo check keys its row by the check's code, not a rule id, so a new rule version can
+# change the severity of the same key (a size failure that became a warning).
+RECLASSIFIED_SOURCES: Final = frozenset({"vision_model"})
+
+
 async def sync_issues(
     uow: TenantUnitOfWork,
     listing: Any,
@@ -200,7 +205,7 @@ async def sync_issues(
         if scope_fields is not None and item.field not in scope_fields:
             continue
         items.setdefault(dedupe_key(source, item, channel=channel), item)
-    opened = repeated = 0
+    opened = repeated = closed_now = 0
     for key, item in items.items():
         new = _issue(
             listing,
@@ -213,11 +218,21 @@ async def sync_issues(
             critical_keys=critical_keys,
             listing_item_id=None if listing_item_ids is None else listing_item_ids.get(key),
         )
+        reclassified = 0
+        if source in RECLASSIFIED_SOURCES:
+            held = await uow.listing_issues.open_row(listing.id, key)
+            if held is not None and held.severity != new.severity:
+                # an issue's severity never changes (listing_issues_guard): the old row closes
+                # and the check's new verdict opens as its own row
+                reclassified = int(
+                    await uow.listing_issues.close_open(held.id, resolution_for(cause))
+                )
         _row, created = await uow.listing_issues.upsert_open(new)
         if created:
             opened += 1
         else:
             repeated += 1
+        closed_now += reclassified
     closed = 0
     if close:
         closed = await uow.listing_issues.close_missing(
@@ -228,6 +243,7 @@ async def sync_issues(
             field_paths=scope_fields,
             channel=channel,
         )
+    closed += closed_now
     result = SyncResult(opened=opened, repeated=repeated, closed=closed)
     if opened or closed:
         log.info(

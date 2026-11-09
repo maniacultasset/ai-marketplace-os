@@ -1017,6 +1017,45 @@ async def run_images_derive(tenant_id: uuid.UUID) -> int:
     return EXIT_OK
 
 
+async def run_images_recheck(tenant_id: uuid.UUID) -> int:
+    """Photo rules 2.1.0: queue `image_compliance` again for the tenant's live images whose
+    stored report was judged by the old rules (an issue without a severity), at most the free
+    live-job cap per run; prints how many are queued and left. Run again until `remaining=0`.
+    The job writes the new report only; a listing's photo issues follow on its next check
+    (a read of a reviewable listing, "Check again", or a regenerate). Nothing is approved or
+    sent."""
+    from mkos_schemas.enums import JobKind
+
+    from app.db.session import dispose_engine
+    from app.repositories.jobs import EnqueueSpec
+    from app.repositories.uow import tenant_uow
+    from app.services.images import LIVE_IMAGE_JOB_CAP
+
+    try:
+        async with tenant_uow(tenant_id) as uow:
+            await uow.images.lock_tenant_image_jobs()
+            ids = await uow.images.live_judged_by_old_rules()
+            free = max(0, LIVE_IMAGE_JOB_CAP - await uow.images.count_live_image_jobs())
+            for image_id in ids[:free]:
+                await uow.job_runs.enqueue(
+                    EnqueueSpec(
+                        kind=JobKind.IMAGE_COMPLIANCE,
+                        entity_type="image",
+                        entity_id=image_id,
+                        created_by=None,
+                        payload={"image_id": str(image_id)},
+                    )
+                )
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"images recheck: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    queued = min(free, len(ids))
+    sys.stdout.write(f"images recheck: ok (queued={queued} remaining={len(ids) - queued})\n")
+    return EXIT_OK
+
+
 async def _templates_load(admin_url: str, path: Path) -> tuple[int, int, int]:
     from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -1802,6 +1841,10 @@ def build_parser() -> argparse.ArgumentParser:
         "derive", help="queue the checks again for images with no clean copy"
     )
     derive_cmd.add_argument("--tenant", type=_tenant_uuid, required=True)
+    recheck_cmd = images_commands.add_parser(
+        "recheck", help="queue the checks again for images judged by the old photo rules"
+    )
+    recheck_cmd.add_argument("--tenant", type=_tenant_uuid, required=True)
     platform = groups.add_parser("platform", help="every platform row, no tenant (local only)")
     platform_commands = platform.add_subparsers(dest="command", required=True)
     platform_load = platform_commands.add_parser("load", help="templates, rules, error map")
@@ -1887,6 +1930,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.group == "images":
         if args.command == "unpublish":
             return asyncio.run(run_images_unpublish(args.tenant))
+        if args.command == "recheck":
+            return asyncio.run(run_images_recheck(args.tenant))
         return asyncio.run(run_images_derive(args.tenant))
     if args.group == "jobs":
         if args.command == "requeue":

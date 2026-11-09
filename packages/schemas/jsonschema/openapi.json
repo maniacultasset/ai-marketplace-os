@@ -3116,6 +3116,16 @@
           "code": {
             "$ref": "#/components/schemas/ImageIssueCode"
           },
+          "severity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Severity"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "suggestion": {
             "maxLength": 1000,
             "minLength": 1,

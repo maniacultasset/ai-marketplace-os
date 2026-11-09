@@ -1302,6 +1302,22 @@
           ],
           "default": null,
           "title": "Rgb"
+        },
+        "side": {
+          "anyOf": [
+            {
+              "enum": [
+                "shorter",
+                "longer"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Side"
         }
       },
       "title": "ImageRequirementParams",

@@ -95,11 +95,17 @@ def _checkable(listing: Any) -> bool:
 
 async def is_stale(uow: TenantUnitOfWork, listing: Any) -> bool:
     """Whether a check now would differ from the stored verdict of the current version: no run
-    with today's pins, other "facts changed" items, or other blocking marketplace-check items
-    than the open `schema` rows."""
+    with today's pins, other "facts changed" items, other blocking photo-check items than the
+    open `vision_model` rows, or other blocking marketplace-check items than the open `schema`
+    rows."""
     from app.services.adapter_check import adapter_check
     from app.services.generation_context import previous_listing
-    from app.services.listing_validate import same_flags, schema_changed
+    from app.services.listing_validate import (
+        photo_report,
+        photos_changed,
+        same_flags,
+        schema_changed,
+    )
     from app.services.listings import rules_check
 
     version = await uow.listing_versions.current(listing)
@@ -113,6 +119,8 @@ async def is_stale(uow: TenantUnitOfWork, listing: Any) -> bool:
     )
     if same is None or not same_flags(same, check.report):
         return True
+    if await photos_changed(uow, listing, await photo_report(uow, canonical, version)):
+        return True  # a photo re-checked since (new photo rules, a fixed photo)
     adapter = await adapter_check(uow, listing.id)
     return adapter is not None and await schema_changed(uow, listing, adapter)
 
