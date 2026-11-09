@@ -203,6 +203,8 @@ def _require(rule: Rule, req: ImageRequirement) -> None:
         missing = "allowed_formats"
     elif req.check == "fill_ratio" and p.min_fill is None:
         missing = "min_fill"
+    elif req.check in ("text_overlay", "watermark") and p.min_px is None:
+        missing = "min_px"  # SI14: the shortest side the heuristic runs on
     if missing is not None:
         raise ValueError(f"image rule {rule.id}: {req.check} needs {missing}")
 
@@ -322,6 +324,8 @@ class _Decoded:
     height: int
     background: tuple[bool, ...]  # one verdict per requested background colour, in order
     fill: float | None = None  # SI14: the product's bounding box over the image area
+    text: bool | None = None  # SI14: text drawn on the image
+    watermark: bool | None = None  # SI14: a corner mark or a repeating tile
 
 
 _Line = Callable[[tuple[int, int, int, int]], Image.Image]
@@ -418,9 +422,11 @@ def _decode(
 
         verdicts = tuple(_background_passes(band, rgb, line) for rgb in backgrounds) if band else ()
         fill = image_qa.fill_ratio(img) if "fill_ratio" in qa else None
+        text = image_qa.text_overlay(img) if "text_overlay" in qa else None
+        mark = image_qa.watermark(img) if "watermark" in qa else None
     if orientation in _SWAPPING_ORIENTATIONS:
         width, height = height, width
-    return _Decoded(width, height, verdicts, fill)
+    return _Decoded(width, height, verdicts, fill, text, mark)
 
 
 # --- geometry ---
@@ -642,4 +648,10 @@ def check_image(
         floor = req.params.min_fill
         if decoded.fill is not None and floor is not None:
             checks.add("fill_ratio", decoded.fill >= floor, rule)
+    short_side = min(decoded.width, decoded.height)
+    for check, found in (("text_overlay", decoded.text), ("watermark", decoded.watermark)):
+        for rule, req in by_check.get(check, ()):
+            # below `min_px` the heuristic is not trusted: the check is not run
+            if found is not None and short_side >= (req.params.min_px or 0):
+                checks.add(check, not found, rule)  # type: ignore[arg-type]
     return done()

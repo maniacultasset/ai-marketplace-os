@@ -789,6 +789,86 @@
           "limit": 2000,
           "unit": "chars"
         }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000007",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "text is drawn on the main image",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main image text",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "text_overlay",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000701000008",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "a watermark or logo is on the main image",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main image watermark",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "watermark",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
       }
     ],
     "rules_version": 0,
@@ -1992,6 +2072,86 @@
             "ratio_h": null,
             "min_fill": null,
             "max_bytes": 10485760,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000008",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "text is drawn on the main image",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main image text",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "text_overlay",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
+            "allowed_formats": [],
+            "rgb": null
+          },
+          "issue_code": "IMAGE_NON_COMPLIANT"
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000702000009",
+        "tenant_id": null,
+        "marketplace": "flipkart",
+        "category": null,
+        "field": "images",
+        "severity": "warning",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "a watermark or logo is on the main image",
+          "suggestion": null,
+          "error_code": "IMAGE_NON_COMPLIANT",
+          "pack": "core",
+          "policy_ref": {
+            "source": "flipkart_policy",
+            "title": "Marketplace Image Rules (spec [51])",
+            "url": null,
+            "section": "main image watermark",
+            "retrieved_on": "2026-10-05"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "image_requirement",
+          "slot": "main",
+          "check": "watermark",
+          "params": {
+            "min_px": 500,
+            "max_px": null,
+            "ratio_w": null,
+            "ratio_h": null,
+            "min_fill": null,
+            "max_bytes": null,
             "allowed_formats": [],
             "rgb": null
           },

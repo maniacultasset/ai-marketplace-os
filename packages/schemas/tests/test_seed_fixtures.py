@@ -279,9 +279,10 @@ BYTE_RULE_IDS = {
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
 
-def test_rules_seed_count_84() -> None:
-    """78 rows, plus SI8's six Amazon bullet and description limits."""
-    assert sum(len(s.rules) for s in _load()) == 84
+def test_rules_seed_count_88() -> None:
+    """78 rows, plus SI8's six Amazon bullet and description limits, plus SI14's four photo QA
+    warnings (text overlay and watermark, Amazon and Flipkart main)."""
+    assert sum(len(s.rules) for s in _load()) == 88
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -323,7 +324,13 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     digest; a seed row that sets a gate changes the digest.
     """
     raw = json.loads(SEED.read_text(encoding="utf-8"))
-    new_ids = set(BYTE_RULE_IDS.values()) | CONTACT_RULE_IDS | CLAIM_RULE_IDS | SI8_TEXT_RULE_IDS
+    new_ids = (
+        set(BYTE_RULE_IDS.values())
+        | CONTACT_RULE_IDS
+        | CLAIM_RULE_IDS
+        | SI8_TEXT_RULE_IDS
+        | SI14_PHOTO_QA_RULE_IDS
+    )
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
         rule_def = dict(rule["rule_def"])
@@ -338,6 +345,15 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     ]
     digest = hashlib.sha256(json.dumps(apparel, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_RULES_SHA256
+
+
+# SI14: the photo QA warnings (Amazon 07/08, Flipkart 08/09 of the image block)
+SI14_PHOTO_QA_RULE_IDS = {
+    "5eed0000-0000-4000-8000-000701000007",
+    "5eed0000-0000-4000-8000-000701000008",
+    "5eed0000-0000-4000-8000-000702000008",
+    "5eed0000-0000-4000-8000-000702000009",
+}
 
 
 # SI8: the Amazon bullet count, bullet length and description length rows (kurta 1, tshirts 3)
