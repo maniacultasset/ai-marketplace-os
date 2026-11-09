@@ -375,6 +375,12 @@ class MarketplaceDisabled(AdapterError):  # noqa: N818 - the plan's name (S22 C4
     sent. The report is the 501 NOT_IMPLEMENTED refusal (source `system`)."""
 
 
+class PublishingPaused(MarketplaceDisabled):
+    """The publish kill switch is off (`AMAZON_PUBLISH_ENABLED=false`): a write call was refused
+    before the limiter, the token or the network, so nothing was sent. The report is the 501
+    NOT_IMPLEMENTED pause (`app.core.flags.publishing_paused_report`)."""
+
+
 class MarketplaceAmbiguous(AdapterError):  # noqa: N818 - the plan's name (S20 C2)
     """A write was sent and its outcome is unknown (5xx, timeout, a body we cannot read):
     read the listing before any retry (DATABASE.md:871)."""

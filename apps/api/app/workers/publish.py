@@ -8,6 +8,9 @@ listing is locked only in the short write-ahead transaction.
 1. **Read** (one short transaction, no lock): the listing (must be `publishing`), its approved =
    current version, the approve decision's `facts_digest`, the open submission, the adapter input
    (`preview_source`), the images, the account and, for a field retry, the retry payload.
+   With the publish kill switch off (`AMAZON_PUBLISH_ENABLED=false`, `core.flags`) the job ends
+   here, `failed NOT_IMPLEMENTED` "Publishing to Amazon is paused", with an audit row
+   `listing.publish_paused`: no pin read, adapter, write-ahead row (so no attempt counts) or call.
 2. **Resolve an open row first** (CP1): a `pending` row of this job or of an ended one is
    resolved by reading the marketplace before anything is resent (D8): a `create` whose every SKU
    is found is `accepted`; otherwise this job's own row is resent on the same row and key
@@ -40,6 +43,7 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import json
 import uuid
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -76,6 +80,7 @@ from app.adapters.storage import (
 )
 from app.core.config import get_settings
 from app.core.errors import ConflictError, DomainError
+from app.core.flags import PAUSED_REASON, publish_enabled, publishing_paused_report
 from app.core.logging import get_logger
 from app.core.resolved_facts import listing_facts_digest
 from app.repositories.listings import PreviewSource
@@ -693,9 +698,41 @@ def _kind_of(exc: AdapterError) -> ErrorKind:
     return "unavailable"
 
 
+def _paused_audit(ctx: JobContext, prep: Prepared, trigger: str) -> Any:
+    async def persist(uow: TenantUnitOfWork) -> None:
+        await uow.audit.write(
+            tenant_id=ctx.tenant_id,
+            actor_type="system",
+            actor_user_id=None,
+            action="listing.publish_paused",
+            entity_type="listing",
+            entity_id=prep.listing.id,
+            reason=PAUSED_REASON,
+            job_id=ctx.job_run_id,
+            after=json.dumps({"trigger": trigger}),
+        )
+
+    return persist
+
+
 async def run_listing_publish(ctx: JobContext) -> Outcome:
     payload = PublishJobPayload.model_validate(ctx.payload)
     prep = await _read(ctx, payload)
+    if not publish_enabled(prep.listing.marketplace, get_settings()):
+        # the publish kill switch: before the pins, the adapter, the write-ahead row and any
+        # marketplace call (a read of an open row included), so nothing is sent or counted; the
+        # terminal hook moves the listing `publishing -> failed/publish_failed`
+        log.warning(
+            "publish.paused",
+            job_run_id=str(ctx.job_run_id),
+            listing_id=str(prep.listing.id),
+            marketplace=prep.listing.marketplace,
+            trigger=payload.trigger,
+        )
+        raise JobFailed(
+            publishing_paused_report(prep.listing.marketplace),
+            persist=_paused_audit(ctx, prep, payload.trigger),
+        )
     await _check_pins(ctx, prep)
     sink = BufferedSink()
     try:

@@ -278,6 +278,10 @@ class Settings(BaseSettings):
     # restrictions of a matched ASIN (needs the preview flag too). Off unless set: production
     # turns it on only after the deliberate-error runbook (T9-T10) passes.
     amazon_catalog_precheck_enabled: bool = False
+    # The Amazon publish kill switch (`app.core.flags.publish_enabled`). Off: no write call
+    # (listing PUT, PATCH, the VALIDATION_PREVIEW dry run) reaches Amazon and no publish job is
+    # enqueued; reads stay allowed. On in code for dev and tests; production pins it in prod.env.
+    amazon_publish_enabled: bool = True
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None

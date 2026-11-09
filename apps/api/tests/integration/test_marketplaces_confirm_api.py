@@ -80,7 +80,9 @@ async def test_confirm_activates(mkt: MktWorld, mapi: httpx.AsyncClient) -> None
         "needs_reconnect_since",
         "expires_at",
         "created_at",
+        "publishing_enabled",
     }
+    assert body["publishing_enabled"] is True
     [row] = account_rows(mkt.conn)
     assert str(row["id"]) == body["id"]
     assert row["tenant_id"] == mkt.tenant("acme")

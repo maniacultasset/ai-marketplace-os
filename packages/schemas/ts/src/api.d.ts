@@ -3971,6 +3971,12 @@ export interface components {
             marketplace: components["schemas"]["Marketplace"];
             /** Needs Reconnect Since */
             needs_reconnect_since?: string | null;
+            /**
+             * Publishing Enabled
+             * @description Whether this deployment may publish to the account's marketplace (the publish kill switch, `AMAZON_PUBLISH_ENABLED` for Amazon). False: publish and field retry answer 501 NOT_IMPLEMENTED "Publishing to Amazon is paused for this workspace" with nothing sent, and neither the automatic resend nor the marketplace dry run runs; reads and connect still work.
+             * @default true
+             */
+            publishing_enabled: boolean;
             /** Region */
             region?: string | null;
             /** Seller Id */
