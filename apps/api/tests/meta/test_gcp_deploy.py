@@ -33,6 +33,7 @@ SUBCOMMANDS = (
     "tenant",
     "templates",
     "amazon-check",
+    "images",
     "status",
     "edge",
 )
@@ -2274,6 +2275,117 @@ def test_amazon_check_refuses_bad_flags(
     result = _run_fail(toolkit, tmp_path, "prod", "amazon-check", *args, "--dry-run", "--sha", SHA)
     assert "amazon-check" in result.stderr
     assert "run jobs deploy" not in result.stdout
+
+
+# ---- images recheck (photo rules 2.1.0: re-queue the photos the old rules judged) ----
+
+TENANT_ID = "6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b"
+
+
+def _recheck_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-images-recheck" in line)
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_images_recheck_runs_as_the_worker_with_the_app_url_only(
+    toolkit: Path,
+    tmp_path: Path,
+    clean_env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    env_name: str,
+) -> None:
+    out = _run(
+        toolkit, tmp_path, env_name, "images", "recheck", "--tenant", TENANT_ID,
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    job = _recheck_deploy(out)
+    # the worker identity, and only the app_rw URL the recheck queues with
+    assert "--service-account=aimos-worker@" in job
+    assert _secret_names(job) == ["DATABASE_URL"]
+    assert "--max-retries=0" in job and "--tasks=1" in job
+    args = job.replace("\\", "")
+    assert (
+        f"--args=^|^-m|app.cli|images|recheck|--tenant={TENANT_ID}|--staff-email=s@b.test" in args
+    )
+    assert "gcloud run jobs execute aimos-images-recheck" in out
+    assert "remaining=0" in out
+    env = _api_env(out)
+    assert env["APP_ROLE"] == "shell"
+    assert env["APP_ENV"] == ("production" if env_name == "prod" else "staging")
+    # no model route, key or Amazon app on the job
+    assert not any(k.startswith(("LLM_", "AMAZON_APP", "AMAZON_CLIENT")) for k in env)
+    for value in SECRET_VALUES.values():
+        assert value not in out
+    # the job's settings boot as the shell role with DATABASE_URL alone
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        assert get_settings().app_role == "shell"
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.mark.parametrize(
+    ("flags", "cli_flag"),
+    [
+        (("--slug", "acme"), "--tenant-slug=acme"),
+        (("--seller-id=A1CHECKSELLER9",), "--seller-id=A1CHECKSELLER9"),
+    ],
+)
+def test_images_recheck_resolves_by_slug_or_seller_id(
+    toolkit: Path, tmp_path: Path, flags: tuple[str, ...], cli_flag: str
+) -> None:
+    out = _run(
+        toolkit, tmp_path, "prod", "images", "recheck", *flags, "--staff-email", "s@b.test",
+        "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    args = _recheck_deploy(out).replace("\\", "")
+    assert f"--args=^|^-m|app.cli|images|recheck|{cli_flag}|--staff-email=s@b.test" in args
+    assert "--tenant=" not in args
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        (),
+        ("derive", "--tenant", TENANT_ID, "--staff-email", "s@b.test"),
+        ("recheck",),
+        ("recheck", "--tenant", TENANT_ID),
+        ("recheck", "--staff-email", "s@b.test"),
+        ("recheck", "--tenant", TENANT_ID, "--slug", "acme", "--staff-email", "s@b.test"),
+        ("recheck", "--slug", "acme", "--seller-id", "A1CHECKSELLER9", "--staff-email", "s@b.test"),
+        ("recheck", "--tenant", TENANT_ID, "--tenant", TENANT_ID, "--staff-email", "s@b.test"),
+        ("recheck", "--slug", "a|b", "--staff-email", "s@b.test"),
+        ("recheck", "--slug", "", "--staff-email", "s@b.test"),
+        ("recheck", "--slug"),
+        ("recheck", "--tenant", TENANT_ID, "--staff-email", "s@b.test", "--reason", "x"),
+        ("recheck", "acme", "--staff-email", "s@b.test"),
+    ],
+)
+def test_images_recheck_refuses_bad_flags(
+    toolkit: Path, tmp_path: Path, args: tuple[str, ...]
+) -> None:
+    result = _run_fail(toolkit, tmp_path, "prod", "images", *args, "--dry-run", "--sha", SHA)
+    assert "images" in result.stderr
+    assert "run jobs deploy" not in result.stdout
+
+
+def test_images_recheck_job_runs_a_real_cli_command(repo_root: Path) -> None:
+    from app import cli
+
+    parsed = cli.build_parser().parse_args(
+        ["images", "recheck", f"--tenant={TENANT_ID}", "--staff-email=s@b.test"]
+    )
+    assert str(parsed.tenant) == TENANT_ID and parsed.staff_email == "s@b.test"
+    for flag in ("--tenant-slug=acme", "--seller-id=A1CHECKSELLER9"):
+        parsed = cli.build_parser().parse_args(
+            ["images", "recheck", flag, "--staff-email=s@b.test"]
+        )
+        assert parsed.tenant is None
 
 
 def test_usage_prints_every_subcommand_line(repo_root: Path) -> None:

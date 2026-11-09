@@ -157,3 +157,22 @@ async def test_recheck_queues_only_photos_the_old_rules_judged(
     assert await run_images_recheck(tenant) == 0
     assert "queued=0 remaining=0" in capsys.readouterr().out
     assert _queued(images_db, tenant) == 1
+
+
+async def test_recheck_with_a_staff_email_writes_one_audit_row(
+    images_db: JobWorld, capsys: pytest.CaptureFixture[str]
+) -> None:
+    tenant = images_db.tenant("acme")
+    p = product(images_db.conn, tenant)
+    old = image_row(images_db.conn, tenant, p, slot="main")
+    _store(images_db.conn, old, {"WRONG_ASPECT": None})
+    assert await run_images_recheck(tenant, "ops@kuinn.test") == 0
+    assert "queued=1 remaining=0" in capsys.readouterr().out
+    rows = images_db.conn.execute(
+        "SELECT actor_type, actor_email, entity_type, entity_id, reason FROM audit_log "
+        "WHERE tenant_id = %s AND action = 'images.recheck'",
+        [tenant],
+    ).fetchall()
+    assert rows == [
+        ("staff", "ops@kuinn.test", "tenant", tenant, "photo_rules_recheck queued=1 remaining=0")
+    ]
