@@ -54,6 +54,16 @@ GENERATION_PROVIDER_KEY_ENV: Final[Mapping[str, str]] = MappingProxyType(
 # a constant, never a setting, so no env value can point a model call (and its key) elsewhere.
 LlmGateway = Literal["direct", "openrouter"]
 OPENROUTER_BASE_URL: Final = "https://openrouter.ai/api/v1"
+# SI14 (the India-route seam, D13): each model purpose may take its own gateway; unset means
+# `LLM_GATEWAY`. `classify` rides the vision route and `columns` the generation route.
+LlmPurpose = Literal["generation", "vision", "embedding", "classify", "columns"]
+LLM_PURPOSES: Final[tuple[LlmPurpose, ...]] = (
+    "generation",
+    "vision",
+    "embedding",
+    "classify",
+    "columns",
+)
 
 # Every JWT literal committed to the repo or the Canon: ENV.md's JWT_SECRET row (.env.example),
 # CANON-ADDENDUM.md:290 (the CI env block) and CANON-ADDENDUM.md:319 (the schema export).
@@ -234,6 +244,20 @@ class Settings(BaseSettings):
     # no spend, the worker settles a queued read `unavailable` with no call, and the product read
     # says `size_chart_read_enabled: false` so the dashboard can hide the button.
     size_chart_read_enabled: bool = False
+    # SI14 (D12): the V1.1 assist switches, all off by default; each goes live only after its
+    # eval gate (docs/runbooks/V1-1-SWITCHES.md). Off, the api answers `unavailable` (classify)
+    # or maps without the AI (columns) with no spend, lamps take no new listing, and the photo QA
+    # checks (fill ratio, text overlay, watermark) are skipped as today.
+    category_suggest_enabled: bool = False
+    column_map_ai_enabled: bool = False
+    category_lamps_enabled: bool = False
+    photo_qa_enabled: bool = False
+    # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
+    llm_gateway_generation: LlmGateway | None = None
+    llm_gateway_vision: LlmGateway | None = None
+    llm_gateway_embedding: LlmGateway | None = None
+    llm_gateway_classify: LlmGateway | None = None
+    llm_gateway_columns: LlmGateway | None = None
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = EMBEDDING_DIMENSIONS  # pinned: the vector(1536) column type
     llm_timeout_seconds: int = 60
@@ -318,6 +342,11 @@ class Settings(BaseSettings):
         "gcs_bucket_images_public",
         "image_public_base_url",
         "llm_model_vision_size_chart",
+        "llm_gateway_generation",
+        "llm_gateway_vision",
+        "llm_gateway_embedding",
+        "llm_gateway_classify",
+        "llm_gateway_columns",
         mode="before",
     )
     @classmethod
@@ -639,6 +668,17 @@ def _boot_errors(s: Settings) -> list[str]:
     return errors
 
 
+def effective_gateway(s: Settings, purpose: LlmPurpose) -> LlmGateway:
+    """The gateway of one model purpose: its own `LLM_GATEWAY_<PURPOSE>` when set, else
+    `LLM_GATEWAY` (SI14 D13)."""
+    own: LlmGateway | None = getattr(s, f"llm_gateway_{purpose}")
+    return own if own is not None else s.llm_gateway
+
+
+def _purposes_on(s: Settings, gateway: LlmGateway) -> set[LlmPurpose]:
+    return {purpose for purpose in LLM_PURPOSES if effective_gateway(s, purpose) == gateway}
+
+
 def _embedding_errors(s: Settings) -> list[str]:
     """S16 PLAN D4/D5 (ADR-0013 §1: OpenAI at S16): a worker embeds, so outside local it needs a
     real key (never hash vectors under the real model name), and every worker needs a price for
@@ -646,7 +686,7 @@ def _embedding_errors(s: Settings) -> list[str]:
     if s.app_role != "worker":
         return []
     errors: list[str] = []
-    direct = s.llm_gateway == "direct"
+    direct = effective_gateway(s, "embedding") == "direct"
     if direct and s.app_env != "local" and not is_usable_openai_key(s.openai_api_key):
         errors.append("APP_ROLE=worker requires OPENAI_API_KEY outside APP_ENV=local")
     if s.embedding_model not in EMBEDDING_PRICE_USD_PER_MTOK:
@@ -659,7 +699,12 @@ def _vision_errors(s: Settings) -> list[str]:
     it needs that provider's key; the placeholder counts as none. Local uses the port's
     placeholder key. Under `LLM_GATEWAY=openrouter` the gateway's key stands in (`_gateway_errors`).
     Names only, never the key or the model value."""
-    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
+    # the classifier rides the vision route (SI14)
+    if (
+        s.app_role != "worker"
+        or s.app_env == "local"
+        or not _purposes_on(s, "direct") & {"vision", "classify"}
+    ):
         return []
     name = VISION_PROVIDER_KEY_ENV[s.llm_provider_vision]
     if is_usable_openai_key(getattr(s, name.lower())):
@@ -674,7 +719,12 @@ def _generation_errors(s: Settings) -> list[str]:
     """ADR-0024: under `LLM_GATEWAY=direct` a worker sends listing generation to `LLM_PROVIDER`,
     so outside local it needs that provider's key; the placeholder counts as none. Names only,
     never the key or the model value."""
-    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "direct":
+    # the column mapper rides the generation route (SI14)
+    if (
+        s.app_role != "worker"
+        or s.app_env == "local"
+        or not _purposes_on(s, "direct") & {"generation", "columns"}
+    ):
         return []
     name = GENERATION_PROVIDER_KEY_ENV[s.llm_provider]
     if is_usable_openai_key(getattr(s, name.lower())):
@@ -691,7 +741,9 @@ def _gateway_errors(s: Settings) -> list[str]:
     model is sent as set, so it must be one (the default `gpt-4o-mini` is not), and the vision
     model gets `openai/` added, so it must not already have a vendor. Names only, never the key
     or a model value."""
-    if s.app_role != "worker" or s.app_env == "local" or s.llm_gateway != "openrouter":
+    # SI14: any purpose on OpenRouter needs the key; only those purposes' models are checked.
+    routed = _purposes_on(s, "openrouter")
+    if s.app_role != "worker" or s.app_env == "local" or not routed:
         return []
     errors: list[str] = []
     if not is_usable_openai_key(s.openrouter_api_key):
@@ -699,11 +751,16 @@ def _gateway_errors(s: Settings) -> list[str]:
             "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
             "for APP_ROLE=worker outside APP_ENV=local"
         )
-    if not _is_vendor_model_id(s.llm_model_default):
+    if routed & {"generation", "columns"} and not _is_vendor_model_id(s.llm_model_default):
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
-    if "/" in s.llm_model_vision:
+    vision = bool(routed & {"vision", "classify"})
+    if vision and "/" in s.llm_model_vision:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
-    if s.llm_model_vision_size_chart is not None and "/" in s.llm_model_vision_size_chart:
+    if (
+        "vision" in routed
+        and s.llm_model_vision_size_chart is not None
+        and "/" in s.llm_model_vision_size_chart
+    ):
         errors.append(
             "LLM_GATEWAY=openrouter requires LLM_MODEL_VISION_SIZE_CHART as an OpenAI model id"
         )
