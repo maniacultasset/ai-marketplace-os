@@ -26,15 +26,18 @@ class ListingOut(WireModel):
     status: ListingStatus
     status_reason: str | None = None
     display_state: DisplayState = Field(
+        default="draft",
         description=(
             "The state every screen shows, computed by the server. `needs_you`: open blocking "
             "issues on the current version (`needs_you_count` of them) keep a person from "
             "approving it, whatever `status` says. The other values follow `status` (validated "
             "is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is "
-            "error). A stale reviewable listing is checked again with today's rules on read."
-        )
+            "error). A stale reviewable listing is checked again with today's rules on read. "
+            "Always sent; an older payload without it reads as its status's value."
+        ),
     )
     needs_you_count: int = Field(
+        default=0,
         ge=0,
         description="Open blocking issues on the current version (the seller's fixes).",
     )
@@ -62,6 +65,19 @@ class ListingOut(WireModel):
     status_changed_at: AwareDatetime
     created_at: AwareDatetime
     updated_at: AwareDatetime
+
+    @model_validator(mode="before")
+    @classmethod
+    def _display_from_status(cls, data: Any) -> Any:
+        # an older payload (or example) without the display state reads as its status's value
+        if isinstance(data, dict) and "display_state" not in data and "status" in data:
+            from app.services.listing_display import display_state
+
+            class _Row:
+                status = str(data["status"])
+
+            return {**data, "display_state": display_state(_Row, 0)}
+        return data
 
 
 class ListingDetail(ListingOut):
