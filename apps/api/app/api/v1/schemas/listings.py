@@ -16,6 +16,7 @@ from app.api.pagination import Page
 from app.api.v1.schemas.batches import Instructions
 from app.api.v1.schemas.resolution import RemoteCheckOut
 from app.core.text import CONTROL_CHAR_MESSAGE, has_control_char
+from app.services.listing_display import DisplayState
 
 
 class ListingOut(WireModel):
@@ -24,6 +25,19 @@ class ListingOut(WireModel):
     marketplace: Marketplace
     status: ListingStatus
     status_reason: str | None = None
+    display_state: DisplayState = Field(
+        description=(
+            "The state every screen shows, computed by the server. `needs_you`: open blocking "
+            "issues on the current version (`needs_you_count` of them) keep a person from "
+            "approving it, whatever `status` says. The other values follow `status` (validated "
+            "is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is "
+            "error). A stale reviewable listing is checked again with today's rules on read."
+        )
+    )
+    needs_you_count: int = Field(
+        ge=0,
+        description="Open blocking issues on the current version (the seller's fixes).",
+    )
     marketplace_state: MarketplaceState
     category: Slug | None = None
     current_version_id: UUID | None = None

@@ -4172,6 +4172,23 @@
             ],
             "title": "Current Version Id"
           },
+          "display_state": {
+            "description": "The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read.",
+            "enum": [
+              "draft",
+              "working",
+              "needs_you",
+              "needs_review",
+              "ready_to_approve",
+              "ready_to_list",
+              "submitting",
+              "published",
+              "blocked",
+              "error"
+            ],
+            "title": "Display State",
+            "type": "string"
+          },
           "external_id": {
             "anyOf": [
               {
@@ -4206,6 +4223,12 @@
           },
           "marketplace_state": {
             "$ref": "#/components/schemas/MarketplaceState"
+          },
+          "needs_you_count": {
+            "description": "Open blocking issues on the current version (the seller's fixes).",
+            "minimum": 0.0,
+            "title": "Needs You Count",
+            "type": "integer"
           },
           "product_id": {
             "format": "uuid",
@@ -4263,6 +4286,8 @@
           "product_id",
           "marketplace",
           "status",
+          "display_state",
+          "needs_you_count",
           "marketplace_state",
           "status_changed_at",
           "created_at",
@@ -4358,6 +4383,23 @@
             ],
             "title": "Current Version Id"
           },
+          "display_state": {
+            "description": "The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read.",
+            "enum": [
+              "draft",
+              "working",
+              "needs_you",
+              "needs_review",
+              "ready_to_approve",
+              "ready_to_list",
+              "submitting",
+              "published",
+              "blocked",
+              "error"
+            ],
+            "title": "Display State",
+            "type": "string"
+          },
           "external_id": {
             "anyOf": [
               {
@@ -4392,6 +4434,12 @@
           },
           "marketplace_state": {
             "$ref": "#/components/schemas/MarketplaceState"
+          },
+          "needs_you_count": {
+            "description": "Open blocking issues on the current version (the seller's fixes).",
+            "minimum": 0.0,
+            "title": "Needs You Count",
+            "type": "integer"
           },
           "product_id": {
             "format": "uuid",
@@ -4439,6 +4487,8 @@
           "product_id",
           "marketplace",
           "status",
+          "display_state",
+          "needs_you_count",
           "marketplace_state",
           "status_changed_at",
           "created_at",

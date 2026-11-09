@@ -277,11 +277,15 @@ class ListingRepository(TenantScopedRepository[Listing]):
         )
         return list((await self.db.execute(stmt)).scalars())
 
-    async def get_for_update(self, listing_id: uuid.UUID) -> Listing | None:
+    async def get_for_update(
+        self, listing_id: uuid.UUID, *, skip_locked: bool = False
+    ) -> Listing | None:
+        """The row, locked `FOR UPDATE`. `skip_locked`: None at once when another transaction
+        holds it (a read's re-check never waits, so two reads never deadlock)."""
         stmt = (
             self._select()
             .where(Listing.id == listing_id)
-            .with_for_update()
+            .with_for_update(skip_locked=skip_locked)
             .execution_options(populate_existing=True)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()

@@ -3641,6 +3641,12 @@ export interface components {
             /** Current Version Id */
             current_version_id?: string | null;
             /**
+             * Display State
+             * @description The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read.
+             * @enum {string}
+             */
+            display_state: "draft" | "working" | "needs_you" | "needs_review" | "ready_to_approve" | "ready_to_list" | "submitting" | "published" | "blocked" | "error";
+            /**
              * External Id
              * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
              */
@@ -3654,6 +3660,11 @@ export interface components {
             live_url?: string | null;
             marketplace: components["schemas"]["Marketplace"];
             marketplace_state: components["schemas"]["MarketplaceState"];
+            /**
+             * Needs You Count
+             * @description Open blocking issues on the current version (the seller's fixes).
+             */
+            needs_you_count: number;
             /**
              * Product Id
              * Format: uuid
@@ -3703,6 +3714,12 @@ export interface components {
             /** Current Version Id */
             current_version_id?: string | null;
             /**
+             * Display State
+             * @description The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read.
+             * @enum {string}
+             */
+            display_state: "draft" | "working" | "needs_you" | "needs_review" | "ready_to_approve" | "ready_to_list" | "submitting" | "published" | "blocked" | "error";
+            /**
              * External Id
              * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
              */
@@ -3716,6 +3733,11 @@ export interface components {
             live_url?: string | null;
             marketplace: components["schemas"]["Marketplace"];
             marketplace_state: components["schemas"]["MarketplaceState"];
+            /**
+             * Needs You Count
+             * @description Open blocking issues on the current version (the seller's fixes).
+             */
+            needs_you_count: number;
             /**
              * Product Id
              * Format: uuid

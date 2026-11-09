@@ -7,6 +7,9 @@ listing reads as missing (404), exactly as an unknown id.
   `last_event_at`. The two orders page with different cursor tags (`order_tag`).
 - `detail`: the current version's content and its validation summary, plus the `ETag` value
   (the current version id; None while the listing has no version).
+- both carry the display state (`listing_display`): a stale reviewable listing is validated again
+  first (detail; every row of a product; at most `LIST_RECHECK_CAP` rows of a list's first page),
+  and each row's open blocking issues are counted in one query.
 - `history`: the listing's `audit_log` rows, newest first; no actor email, no IP.
 """
 
@@ -21,7 +24,9 @@ from app.core.errors import NotFoundError
 from app.core.rbac import Principal
 from app.repositories.listings import QUEUE_STATUSES, ListingFilter
 from app.repositories.uow import tenant_uow
+from app.services import listing_display
 from app.services.generation_context import previous_listing
+from app.services.listing_display import needs_you_counts, recheck_page, recheck_stale
 from app.services.listings import listing_fields, to_detail
 from app.services.maker_checker import APPROVER_ROLES, ApproveHint, approve_block
 
@@ -62,12 +67,17 @@ async def list_listings(
     filters = ListingFilter(status=status, marketplace=marketplace, product_id=product_id)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, more = await uow.listings.page(filters, after=after, limit=limit)
-    next_key: Keyset | None = None
-    if more and rows:
-        last = rows[-1]
-        next_key = (last.status_changed_at if filters.queue else last.last_event_at, last.id)
+        # the cursor is the page as read: a re-check below moves `status_changed_at`
+        next_key: Keyset | None = None
+        if more and rows:
+            last = rows[-1]
+            next_key = (last.status_changed_at if filters.queue else last.last_event_at, last.id)
+        if product_id is not None or after is None:
+            cap = None if product_id is not None else listing_display.LIST_RECHECK_CAP
+            rows = await recheck_page(uow, principal, rows, cap=cap)
+        counts = await needs_you_counts(uow, rows)
     return ListingsPage(
-        items=[listing_fields(r) for r in rows],
+        items=[listing_fields(r, counts.get(r.id, 0)) for r in rows],
         has_more=more,
         next_key=next_key,
         tag=order_tag(status),
@@ -80,10 +90,12 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
         listing = await uow.listings.get(listing_id)
         if listing is None:
             raise NotFoundError("listing_id")
+        listing = await recheck_stale(uow, principal, listing)
         version = await uow.listing_versions.current(listing)
         summary = None if version is None else await uow.validation_runs.summary_for(version.id)
         content = previous_listing(listing, version)
-        body = to_detail(listing, content, summary)
+        counts = await needs_you_counts(uow, [listing])
+        body = to_detail(listing, content, summary, counts.get(listing.id, 0))
         body["can_approve"], body["approve_hint"] = await _approve_hint(
             uow, principal, listing, version
         )
