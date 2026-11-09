@@ -52,6 +52,14 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   `FOR UPDATE SKIP LOCKED`, enqueue a `listing_status_sync` job (no user) and set `next_sync_at`
   NULL in the same transaction, so a slow job is never enqueued twice and two workers never
   enqueue one slot twice. A listing that already has a live sync job is skipped.
+- `schedule_error_diagnosis` (every 10 min, SI13 T13; off unless
+  `MARKETPLACE_ERROR_DIAGNOSIS_ENABLED`): up to 5 unmapped `unknown` marketplace codes with no
+  proposal (or a retryable failed one) through `platform_scope()` (codes and ids only), each with
+  its newest sample issue; per code the sample tenant's admission (`budget.admission`, a refusal
+  skips the code and writes nothing), then in that tenant's unit of work `claim` and one
+  `brand_embed` job (`entity_type 'error_proposal'`, one attempt, key
+  `diagnose:<id>:<tries>:<pass time>`; a key that names an old job rolls the claim back).
+  One code's failure is logged and the pass goes on.
 - `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
   `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
   auto-clear against the stored previous check (`app_ai_credit_auto_clear`), then records the
@@ -402,6 +410,78 @@ async def schedule_status_sync() -> int:
                 "sync.schedule_failed", listing_id=str(listing_id), error_class=type(exc).__name__
             )
     log.info("periodic.status_sync_scheduled", due=len(due), enqueued=enqueued)
+    return enqueued
+
+
+DIAGNOSIS_BATCH: Final = 5
+
+
+class _NotEnqueuedError(Exception):
+    """The pass's job key already named a job: the claim is rolled back, nothing is counted."""
+
+
+async def schedule_error_diagnosis(now: datetime | None = None) -> int:
+    """One diagnosis scheduler pass (module docstring); the count of jobs enqueued."""
+    import hashlib
+
+    from mkos_schemas.enums import JobKind
+
+    from app.repositories.error_catalog import newest_sample, unmapped_codes
+    from app.repositories.error_proposals import ErrorProposalRepository
+    from app.repositories.jobs import EnqueueSpec
+    from app.workers import budget
+    from app.workers.error_diagnosis import DIAGNOSIS_RESERVATION_USD
+    from app.workers.payloads import DiagnosisPayload
+
+    if not get_settings().marketplace_error_diagnosis_enabled:
+        return 0
+    at = now or datetime.now(UTC)
+    async with platform_scope() as session:
+        codes = await unmapped_codes(session, limit=DIAGNOSIS_BATCH)
+        samples = {c: await newest_sample(session, *c) for c in codes}
+    enqueued = 0
+    for (marketplace, code), sample in samples.items():
+        if sample is None:
+            continue
+        issue_id, tenant_id = sample
+        try:
+            refusal = await budget.admission(tenant_id, at, amount=DIAGNOSIS_RESERVATION_USD)
+            if refusal is not None:
+                log.info("diagnosis.admission_refused", code=code, scope=str(refusal))
+                continue
+            async with unit_of_work(tenant_id) as session:
+                proposals = ErrorProposalRepository(session)
+                proposal_id = await proposals.claim(marketplace, code, issue_id)
+                if proposal_id is None:
+                    continue
+                row = await proposals.get(proposal_id)
+                tries = 0 if row is None else int(row.tries)
+                # one key per pass: a budget refusal keeps `tries`, so `<id>:<tries>` alone would
+                # hand back the finished job of the last pass. `claim` already stops two passes.
+                key = hashlib.sha256(
+                    f"diagnose:{proposal_id}:{tries}:{at.isoformat()}".encode()
+                ).hexdigest()
+                payload = DiagnosisPayload(proposal_id=proposal_id, sample_issue_id=issue_id)
+                job = await JobRunRepository(session, tenant_id).enqueue(
+                    EnqueueSpec(
+                        kind=JobKind.BRAND_EMBED,
+                        entity_type="error_proposal",
+                        entity_id=proposal_id,
+                        created_by=None,
+                        payload=payload.model_dump(mode="json"),
+                        max_attempts=1,
+                        job_key=key,
+                    )
+                )
+                if not job.created:  # roll the claim back: a pending row with no job is stuck
+                    raise _NotEnqueuedError(str(job.job.id))
+                await proposals.set_job(proposal_id, job.job.id)
+                enqueued += 1
+        except _NotEnqueuedError as same:
+            log.warning("diagnosis.schedule_job_exists", code=code, job_run_id=str(same))
+        except Exception as exc:  # one code's failure never blocks the others
+            log.exception("diagnosis.schedule_failed", code=code, error_class=type(exc).__name__)
+    log.info("periodic.error_diagnosis_scheduled", codes=len(codes), enqueued=enqueued)
     return enqueued
 
 
@@ -854,6 +934,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "schedule_status_sync": ("* * * * *", _plain(schedule_status_sync), False),
     "check_alerts": ("*/5 * * * *", _plain(check_alerts), False),
     "refresh_ai_credit": ("*/5 * * * *", _plain(refresh_ai_credit), False),  # SI10
+    "schedule_error_diagnosis": ("*/10 * * * *", _plain(schedule_error_diagnosis), False),  # SI13
 }
 
 

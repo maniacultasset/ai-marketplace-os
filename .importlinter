@@ -399,6 +399,10 @@ name = the resolution planner does no I/O
 type = forbidden
 source_modules =
     app.services.resolution.plan
+    app.services.resolution.reassign
+    app.services.resolution.diagnosis
+    app.services.resolution.value_maps
+    app.services.resolution.export
 forbidden_modules =
     sqlalchemy
     psycopg
@@ -427,6 +431,7 @@ source_modules =
     app.adapters.registry
     app.adapters.amazon.repairs
     app.adapters.amazon.aliases
+    app.adapters.amazon.precheck
 forbidden_modules =
     httpx
     socket

@@ -26,6 +26,8 @@ from app.db.models.ops import JobRun
 from app.repositories.listings import DbNow, JobActor, ListingRepository
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.services.issues import adapter_source, dedupe_key, sync_issues
+from app.services.resolution import reassign
+from app.services.resolution.reassign import CATEGORY_PATH
 from app.services.status_sync import (
     DAILY,
     MAX_POLLS,
@@ -147,6 +149,54 @@ async def _sync_read_issues(
     )
 
 
+async def _category_signal(
+    uow: TenantUnitOfWork, listing: Any, reads: Sequence[ItemRead], merged: Sequence[ErrorItem]
+) -> ErrorItem | None:
+    """SI13 T6 (`resolution.reassign`): Amazon filing the item under another product type, or a
+    burst of missing attributes that belong to another type, is one `CATEGORY_MISMATCH` item at
+    `facts.category` on the read's own items (CP-D10)."""
+    if listing.marketplace != "amazon":
+        return None
+    read_type = next((r.product_type for r in reads if not r.parent and r.product_type), None)
+    read_type = read_type or next((r.product_type for r in reads if r.product_type), None)
+    version_id = listing.published_version_id or listing.current_version_id
+    version = None if version_id is None else await uow.listing_versions.get(listing.id, version_id)
+    sent_type = None
+    if version is not None and version.category_template_id is not None:
+        pinned = await uow.templates.pinned(version.category_template_id)
+        sent_type = None if pinned is None else pinned.product_type
+    missing_now = sum(
+        1
+        for e in merged
+        if e.error_code is ErrorCode.MISSING_ATTRIBUTE and e.severity is Severity.ERROR
+    )
+    held = await uow.listing_issues.open_errors(
+        listing.id, [adapter_source(listing.marketplace)], channel="live"
+    )
+    missing_before = sum(1 for r in held if r.error_code == ErrorCode.MISSING_ATTRIBUTE.value)
+    item_open = any(
+        r.error_code == ErrorCode.CATEGORY_MISMATCH.value and r.field_path == CATEGORY_PATH
+        for r in held
+    )
+    found = reassign.signal(
+        read_type,
+        sent_type,
+        missing_now,
+        accepted_before=any(r.state is not None for r in reads),
+        item_open=item_open,
+        missing_before=missing_before,
+    )
+    if found is None:
+        return None
+    suggested = None
+    if found == "type_change" and read_type is not None:
+        options = await uow.templates.categories_for_product_type(listing.marketplace, read_type)
+        if len(options) == 1 and options[0] != listing.category:
+            suggested = options[0]
+    log.info("sync.category_signal", listing_id=str(listing.id), signal=found)
+    return reassign.category_item(found, read_type, suggested)
+
+
 async def apply_sync(
     uow: TenantUnitOfWork, job_id: uuid.UUID, listing_id: uuid.UUID, reads: Sequence[ItemRead]
 ) -> SyncDecision | None:
@@ -200,6 +250,11 @@ async def apply_sync(
             root_url, root_external = url, external
         await uow.listing_items.write_state(row.id, job_id=job_id, **values)
     merged, item_ids, scope = _merged_reads(listing, reads, rows)
+    category = await _category_signal(uow, listing, reads, merged)
+    if category is not None:
+        merged = [*merged, category][:MAX_ERROR_ITEMS]
+    if listing.marketplace == "amazon":
+        scope = sorted({*scope, CATEGORY_PATH})  # so a read without the signal closes the item
     await _settle(uow, listing, decision, merged)
     await _sync_read_issues(uow, job_id, listing, merged, item_ids, scope, close=published)
     columns: dict[str, Any] = {

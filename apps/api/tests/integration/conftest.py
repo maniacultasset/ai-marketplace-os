@@ -307,6 +307,7 @@ def clean_tenant_db(superuser_conn: Conn) -> None:
     try:
         superuser_conn.execute(
             "TRUNCATE tenants, users, category_templates, rules, marketplace_error_map, "
+            "marketplace_error_proposals, "
             "login_flows, product_type_definitions RESTART IDENTITY CASCADE"
         )
         # SI10: ai_credit_state references users, so the cascade empties it; put row 1 back.

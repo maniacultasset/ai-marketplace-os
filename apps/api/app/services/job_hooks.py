@@ -38,14 +38,13 @@ REQUEUE_HOOKS: Final[dict[JobKind, RequeueHook]] = {JobKind.BULK_IMPORT: import_
 def _register_owned_hooks() -> None:
     """Hooks of the kinds a merged step owns, present from import time (the API cancel path and
     the reaper need them as much as the worker does)."""
-    from app.services.brand_embed import on_brand_embed_requeue, on_brand_embed_terminal
     from app.services.generation_hooks import on_generate_requeue, on_generate_terminal
     from app.services.image_candidate_hooks import on_image_requeue, on_image_terminal
     from app.services.publish_outcome import on_publish_requeue, on_publish_terminal
     from app.services.status_sync_outcome import refuse_requeue
 
-    TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_terminal)
-    REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_brand_embed_requeue)
+    TERMINAL_HOOKS.setdefault(JobKind.BRAND_EMBED, on_embed_terminal)
+    REQUEUE_HOOKS.setdefault(JobKind.BRAND_EMBED, on_embed_requeue)
     # S18 T17: a generation that ends without a version leaves `generating`; no requeue (CP5)
     TERMINAL_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.LISTING_GENERATE, on_generate_requeue)
@@ -58,6 +57,29 @@ def _register_owned_hooks() -> None:
     # SI11 T7: one kind, two bodies (the status read and the marketplace dry run)
     TERMINAL_HOOKS.setdefault(JobKind.LISTING_STATUS_SYNC, on_sync_terminal)
     REQUEUE_HOOKS.setdefault(JobKind.LISTING_STATUS_SYNC, refuse_requeue)
+
+
+async def on_embed_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
+    """SI13 (CP-D1): a diagnosis job (`entity_type 'error_proposal'`) fails its pending proposal
+    when it dies; any other `brand_embed` job keeps the brand document hook."""
+    from app.services.brand_embed import on_brand_embed_terminal
+    from app.workers.error_diagnosis import on_proposal_terminal
+
+    if job.entity_type == "error_proposal":
+        await on_proposal_terminal(session, job)
+        return
+    await on_brand_embed_terminal(session, job, outcome)
+
+
+async def on_embed_requeue(session: Any, old: JobRun, new: JobRun) -> None:
+    """A diagnosis job is never requeued by staff (the scheduler claims a retry itself)."""
+    from app.services.brand_embed import on_brand_embed_requeue
+
+    if old.entity_type == "error_proposal":
+        from app.repositories.jobs import NotEligibleError
+
+        raise NotEligibleError("the diagnosis scheduler retries a proposal")
+    await on_brand_embed_requeue(session, old, new)
 
 
 async def on_sync_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:

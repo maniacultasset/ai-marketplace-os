@@ -32,6 +32,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
+
 from app.core.errors import NotFoundError
 from app.core.rbac import Principal
 from app.repositories.resolution import FIX_JOB_STATUSES, LinkedTask, VersionRow
@@ -64,6 +66,17 @@ TASK_LANES: Final[Mapping[str, Lane]] = {
 PRECHECK_VERDICTS: Final = frozenset({"clean", "issues", "failed"})
 OPEN_SUBMISSION: Final = frozenset({"pending", "accepted", "partially_accepted"})
 PREVIEW_SUFFIX: Final = "|preview"
+# SI13 (CP-D8): the seller actions that open no inbox question, by the issue's code
+ACTION_OF: Final[Mapping[str, str]] = {
+    "CATEGORY_MISMATCH": "recategorize",
+    "IDENTIFIER_DUPLICATE": "edit_identifier",
+}
+SELLER_ACTION_TEXT: Final[Mapping[str, str]] = {
+    "recategorize": "Amazon files this product under another category. Choose the matching "
+    "category, then regenerate the listing.",
+    "edit_identifier": "Amazon lists this barcode under another brand. Check the barcode, or "
+    "claim a GTIN exemption.",
+}
 
 
 # ---- labels ----
@@ -112,12 +125,16 @@ def labels(
     task_kinds: Mapping[uuid.UUID, str] | None = None,
     critical_keys: frozenset[str] = frozenset(),
     fixing: Mapping[uuid.UUID, Lane] | None = None,
+    recategorizable: Iterable[uuid.UUID] = (),
 ) -> dict[uuid.UUID, tuple[Lane, Cause]]:
-    """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`."""
+    """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`;
+    `recategorizable` the listings the seller may still recategorise (SI13, CP-D7)."""
     repaired_ids = set(repaired)
     kinds = task_kinds or {}
     covered = fixing or {}
     ctx = PlanContext(critical_keys=critical_keys)
+    movable = set(recategorizable)
+    ctx_movable = PlanContext(critical_keys=critical_keys, recategorizable=True)
     out: dict[uuid.UUID, tuple[Lane, Cause]] = {}
     for row in rows:
         if row.severity != "error":
@@ -135,10 +152,50 @@ def labels(
         if lane is not None:
             out[row.id] = (lane, cause_of(view, lane, {}))
             continue
-        found = label(view, ctx)
+        found = label(view, ctx_movable if getattr(row, "listing_id", None) in movable else ctx)
         if found is not None:
             out[row.id] = found
     return out
+
+
+async def recategorizable_listings(
+    uow: TenantUnitOfWork, rows: Sequence[Any]
+) -> frozenset[uuid.UUID]:
+    """SI13: the listings of the open adapter CATEGORY_MISMATCH rows that the seller may still
+    recategorise (the planner's rule 2 context, read only)."""
+    from app.services.product_recategorize import recategorizable
+
+    ids = sorted(
+        {
+            r.listing_id
+            for r in rows
+            if r.status == "open" and r.error_code == ErrorCode.CATEGORY_MISMATCH.value
+        }
+    )
+    found: set[uuid.UUID] = set()
+    for listing_id in ids[:MAX_ITEMS]:
+        listing = await uow.listings.get(listing_id)
+        if listing is not None and await recategorizable(uow, listing):
+            found.add(listing_id)
+    return frozenset(found)
+
+
+def seller_action(rows: Iterable[Any], lanes: Mapping[uuid.UUID, tuple[Lane, Cause]]) -> str | None:
+    """SI13 (CP-D8): the seller action an open ERROR asks for with no inbox question:
+    `recategorize` (a category the marketplace refiled) before `edit_identifier` (a barcode of
+    another brand)."""
+    kinds = {
+        ACTION_OF[r.error_code]
+        for r in rows
+        if r.status == "open"
+        and r.severity == "error"
+        and r.error_code in ACTION_OF
+        and lanes.get(r.id, ("",))[0] == "seller"
+    }
+    for kind in ("recategorize", "edit_identifier"):
+        if kind in kinds:
+            return kind
+    return None
 
 
 async def labels_for(
@@ -161,6 +218,7 @@ async def labels_for(
         task_kinds={k: v[0] for k, v in tasks.items()},
         critical_keys=await uow.product_facts.critical_keys(),
         fixing=fix_lanes(jobs),
+        recategorizable=await recategorizable_listings(uow, errors),
     )
 
 
@@ -187,6 +245,9 @@ class ReadFacts:
     """The current version came from an automatic fix job and is not approved."""
     waiting_repairs: tuple[str, ...] = ()
     """The fields of open `auto_repair` rows (a published listing's repairs wait, CP-D21)."""
+    seller_action: str | None = None
+    """SI13 (CP-D8): `recategorize` or `edit_identifier` when an open seller-lane ERROR asks
+    for that action on the listing (no inbox question)."""
 
 
 def state_of(f: ReadFacts) -> str:
@@ -210,7 +271,7 @@ def state_of(f: ReadFacts) -> str:
         and f.marketplace_tasks
     ):
         return "needs_marketplace"
-    if f.seller_tasks:
+    if f.seller_tasks or f.seller_action:
         return "needs_you"
     if f.status == "failed" and f.status_reason == "generation_failed" and f.open_blocking:
         return "stopped"  # a fix job ended with no version: never `idle` with nobody told
@@ -255,6 +316,8 @@ def next_step(state: str, f: ReadFacts) -> dict[str, Any]:
             "task_ids": list(f.marketplace_tasks)[:20],
             "text": "The marketplace must approve this brand or category first (see the task).",
         }
+    if state == "needs_you" and f.seller_action is not None and not f.seller_tasks:
+        return {"kind": f.seller_action, "text": SELLER_ACTION_TEXT[f.seller_action]}
     if state == "needs_you":
         return {
             "kind": "answer",
@@ -466,6 +529,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         task_kinds=kinds,
         critical_keys=await uow.product_facts.critical_keys(),
         fixing=fix_lanes(jobs),
+        recategorizable=await recategorizable_listings(uow, issues),
     )
     live_tasks = {t.task_id: t.kind for t in tasks if t.status in LIVE_TASK}
     open_errors = [i for i in issues if i.status == "open" and i.severity == "error"]
@@ -501,6 +565,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         waiting_repairs=tuple(
             i.field_path for i in open_errors if lanes.get(i.id, ("",))[0] == "auto_repair"
         ),
+        seller_action=seller_action(open_errors, lanes),
     )
     state = state_of(facts)
     return {

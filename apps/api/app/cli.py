@@ -58,6 +58,8 @@ in one transaction: a stored key with the same content is a no-op, one that diff
 `enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
 written); each write is audited with a NULL tenant. An invalid file exits 1, a missing one 2.
 
+`errors proposals list|approve|reject` (SI13 T14): the staff review of AI-drafted error-map rows
+(`app.db.proposal_review`); approve prints the seed row for the PR.
 `errors catalog [--unmapped] [--limit 1..500]` (SI11 T19) prints the marketplace errors seen, one
 JSON line per (marketplace, code, error code, class): mapped or not, the lane, counts, tenants,
 first and last seen, the resolutions and, for an unmapped code, a suggested map row to review in a
@@ -526,6 +528,140 @@ async def run_errors_catalog(*, unmapped: bool, limit: int) -> int:
 
 
 PHOTO_DAYS_MAX = 365
+
+
+# ---- SI13 T15: value-map proposals from outcomes (read-only, staff) ----
+
+
+async def run_value_maps(min_listings: int) -> int:
+    """`errors value-maps`: JSON lines (no tenant, listing, SKU or message) and the ready alias
+    lines; nothing is written."""
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.services.resolution.value_map_report import value_map_report
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as platform:
+                found, unpaired = await value_map_report(platform, min_listings)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors value-maps: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    for p in found:
+        line = {
+            "marketplace": p.marketplace,
+            "product_type": p.product_type,
+            "key": p.key,
+            "v": p.v,
+            "w": p.w,
+            "listings": p.listings,
+            "tenants": p.tenants,
+            "alias": p.alias_line(),
+        }
+        sys.stdout.write(json.dumps(line, sort_keys=True) + "\n")
+    for u in unpaired:
+        line = {
+            "key": u.key,
+            "v": u.v,
+            "unpaired_listings": u.listings,
+            "marketplace": u.marketplace,
+        }
+        sys.stdout.write(json.dumps(line, sort_keys=True) + "\n")
+    sys.stderr.write(f"errors value-maps: {len(found)} proposal(s), {len(unpaired)} unpaired\n")
+    return EXIT_OK
+
+
+# ---- SI13 T16: the Auto / Seller / Marketplace export (read-only, staff) ----
+
+
+async def run_errors_export(fmt: str, marketplace: str | None) -> int:
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.error_catalog import map_rows, unmapped_count
+    from app.services.resolution.export import rows, to_csv, to_md
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                unmapped = await unmapped_count(session, marketplace)
+                table = rows(await map_rows(session, marketplace), unmapped)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors export: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    sys.stdout.write(to_csv(table, unmapped) if fmt == "csv" else to_md(table, unmapped))
+    return EXIT_OK
+
+
+# ---- SI13 T14: the staff review of AI-drafted error-map proposals ----
+
+
+async def run_proposals_list(*, status: str | None, limit: int) -> int:
+    """The proposals as JSON lines (no tenant id, no sample issue, agent run or job id)."""
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.error_proposals import list_rows
+
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                rows = await list_rows(session, status=status, limit=limit)
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors proposals: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await dispose_engine()
+    for row in rows:
+        sys.stdout.write(json.dumps(row, sort_keys=True) + "\n")
+    sys.stderr.write(f"errors proposals: {len(rows)} proposal(s)\n")
+    return EXIT_OK
+
+
+async def run_proposal_review(args: argparse.Namespace) -> int:
+    """`errors proposals approve|reject` (module `app.db.proposal_review`), as the migrator."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.config import get_settings
+    from app.db.proposal_review import ReviewRefused, approve, reject
+
+    settings = get_settings()
+    if settings.alembic_database_url is None:
+        sys.stderr.write("errors proposals: failed (ALEMBIC_DATABASE_URL is required)\n")
+        return EXIT_FAILED
+    engine = create_async_engine(settings.alembic_database_url)
+    try:
+        async with engine.begin() as connection:
+            if args.command_proposals == "reject":
+                await reject(connection, args.proposal_id, by=args.by, note=args.note)
+                sys.stdout.write(f"errors proposals: rejected {args.proposal_id}\n")
+                return EXIT_OK
+            overrides = {
+                "plain_cause": args.plain_text,
+                "suggested_fix": args.seller_action,
+                "error_code": args.error_code,
+                "error_class": args.error_class,
+            }
+            done = await approve(connection, args.proposal_id, by=args.by, overrides=overrides)
+    except ReviewRefused as exc:
+        sys.stderr.write(f"errors proposals: refused ({exc.reason}); nothing was written\n")
+        return EXIT_BAD_INPUT
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"errors proposals: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    finally:
+        await engine.dispose()
+    if done.replay:
+        sys.stdout.write("errors proposals: already approved\n")
+        return EXIT_OK
+    sys.stdout.write(json.dumps(done.seed, sort_keys=True, indent=2) + "\n")
+    sys.stderr.write("errors proposals: approved; add the row above to error_map.amazon.json\n")
+    return EXIT_OK
 
 
 def _days(value: str) -> int:
@@ -1486,6 +1622,35 @@ def build_parser() -> argparse.ArgumentParser:
     )
     errors_catalog.add_argument("--unmapped", action="store_true")
     errors_catalog.add_argument("--limit", type=_catalog_limit, default=200)
+    export = errors_commands.add_parser(
+        "export", help="the Auto / Seller / Marketplace table from the error map (staff)"
+    )
+    export.add_argument("--format", choices=("md", "csv"), default="md")
+    export.add_argument("--marketplace", choices=("amazon", "flipkart"))
+    value_maps = errors_commands.add_parser(
+        "value-maps", help="alias proposals from refused-then-live values (staff, read-only)"
+    )
+    value_maps.add_argument("--min", type=int, default=3, dest="min_listings")
+    proposals = errors_commands.add_parser(
+        "proposals", help="AI-drafted error-map rows: list, approve or reject (staff)"
+    )
+    proposal_commands = proposals.add_subparsers(dest="command_proposals", required=True)
+    plist = proposal_commands.add_parser("list", help="the proposals as JSON lines")
+    plist.add_argument(
+        "--status", choices=("pending", "proposed", "approved", "rejected", "invalid", "failed")
+    )
+    plist.add_argument("--limit", type=_catalog_limit, default=200)
+    papprove = proposal_commands.add_parser("approve", help="write the map row (migrator)")
+    papprove.add_argument("proposal_id", type=uuid.UUID)
+    papprove.add_argument("--by", required=True, help="an active platform admin's email")
+    papprove.add_argument("--plain-text")
+    papprove.add_argument("--seller-action")
+    papprove.add_argument("--error-code")
+    papprove.add_argument("--error-class")
+    preject = proposal_commands.add_parser("reject", help="close the proposal (migrator)")
+    preject.add_argument("proposal_id", type=uuid.UUID)
+    preject.add_argument("--by", required=True)
+    preject.add_argument("--note", required=True)
     images = groups.add_parser("images", help="image copies (SI1, staff)")
     images_commands = images.add_subparsers(dest="command", required=True)
     unpublish = images_commands.add_parser(
@@ -1535,6 +1700,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_platform_load(args.error_map))
     if args.group == "errors" and args.command == "catalog":
         return asyncio.run(run_errors_catalog(unmapped=args.unmapped, limit=args.limit))
+    if args.group == "errors" and args.command == "export":
+        return asyncio.run(run_errors_export(args.format, args.marketplace))
+    if args.group == "errors" and args.command == "value-maps":
+        return asyncio.run(run_value_maps(max(2, args.min_listings)))
+    if args.group == "errors" and args.command == "proposals":
+        if args.command_proposals == "list":
+            return asyncio.run(run_proposals_list(status=args.status, limit=args.limit))
+        return asyncio.run(run_proposal_review(args))
     if args.group == "errors":
         # resolved at call time, so the default is the module constant as it stands
         args.file = args.file or ERROR_MAP_AMAZON_PATH

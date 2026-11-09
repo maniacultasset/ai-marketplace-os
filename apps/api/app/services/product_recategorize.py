@@ -20,6 +20,15 @@ row lock, then its listings' locks in id order:
    regenerated; any other status is kept (none of them can be approved or published);
 5. one `product.recategorized` audit row (the category before and after under `provenance`, the
    superseded listing ids in `reason`).
+
+SI13 T8 (P:A2, D9; CP-D7): a seen listing passes step 2 only when it is `failed`, was never live
+(`first_published_at` NULL) and has an open marketplace `CATEGORY_MISMATCH` row on its current
+version (Amazon said the category is wrong). It takes the new category and keeps `failed` (no
+status edge is added or used: the user `edit` edge needs a new edit version, so CP-D19's move is
+not available); the seller's regenerate (`failed -> generating`, which voids the approval) makes
+the new version under the new template. The audit reason starts `recategorize;issue:<id>;`. The
+issue stays open until that new version. A published, publishing, ever-live or `blocked`
+listing, and any seen listing without that row, still answers 409.
 """
 
 from __future__ import annotations
@@ -27,7 +36,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import UTC, datetime
-from typing import Final
+from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 
@@ -35,7 +44,7 @@ from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listings import UserActor
-from app.repositories.uow import tenant_uow
+from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.product_facts import seller_column_fact
 from app.services.products import ProductView, full_view
 
@@ -43,6 +52,57 @@ log = get_logger(__name__)
 
 SEEN: Final = frozenset({"publishing", "published"})
 SUPERSEDED: Final = frozenset({"validated", "needs_review", "approved"})
+
+
+async def recategorizable(uow: TenantUnitOfWork, listing: Any) -> bool:
+    """SI13 (CP-D7): whether the seller may recategorise this listing's product, read only. Never
+    for a listing that was ever live, a style with live variants (the DB keeps a family's
+    category) or a product with another listing the marketplace has seen. Then either the
+    listing is `failed` (the T8 widening after a rejection), or the marketplace has never seen it
+    and it is not generating (today's route already allows that). The planner's `recategorize`
+    seller step and the service use the same rule."""
+    if listing.first_published_at is not None:
+        return False
+    if listing.status != "failed" and (
+        listing.status in SEEN
+        or listing.status == "generating"
+        or await uow.submissions.latest(listing.id) is not None
+    ):
+        return False
+    product = await uow.products.get_by_id(listing.product_id)
+    if product is None or product.parent_product_id is not None:
+        return False
+    if await uow.products.live_child_ids(product.id):
+        return False
+    for other in await uow.listings.for_product(product.id):
+        if other.id == listing.id:
+            continue
+        if (
+            other.status in SEEN
+            or other.first_published_at is not None
+            or await uow.submissions.latest(other.id) is not None
+        ):
+            return False
+    return True
+
+
+async def _rejected_category(uow: TenantUnitOfWork, listing: Any) -> uuid.UUID | None:
+    """SI13 T8: the open category issue that lets a rejected listing be recategorised: `failed`,
+    never live, and Amazon's CATEGORY_MISMATCH open on the current version."""
+    if listing.status != "failed" or listing.first_published_at is not None:
+        return None
+    found: uuid.UUID | None = await uow.listing_issues.open_adapter_category_issue(
+        listing.id, listing.current_version_id
+    )
+    return found
+
+
+def _audit_reason(listings: Any, rejected: dict[uuid.UUID, uuid.UUID]) -> str:
+    ids = ",".join(sorted(str(x.id) for x in listings))
+    if not rejected:
+        return ("listings:" + ids)[:500]
+    issue = sorted(str(i) for i in rejected.values())[0]
+    return f"recategorize;issue:{issue};listings:{ids}"[:500]
 
 
 async def recategorize_product(
@@ -60,6 +120,7 @@ async def recategorize_product(
         if await uow.products.live_child_ids(row.id):
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "product_variants")
         listings = await uow.listings.for_product_for_update(row.id)
+        rejected: dict[uuid.UUID, uuid.UUID] = {}  # SI13: listing -> its open category issue
         for listing in listings:
             seen = (
                 listing.status in SEEN
@@ -67,7 +128,10 @@ async def recategorize_product(
                 or await uow.submissions.latest(listing.id) is not None
             )
             if seen:
-                raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listing_published")
+                issue = await _rejected_category(uow, listing)
+                if issue is None:
+                    raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listing_published")
+                rejected[listing.id] = issue
             if listing.status == "generating":
                 raise ConflictError(ErrorCode.LISTING_BUSY, "listings")
         markets = sorted({listing.marketplace for listing in listings}) or ["amazon"]
@@ -99,7 +163,7 @@ async def recategorize_product(
             # the product audit keeps `provenance` only: the category envelopes, before and after
             before=json.dumps({"provenance": {"category": {"value": before}}}),
             after=json.dumps({"provenance": {"category": {**column_fact, "value": category}}}),
-            reason=("listings:" + ",".join(sorted(str(x.id) for x in listings)))[:500],
+            reason=_audit_reason(listings, rejected),
         )
         log.info("product.recategorized", product_id=str(row.id), listings=len(listings))
         await uow.session.refresh(row)

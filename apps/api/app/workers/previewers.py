@@ -1,8 +1,10 @@
 """`open_previewer`: the dry-run-only marketplace handle of the remote preview job (SI11; ADR-0028
 proposed; invariant 1).
 
-`PreviewView` wraps an adapter and exposes exactly one call, `preview_remote` (Amazon
-`VALIDATION_PREVIEW`, which saves nothing): no create, update, publish or read, no
+`PreviewView` wraps an adapter and exposes exactly two calls, `preview_remote` (Amazon
+`VALIDATION_PREVIEW`, which saves nothing) and SI13's `precheck` (the read-only catalog search and
+brand-restriction read; an adapter without one checks nothing): no create, update, publish or
+listing read, no
 `__getattr__`, and the wrapped adapter sits in a name-mangled slot. The preview job and service
 never import the adapter or `open_adapter` themselves (`.importlinter`
 `remote-preview-preview-only`); they get a `PreviewView` from here, as the status sync gets a
@@ -14,7 +16,13 @@ from __future__ import annotations
 import uuid
 from collections.abc import Awaitable, Callable
 
-from app.adapters.base import AdapterError, AdapterListing, NullSink, RemotePreview
+from app.adapters.base import (
+    AdapterError,
+    AdapterListing,
+    NullSink,
+    PrecheckResult,
+    RemotePreview,
+)
 from app.workers.readers import AccountInactive, ReadFailed
 
 PreviewerFactory = Callable[[uuid.UUID, uuid.UUID], Awaitable[object]]
@@ -40,6 +48,18 @@ class PreviewView:
             result: RemotePreview = await self.__adapter.preview_remote(item)  # type: ignore[attr-defined]
         except AdapterError as exc:
             raise ReadFailed(type(exc).__name__) from None
+        return result
+
+    async def precheck(self, item: AdapterListing, *, restrictions: bool) -> PrecheckResult:
+        """SI13: the catalog and restriction pre-check. It never raises: an adapter error is a
+        check that failed for every unit (the preview goes on, CP-D6)."""
+        check = getattr(self.__adapter, "precheck_catalog", None)
+        if not callable(check):
+            return PrecheckResult()
+        try:
+            result: PrecheckResult = await check(item, restrictions=restrictions)
+        except AdapterError:
+            return PrecheckResult(failed=tuple(u.seller_sku for u in item.units()))
         return result
 
     async def aclose(self) -> None:
