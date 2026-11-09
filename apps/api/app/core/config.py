@@ -249,6 +249,12 @@ class Settings(BaseSettings):
     # or maps without the AI (columns) with no spend, lamps take no new listing, and the photo QA
     # checks (fill ratio, text overlay, watermark) are skipped as today.
     category_suggest_enabled: bool = False
+    # The classifier's model route. `vision` (the default, as SI14 shipped): LLM_MODEL_VISION with
+    # up to 6 photos. `text`: LLM_MODEL_DEFAULT with the product text only and no photos, the
+    # configuration the live G-classify record (2026-11-09) measured and the calibration map
+    # `classify/v2` was fitted on, at about 1/40 of the cost. Switch only after reading
+    # docs/runbooks/V1-1-SWITCHES.md.
+    category_suggest_model: Literal["vision", "text"] = "vision"
     column_map_ai_enabled: bool = False
     category_lamps_enabled: bool = False
     photo_qa_enabled: bool = False
@@ -698,16 +704,34 @@ def _embedding_errors(s: Settings) -> list[str]:
     return errors
 
 
+def classify_on_vision(s: Settings) -> bool:
+    """Whether the classifier rides the vision route (`CATEGORY_SUGGEST_MODEL=vision`) or the
+    generation route (`text`)."""
+    return s.category_suggest_model == "vision"
+
+
+def _vision_like(s: Settings) -> set[LlmPurpose]:
+    return {"vision", "classify"} if classify_on_vision(s) else {"vision"}
+
+
+def _generation_like(s: Settings) -> set[LlmPurpose]:
+    return (
+        {"generation", "columns"}
+        if classify_on_vision(s)
+        else {"generation", "columns", "classify"}
+    )
+
+
 def _vision_errors(s: Settings) -> list[str]:
     """B2 (ai-deps C18): a worker sends product images to `LLM_PROVIDER_VISION`, so outside local
     it needs that provider's key; the placeholder counts as none. Local uses the port's
     placeholder key. Under `LLM_GATEWAY=openrouter` the gateway's key stands in (`_gateway_errors`).
     Names only, never the key or the model value."""
-    # the classifier rides the vision route (SI14)
+    # the classifier rides the vision route (SI14) unless CATEGORY_SUGGEST_MODEL=text
     if (
         s.app_role != "worker"
         or s.app_env == "local"
-        or not _purposes_on(s, "direct") & {"vision", "classify"}
+        or not _purposes_on(s, "direct") & _vision_like(s)
     ):
         return []
     name = VISION_PROVIDER_KEY_ENV[s.llm_provider_vision]
@@ -727,7 +751,7 @@ def _generation_errors(s: Settings) -> list[str]:
     if (
         s.app_role != "worker"
         or s.app_env == "local"
-        or not _purposes_on(s, "direct") & {"generation", "columns"}
+        or not _purposes_on(s, "direct") & _generation_like(s)
     ):
         return []
     name = GENERATION_PROVIDER_KEY_ENV[s.llm_provider]
@@ -755,9 +779,9 @@ def _gateway_errors(s: Settings) -> list[str]:
             "LLM_GATEWAY=openrouter requires OPENROUTER_API_KEY "
             "for APP_ROLE=worker outside APP_ENV=local"
         )
-    if routed & {"generation", "columns"} and not _is_vendor_model_id(s.llm_model_default):
+    if routed & _generation_like(s) and not _is_vendor_model_id(s.llm_model_default):
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_DEFAULT as vendor/model")
-    vision = bool(routed & {"vision", "classify"})
+    vision = bool(routed & _vision_like(s))
     if vision and "/" in s.llm_model_vision:
         errors.append("LLM_GATEWAY=openrouter requires LLM_MODEL_VISION as an OpenAI model id")
     if (

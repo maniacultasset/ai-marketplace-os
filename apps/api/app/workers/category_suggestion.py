@@ -10,8 +10,9 @@ provenance or a listing: the seller confirms a candidate with PATCH (AC6).
    `CATEGORY_LAMPS_ENABLED` is on), and their input digest.
 2. Switched off, nothing to offer, no classify credentials, or no `classify_product` in the
    installed pipeline: `unavailable`, with no call and nothing spent.
-3. Reserve `CLASSIFY_RESERVATION_USD` (a refusal stores `failed`), then one seam call under a hard
-   deadline.
+3. Reserve `classify_reservation_usd` (a refusal stores `failed`), then one seam call under a hard
+   deadline. With `CATEGORY_SUGGEST_MODEL=text` the request carries no photos (the generation model
+   reads the product text only); the input digest still covers the photo hashes.
 4. The answer is re-validated through JSON and every record is checked and restamped from the job
    (`trust_records`: agent `attribute`, trigger `vision` or `generate`, prompt `classify/`). An
    untrusted answer fails the job (the terminal hook stores `failed`). The records are stored in
@@ -177,8 +178,10 @@ async def _settle(ctx: JobContext, job: _Job, value: dict[str, Any]) -> Outcome:
     return _done(job.product_id, value["status"] if written else "skipped")
 
 
-async def _request(ctx: JobContext, job: _Job) -> ClassifyRequest:
-    images = await load_context_images(get_storage(), ctx.tenant_id, job.inputs.images)
+async def _request(ctx: JobContext, job: _Job, *, photos: bool = True) -> ClassifyRequest:
+    images = (
+        await load_context_images(get_storage(), ctx.tenant_id, job.inputs.images) if photos else []
+    )
     return ClassifyRequest(
         tenant_id=ctx.tenant_id,
         product_id=job.product_id,
@@ -344,10 +347,10 @@ async def _store_suggested(ctx: JobContext, job: _Job, result: ClassifyResult) -
 
 
 async def run_category_suggestion(ctx: JobContext) -> Outcome:
-    from app.core.config import get_settings
+    from app.core.config import classify_on_vision, get_settings
     from app.services.pipeline_deps import SeamPortError, classify_credentials
     from app.workers import classify_seam
-    from app.workers.budget import CLASSIFY_RESERVATION_USD, BudgetRefused, reserve
+    from app.workers.budget import BudgetRefused, classify_reservation_usd, reserve
 
     product_id = _product_id(ctx)
     job = await _read(ctx, product_id)
@@ -367,13 +370,13 @@ async def run_category_suggestion(ctx: JobContext) -> Outcome:
         return await _settle(ctx, job, _value("unavailable", job, ctx))
     try:
         reserved = await reserve(
-            ctx.tenant_id, ctx.job_run_id, ctx.attempt, amount=CLASSIFY_RESERVATION_USD
+            ctx.tenant_id, ctx.job_run_id, ctx.attempt, amount=classify_reservation_usd(settings)
         )
     except BudgetRefused:
         return await _settle(ctx, job, _value("failed", job, ctx))
     if not reserved:  # the fence moved: a newer attempt owns the row
         raise _failed("the classification job lost its claim", ctx)
-    request = await _request(ctx, job)
+    request = await _request(ctx, job, photos=classify_on_vision(settings))
     try:
         result = await asyncio.wait_for(
             classify_seam.call_classify_product(request, credentials),

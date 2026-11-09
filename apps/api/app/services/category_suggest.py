@@ -47,7 +47,7 @@ from app.services.budget import admit, refuse
 from app.services.category_gate import CategoryOffer, category_offers
 from app.services.generation_images import pick_context
 from app.services.idempotency import idempotent, key_reused, request_hash
-from app.workers.budget import CLASSIFY_RESERVATION_USD
+from app.workers.budget import classify_reservation_usd
 from app.workers.policy import CATEGORY_SUGGESTION_ENTITY, lock_for
 
 __all__ = [
@@ -252,7 +252,7 @@ async def request_suggestion(
     if fast is not None:
         return fast
     now = datetime.now(UTC)
-    refuse(await admit(tenant, now, amount=CLASSIFY_RESERVATION_USD), now)
+    refuse(await admit(tenant, now, amount=classify_reservation_usd(settings)), now)
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, tenant)
