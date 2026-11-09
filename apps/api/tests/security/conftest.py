@@ -117,6 +117,7 @@ class World2:
 def _side(conn: Any, world: World, slug: str) -> Side:
     import tests.integration.factories as f
     import tests.integration.ops_support as ops_support
+    from psycopg.types.json import Jsonb
 
     t = world.tenant(slug)
     owner = world.user(f"owner@{slug}.test")
@@ -207,8 +208,31 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         invited_by_user_id=owner,
         expires_at="2099-01-01T00:00:00Z",
     )
+    # SI14: a ready column map whose first column waits for the seller, answerable by the
+    # registry's valid `imports_column_map_confirm` body (position 1 -> seller_sku)
+    map_id = f.insert(
+        conn,
+        "import_column_maps",
+        tenant_id=t,
+        status="ready",
+        headers=[f"{canary} Item No", "product_name", "category"],
+        headers_digest="0" * 64,
+        mappings=Jsonb(
+            [
+                {"position": 1, "key": None, "method": "none", "confidence": 0.0,
+                 "needs_review": True},
+                {"position": 2, "key": "product_name", "method": "exact", "confidence": 1.0,
+                 "needs_review": False},
+                {"position": 3, "key": "category", "method": "exact", "confidence": 1.0,
+                 "needs_review": False},
+            ]
+        ),
+        samples={},
+        created_by_user_id=owner,
+    )  # fmt: skip
     ids: dict[str, Any] = {
         "product_id": product_id,
+        "map_id": map_id,
         "account_id": account_id,
         "listing_id": listing_id,
         "listing_version_id": version_id,
