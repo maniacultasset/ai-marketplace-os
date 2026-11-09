@@ -19,7 +19,8 @@
         "chest": 106.0,
         "length": 108.0
       }
-    ]
+    ],
+    "unit_source_line": "All measurements in cm"
   },
   "confidence": 0.86,
   "unreadable": false,

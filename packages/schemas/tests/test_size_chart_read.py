@@ -15,7 +15,12 @@ from mkos_schemas.enums import ImageRole
 from mkos_schemas.jobs import ContextImage, ModelCredentials
 from mkos_schemas.pipeline import ReadSizeChart, read_size_chart
 from mkos_schemas.size_chart_read import (
+    MAX_SIZE_CHART_MEASURE,
     MAX_SIZE_CHART_READ_ROWS,
+    MAX_SIZE_CHART_SIZE_CHARS,
+    MAX_SIZE_CHART_UNIT_LINE_CHARS,
+    SIZE_CHART_MEASURE_DECIMALS,
+    SIZE_CHART_MEASURE_KEYS,
     SizeChartReadChart,
     SizeChartReadRequest,
     SizeChartReadResult,
@@ -183,3 +188,38 @@ def test_context_image_role_only_on_secondary(slot: str) -> None:
     image["role"] = "back"
     with pytest.raises(ValidationError):
         ContextImage.model_validate(image)
+
+
+def test_unit_may_be_unknown() -> None:
+    # a chart that prints no unit, or one the pipeline cannot back, keeps its rows
+    chart = SizeChartReadChart.model_validate(
+        {"unit": "unknown", "basis": "garment", "rows": [{"size": "S", "chest": 96}]}
+    )
+    assert chart.unit == "unknown" and chart.unit_source_line is None
+
+
+def test_unit_source_line_bounds() -> None:
+    base = {"unit": "cm", "basis": "garment", "rows": [{"size": "S", "chest": 96}]}
+    line = "x" * MAX_SIZE_CHART_UNIT_LINE_CHARS
+    assert SizeChartReadChart.model_validate(base | {"unit_source_line": line}).unit_source_line
+    for bad in ("", line + "x"):
+        with pytest.raises(ValidationError):
+            SizeChartReadChart.model_validate(base | {"unit_source_line": bad})
+
+
+def test_bounds_constants() -> None:
+    assert SIZE_CHART_MEASURE_KEYS == (
+        "chest",
+        "waist",
+        "hip",
+        "length",
+        "shoulder",
+        "sleeve",
+        "inseam",
+    )
+    assert (MAX_SIZE_CHART_SIZE_CHARS, MAX_SIZE_CHART_MEASURE, SIZE_CHART_MEASURE_DECIMALS) == (
+        20,
+        500,
+        1,
+    )
+    assert MAX_SIZE_CHART_UNIT_LINE_CHARS == 160

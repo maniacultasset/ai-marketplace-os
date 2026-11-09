@@ -16,7 +16,9 @@ listing: the only write is `images.metadata.size_chart_read` (fenced on the clea
    fails the job (the terminal hook stores `failed`).
 5. The chart is normalised with the seller size-chart bounds: `read` with the chart, or
    `unreadable` (no chart, `unreadable`, or a chart outside the bounds). An answer carrying an
-   error and no chart is `failed`, so the seller can ask again.
+   error and no chart is `failed`, so the seller can ask again. A unit the pipeline could not back
+   with a printed line stays `unknown`: the seller picks `cm` or `in` before saving. A read `cm` or
+   `in` keeps its printed line (`unit_source_line`) for the seller to confirm.
 
 A timeout or a seam exception is retried by the job policy; after the last attempt the terminal
 hook stores `failed`. Log lines carry ids and statuses only, never pixels or chart text.
@@ -26,6 +28,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Final
@@ -34,7 +37,11 @@ from uuid import UUID
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, JobKind
 from mkos_schemas.jobs import ContextImage
-from mkos_schemas.size_chart_read import SizeChartReadRequest, SizeChartReadResult
+from mkos_schemas.size_chart_read import (
+    MAX_SIZE_CHART_UNIT_LINE_CHARS,
+    SizeChartReadRequest,
+    SizeChartReadResult,
+)
 from pydantic import ValidationError
 
 from app.adapters.storage import (
@@ -215,16 +222,35 @@ def _checked(ctx: JobContext, inputs: _Inputs, result: object) -> SizeChartReadR
     return checked.model_copy(update={"agent_runs": list(records)})
 
 
+def _source_line(unit: str, line: str | None) -> str | None:
+    """The printed line behind a read `cm` or `in`, NFC with whitespace collapsed; None for an
+    `unknown` unit, or a line that is blank, too long or holds a control or format character."""
+    if unit == "unknown" or line is None:
+        return None
+    text = " ".join(unicodedata.normalize("NFC", line).split())
+    if not text or len(text) > MAX_SIZE_CHART_UNIT_LINE_CHARS:
+        return None
+    if any(unicodedata.category(ch).startswith("C") for ch in text):
+        return None
+    return text
+
+
 def _verdict(result: SizeChartReadResult) -> dict[str, Any]:
     if result.chart is None and result.error is not None and not result.unreadable:
         return {"status": "failed"}
     if result.unreadable or result.chart is None:
         return {"status": "unreadable"}
+    raw = result.chart.model_dump(mode="json", exclude={"unit_source_line"})
     try:
-        chart = normalize_size_chart(result.chart.model_dump(mode="json"))
+        chart = normalize_size_chart(raw, unknown_unit=True)
     except SizeChartError:
         return {"status": "unreadable"}
-    return {"status": "read", "chart": chart, "confidence": result.confidence}
+    return {
+        "status": "read",
+        "chart": chart,
+        "unit_source_line": _source_line(chart["unit"], result.chart.unit_source_line),
+        "confidence": result.confidence,
+    }
 
 
 async def run_size_chart_read(ctx: JobContext) -> Outcome:

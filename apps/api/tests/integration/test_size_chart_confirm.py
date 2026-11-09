@@ -120,6 +120,32 @@ async def test_confirm_unchanged_chart_then_resave_without_id(
     assert "evidence_ref" not in _chart_fact(products_world.conn, pid)
 
 
+@pytest.mark.parametrize("unit", ["unknown", None, "missing"])
+async def test_confirm_needs_the_sellers_unit(
+    api: httpx.AsyncClient, products_world: World, unit: str | None
+) -> None:
+    # A read never supplies the unit: the seller sends cm or in, else 422 and nothing is stored.
+    pid = await _create(api, products_world, f"SI12-SC-U-{unit}")
+    image = _image(products_world, "acme", pid)
+    chart: dict[str, Any] = {k: v for k, v in CHART.items() if k != "unit"}
+    if unit != "missing":
+        chart["unit"] = unit
+    response = await _patch(
+        api, products_world, pid, {"size_chart": chart, "size_chart_image_id": image}
+    )
+    assert response.status_code == 422, response.text
+    error = response.json()["error"]
+    assert error["type"] == "VALIDATION_FAILED"
+    details = [(tuple(d["loc"]), d["msg"]) for d in error["details"]]
+    assert [loc for loc, _ in details] == [("body", "size_chart", "unit")]
+    if unit != "missing":
+        assert details[0][1] == "Choose the size chart's unit, cm or in, before saving."
+    row = products_world.conn.execute(
+        "SELECT attributes -> 'size_measurements' FROM products WHERE id = %s", [pid]
+    ).fetchone()
+    assert row is not None and row[0] is None
+
+
 async def test_image_id_alone_422(api: httpx.AsyncClient, products_world: World) -> None:
     pid = await _create(api, products_world, "SI12-SC-4")
     image = _image(products_world, "acme", pid)
