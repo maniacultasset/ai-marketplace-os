@@ -39,6 +39,7 @@ TENANT_COLUMN: dict[str, str] = {
     "images": "tenant_id",
     "import_rows": "tenant_id",
     "imports": "tenant_id",
+    "import_column_maps": "tenant_id",  # 0027 (SI14)
     "invitations": "tenant_id",
     "job_runs": "tenant_id",
     "listing_issues": "tenant_id",
