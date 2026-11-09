@@ -529,7 +529,8 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
                 Listing.archived_at.is_not(None),
             )
         )
-        stmt = self._select().where(ListingIssue.status == filters.status, ~archived)
+        stmt = self._select().where(ListingIssue.status == filters.status)
+        stmt = stmt.where(~archived)
         if filters.listing_id is not None:
             stmt = stmt.where(ListingIssue.listing_id == filters.listing_id)
         if filters.source is not None:
