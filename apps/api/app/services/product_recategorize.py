@@ -45,6 +45,7 @@ from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.services.category_confirm import settle_on_category_write
 from app.services.product_facts import seller_column_fact
 from app.services.products import ProductView, full_view
 
@@ -141,6 +142,7 @@ async def recategorize_product(
         before = row.category
         column_fact = seller_column_fact(now=now)
         await uow.facts.set_typed(row.id, "category", category, column_fact)
+        await settle_on_category_write(uow, principal.user_id, row, category)  # SI14
         actor = UserActor(principal.user_id)
         for listing in listings:
             await uow.listings.set_category(listing.id, category)

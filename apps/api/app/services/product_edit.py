@@ -58,6 +58,7 @@ from app.core.rbac import Principal
 from app.repositories.attribute_definitions import AttributeDef
 from app.repositories.uow import tenant_uow
 from app.services import product_identifier
+from app.services.category_confirm import settle_on_category_write
 from app.services.intake_values import PartyInput
 from app.services.listing_validate import validate_listing
 from app.services.photo_facts import V1_KEYS
@@ -536,6 +537,10 @@ async def _update_product(
             await product_identifier.apply(uow.facts, row.id, id_change, column_fact)
         for column, value in change.typed_set.items():
             await uow.facts.set_typed(row.id, column, value, column_fact)
+        if change.typed_set.get("category") is not None:  # SI14: the seller chose a category
+            await settle_on_category_write(
+                uow, principal.user_id, row, change.typed_set["category"]
+            )
         for values in change.groups_set.values():
             await uow.facts.set_typed_group(row.id, values, column_fact)
         for key in change.typed_clear:
