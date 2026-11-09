@@ -184,3 +184,25 @@ async def test_the_tasks_read_rechecks_the_review_queue_first(
     store(gen_world.conn, UNFED)
     await _get(api, gen_world, "/tasks", status="open")
     assert _open_errors(gen_world, made) == 1
+
+
+async def test_a_facts_save_is_checked_again_on_the_next_read(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """Item 26: after the seller saved facts, Review kept the old verdict until "Check again".
+    The facts are a pin, so the next read of the listing validates the version again."""
+    from .review_support import OPERATOR
+
+    made = await generated(gen_world)
+    url = f"/api/v1/products/{_product(gen_world, made)}"
+    got = await api.get(url, headers=gen_world.headers(OPERATOR))
+    assert got.status_code == 200, got.text
+    runs = gen_world.count("validation_runs", "listing_id = %s", [made.listing_id])
+    patched = await api.patch(
+        url,
+        headers={**gen_world.headers(OPERATOR), "If-Match": got.headers["ETag"]},
+        json={"attributes": {"color": "red"}},
+    )
+    assert patched.status_code == 200, patched.text
+    await _get(api, gen_world, f"/listings/{made.listing_id}")
+    assert gen_world.count("validation_runs", "listing_id = %s", [made.listing_id]) == runs + 1

@@ -30,7 +30,7 @@ from mkos_schemas.rules import MaxLength, Rule, RuleSet
 from app.services.auto_fix.policy import TRIM_MAX_SHARE, fact_key
 from app.services.auto_fix.text import action_taken
 from app.services.rules_engine.template import template_allowed
-from app.services.rules_engine.text import iter_slots, measure
+from app.services.rules_engine.text import enum_match, iter_slots, measure
 
 Unit = Literal["chars", "bytes", "words"]
 SlotValue = str | list[str]
@@ -362,7 +362,10 @@ def fold_spelling(value: str) -> str:
 
 def _one_spelling(value: str, candidates: list[str]) -> str | None:
     matches = {c for c in candidates if fold_spelling(c) == fold_spelling(value)}
-    return matches.pop() if len(matches) == 1 else None
+    if matches:
+        return matches.pop() if len(matches) == 1 else None
+    # prod QA 2026-11-09 item 24: an AI "regular fit" is the enum's "Regular" (one clear match)
+    return enum_match(value, candidates)
 
 
 def fix_remap_value(

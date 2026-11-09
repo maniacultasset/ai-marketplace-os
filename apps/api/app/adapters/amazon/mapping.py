@@ -96,7 +96,7 @@ from app.adapters.base import (
     submitted_fields,
     unit_images,
 )
-from app.services.rules_engine.text import submitted_keywords
+from app.services.rules_engine.text import enum_match, submitted_keywords
 
 DEFAULT_MARKETPLACE_ID: Final = "A21TJRUUN4KGV"
 UNSAFE_SKUS: Final = frozenset({".", ".."})
@@ -207,7 +207,8 @@ def map_enum(spec: AttributeSpec, value: str) -> str | None:
     for allowed in spec.allowed_values:
         if normalize(allowed) == key:
             return allowed
-    return None
+    # prod QA 2026-11-09: a photo or AI "regular fit" is the enum's "Regular"
+    return enum_match(value, spec.allowed_values)
 
 
 def _number(value: AttributeValue) -> int | float | None:
