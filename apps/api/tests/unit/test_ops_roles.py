@@ -89,6 +89,7 @@ Q7: dict[str, str] = {
     "images_delete": "product:import",
     "image_candidates_create": "product:import",
     "size_chart_read_create": "product:import",  # SI12
+    "products_category_suggest": "product:import",  # SI14
     "catalog_requirements_get": "tenant:read",  # SI12
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
@@ -149,8 +150,8 @@ def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
     # + SI9 two
-    # + SI10 two + SI11 one + SI12 two
-    assert len(OPS) == 102
+    # + SI10 two + SI11 one + SI12 two + SI14 (the V1.1 assist)
+    assert len(OPS) == len(Q7)
     assert set(OPS) == set(Q7)
 
 

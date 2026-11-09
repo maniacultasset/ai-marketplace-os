@@ -13,6 +13,7 @@ from app.api.v1.routers import (
     auth,
     brand,
     catalog,
+    category_suggestion,
     google,
     image_candidates,
     images,
@@ -54,5 +55,6 @@ for module in (
     admin,
     size_chart_read,
     catalog,
+    category_suggestion,
 ):
     router.include_router(module.router)

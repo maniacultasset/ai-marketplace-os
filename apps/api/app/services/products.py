@@ -219,6 +219,9 @@ class ProductView:
     hsn_suggestion: HsnSuggestion | None = None
     size_chart_suggestion: dict[str, Any] | None = None
     size_chart_read_enabled: bool = False
+    # SI14: the classifier's stored suggestion (detail reads of a style or standalone only)
+    category_suggestion: dict[str, Any] | None = None
+    category_suggest_enabled: bool = False
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
@@ -606,7 +609,40 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
         size_chart_suggestion=await size_chart_suggestion(uow, row, details),
         size_chart_read_enabled=get_settings().size_chart_read_enabled,
+        category_suggestion=public_category_suggestion(row),
+        category_suggest_enabled=get_settings().category_suggest_enabled,
     )
+
+
+CATEGORY_SUGGESTION_STATUSES: Final = frozenset(
+    {"suggested", "unavailable", "failed", "confirmed", "overridden"}
+)
+
+
+def public_category_suggestion(row: Any) -> dict[str, Any] | None:
+    """SI14: what the seller sees of the stored suggestion (no digest, job or evidence refs);
+    None on a variant or when nothing is stored."""
+    stored = row.category_suggestion
+    if row.parent_product_id is not None or not isinstance(stored, Mapping):
+        return None
+    status = stored.get("status")
+    if status not in CATEGORY_SUGGESTION_STATUSES:
+        return None
+    candidates = [
+        {
+            "category": c.get("category"),
+            "confidence": c.get("confidence"),
+            "rationale": c.get("rationale", ""),
+        }
+        for c in stored.get("candidates") or []
+        if isinstance(c, Mapping)
+    ]
+    return {
+        "status": status,
+        "candidates": candidates,
+        "calibration_version": stored.get("calibration_version"),
+        "at": stored.get("at"),
+    }
 
 
 def _refuse_nul(cmd: NewProduct) -> None:

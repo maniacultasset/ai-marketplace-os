@@ -991,6 +991,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "decided_at": T1,
         },
         "admin_ai_credit_get": _AI_CREDIT,
+        "products_category_suggest": {"product_id": PRODUCT_1, "status": "queued", "job_id": JOB},
         "size_chart_read_create": {
             "image_id": IMAGE,
             "status": "queued",

@@ -21,6 +21,7 @@ from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
+    CategorySuggestionOut,
     ColourwayOut,
     FibreOut,
     FieldSourceOut,
@@ -194,14 +195,20 @@ def _out(view: products.ProductView) -> ProductOut:
         },
         size_chart_suggestion=_suggestion(view.size_chart_suggestion),
         size_chart_read_enabled=view.size_chart_read_enabled,
+        category_suggest_enabled=view.category_suggest_enabled,
         suggestions=SuggestionsOut.model_construct(
+            category=(
+                None
+                if view.category_suggestion is None
+                else CategorySuggestionOut.model_validate(view.category_suggestion)
+            ),
             hsn_code=(
                 None
                 if view.hsn_suggestion is None
                 else HsnSuggestionOut.model_construct(
                     value=view.hsn_suggestion.value, basis=view.hsn_suggestion.basis
                 )
-            )
+            ),
         ),
     )
 

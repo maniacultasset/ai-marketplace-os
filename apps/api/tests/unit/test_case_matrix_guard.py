@@ -90,6 +90,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "image_candidates_create",
         "size_chart_read_create",  # SI12
         "catalog_requirements_get",  # SI12
+        "products_category_suggest",  # SI14
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",
