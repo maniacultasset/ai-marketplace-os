@@ -1424,7 +1424,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
         "false",
     )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "bf4fbb8afa2562a0bf886f8038bd8813016a9084"
+    assert prod["PIPELINE_REF"] == "290340f248f828a940186da6efcd9f031fb741f7"
     assert staging["WORKER_ENABLED"] == "true"
 
 
@@ -2484,14 +2484,20 @@ SI14_SWITCHES = (
 )
 
 
-def test_si14_switches_are_off_in_both_env_files(repo_root: Path) -> None:
-    """SI14 (D12): the four V1.1 assist switches are committed off, and no per-purpose gateway is
-    set, so every model call keeps LLM_GATEWAY."""
+# The user switched these on in prod as a beta on 2026-11-09 (synthetic gate runs, recorded as an
+# exception in prod.env). Lamps stays off until the prod lamps count is read.
+PROD_SI14_ON = ("CATEGORY_SUGGEST_ENABLED", "COLUMN_MAP_AI_ENABLED", "PHOTO_QA_ENABLED")
+
+
+def test_si14_switches_as_committed(repo_root: Path) -> None:
+    """SI14 (D12): staging keeps every V1.1 assist switch off; prod has the three beta switches on
+    and lamps off; no per-purpose gateway is set, so every model call keeps LLM_GATEWAY."""
     for env_name in ("staging", "prod"):
         text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
         values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
         for name in SI14_SWITCHES:
-            assert values[name] == "false", (env_name, name)
+            want = "true" if env_name == "prod" and name in PROD_SI14_ON else "false"
+            assert values[name] == want, (env_name, name)
         assert not [k for k in values if k.startswith("LLM_GATEWAY_")], env_name
 
 
