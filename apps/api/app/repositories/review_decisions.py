@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import builtins
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -23,7 +24,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
-from app.db.models.listings import ReviewDecision
+from app.db.models.listings import ListingVersion, ReviewDecision
 from app.db.session import USER_INFO_KEY
 from app.repositories.base import TenantScopedRepository
 
@@ -170,6 +171,37 @@ class ReviewDecisionRepository(TenantScopedRepository[ReviewDecision]):
         )
         rows = (await self.db.execute(stmt)).scalars()
         return [text for text in rows if text and text.strip()]
+
+    async def for_requests(
+        self, listing_id: uuid.UUID, request_ids: Sequence[str]
+    ) -> builtins.list[tuple[Any, ...]]:
+        """Prod QA 2026-11-09 (Activity): the approve and reject decisions of a listing's history
+        events, by the request that wrote both: `(request_id, decision, listing_version_id,
+        version number, reason_code, feedback)`, one query with the version joined."""
+        if not request_ids:
+            return []
+        stmt = (
+            self._select()
+            .outerjoin(
+                ListingVersion,
+                (ListingVersion.id == ReviewDecision.listing_version_id)
+                & (ListingVersion.listing_id == ReviewDecision.listing_id),
+            )
+            .where(
+                ReviewDecision.listing_id == listing_id,
+                ReviewDecision.request_id.in_(tuple(request_ids)),
+                ReviewDecision.decision.in_(("approve", "reject")),
+            )
+            .with_only_columns(
+                ReviewDecision.request_id,
+                ReviewDecision.decision,
+                ReviewDecision.listing_version_id,
+                ListingVersion.version,
+                ReviewDecision.reason_code,
+                ReviewDecision.feedback,
+            )
+        )
+        return [tuple(row) for row in (await self.db.execute(stmt)).all()]
 
     async def instructions_for_job(self, job_id: uuid.UUID) -> str | None:
         stmt = (

@@ -605,6 +605,17 @@
               }
             ],
             "title": "Request Id"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For `listing.approved` and `listing.rejected`: the version decided on, the reason and the reviewer's note. Null for other events."
           }
         },
         "required": [
@@ -616,6 +627,62 @@
           "occurred_at"
         ],
         "title": "AuditEventOut",
+        "type": "object"
+      },
+      "AuditReviewOut": {
+        "description": "The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab).",
+        "properties": {
+          "feedback": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reviewer's note, as typed (plain text).",
+            "title": "Feedback"
+          },
+          "listing_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Version Id"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version's number.",
+            "title": "Version"
+          }
+        },
+        "title": "AuditReviewOut",
         "type": "object"
       },
       "BatchAccepted": {

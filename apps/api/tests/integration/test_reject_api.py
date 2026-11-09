@@ -252,3 +252,27 @@ async def test_reject_regenerate_secret_feedback_422(
     assert response.status_code == 422
     assert "sk-not-a-real-key" not in response.text
     assert gen_world.count("batches") == 0
+
+
+async def test_history_names_the_rejected_version_and_the_note(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """Prod QA 9 Nov item 15: the Activity tab read "Rejected · a person" with no version or note."""
+    from .products_support import bearer_for
+
+    made = await generated(gen_world)
+    only_item(await post_approve(api, gen_world, REVIEWER, [_reject(made)]))
+    got = await api.get(
+        f"/api/v1/listings/{made.listing_id}/history", headers=bearer_for(gen_world, OWNER)
+    )
+    assert got.status_code == 200, got.text
+    events = got.json()["data"]
+    rejected = next(e for e in events if e["action"] == "listing.rejected")
+    assert rejected["actor_user_id"]
+    assert rejected["review"] == {
+        "listing_version_id": str(made.version_id),
+        "version": 1,
+        "reason_code": "poor_quality",
+        "feedback": FEEDBACK,
+    }
+    assert all(e["review"] is None for e in events if e["action"] != "listing.rejected")

@@ -105,6 +105,17 @@ class ListingPage(Page[ListingOut]):
     pass
 
 
+class AuditReviewOut(WireModel):
+    """The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab)."""
+
+    listing_version_id: UUID | None = None
+    version: int | None = Field(default=None, ge=1, description="The version's number.")
+    reason_code: str | None = None
+    feedback: str | None = Field(
+        default=None, max_length=2000, description="The reviewer's note, as typed (plain text)."
+    )
+
+
 class AuditEventOut(WireModel):
     """One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
     read, and both are personal data (DATABASE.md §5.2)."""
@@ -121,6 +132,13 @@ class AuditEventOut(WireModel):
     request_id: str | None = None
     job_id: UUID | None = None
     occurred_at: AwareDatetime
+    review: AuditReviewOut | None = Field(
+        default=None,
+        description=(
+            "For `listing.approved` and `listing.rejected`: the version decided on, the reason "
+            "and the reviewer's note. Null for other events."
+        ),
+    )
 
 
 class ListingHistoryPage(Page[AuditEventOut]):
