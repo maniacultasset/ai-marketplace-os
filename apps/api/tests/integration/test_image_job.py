@@ -77,11 +77,13 @@ async def test_image_job_800_white_jpeg(images_db: JobWorld, store: FakeStorage)
     image_id, _ = await checked(images_db, store, picture(800, 800))
     row = image_db_row(images_db.conn, image_id)
     amazon, flipkart = row["image_report_json"]["amazon"], row["image_report_json"]["flipkart"]
-    assert amazon["pass"] is False and [i["code"] for i in amazon["issues"]] == ["RESOLUTION_LOW"]
+    # photo rules 2.1.0: Amazon measures the longest side (800 px: a zoom warning, no block)
+    assert amazon["pass"] is True and [i["code"] for i in amazon["issues"]] == ["RESOLUTION_LOW"]
+    assert [i["severity"] for i in amazon["issues"]] == ["warning"]
     assert flipkart["pass"] is True and [i["code"] for i in flipkart["issues"]] == [
         "RESOLUTION_LOW"
     ]
-    assert row["compliance_status"] == "failed"
+    assert row["compliance_status"] == "passed"
 
 
 def _bomb() -> bytes:
@@ -219,13 +221,13 @@ async def test_image_job_deleted_image_skipped(images_db: JobWorld, store: FakeS
 async def test_image_job_misconfigured_rule_failed_not_corrupt(
     images_db: JobWorld, store: FakeStorage
 ) -> None:
-    # rules rows are immutable: a version-2 row of the same scope wins and lacks its rgb
+    # rules rows are immutable: a higher version of the same scope wins and lacks its rgb
     images_db.conn.execute(
         "INSERT INTO rules (id, tenant_id, marketplace, category, field, rule_type, subject, pack, "
         "severity, version, enabled, rule_def) SELECT gen_random_uuid(), tenant_id, marketplace, "
-        "category, field, rule_type, subject, pack, severity, 2, true, "
+        "category, field, rule_type, subject, pack, severity, 3, true, "
         "jsonb_set(rule_def, '{params}', '{\"min_px\": 5}') FROM rules "
-        "WHERE subject = 'main:background' AND marketplace = 'amazon'"
+        "WHERE subject = 'main:background' AND marketplace = 'amazon' AND version = 2"
     )
     image_id, job_id = await checked(images_db, store, picture(1000, 1000), max_runs=3)
     job = job_row(images_db.conn, job_id)
@@ -241,8 +243,9 @@ async def test_rules_seed_images_load_rules(images_db: JobWorld) -> None:
 
     acme = images_db.tenant("acme")
     async with tenant_uow(acme) as uow:
-        # QA 9 Nov: secondary and lifestyle resolution; SI14: text-overlay and watermark warnings
-        for market, n in ((Marketplace.AMAZON, 12), (Marketplace.FLIPKART, 13)):
+        # QA 9 Nov: secondary and lifestyle resolution; SI14: text-overlay and watermark warnings;
+        # photo rules 2.1.0: Amazon's main zoom, 3:4 and 10:13 rows, Flipkart's background retired
+        for market, n in ((Marketplace.AMAZON, 15), (Marketplace.FLIPKART, 12)):
             loaded = await load_rules(uow, tenant_id=acme, marketplace=market, category="kurtas")
             assert len([r for r in loaded.ruleset.rules if r.field == "images"]) == n
 

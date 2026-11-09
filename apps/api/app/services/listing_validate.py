@@ -20,6 +20,10 @@ concurrent validates with equal pins write one run):
    Rules block does. With equal pins, a check whose blocking set equals the open `schema` error
    rows writes nothing; a different one syncs `schema`, takes the `revalidate` move and opens
    the questions, and writes no validation run;
+4b'. Photo rules 2.1.0: on the current version, the stored photo checks (`image_issue_report`
+   over the live images' stored reports, as generation syncs them) sync under `vision_model`
+   the same way: a re-checked photo (new rules, a fixed photo) opens or closes its issues and
+   questions without a regenerate. With equal pins and the same blocking set, nothing is written;
 4c. SI11 fix round 2: with equal pins and an open pre-check ERROR on the current version (the
    facts were changed and changed back), the marketplace's dry run is asked again;
 5. always 200: a failed check is `passed: false`, never an error.
@@ -90,9 +94,15 @@ async def validate_listing(
     same = await uow.validation_runs.find_equal_pins(
         version.id, pins.rules_version, pins.template_id, pins.template_version, pins.facts_digest
     )
+    photos = await photo_report(uow, canonical, version) if current else None
     if same is not None and same_flags(same, check.report):
-        if adapter is not None and await schema_changed(uow, listing, adapter):
-            await _sync_schema(uow, listing, version.id, adapter)
+        schema = adapter is not None and await schema_changed(uow, listing, adapter)
+        pictures = photos is not None and await photos_changed(uow, listing, photos)
+        if schema or pictures:
+            if schema and adapter is not None:
+                await _sync_schema(uow, listing, version.id, adapter)
+            if pictures and photos is not None:
+                await _sync_photos(uow, listing, version.id, photos)
             listing = await _revalidate(uow, principal, listing, check, adapter, on_reject)
             await ask_after_check(
                 uow,
@@ -115,6 +125,8 @@ async def validate_listing(
     run = await insert_run(uow, listing, version.id, check, cause="revalidate" if current else None)
     if adapter is not None:
         await _sync_schema(uow, listing, version.id, adapter)
+    if photos is not None:
+        await _sync_photos(uow, listing, version.id, photos)
     if current:
         listing = await _revalidate(uow, principal, listing, check, adapter, on_reject)
         # SI4 A13: the questions of the current version's check (never of a past version's)
@@ -149,6 +161,45 @@ async def schema_changed(uow: TenantUnitOfWork, listing: Any, adapter: ErrorRepo
     wanted = {dedupe_key("schema", item) for item in adapter.blocking}
     held = {row.dedupe_key for row in await uow.listing_issues.open_errors(listing.id, ["schema"])}
     return wanted != held
+
+
+async def photo_report(uow: TenantUnitOfWork, canonical: Any, version: Any) -> ErrorReport:
+    """The version's photo findings as generation syncs them: the live images' stored reports
+    for this marketplace, and the pipeline's vision reports kept on the version."""
+    from mkos_schemas.images import ImageReport
+
+    from app.services.image_gate import image_issue_report
+
+    ids = [ref.image_id for ref in canonical.images]
+    found = await uow.images.live_reports_for_images(ids) if ids else {}
+    market = canonical.marketplace
+    stored = {image_id: reports[market] for image_id, reports in found.items() if market in reports}
+    pipeline = [ImageReport.model_validate(r) for r in (version.image_reports_json or [])]
+    return image_issue_report(canonical, stored, pipeline)
+
+
+async def photos_changed(uow: TenantUnitOfWork, listing: Any, photos: ErrorReport) -> bool:
+    """The stored photo checks' blocking items differ from the open `vision_model` error rows."""
+    wanted = {dedupe_key("vision_model", item) for item in photos.blocking}
+    held = {
+        row.dedupe_key for row in await uow.listing_issues.open_errors(listing.id, ["vision_model"])
+    }
+    return wanted != held
+
+
+async def _sync_photos(
+    uow: TenantUnitOfWork, listing: Any, version_id: uuid.UUID, photos: ErrorReport
+) -> None:
+    await sync_issues(
+        uow,
+        listing,
+        "vision_model",
+        photos,
+        run_id=None,
+        cause="revalidate",
+        version_id=version_id,
+        critical_keys=await uow.product_facts.critical_keys(),
+    )
 
 
 async def _sync_schema(

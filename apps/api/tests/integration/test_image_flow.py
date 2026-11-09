@@ -75,9 +75,10 @@ async def test_image_upload_flow(images_db: JobWorld, api: httpx.AsyncClient) ->
     assert count(images_db.conn, "SELECT count(*) FROM images") == 1
     assert job_row(images_db.conn, job_id)["status"] == "succeeded"
     row = image_db_row(images_db.conn, accepted["image_id"])
-    assert row["compliance_status"] == "failed"
+    # photo rules 2.1.0: 800 px on the longest side is a zoom warning on Amazon, never a block
+    assert row["compliance_status"] == "passed"
     amazon, flipkart = row["image_report_json"]["amazon"], row["image_report_json"]["flipkart"]
-    assert amazon["pass"] is False and [i["code"] for i in amazon["issues"]] == ["RESOLUTION_LOW"]
+    assert amazon["pass"] is True and [i["code"] for i in amazon["issues"]] == ["RESOLUTION_LOW"]
     assert flipkart["pass"] is True and [i["code"] for i in flipkart["issues"]] == [
         "RESOLUTION_LOW"
     ]
@@ -86,7 +87,7 @@ async def test_image_upload_flow(images_db: JobWorld, api: httpx.AsyncClient) ->
     )
     assert report.status_code == 200
     assert report.json()["reports"] == row["image_report_json"]
-    assert report.json()["compliance_status"] == "failed"
+    assert report.json()["compliance_status"] == "passed"
 
 
 async def test_image_upload_multipart_flow(images_db: JobWorld, api: httpx.AsyncClient) -> None:

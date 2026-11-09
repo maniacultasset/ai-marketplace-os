@@ -484,6 +484,37 @@ class ImageRepository(TenantScopedRepository[Image]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def live_judged_by_old_rules(self) -> builtins.list[UUID]:
+        """Live checked images whose stored report has an issue with no `severity`: judged
+        before the 2.1.0 photo rules (`images recheck`), with no image job queued or running."""
+        live_job = (
+            select(JobRun.id)
+            .where(
+                JobRun.tenant_id == self.tenant_id,
+                JobRun.kind == "image_compliance",
+                JobRun.status.in_(LIVE_JOB_STATES),
+                JobRun.entity_id == Image.id,
+            )
+            .exists()
+        )
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_(None),
+                Image.compliance_status.in_(("passed", "failed")),
+                func.jsonb_path_exists(
+                    Image.image_report_json,
+                    text(
+                        "'$.*.issues[*] ? (!(exists(@.severity)) || @.severity == null)'::jsonpath"
+                    ),
+                ),
+                ~live_job,
+            )
+            .with_only_columns(Image.id)
+            .order_by(Image.created_at, Image.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def get_any(self, image_id: UUID) -> Image | None:
         """The row, deleted or not (the after-commit object removal reads it)."""
         stmt = self._select().where(Image.id == _uuid("image_id", image_id))

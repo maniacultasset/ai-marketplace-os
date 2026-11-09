@@ -9,7 +9,8 @@
     {
       "code": "BACKGROUND_OFF",
       "check": "background",
-      "suggestion": "Use a pure white (#FFFFFF) background"
+      "suggestion": "Use a pure white (#FFFFFF) background",
+      "severity": null
     }
   ],
   "confidence": 0.82,

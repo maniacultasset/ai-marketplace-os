@@ -5,9 +5,10 @@
 
 - no stored report (pending, unknown, deleted or another tenant's image) → one blocking item
   "image not checked yet" (`source=system`, retryable): an unchecked image never passes (D4);
-- a stored report with `pass=false` → one blocking item per issue; with `pass=true` → one
-  warning item per issue (the Pillow checks set `pass=false` only for an error-severity failure);
-  these carry `source=rules_engine` and the issue code as `raw_code` (T84);
+- a stored report → one item per issue at the issue's own severity (2.1.0, the failed rule's:
+  a warning rule never blocks because another check of the photo failed). A report stored
+  before 2.1.0 has none: `pass=false` makes every issue blocking, `pass=true` every issue a
+  warning. These carry `source=rules_engine` and the issue code as `raw_code` (T84);
 - the pipeline's reports for that image and marketplace add a warning item for each failed
   `vision` check, whatever their `pass` (C8: vision results never block in v1). Their
   deterministic checks are ignored: the stored report is the authority.
@@ -62,6 +63,14 @@ def _item(
     )
 
 
+def issue_severity(report: ImageReport, issue: ImageIssue) -> Severity:
+    """The issue's own severity (2.1.0: the failed rule's). A report stored before 2.1.0 carries
+    none: every issue of a failed report blocks and every issue of a passed one warns, as then."""
+    if issue.severity is not None:
+        return issue.severity
+    return Severity.WARNING if report.pass_ else Severity.ERROR
+
+
 def evaluate_image_gate(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
@@ -79,9 +88,9 @@ def evaluate_image_gate(
                       message=NOT_CHECKED, listing=listing, retryable=True)
             )  # fmt: skip
         else:
-            severity = Severity.WARNING if report.pass_ else Severity.ERROR
-            target = warnings if report.pass_ else blocking
             for issue in report.issues:
+                severity = issue_severity(report, issue)
+                target = blocking if severity is Severity.ERROR else warnings
                 target.append(
                     _item(path, severity=severity, source=ErrorSource.RULES_ENGINE,
                           message=f"image check failed: {issue.check}", listing=listing,

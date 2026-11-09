@@ -198,3 +198,36 @@ def test_most_severe_rule_suggestion() -> None:
     assert [i.suggestion for i in report.issues] == ["error text"]
     assert report.pass_ is False
     assert [c.check for c in report.checks].count("resolution") == 1
+
+
+# photo rules 2.1.0: which side `min_px` measures
+
+
+@pytest.mark.parametrize(
+    ("side", "passed"),
+    [(None, False), ("shorter", False), ("longer", True)],
+)
+def test_min_px_measures_the_side_the_rule_names(side: str | None, passed: bool) -> None:
+    """An 840x1120 photo against 1000 px: the shorter side (840) fails, the longest (1120) passes,
+    as Amazon measures it. A rule without `side` keeps the shorter side."""
+    params: dict[str, Any] = {"min_px": 1000}
+    if side is not None:
+        params["side"] = side
+    report = run(fx.jpeg(840, 1120), [image_rule("min_resolution", **params)])
+    assert report.pass_ is passed
+    assert ("RESOLUTION_LOW" in codes(report)) is not passed
+
+
+def test_each_issue_carries_its_rule_severity() -> None:
+    report = run(
+        fx.jpeg(840, 1120),
+        [
+            image_rule("recommended_resolution", severity="warning", min_px=2000, side="longer"),
+            image_rule("aspect_ratio", ratio_w=1, ratio_h=1),
+        ],
+    )
+    assert report.pass_ is False
+    assert {i.code.value: i.severity.value for i in report.issues if i.severity} == {
+        "RESOLUTION_LOW": "warning",
+        "WRONG_ASPECT": "error",
+    }

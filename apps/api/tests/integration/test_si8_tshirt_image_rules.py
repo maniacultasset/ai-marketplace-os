@@ -13,9 +13,17 @@ from .auth_support import World
 from .conftest import LOCAL_HOSTS
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
+# photo rules 2.1.0: the resolver keeps the newest version of each main rule (Amazon size, shape
+# and background v2, fill v1; Flipkart size v1, shape v2; Flipkart's white background retired)
 MAIN_RULES = {
-    "amazon": {f"5eed0000-0000-4000-8000-00070100000{n}" for n in range(1, 5)},
-    "flipkart": {f"5eed0000-0000-4000-8000-00070200000{n}" for n in range(1, 6)},
+    "amazon": {
+        f"5eed0000-0000-4000-8000-{n}"
+        for n in ("000701000101", "000701000102", "000701000103", "000701000004")
+    },
+    "flipkart": {
+        f"5eed0000-0000-4000-8000-{n}"
+        for n in ("000702000001", "000702000002", "000702000103", "000702000104")
+    },
 }
 
 

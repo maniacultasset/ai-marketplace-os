@@ -9,7 +9,7 @@ from pydantic import AwareDatetime, Field
 
 from .base import SCHEMA_VERSION, NonBlankStr, WireModel
 from .codes import ImageIssueCode
-from .enums import ImageSlot, Marketplace
+from .enums import ImageSlot, Marketplace, Severity
 
 CheckName = Literal[
     "format",
@@ -37,6 +37,9 @@ class ImageIssue(WireModel):
     code: ImageIssueCode
     check: CheckName
     suggestion: Annotated[NonBlankStr, Field(max_length=1000)]
+    # 2.1.0: the severity of the rule the check failed. A report stored before it has none, and
+    # the image gate then falls back to the report's `pass` (every issue of a failed report blocks).
+    severity: Severity | None = None
 
 
 class ImageReport(WireModel):

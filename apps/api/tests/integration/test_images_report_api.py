@@ -46,7 +46,7 @@ async def checked_image(
     p = product(jw.conn, tenant)
     image_id = image_row(jw.conn, tenant, p, slot="main")
     store.objects[image_db_row(jw.conn, image_id)["storage_key"]] = (
-        data or picture(800, 800),
+        data or picture(400, 400),  # below every marketplace minimum: a failed report
         "image/jpeg",
         datetime.now(UTC),
     )

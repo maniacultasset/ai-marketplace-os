@@ -971,6 +971,17 @@
         "code": {
           "$ref": "#/$defs/ImageIssueCode"
         },
+        "severity": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "suggestion": {
           "maxLength": 1000,
           "minLength": 1,
