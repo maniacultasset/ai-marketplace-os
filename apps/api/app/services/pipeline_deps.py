@@ -57,7 +57,13 @@ from opentelemetry import trace
 from opentelemetry.trace import Span, Status, StatusCode
 from pydantic import SecretStr
 
-from app.core.config import OPENROUTER_BASE_URL, Settings, gateway_openai_model
+from app.core.config import (
+    OPENROUTER_BASE_URL,
+    LlmGateway,
+    Settings,
+    effective_gateway,
+    gateway_openai_model,
+)
 from app.core.logging import get_logger
 from app.core.redaction import redact
 from app.core.request_context import current_request_id, new_request_id
@@ -135,50 +141,74 @@ def _provider_key(settings: Settings, provider: Literal["openai", "deepseek"]) -
 
 
 @dataclass(frozen=True)
+class _Route:
+    """One model purpose's provider, key, model and base, under its own gateway (SI14 D13)."""
+
+    provider: Literal["openai", "deepseek"]
+    model: str
+    api_base: str | None
+    key: SecretStr | None = field(repr=False)
+
+
+def _route(settings: Settings, kind: Purpose, gateway: LlmGateway) -> _Route:
+    """The route of one purpose kind under `gateway`. OpenRouter: the one gateway key and the
+    pinned base, vision and embedding as `openai/<model>`, generation as written. Direct: each
+    provider's own key and API."""
+    if kind == "embedding":
+        provider: Literal["openai", "deepseek"] = "openai"
+        model, direct_key = settings.embedding_model, settings.openai_api_key
+    elif kind == "vision":
+        provider, model = settings.llm_provider_vision, settings.llm_model_vision
+        direct_key = settings.openai_api_key  # the one vision provider (`openai`)
+    else:
+        provider, model = settings.llm_provider, settings.llm_model_default
+        direct_key = _raw_provider_key(settings, settings.llm_provider)
+    if gateway == "openrouter":
+        routed = model if kind == "generation" else gateway_openai_model(model)
+        return _Route(provider, routed, OPENROUTER_BASE_URL, _secret(settings.openrouter_api_key))
+    return _Route(provider, model, None, _secret(direct_key))
+
+
+def _raw_provider_key(settings: Settings, provider: Literal["openai", "deepseek"]) -> str | None:
+    return settings.openai_api_key if provider == "openai" else settings.deepseek_api_key
+
+
+@dataclass(frozen=True)
 class _ModelConfig:
-    """The model settings the credential port needs, copied once (no `Settings` is kept)."""
+    """The model settings the credential port needs, copied once (no `Settings` is kept): one
+    route per purpose, each under its effective gateway (`LLM_GATEWAY_<PURPOSE>`, else
+    `LLM_GATEWAY`)."""
 
     app_env: str
-    provider: Literal["openai", "deepseek"]
-    generation_model: str
-    api_base: str | None
-    vision_provider: Literal["openai"]
-    vision_model: str
-    embedding_model: str
     timeout_seconds: float
-    generation_key: SecretStr | None = field(repr=False)
-    vision_key: SecretStr | None = field(repr=False)
-    embedding_key: SecretStr | None = field(repr=False)
+    generation: _Route
+    vision: _Route
+    embedding: _Route
 
     @classmethod
     def from_settings(cls, settings: Settings) -> _ModelConfig:
-        common: dict[str, Any] = {
-            "app_env": settings.app_env,
-            "provider": settings.llm_provider,
-            "generation_model": settings.llm_model_default,
-            "vision_provider": settings.llm_provider_vision,
-            "timeout_seconds": float(settings.llm_timeout_seconds),
-        }
-        if settings.llm_gateway == "openrouter":
-            key = _secret(settings.openrouter_api_key)
-            return cls(
-                **common,
-                api_base=OPENROUTER_BASE_URL,
-                vision_model=gateway_openai_model(settings.llm_model_vision),
-                embedding_model=gateway_openai_model(settings.embedding_model),
-                generation_key=key,
-                vision_key=key,
-                embedding_key=key,
-            )
         return cls(
-            **common,
-            api_base=None,
-            vision_model=settings.llm_model_vision,
-            embedding_model=settings.embedding_model,
-            generation_key=_provider_key(settings, settings.llm_provider),
-            vision_key=_provider_key(settings, settings.llm_provider_vision),
-            embedding_key=_secret(settings.openai_api_key),
+            app_env=settings.app_env,
+            timeout_seconds=float(settings.llm_timeout_seconds),
+            generation=_route(settings, "generation", effective_gateway(settings, "generation")),
+            vision=_route(settings, "vision", effective_gateway(settings, "vision")),
+            embedding=_route(settings, "embedding", effective_gateway(settings, "embedding")),
         )
+
+
+def _credentials(models: _ModelConfig, route: _Route, purpose: str) -> ModelCredentials:
+    key = route.key
+    if key is None:
+        if models.app_env != "local":
+            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, purpose)
+        key = SecretStr(LOCAL_PLACEHOLDER_KEY)
+    return ModelCredentials(
+        provider=route.provider,
+        api_key=key,
+        api_base=route.api_base,
+        model=route.model,
+        timeout_seconds=models.timeout_seconds,
+    )
 
 
 def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
@@ -186,24 +216,26 @@ def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
     `MODEL_UNAVAILABLE`, and locally a placeholder stands in (the stub pipeline)."""
     if purpose not in PURPOSES:
         raise SeamPortError(ErrorCode.VALIDATION_FAILED, "purpose")
-    provider: Literal["openai", "deepseek"]
-    if purpose == "embedding":
-        provider, key, model = "openai", models.embedding_key, models.embedding_model
-    elif purpose == "vision":
-        provider, key, model = models.vision_provider, models.vision_key, models.vision_model
-    else:
-        provider, key, model = models.provider, models.generation_key, models.generation_model
-    if key is None:
-        if models.app_env != "local":
-            raise SeamPortError(ErrorCode.MODEL_UNAVAILABLE, purpose)
-        key = SecretStr(LOCAL_PLACEHOLDER_KEY)
-    return ModelCredentials(
-        provider=provider,
-        api_key=key,
-        api_base=models.api_base,
-        model=model,
-        timeout_seconds=models.timeout_seconds,
+    route = {"generation": models.generation, "vision": models.vision}.get(
+        purpose, models.embedding
     )
+    return _credentials(models, route, purpose)
+
+
+def classify_credentials(settings: Settings) -> ModelCredentials:
+    """SI14: the classifier sees photos, so it takes the vision route (provider, model, key)
+    under `LLM_GATEWAY_CLASSIFY`, else `LLM_GATEWAY`."""
+    models = _ModelConfig.from_settings(settings)
+    route = _route(settings, "vision", effective_gateway(settings, "classify"))
+    return _credentials(models, route, "vision")
+
+
+def column_map_credentials(settings: Settings) -> ModelCredentials:
+    """SI14: the column mapper is one text call, so it takes the generation route under
+    `LLM_GATEWAY_COLUMNS`, else `LLM_GATEWAY`."""
+    models = _ModelConfig.from_settings(settings)
+    route = _route(settings, "generation", effective_gateway(settings, "columns"))
+    return _credentials(models, route, "generation")
 
 
 def diagnosis_credentials(settings: Settings) -> ModelCredentials:
@@ -219,8 +251,9 @@ def size_chart_read_credentials(settings: Settings) -> ModelCredentials:
     models = _ModelConfig.from_settings(settings)
     override = settings.llm_model_vision_size_chart
     if override is not None:
-        model = gateway_openai_model(override) if settings.llm_gateway == "openrouter" else override
-        models = replace(models, vision_model=model)
+        routed = effective_gateway(settings, "vision") == "openrouter"
+        model = gateway_openai_model(override) if routed else override
+        models = replace(models, vision=replace(models.vision, model=model))
     return credentials_for(models, "vision")
 
 

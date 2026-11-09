@@ -175,7 +175,9 @@ async def test_missing_generation_key_outside_local_is_not_retryable() -> None:
     models = _ModelConfig.from_settings(
         Settings(_env_file=None, app_env="local", database_url=LOCAL_URL)
     )
-    deps._models = dataclasses.replace(models, app_env="staging", generation_key=None)
+    deps._models = dataclasses.replace(
+        models, app_env="staging", generation=dataclasses.replace(models.generation, key=None)
+    )
     with pytest.raises(SeamPortError) as caught:
         await deps.get_model_credentials("content")
     assert caught.value.retryable is False
