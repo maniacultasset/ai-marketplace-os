@@ -159,6 +159,19 @@ the exit code (0 no step failed, 1 a step failed).
 | bad arguments (argparse)             | stderr | 2    |
 | no such tenant, or a seller id that matches no tenant or more than one | stderr | 4 |
 
+`images recheck (--tenant ID | --tenant-slug S | --seller-id ID) [--staff-email E]` queues the
+photo checks again for the tenant's live photos judged by the old photo rules, at most the free
+per-brand job cap per run (`DATABASE_URL`, tenant scope). The slug and the seller id resolve as in
+`ops amazon-check` (the seller id masked). It prints `queued=N remaining=M`; run it again until
+`remaining=0`. With `--staff-email`, one `images.recheck` audit row names it.
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| queued (any count, `remaining` may be above 0) | stdout | 0 |
+| any failure                          | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| no such tenant, or a seller id that matches no tenant or more than one | stderr | 4 |
+
 `templates diff --product-type T [--requirements R] [--from-file PATH]` reports the believed
 Amazon wire names (the adapter's constants and `PLATFORM_TEMPLATES_PATH`) against the stored
 current definition (read-only on `DATABASE_URL`) or a saved schema file. Value-free lines.
@@ -811,36 +824,48 @@ def amazon_check_argv(args: argparse.Namespace, tenant_id: uuid.UUID) -> list[st
 EXEC: Callable[[str, list[str]], Any] = os.execv
 
 
-def run_amazon_check(args: argparse.Namespace) -> int:
-    """Resolve the tenant (by slug or by seller id), then hand the process over to the worker's
-    connection check."""
+def resolve_tenant(label: str, tenant_slug: str | None, seller_id: str | None) -> uuid.UUID | int:
+    """The tenant of a staff command, by slug or by the seller id of its connected Amazon
+    account (exactly one tenant must match), printed as `LABEL: tenant SLUG (seller MASKED), id
+    ID`; or the exit code after a stderr line (the seller id masked, never whole)."""
     from app.core.redaction import mask_seller
 
     try:
-        if args.seller_id is not None:
-            matches = asyncio.run(_tenants_by_seller(args.seller_id))
-        else:
-            found = asyncio.run(_tenant_by_slug(args.tenant_slug))
-            matches = [] if found is None else [(found, args.tenant_slug)]
+        if seller_id is not None:
+            matches = asyncio.run(_tenants_by_seller(seller_id))
+        elif tenant_slug is not None:
+            found = asyncio.run(_tenant_by_slug(tenant_slug))
+            matches = [] if found is None else [(found, tenant_slug)]
+        else:  # argparse requires one of the two
+            matches = []
     except Exception as exc:  # class and SQLSTATE only, never the message
-        sys.stderr.write(f"amazon check: failed ({_describe(exc)})\n")
+        sys.stderr.write(f"{label}: failed ({_describe(exc)})\n")
         return EXIT_FAILED
-    if args.seller_id is not None and len(matches) != 1:
-        seller = mask_seller(args.seller_id)
+    if seller_id is not None and len(matches) != 1:
+        seller = mask_seller(seller_id)
         if not matches:
-            sys.stderr.write(f"amazon check: no tenant has seller {seller} connected\n")
+            sys.stderr.write(f"{label}: no tenant has seller {seller} connected\n")
         else:
             sys.stderr.write(
-                f"amazon check: {len(matches)} tenants have seller {seller} connected; "
+                f"{label}: {len(matches)} tenants have seller {seller} connected; "
                 "pass --tenant-slug instead\n"
             )
         return EXIT_NOT_ELIGIBLE
     if not matches:
-        sys.stderr.write("amazon check: no such tenant\n")
+        sys.stderr.write(f"{label}: no such tenant\n")
         return EXIT_NOT_ELIGIBLE
     tenant_id, slug = matches[0]
-    via = "" if args.seller_id is None else f" (seller {mask_seller(args.seller_id)})"
-    sys.stdout.write(f"amazon check: tenant {slug}{via}, id {tenant_id}\n")
+    via = "" if seller_id is None else f" (seller {mask_seller(seller_id)})"
+    sys.stdout.write(f"{label}: tenant {slug}{via}, id {tenant_id}\n")
+    return tenant_id
+
+
+def run_amazon_check(args: argparse.Namespace) -> int:
+    """Resolve the tenant (by slug or by seller id), then hand the process over to the worker's
+    connection check."""
+    tenant_id = resolve_tenant("amazon check", args.tenant_slug, args.seller_id)
+    if isinstance(tenant_id, int):
+        return tenant_id
     argv = amazon_check_argv(args, tenant_id)
     sys.stdout.flush()
     sys.stderr.flush()
@@ -1017,13 +1042,14 @@ async def run_images_derive(tenant_id: uuid.UUID) -> int:
     return EXIT_OK
 
 
-async def run_images_recheck(tenant_id: uuid.UUID) -> int:
+async def run_images_recheck(tenant_id: uuid.UUID, staff_email: str | None = None) -> int:
     """Photo rules 2.1.0: queue `image_compliance` again for the tenant's live images whose
     stored report was judged by the old rules (an issue without a severity), at most the free
     live-job cap per run; prints how many are queued and left. Run again until `remaining=0`.
     The job writes the new report only; a listing's photo issues follow on its next check
     (a read of a reviewable listing, "Check again", or a regenerate). Nothing is approved or
-    sent."""
+    sent. With `staff_email`, the same transaction writes one `images.recheck` audit row
+    naming it, its reason holding the counts."""
     from mkos_schemas.enums import JobKind
 
     from app.db.session import dispose_engine
@@ -1046,6 +1072,19 @@ async def run_images_recheck(tenant_id: uuid.UUID) -> int:
                         payload={"image_id": str(image_id)},
                     )
                 )
+            if staff_email is not None:
+                queued = min(free, len(ids))
+                await uow.audit.write(
+                    tenant_id=tenant_id,
+                    actor_type="staff",
+                    actor_user_id=None,
+                    actor_email=staff_email,
+                    action="images.recheck",
+                    entity_type="tenant",
+                    entity_id=tenant_id,
+                    # the tenant allow-list keeps no counts in `after`: they go in the reason
+                    reason=f"photo_rules_recheck queued={queued} remaining={len(ids) - queued}",
+                )
     except Exception as exc:  # class and SQLSTATE only, never the message
         sys.stderr.write(f"images recheck: failed ({_describe(exc)})\n")
         return EXIT_FAILED
@@ -1054,6 +1093,17 @@ async def run_images_recheck(tenant_id: uuid.UUID) -> int:
     queued = min(free, len(ids))
     sys.stdout.write(f"images recheck: ok (queued={queued} remaining={len(ids) - queued})\n")
     return EXIT_OK
+
+
+def run_images_recheck_cli(args: argparse.Namespace) -> int:
+    """`images recheck`: the tenant by id, or resolved by slug or seller id (as `ops
+    amazon-check` does, the seller id masked), then one recheck run."""
+    if args.tenant is not None:
+        return asyncio.run(run_images_recheck(args.tenant, args.staff_email))
+    resolved = resolve_tenant("images recheck", args.tenant_slug, args.seller_id)
+    if isinstance(resolved, int):
+        return resolved
+    return asyncio.run(run_images_recheck(resolved, args.staff_email))
 
 
 async def _templates_load(admin_url: str, path: Path) -> tuple[int, int, int]:
@@ -1844,7 +1894,18 @@ def build_parser() -> argparse.ArgumentParser:
     recheck_cmd = images_commands.add_parser(
         "recheck", help="queue the checks again for images judged by the old photo rules"
     )
-    recheck_cmd.add_argument("--tenant", type=_tenant_uuid, required=True)
+    recheck_for = recheck_cmd.add_mutually_exclusive_group(required=True)
+    recheck_for.add_argument("--tenant", type=_tenant_uuid, default=None)
+    recheck_for.add_argument("--tenant-slug", type=_slug, default=None)
+    recheck_for.add_argument(
+        "--seller-id",
+        type=_seller_id,
+        default=None,
+        help="find the tenant by its connected Amazon account's seller id",
+    )
+    recheck_cmd.add_argument(
+        "--staff-email", type=_staff_email, default=None, help="named in one audit row"
+    )
     platform = groups.add_parser("platform", help="every platform row, no tenant (local only)")
     platform_commands = platform.add_subparsers(dest="command", required=True)
     platform_load = platform_commands.add_parser("load", help="templates, rules, error map")
@@ -1931,7 +1992,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "unpublish":
             return asyncio.run(run_images_unpublish(args.tenant))
         if args.command == "recheck":
-            return asyncio.run(run_images_recheck(args.tenant))
+            return run_images_recheck_cli(args)
         return asyncio.run(run_images_derive(args.tenant))
     if args.group == "jobs":
         if args.command == "requeue":

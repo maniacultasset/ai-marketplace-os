@@ -17,6 +17,8 @@
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   amazon-check  (--slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]: the read-only
 #               Amazon connection check of one tenant (GET only, worker identity, one-off job)
+#   images      recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E: queue the photo checks
+#               again for photos the old photo rules judged (worker identity, one-off job; rerun to remaining=0)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
 #               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, maintenance), cors and status, ADR-0025)
@@ -52,7 +54,7 @@ MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SEN
 PW_MOUNT="/secrets/initial-password/value"
 
 usage() {
-  sed -n '5,22p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -152,6 +154,9 @@ PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
 # The read-only Amazon connection check (app.workers.amazon_check): a one-off job under the worker
 # identity, which already opens the tenant tokens (KMS) and reads DATABASE_URL and the LWA secret.
 AMZCHECK_JOB="${AMZCHECK_JOB:-aimos-amazon-check}"
+# Photo rules 2.1.0: `images recheck` (app.cli images recheck) re-queues the photo checks of one
+# tenant in a one-off job under the worker identity, with DATABASE_URL only (app_rw, tenant scope).
+IMGRECHECK_JOB="${IMGRECHECK_JOB:-aimos-images-recheck}"
 SA_MAINT="${SA_MAINT:-aimos-maint}"
 SA_SCHED="${SA_SCHED:-aimos-sched}"
 MAINT_SCHEDULE="${MAINT_SCHEDULE:-0 3 * * *}"
@@ -1776,6 +1781,53 @@ cmd_amazon_check() {
   job_logs_hint "$AMZCHECK_JOB"
 }
 
+# ---- images recheck (photo rules 2.1.0) ----
+# `images recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E` runs `python -m app.cli
+# images recheck` in IMGRECHECK_JOB as the worker identity (SA_WORKER), under the shell role, with
+# DATABASE_URL only: the CLI resolves the slug, or the one tenant whose connected Amazon account
+# has the seller id (masked in its output), queues `image_compliance` for the live photos the old
+# rules judged, at most the free per-brand job cap, and writes one audit row naming the staff
+# email. Its log line ends `queued=N remaining=M`; rerun until `remaining=0`. Nothing is approved,
+# sent or published.
+cmd_images() {
+  local usage_line="usage: images recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E"
+  local image url args="-m|app.cli|images|recheck" found=0 staff="" flag value
+  set -- ${REST[@]+"${REST[@]}"}
+  [ $# -ge 1 ] || die "$usage_line"
+  [ "$1" = "recheck" ] || die "unknown images action '$1' (recheck)"
+  shift
+  [ $# -ge 1 ] || die "$usage_line"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --*=*) flag="${1%%=*}" value="${1#*=}"; shift ;;
+      --*) [ $# -ge 2 ] || die "$usage_line"; flag="$1" value="$2"; shift 2 ;;
+      *) die "$usage_line" ;;
+    esac
+    case "$value" in *"|"* | "") die "images recheck: $flag needs a value without '|'" ;; esac
+    case "$flag" in
+      --tenant) found=$((found + 1)); args="$args|--tenant=$value" ;;
+      --slug) found=$((found + 1)); args="$args|--tenant-slug=$value" ;;
+      --seller-id) found=$((found + 1)); args="$args|--seller-id=$value" ;;
+      --staff-email) staff="$value"; args="$args|--staff-email=$value" ;;
+      *) die "images recheck: unknown flag $flag ($usage_line)" ;;
+    esac
+  done
+  [ -n "$staff" ] || die "$usage_line"
+  [ "$found" -eq 1 ] || die "images recheck: pass exactly one of --tenant, --slug and --seller-id ($usage_line)"
+  image="$(image_ref)"
+  url="$(api_url)"
+  env_file shell "$url" "$WORK/images-recheck-env.yaml"
+  gc run jobs deploy "$IMGRECHECK_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_WORKER")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$WORK/images-recheck-env.yaml" \
+    --set-secrets="$(secret_refs "DATABASE_URL")" \
+    --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=512Mi \
+    --labels="$LABELS"
+  run_job "$IMGRECHECK_JOB"
+  say "images recheck done. Its last log line ends queued=N remaining=M; rerun until remaining=0:"
+  job_logs_hint "$IMGRECHECK_JOB"
+}
+
 # ---- edge (DPP-2) ----
 # The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
 # Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
@@ -2478,6 +2530,7 @@ case "$CMD" in
   tenant) cmd_tenant ;;
   templates) cmd_templates ;;
   amazon-check) cmd_amazon_check ;;
+  images) cmd_images ;;
   status) cmd_status ;;
   edge) cmd_edge ;;
   *) usage ;;
