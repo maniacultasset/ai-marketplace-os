@@ -22,10 +22,10 @@ from pydantic_core import PydanticCustomError
 
 from app.api.errors import ApiError
 from app.api.v1.deps import get_current_principal
-from app.api.v1.schemas.analytics import AnalyticsSummary
+from app.api.v1.schemas.analytics import AnalyticsSummary, QualitySummary
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
-from app.services import analytics
+from app.services import analytics, quality
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -78,3 +78,31 @@ async def analytics_summary(
 ) -> AnalyticsSummary:
     """Volume, approval rate, validation pass rate and publish success for the range."""
     return await _summary(principal, from_, to)
+
+
+async def answer_quality(call: Any) -> QualitySummary:
+    """The S23 error mapping around a quality read (SI14)."""
+    try:
+        body = await call
+    except analytics.AnalyticsRangeError as exc:
+        raise ApiError(
+            422,
+            ErrorCode.VALIDATION_FAILED,
+            details=[{"loc": ["query", exc.field], "msg": exc.reason}],
+        ) from None
+    except analytics.AnalyticsBusyError:
+        raise ApiError(
+            429, ErrorCode.RATE_LIMITED, headers={"Retry-After": BUSY_RETRY_AFTER_SECONDS}
+        ) from None
+    except analytics.AnalyticsBudgetError:
+        raise ApiError(500, ErrorCode.INTERNAL_ERROR) from None
+    return QualitySummary.model_validate(body)
+
+
+@route(router, OPS["analytics_quality"])
+async def analytics_quality(
+    principal: CurrentPrincipal, from_: From = None, to: To = None
+) -> QualitySummary:
+    """SI14: first-pass, blocked and edit rates and the model cost per generated listing for the
+    range, with the most edited fields. A rate is null while nothing was generated or approved."""
+    return await answer_quality(quality.get_quality(principal, from_, to))

@@ -53,7 +53,7 @@ from app.api.v1.examples import (
     SUCCESS_EXAMPLES,
 )
 from app.api.v1.schemas.ai_credit import AiCreditOut
-from app.api.v1.schemas.analytics import AnalyticsSummary
+from app.api.v1.schemas.analytics import AnalyticsSummary, QualitySummary
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
     LoginResult,
@@ -899,6 +899,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="map_id", has_body=True, idempotency=True,
               conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)})),
+    # ---- SI14: the quality dashboard ----
+    Operation("analytics_quality", "GET", "/analytics/quality", 200, QualitySummary, "analytics",
+              "First-pass, blocked and edit rates and cost per listing", "SI14",
+              query=("from", "to"), action=A.ANALYTICS_READ),
+    Operation("admin_quality", "GET", "/admin/quality", 200, QualitySummary, "admin",
+              "The quality dashboard across tenants", "SI14",
+              query=("from", "to", "target_tenant_id"), platform_admin=True),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

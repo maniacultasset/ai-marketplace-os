@@ -94,6 +94,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "imports_column_map_create",  # SI14
         "imports_column_map_get",  # SI14
         "imports_column_map_confirm",  # SI14
+        "analytics_quality",  # SI14
+        "admin_quality",  # SI14
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",

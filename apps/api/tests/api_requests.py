@@ -109,6 +109,8 @@ _QUERY: dict[str, dict[str, str]] = {
     "marketplaces_callback": {"code": "auth-code", "state": "st_0123456789"},
     "analytics_get": {"from": "2026-09-01", "to": "2026-09-30"},
     "analytics_summary": {"from": "2026-09-01", "to": "2026-09-30"},
+    "analytics_quality": {"from": "2026-09-01", "to": "2026-09-30"},  # SI14
+    "admin_quality": {"from": "2026-09-01", "to": "2026-09-30"},  # SI14
     # ADR-0020
     "auth_google_start": {"b": "B" * 43},
     "auth_google_callback": {"code": "g-code", "state": "st_0123456789"},

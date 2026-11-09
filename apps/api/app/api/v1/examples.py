@@ -19,6 +19,28 @@ LISTING: Final = "0b1c2d3e-0000-4000-8000-000000000201"
 VERSION: Final = "0b1c2d3e-0000-4000-8000-000000000202"
 JOB: Final = "0b1c2d3e-0000-4000-8000-000000000301"
 COLUMN_MAP: Final = "0b1c2d3e-0000-4000-8000-000000000451"
+_QUALITY: Final[dict[str, Any]] = {
+    "from": "2026-11-01",
+    "to": "2026-11-09",
+    "listings_generated": 12,
+    "first_pass_rate": 0.6,
+    "blocked_rate": 0.0833,
+    "edit_rate": 0.3,
+    "cost_per_listing_usd": 0.007,
+    "by_marketplace": [
+        {
+            "marketplace": "amazon",
+            "listings_generated": 12,
+            "first_pass_rate": 0.6,
+            "blocked_rate": 0.0833,
+            "edit_rate": 0.3,
+            "cost_usd": 0.084,
+            "cost_per_listing_usd": 0.007,
+        }
+    ],
+    "edited_fields": [{"path": "content.title", "count": 2}],
+    "by_tenant": None,
+}
 _COLUMN_MAP: Final[dict[str, Any]] = {
     "id": COLUMN_MAP,
     "status": "ready",
@@ -1033,6 +1055,20 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "admin_ai_credit_get": _AI_CREDIT,
         "products_category_suggest": {"product_id": PRODUCT_1, "status": "queued", "job_id": JOB},
+        "analytics_quality": _QUALITY,
+        "admin_quality": {
+            **_QUALITY,
+            "by_tenant": [
+                {
+                    "tenant_id": TENANT,
+                    "listings_generated": 12,
+                    "first_pass_rate": 0.6,
+                    "blocked_rate": 0.0833,
+                    "edit_rate": 0.3,
+                    "cost_usd": 0.084,
+                }
+            ],
+        },
         "imports_column_map_create": _COLUMN_MAP,
         "imports_column_map_get": _COLUMN_MAP,
         "imports_column_map_confirm": {

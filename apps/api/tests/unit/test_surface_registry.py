@@ -146,6 +146,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
+    ("analytics_quality", "GET", "/analytics/quality"),
+    ("admin_quality", "GET", "/admin/quality"),
 )
 
 E = ErrorCode
@@ -449,8 +451,9 @@ def test_login_response_is_login_result() -> None:
 
 
 def test_operation_count() -> None:
-    # 102 through SI13; SI14 adds the category suggestion and the three column-map ops
-    assert len(OPS) == 106
+    # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
+    # quality reads
+    assert len(OPS) == 108
 
 
 def test_error_codes_per_d2() -> None:

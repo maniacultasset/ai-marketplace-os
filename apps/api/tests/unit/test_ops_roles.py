@@ -103,6 +103,7 @@ Q7: dict[str, str] = {
     "jobs_cancel": "listing:generate",
     "analytics_get": "analytics:read",
     "analytics_summary": "analytics:read",
+    "analytics_quality": "analytics:read",  # SI14
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)
@@ -125,6 +126,7 @@ Q7: dict[str, str] = {
     "admin_tenants_activate": PLATFORM_ADMIN,
     "admin_tenants_extend_trial": PLATFORM_ADMIN,
     "admin_ai_credit_get": PLATFORM_ADMIN,  # SI10
+    "admin_quality": PLATFORM_ADMIN,  # SI14
     "admin_ai_credit_resume": PLATFORM_ADMIN,
 }
 NARROWED_BY_S10 = (
