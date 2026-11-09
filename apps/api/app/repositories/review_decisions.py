@@ -177,7 +177,8 @@ class ReviewDecisionRepository(TenantScopedRepository[ReviewDecision]):
     ) -> builtins.list[tuple[Any, ...]]:
         """Prod QA 2026-11-09 (Activity): the approve and reject decisions of a listing's history
         events, by the request that wrote both: `(request_id, decision, listing_version_id,
-        version number, reason_code, feedback)`, one query with the version joined."""
+        version number, reason_code)`, one query with the version joined. Never the feedback:
+        it is untrusted free text and stays out of every history read."""
         if not request_ids:
             return []
         stmt = (
@@ -198,7 +199,6 @@ class ReviewDecisionRepository(TenantScopedRepository[ReviewDecision]):
                 ReviewDecision.listing_version_id,
                 ListingVersion.version,
                 ReviewDecision.reason_code,
-                ReviewDecision.feedback,
             )
         )
         return [tuple(row) for row in (await self.db.execute(stmt)).all()]

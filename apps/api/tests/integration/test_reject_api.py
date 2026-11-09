@@ -254,10 +254,10 @@ async def test_reject_regenerate_secret_feedback_422(
     assert gen_world.count("batches") == 0
 
 
-async def test_history_names_the_rejected_version_and_the_note(
+async def test_history_names_the_rejected_version_and_the_reason(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:
-    """Prod QA 9 Nov item 15: the Activity tab read "Rejected · a person" with no version or note."""
+    """Prod QA 9 Nov item 15: the Activity tab read "Rejected · a person" with no version or reason."""
     from .products_support import bearer_for
 
     made = await generated(gen_world)
@@ -273,6 +273,6 @@ async def test_history_names_the_rejected_version_and_the_note(
         "listing_version_id": str(made.version_id),
         "version": 1,
         "reason_code": "poor_quality",
-        "feedback": FEEDBACK,
     }
+    assert FEEDBACK not in got.text  # untrusted free text stays out of the history
     assert all(e["review"] is None for e in events if e["action"] != "listing.rejected")

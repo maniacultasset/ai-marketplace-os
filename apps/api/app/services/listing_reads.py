@@ -167,8 +167,9 @@ REVIEW_ACTIONS: Final = {"listing.approved": "approve", "listing.rejected": "rej
 async def _reviews(
     uow: Any, listing_id: uuid.UUID, rows: list[Any]
 ) -> dict[tuple[str, str | None], dict[str, Any]]:
-    """Prod QA 2026-11-09: an approve or reject event names its version, reason and note (the
-    `review_decisions` row its request wrote; the audit row's allow-list keeps only statuses)."""
+    """Prod QA 2026-11-09: an approve or reject event names its version and reason (the
+    `review_decisions` row its request wrote; the audit row's allow-list keeps only statuses).
+    The reviewer's feedback never: it is untrusted free text (test_s19_review_attacks)."""
     wanted = [r.request_id for r in rows if r.action in REVIEW_ACTIONS and r.request_id]
     out: dict[tuple[str, str | None], dict[str, Any]] = {}
     for (
@@ -177,13 +178,11 @@ async def _reviews(
         version_id,
         number,
         reason,
-        feedback,
     ) in await uow.review_decisions.for_requests(listing_id, wanted):
         action = next(a for a, d in REVIEW_ACTIONS.items() if d == decision)
         out[(action, request_id)] = {
             "listing_version_id": version_id,
             "version": number,
             "reason_code": reason,
-            "feedback": feedback,
         }
     return out

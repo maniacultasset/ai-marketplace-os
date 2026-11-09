@@ -2385,7 +2385,7 @@ export interface components {
             reason?: string | null;
             /** Request Id */
             request_id?: string | null;
-            /** @description For `listing.approved` and `listing.rejected`: the version decided on, the reason and the reviewer's note. Null for other events. */
+            /** @description For `listing.approved` and `listing.rejected`: the version decided on and the reason code (never the free-text feedback). Null for other events. */
             review?: components["schemas"]["AuditReviewOut"] | null;
         };
         /**
@@ -2393,14 +2393,12 @@ export interface components {
          * @description The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab).
          */
         AuditReviewOut: {
-            /**
-             * Feedback
-             * @description The reviewer's note, as typed (plain text).
-             */
-            feedback?: string | null;
             /** Listing Version Id */
             listing_version_id?: string | null;
-            /** Reason Code */
+            /**
+             * Reason Code
+             * @description The reject reason. The reviewer's free-text feedback is never sent here.
+             */
             reason_code?: string | null;
             /**
              * Version

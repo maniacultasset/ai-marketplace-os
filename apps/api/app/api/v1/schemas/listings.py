@@ -110,9 +110,9 @@ class AuditReviewOut(WireModel):
 
     listing_version_id: UUID | None = None
     version: int | None = Field(default=None, ge=1, description="The version's number.")
-    reason_code: str | None = None
-    feedback: str | None = Field(
-        default=None, max_length=2000, description="The reviewer's note, as typed (plain text)."
+    reason_code: str | None = Field(
+        default=None,
+        description="The reject reason. The reviewer's free-text feedback is never sent here.",
     )
 
 
@@ -135,8 +135,8 @@ class AuditEventOut(WireModel):
     review: AuditReviewOut | None = Field(
         default=None,
         description=(
-            "For `listing.approved` and `listing.rejected`: the version decided on, the reason "
-            "and the reviewer's note. Null for other events."
+            "For `listing.approved` and `listing.rejected`: the version decided on and the "
+            "reason code (never the free-text feedback). Null for other events."
         ),
     )
 
