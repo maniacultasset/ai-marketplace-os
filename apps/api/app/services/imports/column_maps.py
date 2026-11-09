@@ -9,8 +9,8 @@ Create (Idempotency-Key): the headers are normalised (`normalize_header`) and mu
   leftovers only, never a sample cell: 202.
 - Leftovers otherwise (switch off, AI paused, a cap): 201 `ready` with the leftovers unmapped for
   the seller. The import never depends on the AI.
-The samples, when there are leftovers, are kept for the seller's review only (cleared at confirm
-or after 7 days).
+The sample cells are validated but not stored: nothing reads them yet, so the API holds no
+seller cells (the column, its app_ro grant and the clears at confirm and at 7 days stay).
 
 Read: a `mapping` map whose job ended without an answer (a dead letter, a cancel; the reaper or the
 queue reconcile runs no worker code) is settled to `failed` first, with the deterministic mappings
@@ -167,9 +167,6 @@ async def create_map(
     names = _normalised(headers)
     entries = map_headers(headers)
     leftovers = [e for e in entries if e.key is None]
-    kept_samples = (
-        {normalize_header(k): list(v)[:3] for k, v in samples.items()} if leftovers else None
-    )
     ask_ai = bool(leftovers) and get_settings().column_map_ai_enabled
     if ask_ai:
         now = datetime.now(UTC)
@@ -187,7 +184,7 @@ async def create_map(
             headers=names,
             headers_digest=headers_digest(names),
             mappings=[entry_dict(e) for e in entries],
-            samples=kept_samples,
+            samples=None,  # no reader yet: seller cells are not kept
             created_by=principal.user_id,
         )
         if ask_ai:

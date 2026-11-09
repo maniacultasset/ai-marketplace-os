@@ -1483,7 +1483,7 @@
               "maxItems": 3,
               "type": "array"
             },
-            "description": "Up to 3 cells per header, kept for your own review only (never sent to a model), cleared at confirm or after 7 days. Keys must be headers of this map.",
+            "description": "Up to 3 cells per header, checked but not stored and never sent to a model. Keys must be headers of this map.",
             "maxProperties": 200,
             "propertyNames": {
               "maxLength": 120,
@@ -26610,7 +26610,7 @@
     },
     "/api/v1/imports/column-maps": {
       "post": {
-        "description": "Map a header row. Exact names, aliases and close spellings map first; 201 `ready` when\nnothing is left, or when the AI step is off or AI is paused (the leftovers wait for you). 202\n`mapping` while the AI maps the leftovers (poll the map). Sample cells are kept for your\nreview only, never sent to a model, and cleared at confirm or after 7 days. A repeated header\nis 422.",
+        "description": "Map a header row. Exact names, aliases and close spellings map first; 201 `ready` when\nnothing is left, or when the AI step is off or AI is paused (the leftovers wait for you). 202\n`mapping` while the AI maps the leftovers (poll the map). Sample cells are checked but\nnot stored and never sent to a model. A repeated header\nis 422.",
         "operationId": "imports_column_map_create",
         "parameters": [
           {

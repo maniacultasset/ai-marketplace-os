@@ -99,7 +99,7 @@ async def test_leftovers_with_the_ai_on_queue_one_job(
     body = response.json()
     assert body["status"] == "mapping" and body["needs_review_count"] == 1
     assert _jobs(jobs_db) == 1
-    assert _samples(jobs_db, body["id"]) == {"warehouse bin": ["B-12"]}
+    assert _samples(jobs_db, body["id"]) is None  # no reader yet: seller cells are not stored
 
 
 async def test_leftovers_with_the_ai_off_are_ready_for_the_seller(

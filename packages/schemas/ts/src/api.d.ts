@@ -1053,8 +1053,8 @@ export interface paths {
          * Map a spreadsheet header row onto the import columns
          * @description Map a header row. Exact names, aliases and close spellings map first; 201 `ready` when
          *     nothing is left, or when the AI step is off or AI is paused (the leftovers wait for you). 202
-         *     `mapping` while the AI maps the leftovers (poll the map). Sample cells are kept for your
-         *     review only, never sent to a model, and cleared at confirm or after 7 days. A repeated header
+         *     `mapping` while the AI maps the leftovers (poll the map). Sample cells are checked but
+         *     not stored and never sent to a model. A repeated header
          *     is 422.
          */
         post: operations["imports_column_map_create"];
@@ -2841,7 +2841,7 @@ export interface components {
             headers: string[];
             /**
              * Samples
-             * @description Up to 3 cells per header, kept for your own review only (never sent to a model), cleared at confirm or after 7 days. Keys must be headers of this map.
+             * @description Up to 3 cells per header, checked but not stored and never sent to a model. Keys must be headers of this map.
              */
             samples?: {
                 [key: string]: string[];

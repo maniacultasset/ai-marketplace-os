@@ -38,8 +38,8 @@ async def imports_column_map_create(
 ) -> ColumnMapOut:
     """Map a header row. Exact names, aliases and close spellings map first; 201 `ready` when
     nothing is left, or when the AI step is off or AI is paused (the leftovers wait for you). 202
-    `mapping` while the AI maps the leftovers (poll the map). Sample cells are kept for your
-    review only, never sent to a model, and cleared at confirm or after 7 days. A repeated header
+    `mapping` while the AI maps the leftovers (poll the map). Sample cells are checked but
+    not stored and never sent to a model. A repeated header
     is 422."""
     try:
         status, out = await column_maps.create_map(

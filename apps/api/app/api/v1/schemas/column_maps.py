@@ -56,8 +56,8 @@ class ColumnMapCreate(StrictModel):
     ] = Field(
         default_factory=dict,
         description=(
-            "Up to 3 cells per header, kept for your own review only (never sent to a model), "
-            "cleared at confirm or after 7 days. Keys must be headers of this map."
+            "Up to 3 cells per header, checked but not stored and never sent to a model. "
+            "Keys must be headers of this map."
         ),
     )
 

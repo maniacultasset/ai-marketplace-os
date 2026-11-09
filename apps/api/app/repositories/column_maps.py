@@ -1,7 +1,8 @@
 """`import_column_maps` (0027; SI14 T16-T18): a seller's header row mapped onto the importer's
 accepted names. Tenant-scoped (FORCE RLS); app_rw holds no DELETE, so a map lives until the tenant
-purge. `samples` are seller cells for the seller's own review: cleared at confirm, by the 7-day
-retention step, never sent to a model and never selected by a read that leaves this tenant."""
+purge. `samples` are seller cells (the create path stores none until a seller read exists):
+cleared at confirm, by the 7-day retention step, never sent to a model and never selected by a
+read that leaves this tenant."""
 
 from __future__ import annotations
 
