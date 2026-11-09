@@ -2232,6 +2232,20 @@ def test_amazon_check_runs_as_the_worker_with_two_secrets(
         get_settings.cache_clear()
 
 
+def test_amazon_check_finds_the_tenant_by_seller_id(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    out = _run(
+        toolkit, tmp_path, "prod", "amazon-check", "--seller-id", "A1CHECKSELLER9",
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+    args = _check_deploy(out).replace("\\", "")
+    assert (
+        "--args=^|^-m|app.cli|ops|amazon-check|--seller-id=A1CHECKSELLER9|--staff-email=s@b.test"
+        in args
+    )
+    assert "--tenant-slug" not in args
+
+
 def test_amazon_check_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path: Path) -> None:
     result = _run_fail(
         toolkit, tmp_path, "staging", "amazon-check", "--slug", "acme", "--staff-email",
@@ -2249,6 +2263,8 @@ def test_amazon_check_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path
         ("--slug", "acme", "--staff-email", "s@b.test", "--reason", "x"),
         ("--slug", "a|b", "--staff-email", "s@b.test"),
         ("--slug",),
+        ("--seller-id", "A1CHECKSELLER9"),
+        ("--slug", "acme", "--seller-id", "A1CHECKSELLER9", "--staff-email", "s@b.test"),
     ],
 )
 def test_amazon_check_refuses_bad_flags(

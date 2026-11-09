@@ -280,6 +280,46 @@ async def test_cli_resolves_the_slug(mkt: MktWorld) -> None:
     assert await cli._tenant_by_slug("nobody") is None
 
 
+async def test_cli_resolves_the_seller_id(mkt: MktWorld, account: dict[str, Any]) -> None:
+    """The connected account's seller id finds its one tenant, with the tenant's slug."""
+    assert await cli._tenants_by_seller(SELLER) == [(mkt.tenant("acme"), "acme")]
+    assert await cli._tenants_by_seller("A1NOSUCHSELLER") == []
+
+
+def test_cli_hands_over_by_seller_id(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """--seller-id resolves exactly one tenant, prints its slug, never the whole seller id."""
+    tenant = uuid.uuid4()
+    seen: list[list[str]] = []
+    found: dict[str, list[tuple[uuid.UUID, str]]] = {
+        SELLER: [(tenant, "acme-x7k2")],
+        "A1NOSUCHSELLER": [],
+        "A1TWOTENANTS99": [(uuid.uuid4(), "a-one"), (uuid.uuid4(), "b-two")],
+    }
+
+    async def resolve(seller_id: str) -> list[tuple[uuid.UUID, str]]:
+        return found[seller_id]
+
+    monkeypatch.setattr(cli, "_tenants_by_seller", resolve)
+    monkeypatch.setattr(cli, "EXEC", lambda path, argv: seen.append([path, *argv]))
+    base = ["ops", "amazon-check", "--staff-email", STAFF]
+    assert cli.main([*base, "--seller-id", SELLER]) == 0
+    assert len(seen) == 1 and seen[0][4:6] == ["--tenant-id", str(tenant)]
+    out = capsys.readouterr()
+    assert out.out == f"amazon check: tenant acme-x7k2 (seller A1C...ER9), id {tenant}\n"
+    assert SELLER not in out.out + out.err
+
+    assert cli.main([*base, "--seller-id", "A1NOSUCHSELLER"]) == cli.EXIT_NOT_ELIGIBLE
+    out = capsys.readouterr()
+    assert out.err == "amazon check: no tenant has seller A1N...LER connected\n"
+    assert cli.main([*base, "--seller-id", "A1TWOTENANTS99"]) == cli.EXIT_NOT_ELIGIBLE
+    out = capsys.readouterr()
+    assert out.err.startswith("amazon check: 2 tenants have seller A1T...S99 connected")
+    assert "A1TWOTENANTS99" not in out.out + out.err
+    assert len(seen) == 1
+
+
 def test_cli_hands_over_to_the_worker(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -312,6 +352,7 @@ def test_cli_hands_over_to_the_worker(
             "B0ABCDEF12",
         ]
     ]
+    assert capsys.readouterr().out == f"amazon check: tenant acme, id {tenant}\n"
     assert cli.main([*base, "--tenant-slug", "nobody"]) == cli.EXIT_NOT_ELIGIBLE
     assert capsys.readouterr().err == "amazon check: no such tenant\n"
     assert len(seen) == 1
@@ -319,13 +360,21 @@ def test_cli_hands_over_to_the_worker(
 
 @pytest.mark.parametrize(
     "extra",
-    [["--ean", "12AB"], ["--asin", "b0lower000"], ["--tenant-slug", "Bad Slug"]],
+    [
+        ["--tenant-slug", "acme", "--ean", "12AB"],
+        ["--tenant-slug", "acme", "--asin", "b0lower000"],
+        ["--tenant-slug", "Bad Slug"],
+        ["--tenant-slug", "acme", "--seller-id", SELLER],
+        ["--seller-id", "a1lower00000"],
+        [],
+    ],
 )
-def test_cli_refuses_bad_arguments(extra: list[str]) -> None:
-    base = ["ops", "amazon-check", "--tenant-slug", "acme", "--staff-email", STAFF]
+def test_cli_refuses_bad_arguments(extra: list[str], capsys: pytest.CaptureFixture[str]) -> None:
+    base = ["ops", "amazon-check", "--staff-email", STAFF]
     with pytest.raises(SystemExit) as exited:
         cli.build_parser().parse_args([*base, *extra])
     assert exited.value.code == 2
+    assert "a1lower00000" not in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

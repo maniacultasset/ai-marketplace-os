@@ -1,7 +1,8 @@
 """The Amazon connection check: a read-only proof that one tenant's live Amazon account works end
 to end. `python -m app.workers.amazon_check --tenant-id T --staff-email E [--ean EAN] [--asin A]`
-runs it; the staff CLI's `ops amazon-check --tenant-slug S ...` resolves the slug and hands over
-to this entrypoint with `exec` (a worker process: the CLI never imports the decrypt path).
+runs it; the staff CLI's `ops amazon-check --tenant-slug S ...` (or `--seller-id ID`) resolves the
+tenant and hands over to this entrypoint with `exec` (a worker process: the CLI never imports the
+decrypt path).
 
 It runs these steps in order, times each one, and returns a PASS / WARN / FAIL / SKIP table:
 
@@ -72,6 +73,7 @@ from app.adapters.oauth import OAuthError, OAuthRejectedError, get_oauth_client
 from app.core.config import Settings, get_settings
 from app.core.crypto import LOCAL_KEY_VERSION, TokenPair
 from app.core.logging import configure_logging, get_logger
+from app.core.redaction import mask_seller as mask_seller
 from app.core.request_context import new_request_id, request_context
 from app.repositories.marketplace_accounts import PAGE_LIMIT_MAX
 from app.repositories.uow import tenant_uow
@@ -226,13 +228,6 @@ class CheckReport:
             f"{self.refused} other refused, {self.token_refreshes} LWA token refresh"
         )
         return "".join(f"{line}\n" for line in lines)
-
-
-def mask_seller(seller_id: str) -> str:
-    """Enough of the seller id to recognise the account: never the whole id."""
-    if len(seller_id) <= 6:
-        return "*" * len(seller_id)
-    return f"{seller_id[:3]}...{seller_id[-3:]}"
 
 
 def _adapter_detail(exc: AdapterError) -> str:

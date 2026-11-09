@@ -143,9 +143,11 @@ or a link).
 | bad arguments (argparse)             | stderr | 2    |
 | no such version, or the version needs `--digest` | stderr | 4 |
 
-`ops amazon-check --tenant-slug S --staff-email E [--ean EAN] [--asin ASIN]` starts the read-only
-Amazon connection check (`app.workers.amazon_check`) for the tenant: it resolves the slug
-(read-only, `platform_scope`) and replaces this process with `python -m app.workers.amazon_check
+`ops amazon-check (--tenant-slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]`
+starts the read-only Amazon connection check (`app.workers.amazon_check`) for the tenant: it
+resolves the slug, or the tenant whose connected (not revoked) Amazon account has that seller id
+(read-only, `platform_scope`; it refuses unless exactly one tenant matches), prints the tenant's
+slug (the seller id masked) and replaces this process with `python -m app.workers.amazon_check
 --tenant-id ...` (`os.execv`). The check opens a tenant token, so it runs as a worker process: this
 module never imports the decrypt path or the SP-API client. The worker prints the table and sets
 the exit code (0 no step failed, 1 a step failed).
@@ -155,7 +157,7 @@ the exit code (0 no step failed, 1 a step failed).
 | handed over to the worker check      | -      | the check's |
 | any failure before the hand-over     | stderr | 1    |
 | bad arguments (argparse)             | stderr | 2    |
-| no such tenant                       | stderr | 4    |
+| no such tenant, or a seller id that matches no tenant or more than one | stderr | 4 |
 
 `templates diff --product-type T [--requirements R] [--from-file PATH]` reports the believed
 Amazon wire names (the adapter's constants and `PLATFORM_TEMPLATES_PATH`) against the stored
@@ -723,6 +725,7 @@ async def run_photo_accuracy(days: int, *, now: datetime | None = None) -> int:
 
 _EAN_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
 _ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
+_SELLER_RE: Final = re.compile(r"[A-Z0-9]{6,32}", re.ASCII)
 AMAZON_CHECK_MODULE: Final = "app.workers.amazon_check"
 
 
@@ -736,6 +739,43 @@ def _asin(value: str) -> str:
     if not _ASIN_RE.fullmatch(value):
         raise argparse.ArgumentTypeError("--asin must be 10 of [A-Z0-9]")
     return value
+
+
+def _seller_id(value: str) -> str:
+    # the message never echoes the value: a seller id is not printed whole
+    if not _SELLER_RE.fullmatch(value):
+        raise argparse.ArgumentTypeError("--seller-id must be 6 to 32 of [A-Z0-9]")
+    return value
+
+
+async def _tenants_by_seller(seller_id: str) -> list[tuple[uuid.UUID, str]]:
+    """Every tenant (id, slug) with a connected, not revoked Amazon account of this seller id."""
+    from sqlalchemy import select
+
+    from app.core.request_context import new_request_id
+    from app.core.request_context import request_context as request_scope
+    from app.db.models.catalog_assets import MarketplaceAccount
+    from app.db.models.tenancy import Tenant
+    from app.db.session import dispose_engine, platform_scope
+
+    query = (
+        select(Tenant.id, Tenant.slug)
+        .join(MarketplaceAccount, MarketplaceAccount.tenant_id == Tenant.id)
+        .where(
+            MarketplaceAccount.marketplace == "amazon",
+            MarketplaceAccount.seller_id == seller_id,
+            MarketplaceAccount.status != "revoked",
+        )
+        .distinct()
+        .order_by(Tenant.slug)
+    )
+    try:
+        with request_scope(new_request_id()):
+            async with platform_scope() as session:
+                found = await session.execute(query)
+                return [(row[0], row[1]) for row in found.all()]
+    finally:
+        await dispose_engine()
 
 
 async def _tenant_by_slug(slug: str) -> uuid.UUID | None:
@@ -772,15 +812,35 @@ EXEC: Callable[[str, list[str]], Any] = os.execv
 
 
 def run_amazon_check(args: argparse.Namespace) -> int:
-    """Resolve the tenant, then hand the process over to the worker's connection check."""
+    """Resolve the tenant (by slug or by seller id), then hand the process over to the worker's
+    connection check."""
+    from app.core.redaction import mask_seller
+
     try:
-        tenant_id = asyncio.run(_tenant_by_slug(args.tenant_slug))
+        if args.seller_id is not None:
+            matches = asyncio.run(_tenants_by_seller(args.seller_id))
+        else:
+            found = asyncio.run(_tenant_by_slug(args.tenant_slug))
+            matches = [] if found is None else [(found, args.tenant_slug)]
     except Exception as exc:  # class and SQLSTATE only, never the message
         sys.stderr.write(f"amazon check: failed ({_describe(exc)})\n")
         return EXIT_FAILED
-    if tenant_id is None:
+    if args.seller_id is not None and len(matches) != 1:
+        seller = mask_seller(args.seller_id)
+        if not matches:
+            sys.stderr.write(f"amazon check: no tenant has seller {seller} connected\n")
+        else:
+            sys.stderr.write(
+                f"amazon check: {len(matches)} tenants have seller {seller} connected; "
+                "pass --tenant-slug instead\n"
+            )
+        return EXIT_NOT_ELIGIBLE
+    if not matches:
         sys.stderr.write("amazon check: no such tenant\n")
         return EXIT_NOT_ELIGIBLE
+    tenant_id, slug = matches[0]
+    via = "" if args.seller_id is None else f" (seller {mask_seller(args.seller_id)})"
+    sys.stdout.write(f"amazon check: tenant {slug}{via}, id {tenant_id}\n")
     argv = amazon_check_argv(args, tenant_id)
     sys.stdout.flush()
     sys.stderr.flush()
@@ -1755,7 +1815,14 @@ def build_parser() -> argparse.ArgumentParser:
     check = ops_commands.add_parser(
         "amazon-check", help="the read-only Amazon connection check of one tenant (GET only)"
     )
-    check.add_argument("--tenant-slug", type=_slug, required=True)
+    tenant = check.add_mutually_exclusive_group(required=True)
+    tenant.add_argument("--tenant-slug", type=_slug, default=None)
+    tenant.add_argument(
+        "--seller-id",
+        type=_seller_id,
+        default=None,
+        help="find the tenant by its connected Amazon account's seller id",
+    )
     check.add_argument("--staff-email", type=_staff_email, required=True)
     check.add_argument("--ean", type=_ean, default=None, help="the EAN to search the catalog by")
     check.add_argument("--asin", type=_asin, default=None, help="the ASIN to read restrictions of")
