@@ -147,6 +147,11 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   generation, which needs the lock threaded through every defer path (`policy.lock_for`); it is
   left for a product decision.
 
+- SI14 adds two optional entry points, `classify_product` and `map_columns`, looked up lazily
+  (`app/workers/classify_seam.py`, `column_map_seam.py`); both answers are suggestions the seller
+  confirms, and each model call routes through its purpose's gateway (`LLM_GATEWAY_<PURPOSE>`,
+  else `LLM_GATEWAY`; `runbooks/V1-1-SWITCHES.md`).
+
 Source: CANON.md "The AI seam"; CANON-ADDENDUM.md §21; ADR-0012 §Decision 3; ADR-0013 §Decision 5;
 EXECUTION-PLAN.md §6.2.
 

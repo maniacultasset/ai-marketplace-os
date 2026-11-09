@@ -262,3 +262,11 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   unit, meta and package suites, 40% of the database suites and the rules-engine branch gate;
   `make api-tests-integration` is shard 2), each with `COV_FAIL_UNDER` on its own shard and a
   30-minute cap. A cross-job coverage merge needs `needs:`, which the required-check rules forbid.
+
+## SI14 follow-ups
+
+| Where | Gap | Next |
+|---|---|---|
+| BE-13 trace export | The quality dashboard ships; the trace export of the same plan row does not. | A later step, with the AI lane's trace format |
+| Photo QA (AI-43) | Fill ratio, text overlay and watermark are deterministic heuristics tuned on generated fixtures; `PHOTO_QA_ENABLED` stays off until the 100-labelled-image precision gate (at least 90 %) passes. | Label the images, measure, then tune the constants in `app/services/image_qa.py` |
+| Quality blocked count | The blocked rate reads `job_runs.result_json.status` (kept 90 days) and `audit_log`; a range starting more than 90 days back undercounts the worker's blocks. | Keep ranges inside 90 days, or record the block in `audit_log` too |

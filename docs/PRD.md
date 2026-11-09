@@ -87,6 +87,11 @@ backlog (L4805).
 | Observability | Sentry, OpenTelemetry, Cloud Trace, `AgentRun` cost, adapter logs (L4791) | all of it | none |
 | Agent roster | Content, Keyword, Attribute, Image and Brand RAG agents (L4797) | the ports only | AI team repository (Open: T104) |
 
+**V1.1 assist (SI14, behind four switches that ship off, `runbooks/V1-1-SWITCHES.md`):** a category
+classifier the seller confirms (a product may wait for its category), a spreadsheet column mapper,
+deterministic photo QA warnings, a quality dashboard for staff, the lamps category gate and a
+per-purpose model gateway for an India-hosted route.
+
 **Who builds what (ADR-0012; Open: T103):**
 - **This repository (backend and database):** the API, the schema and migrations, the workers, the
   adapters, the rules engine, auth and RBAC, the contracts in `packages/schemas`, and the infra.

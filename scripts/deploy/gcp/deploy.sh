@@ -232,6 +232,17 @@ case "$SIZE_CHART_READ_ENABLED" in
   true | false) ;;
   *) die "SIZE_CHART_READ_ENABLED must be true or false (in $ENV_NAME.env)" ;;
 esac
+# SI14: the V1.1 assist switches (docs/runbooks/V1-1-SWITCHES.md), each off by default and live
+# only after its gate: the classifier, the column mapper's AI step, the lamps category and the
+# photo QA warnings. One value on the api and the worker, so the ask and the job agree.
+for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED; do
+  value="${!switch:-false}"
+  case "$value" in
+    true | false) ;;
+    *) die "$switch must be true or false (in $ENV_NAME.env)" ;;
+  esac
+  printf -v "$switch" '%s' "$value"
+done
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
 # SI7 (ADR-0030): the AI white-background edit. Off by default; the api answers 422 and hides the
@@ -1042,6 +1053,11 @@ app_env() {
       printf 'IMAGE_EDIT_ENABLED\t%s\n' "$IMAGE_EDIT_ENABLED"
       # SI12: the size-chart read switch, so the api's ask and the worker's job agree
       printf 'SIZE_CHART_READ_ENABLED\t%s\n' "$SIZE_CHART_READ_ENABLED"
+      # SI14: the V1.1 assist switches
+      printf 'CATEGORY_SUGGEST_ENABLED\t%s\nCOLUMN_MAP_AI_ENABLED\t%s\n' \
+        "$CATEGORY_SUGGEST_ENABLED" "$COLUMN_MAP_AI_ENABLED"
+      printf 'CATEGORY_LAMPS_ENABLED\t%s\nPHOTO_QA_ENABLED\t%s\n' \
+        "$CATEGORY_LAMPS_ENABLED" "$PHOTO_QA_ENABLED"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
         printf 'IMAGE_EDIT_TENANT_DAILY_LIMIT\t%s\n' "$IMAGE_EDIT_TENANT_DAILY_LIMIT"

@@ -459,7 +459,8 @@ Std tenant + `updated_at`. One row per **style** (family parent), sellable **var
 | sku | text | Site / Canon | `CONSTRAINT products_tenant_sku_idx UNIQUE (tenant_id, sku)` (site `products_brand_sku_idx`, T58), full not partial; a re-import revives soft-deleted rows; stable, never changed (L637). [Proposed] `ck_products_sku CHECK (sku ~ '^[^]\s]{1,64}$')`, the charset `paths.py` can address in `variants[<sku>]`; marketplace SKU length limits: T72 |
 | title | text | Site | NOT NULL, 1..500. The BRD `product_name`: the seller's factual name, not the marketplace title (VISION C4) |
 | status | text | Site | DEFAULT `'draft'` ([06] L5916); Proposed vocabulary `draft\|active` (the product, not the listing); [104] returns `"created"` (L11328), so the vocabulary is T69 |
-| category / deleted_at | text / timestamptz? | Canon | internal slug `^[a-z0-9_]{2,64}$`; soft delete |
+| category / deleted_at | text? / timestamptz? | Canon | internal slug `^[a-z0-9_]{2,64}$`, NULL until the seller sets one (**[SI14] 0027**, D3: a product may wait for the classifier and the seller; a listing refuses a NULL category; `ck_products_typed_facts_sourced` asks for `provenance.category` only when it is set); soft delete |
+| category_suggestion | jsonb? | [SI14] 0027 | the classifier's suggestion, never the category: `{status suggested\|unavailable\|failed\|confirmed\|overridden, candidates <= 3 {category, confidence 0..1, rationale <= 300, evidence_refs <= 12}, input_digest, calibration_version, job_id, at}` behind `category_suggestion_valid()`; model text; `confirmed`/`overridden` once the seller writes a category |
 | brand_name, style_number, sub_category, product_type, gender | text? | Site (BRD §6.1 L393-465; gender §6.2 L473-475 and §20 L1638) | style-level; `brand_name` ≤ 100 and ∈ the tenant's brand names: a non-blank `brand_profiles.brand_names` entry or `tenants.name` (case-insensitive after trim, stored in that name's spelling; Identity gate, enforced in the API and CSV import services since SI8; rev 1 `brand`); NULL means the brand default (first non-blank `brand_names`, else `tenants.name`, resolved in `ProductFacts`); `style_number` ≤ 64; slugs `^[a-z0-9_]{2,64}$`; gender `men\|women\|unisex\|boys\|girls\|baby` (`baby` since 0019). Taxonomy confidence = `provenance.category.confidence` (L781) |
 | stock_ref | text? | Site (L873-875) | ≤ 128; a reference only, inventory is a non-goal |
 | description | text? | Proposed | seller's source description, untrusted prompt data |
@@ -1058,6 +1059,19 @@ Std tenant. Timestamps are `queued_at`, `started_at?`, `lease_expires_at?` and `
 
 **procrastinate tables** [Canon ADR-0004; placement Proposed]. Shipped by the pinned 3.10 release, created by `migrator` in `0003b`. They hold only `{job_run_id}`, so they have **no RLS** and are allowlisted in the isolation test. `app_rw` gets explicit `EXECUTE` on their functions. Periodic tasks: the reaper, `schedule_status_sync`, `expire_trials`, pruning.
 
+#### `import_column_maps` — [SI14] 0027 (AC7-AC8)
+Std tenant + `updated_at`, FORCE RLS. A seller header row mapped onto the importer's accepted header names before an upload; a person confirms it.
+
+| Column | Type | Notes |
+|---|---|---|
+| status | text | `mapping\|ready\|confirmed\|failed`; `confirmed_at` exactly when confirmed |
+| headers / headers_digest | text[] / text | the normalised header names, 1..200, no NULLs / sha256 hex |
+| mappings | jsonb | array <= 200 `{position, key, method exact\|alias\|fuzzy\|ai\|none, confidence, needs_review}`; a key is an accepted header name |
+| samples | jsonb? | up to 3 cells per header for the seller's own review: never sent to a model, never granted to `app_ro`/`app_platform_ro`, cleared at confirm or by retention after 7 days |
+| job_id / created_by_user_id | uuid? / uuid | the AI step's `image_compliance` job (soft, entity `column_map`) / → m |
+
+- **Privileges:** app_rw SELECT, INSERT, UPDATE (no DELETE: the map lives until the tenant purge, which lists it); app_ro every column but `samples`; nothing to app_platform_ro.
+
 #### `imports` / `import_rows` — [Canon 0003] + [Decided, ADR-0007 proposed] + [Proposed]
 Both std tenant. `imports` backs `ImportReport` (rename `ImportReport.batch_id` → `import_id`, open decision 13; the site's bulk-import "batch ID", L11345, is this `import_id`: T67). Columns come from the BUILD-SEQUENCE S8 draft and are Proposed.
 
@@ -1069,6 +1083,7 @@ Both std tenant. `imports` backs `ImportReport` (rename `ImportReport.batch_id` 
 | imports.total_rows / imported_rows, failed_rows | int? / int | Proposed | recomputed from `import_rows` at the end |
 | imports.job_id / created_by / finished_at | uuid / uuid / timestamptz? | Proposed | → job_runs (same 90-day retention) / → m |
 | imports.error_report_json | jsonb? | Canon A§20 | file-level `HEADER_*` errors (`file.header`) |
+| imports.column_map_id | uuid? | [SI14] 0027 | the confirmed `import_column_maps` row the upload used (soft); the import job renames each row by it, `raw_row` keeps the seller's keys |
 | import_rows.import_id / row_number | uuid / int | Proposed | → imports ON DELETE CASCADE (exception); row ≥ 2; `UNIQUE (tenant_id, import_id, row_number)` |
 | import_rows.sku / parent_sku | text? | Proposed / ADR-0007 | header `seller_sku` / `parent_style_id` (alias `parent_sku`) → the style row |
 | import_rows.raw_row / status | jsonb / text | Proposed | cells as uploaded (untrusted; unmapped columns stay here with a warning; holds party contact cells, so no SELECT for `app_ro`/`app_platform_ro`, §8.1); `pending\|imported\|failed` |
@@ -1456,7 +1471,7 @@ Std tenant + `updated_at`.
 
 | Column | Type | Notes |
 |---|---|---|
-| kind | text | `missing_fact\|conflicting_facts\|unverified_declaration\|approval_or_evidence\|permission_decision\|reconnect_account\|image_replacement\|marketplace_error_review` (BRD "ask when" L1368-1384, L1330, L1342) |
+| kind | text | `missing_fact\|conflicting_facts\|unverified_declaration\|approval_or_evidence\|permission_decision\|reconnect_account\|image_replacement\|marketplace_error_review\|category_review` ([SI14] 0027: `category_review` names a product and no target path or account, one live per product `human_tasks_one_category_review`, answered and applied by the seller's category write, never by the task answer route) (BRD "ask when" L1368-1384, L1330, L1342) |
 | product_id / colourway_id / target_path | uuid? / uuid? / text? | product → products (the fact owner: the style for style- and colour-level facts; NULL for a brand fact); [Proposed] colourway → product_colourways (t), set for a colour-level fact so two colourways needing different values get two tasks; path `facts.<key>`, `facts.attributes.<key>` (an attribute-stored dictionary key, SI3/SI4 D19(a)), `brand.<key>` or `account.<settings path>` (e.g. `account.category_approvals.kurtas`), `^(facts\|brand\|account)(\.[a-z0-9_]{1,64}){1,2}$`. Colours are never encoded in the path (colour keys may contain spaces) |
 | marketplace_account_id / image_id | uuid? | → marketplace_accounts / → images |
 | question / reason | text | 5..500 each: "one clear question" and "why it is required" |
@@ -1901,6 +1916,7 @@ This needs a Canon PR (A§25) first. The Day 3–12 targets have slipped; the Te
 | `0025_jobruns_budget_idx` | **[V1 hardening #10]** two partial `job_runs` indexes for the AI budget admission (`app/repositories/budget.py`): `ix_job_runs_budget_started_at` `(started_at) INCLUDE (tenant_id, cost_reserved_usd)` and `ix_job_runs_budget_tenant_started_at` `(tenant_id, started_at) INCLUDE (cost_reserved_usd)`, both `WHERE kind IN ('listing_generate', 'brand_embed', 'image_compliance')`, built CONCURRENTLY. Chained on `0023_image_role` (re-chained from `0022_autonomous_resolution` at the 2026-11-08 merge of main) | [Claimed 2026-11-08 under the V1 delegation; CANON.md ledger row] |
 | `0026_invitee_email_unverified` | **[V1 hardening #12]** `users.email_unverified boolean NOT NULL DEFAULT false`: set on an account an invite accept creates with a password (a copied link proves no address), cleared by a Google sign-in with the same verified email; such an account cannot approve, in the API and in `lv_guard()` (MKC01; redefined here from 0004's body). SELECT for the read-only roles. Chained on `0025_jobruns_budget_idx` | [Claimed 2026-11-08 under the V1 delegation; CANON.md ledger row] |
 | `0024_brief_gaps` | **[SI13]** `ck_listing_repairs_rule` gains `fill_variant_axis`, `ck_job_runs_entity_type` gains `error_proposal` (both NOT VALID, then VALIDATE, lists from the head); `audit_allowlist` gains `marketplace_error_proposal` {`status`}; the platform table `marketplace_error_proposals` (below) with its drafting guard and column grants. No transition edge: a rejected listing is recategorised in place and its regenerate (`failed -> generating`) voids the approval. The downgrade refuses while a proposal, a `fill_variant_axis` repair or an `error_proposal` job exists. Chained on `0026_invitee_email_unverified` (re-chained from `0023_image_role` at the 2026-11-09 merge of main) | [SI13] |
+| `0027_v1_1_assist` | **[SI14]** `products.category` DROP NOT NULL and `ck_products_typed_facts_sourced` rebuilt (category sourced only when set); `products.category_suggestion` behind `category_suggestion_valid()`; `ck_human_tasks_kind` gains `category_review` with `ck_human_tasks_category_review` and the partial unique `human_tasks_one_category_review`; `ck_job_runs_entity_type` gains `category_suggestion` and `column_map` (lists from the head); the tenant table `import_column_maps` (above); `imports.column_map_id`; `purge_tenant_order()` gains `import_column_maps`. Expand only, one transaction. The downgrade refuses while a NULL-category product, a `category_review` task, a `category_suggestion` or `column_map` job, or a column map exists. Chained on `0024_brief_gaps` | [SI14] |
 
 ```mermaid
 flowchart LR

@@ -8,9 +8,9 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 - **Every line of the client spec is traced.** All 13,711 lines of the snapshot are in the register:
   11,167 entries, of which 8,916 are checkable statements. `scripts/trace/check_coverage.py` proves 100% line coverage.
 - **Every statement has a verdict**, with a reference, adversarially verified per chunk (`scripts/trace/check_mapping.py`).
-- **7,051 of 8,916 (79%) are covered by our plan**: 6,094 as written and
-  957 deliberately changed by an ADR, Canon row or recorded decision.
-- **493 are gaps** (backend/DB 243, shared seams 126, ops 104, AI team 4, FE team 0, client 16).
+- **7,053 of 8,916 (79%) are covered by our plan**: 6,094 as written and
+  959 deliberately changed by an ADR, Canon row or recorded decision.
+- **491 are gaps** (backend/DB 243, shared seams 124, ops 104, AI team 4, FE team 0, client 16).
 - **319 need the team or client** (54 conflicts, 265 questions);
   each points to a row in `TEAM-QUESTIONS.md`.
 - 512 belong to the AI or FE team, and 541 are marked Phase 2/3 by the site itself.
@@ -18,8 +18,8 @@ _fix a verdict in `cNN.map.json` or the register in `cNN.json`, then re-run._
 | Status | Statements | Share |
 |---|---:|---:|
 | ✅ covered | 6,094 | 68.3% |
-| 🔁 covered-changed | 957 | 10.7% |
-| ⚠️ gap | 493 | 5.5% |
+| 🔁 covered-changed | 959 | 10.8% |
+| ⚠️ gap | 491 | 5.5% |
 | ❌ conflict | 54 | 0.6% |
 | ❓ needs-client | 265 | 3.0% |
 | 🧩 other-team | 512 | 5.7% |
@@ -32,7 +32,7 @@ Statements per site page (`# ` title), in source order. Pages with nothing to ac
 | Page | ✅ | 🔁 | ⚠️ | ❌ | ❓ | 🧩 | ⏭ | Act on |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | AI Marketplace OS — Architecture & Engineering Knowledge Base | 7 | 0 | 0 | 0 | 0 | 0 | 0 | ✔ |
-| [★] Complete Founder BRD (End-to-End) | 1171 | 88 | 54 | 1 | 40 | 6 | 55 | 95 |
+| [★] Complete Founder BRD (End-to-End) | 1171 | 90 | 52 | 1 | 40 | 6 | 55 | 93 |
 | [01] Product Vision, 19-Step Flow & Scope (§1–4) | 134 | 22 | 1 | 0 | 1 | 2 | 1 | 2 |
 | [02] Brand Onboarding & Catalog Intake (§5) | 39 | 2 | 2 | 0 | 3 | 0 | 1 | 5 |
 | [03] Master Apparel Data & Variants (§6–7) | 192 | 2 | 4 | 0 | 0 | 0 | 0 | 4 |
@@ -492,7 +492,7 @@ Each row names its TEAM-QUESTIONS row. Until the team answers, we build the defa
 | R00961 | L961 | Step 2 goal: decide the correct product category and sub-category for each marketplace. | T68; DATABASE.md:530 | Marketplace category is a function of internal category, not decided per product; T68 open |
 | R00963b | L963 | Step 2 action: Map canonical product to marketplace taxonomy. | T68; DATABASE.md:530 | Taxonomy via current category_templates row; no per-product mapping; T68 open |
 | R00965a | L965 | Step 2 output: Marketplace-specific category/product type. | T68; DATABASE.md:536 | Marketplace category/product type from the category template only; T68 open |
-| R00965b | L965 | Step 2 output: Confidence. | T68; DATABASE.md:411 | No marketplace-side confidence; only provenance.category.confidence; T68 open |
+| R00965b | L965 | Step 2 output: Confidence. | T68; DATABASE.md products.category_suggestion | SI14 stores the classifier's calibrated confidence on the suggestion; provenance.category.confidence and T68 stay open |
 | R01015 | L1015 | Step 7: try missing-data sources in this strict hierarchy (order below). | T33; DATABASE.md:1334 | Step 7 read as search order vs §11.1 trust order; rungs 3-4 absent in v1; T33 open |
 | R01018 | L1018 | Step 7 hierarchy 2: Same brand's trusted catalog conventions. | T33 | Brand conventions fill non-critical keys as derived: only in T33 default, not in DATABASE.md |
 | R01020 | L1020 | Step 7 hierarchy 4: Existing marketplace listing owned by the seller. | Q20; T75 | Site contradicts itself on catalog sync (L7392 vs L7902-7906); Q20 default Phase 2; no T-row |
@@ -1652,7 +1652,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R13647 | L13647 | Security checklist: TLS on all connections. | docs/architecture/BACKEND-ARCHITECTURE.md:2263 | DB and storage connection encryption stated nowhere; doc gap for ADR-0001/S4 |
 | R13650 | L13650 | Security checklist: SQL injection prevention verified. | docs/architecture/BACKEND-ARCHITECTURE.md:2204 | SQL injection prevention is verified with the repository layer (S9) and the API routes (S10): parameterised queries and tests; ruff S608 (S1) is only the lint half |
 
-## ⚠️ Gaps on a shared seam (backend + AI or FE team) (126)
+## ⚠️ Gaps on a shared seam (backend + AI or FE team) (124)
 
 
 ### [★] Complete Founder BRD (End-to-End)
@@ -1665,9 +1665,7 @@ Required for v1 and not yet in our plan. These feed DATABASE.md, BACKEND-ARCHITE
 | R00945 | L945–947 | Workflow STEP 1: UNDERSTAND PRODUCT. | VISION-ALIGNMENT.md:132; CANON.md:54 | No understand node among the 12 PipelineStages; backend only stores sourced facts |
 | R00949 | L949 | Step 1 goal: build a complete understanding of the product before generating a marketplace listing. | VISION-ALIGNMENT.md:132; DATABASE.md:1193 | Facts resolved, but no understanding/completeness step before generation; missing facts flagged only after |
 | R00953c | L953 | Step 1 action: Detect conflicting data. | DATABASE.md:1343; VISION-ALIGNMENT.md:132; T33 | conflicting_facts task kind exists; nothing detects conflicts; FactWriter conflict rule only in T33 |
-| R00957 | L957–959 | Workflow STEP 2: CLASSIFY. | DATABASE.md:1498; BACKEND-ARCHITECTURE.md:1564 | No classify node in the 12 PipelineStages; category seller-supplied; 'classifying' reserved |
 | R00993d | L993 | Step 5 creates: Size/fit copy. | DATABASE.md:2131 (CanonicalListing) | No size/fit copy field in CanonicalListing |
-| R01127 | L1127 | Seller action for `CLASSIFYING`: None unless ambiguous. | DATABASE.md:1498; VISION-ALIGNMENT.md:132 | No classify stage, so no ambiguous-classification question; CATEGORY_MISMATCH user_action only |
 | R01263 | L1263 | Detail panel 'Marketplace-specific preview/mapped fields': side-by-side view of portal payloads. | BACKEND-ARCHITECTURE.md:835 (G11) | No network-free adapter preview of mapped payloads before submission |
 | R01432b | L1432 | The product should avoid assuming legal compliance merely because fields are populated. | DATABASE.md:1343 | No stated rule or UI copy that populated declarations do not imply legal compliance. |
 | R01562a | L1562 | The column set can be presented to sellers as a simple template. | DATABASE.md:970; DATABASE.md:2183 | Headers = BRD names, but no downloadable seller template (endpoint or static file) specified. |

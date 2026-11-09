@@ -2342,3 +2342,37 @@ def test_worker_binds_the_slack_webhook_only_with_a_value(toolkit: Path, tmp_pat
     assert "ALERT_SLACK_WEBHOOK" not in "\n".join(
         x for x in result.stdout.splitlines() if "worker-pools" in x or "secretKeyRef" in x
     )
+
+
+SI14_SWITCHES = (
+    "CATEGORY_SUGGEST_ENABLED",
+    "COLUMN_MAP_AI_ENABLED",
+    "CATEGORY_LAMPS_ENABLED",
+    "PHOTO_QA_ENABLED",
+)
+
+
+def test_si14_switches_are_off_in_both_env_files(repo_root: Path) -> None:
+    """SI14 (D12): the four V1.1 assist switches are committed off, and no per-purpose gateway is
+    set, so every model call keeps LLM_GATEWAY."""
+    for env_name in ("staging", "prod"):
+        text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+        values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+        for name in SI14_SWITCHES:
+            assert values[name] == "false", (env_name, name)
+        assert not [k for k in values if k.startswith("LLM_GATEWAY_")], env_name
+
+
+def test_si14_switches_reach_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    for name in SI14_SWITCHES:
+        assert _api_env(out)[name] == "false", name
+        assert _worker_container(out)[0][name] == "false", name
+    _set_env(toolkit, "staging", CATEGORY_SUGGEST_ENABLED="true")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["CATEGORY_SUGGEST_ENABLED"] == "true"
+    assert _worker_container(out)[0]["CATEGORY_SUGGEST_ENABLED"] == "true"
+    _set_env(toolkit, "staging", PHOTO_QA_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "PHOTO_QA_ENABLED must be true or false" in result.stderr
