@@ -90,8 +90,8 @@ async def validate_listing(
     same = await uow.validation_runs.find_equal_pins(
         version.id, pins.rules_version, pins.template_id, pins.template_version, pins.facts_digest
     )
-    if same is not None and _same_flags(same, check.report):
-        if adapter is not None and await _schema_changed(uow, listing, adapter):
+    if same is not None and same_flags(same, check.report):
+        if adapter is not None and await schema_changed(uow, listing, adapter):
             await _sync_schema(uow, listing, version.id, adapter)
             listing = await _revalidate(uow, principal, listing, check, adapter, on_reject)
             await ask_after_check(
@@ -136,7 +136,7 @@ def _flags(report: ErrorReport) -> set[tuple[str, str, str]]:
     }
 
 
-def _same_flags(run: Any, report: ErrorReport) -> bool:
+def same_flags(run: Any, report: ErrorReport) -> bool:
     """SI9 B5: the rejected photo values are the one Rules input that is not a pin (CP-D12), so
     equal pins hold the same verdict only while the "facts changed" items are the same; after a
     reject the run is written again (the replay rule then holds for that run)."""
@@ -144,7 +144,7 @@ def _same_flags(run: Any, report: ErrorReport) -> bool:
     return _flags(stored) == _flags(report)
 
 
-async def _schema_changed(uow: TenantUnitOfWork, listing: Any, adapter: ErrorReport) -> bool:
+async def schema_changed(uow: TenantUnitOfWork, listing: Any, adapter: ErrorReport) -> bool:
     """CP-D4: the check's blocking items differ from the open `schema` error rows."""
     wanted = {dedupe_key("schema", item) for item in adapter.blocking}
     held = {row.dedupe_key for row in await uow.listing_issues.open_errors(listing.id, ["schema"])}

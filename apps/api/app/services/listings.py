@@ -26,6 +26,7 @@ from app.core.resolved_facts import for_rules, listing_facts_digest
 from app.repositories.uow import TenantUnitOfWork
 from app.services.generation_persist import Pins
 from app.services.generation_result import recheck
+from app.services.listing_display import display_fields
 from app.services.rules_loader import load_rules
 from app.services.seller_facts import seller_overlay
 
@@ -40,15 +41,20 @@ class Check:
 
 
 def to_detail(
-    listing: Any, content: CanonicalListing | None, summary: ValidationSummary | None
+    listing: Any,
+    content: CanonicalListing | None,
+    summary: ValidationSummary | None,
+    needs_you: int = 0,
 ) -> dict[str, Any]:
     """The `ListingDetail` fields (the router validates them into the response model)."""
-    return {**listing_fields(listing), "content": content, "validation": summary}
+    return {**listing_fields(listing, needs_you), "content": content, "validation": summary}
 
 
-def listing_fields(listing: Any) -> dict[str, Any]:
-    """The `ListingOut` fields of a `listings` row (S19's list reuses them)."""
+def listing_fields(listing: Any, needs_you: int = 0) -> dict[str, Any]:
+    """The `ListingOut` fields of a `listings` row (S19's list reuses them); `needs_you` is its
+    open blocking issues on the current version (`listing_display`)."""
     return {
+        **display_fields(listing, needs_you),
         "id": listing.id,
         "product_id": listing.product_id,
         "marketplace": listing.marketplace,
