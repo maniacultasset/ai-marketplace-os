@@ -16,7 +16,7 @@ Definitions (CODE-PLAN T19; PLAN D10 as restated by Q-c):
 
 One SQL text, two tenant clauses: the tenant read names `tenant_id = :t` on every table (RLS is the
 backstop) through the repository's own session; the platform read runs on a session the caller
-opens (`platform_scope()`, allowed only in `app/admin/**`, CANON.md:78), never here.
+opens (`app.workers.rollup.rollup_session()`, an R5-listed module), never here.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from typing import Any, Final
 from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 
-from app.repositories.analytics import AnalyticsRepository, _budget_error
+from app.repositories.analytics import REQUEST_BUDGET, AnalyticsRepository, _budget_error
 
 MAX_EDITED_FIELDS: Final = 20
 MAX_CHAIN_DEPTH: Final = 50
@@ -197,7 +197,9 @@ class QualityRepository(AnalyticsRepository):
 async def platform_quality(
     session: Any, lo: datetime, hi: datetime, tenant_id: uuid.UUID | None
 ) -> QualityRead:
-    """The cross-tenant read on a session the caller opened (`platform_scope()` in
-    `app/admin/ops.py`); ids and counts only."""
+    """The cross-tenant read on a session the caller opened (the read-only platform session,
+    `app.workers.rollup.rollup_session()`); ids and counts only, under the same 5 s cap as the
+    tenant read."""
+    await session.execute(text(f"SET LOCAL statement_timeout = '{REQUEST_BUDGET}'"))
     params = {"t": None if tenant_id is None else str(tenant_id), "lo": lo, "hi": hi}
     return await _read(session, PLATFORM_COUNTS, PLATFORM_FIELDS, params)

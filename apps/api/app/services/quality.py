@@ -16,8 +16,6 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Final
 
-from sqlalchemy import text
-
 from app.core.rbac import Principal
 from app.repositories.quality import QualityCounts, QualityRead, QualityRepository, platform_quality
 from app.repositories.transactions import unit_of_work
@@ -108,6 +106,5 @@ async def get_platform_quality(
 
     period = resolve_range(from_, to, today=utc_now().date())
     async with inflight(principal.tenant_id), rollup_session() as session:
-        await session.execute(text("SET LOCAL statement_timeout = '5s'"))
         read = await platform_quality(session, *period.bounds(), tenant_id)
     return summarize_quality(period, read, platform=True)
