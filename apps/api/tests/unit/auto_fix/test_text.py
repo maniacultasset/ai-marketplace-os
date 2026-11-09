@@ -86,6 +86,22 @@ def test_image_question() -> None:
     assert _fits(long_q) and _fits(long_r)
 
 
+def test_image_question_names_each_problem_in_seller_words() -> None:
+    """Prod demo 9 Nov: "failed these checks: BACKGROUND OFF, RESOLUTION LOW, WRONG ASPECT"."""
+    _q, reason = image_question("main", ["BACKGROUND_OFF", "RESOLUTION_LOW", "WRONG_ASPECT"])
+    assert reason == (
+        "The current photo can't be used: the background is not plain white; the photo is "
+        "smaller than the marketplace asks for; the photo is not the shape the marketplace "
+        "asks for."
+    )
+    assert "_" not in reason and "OFF" not in reason
+    # a check name and its code say the same thing once; an unknown code reads generically
+    _q, same = image_question("main", ["background", "BACKGROUND_OFF"])
+    assert same == "The current photo can't be used: the background is not plain white."
+    _q, unknown = image_question("main", ["IMAGE_NON_COMPLIANT"])
+    assert unknown.endswith("it does not meet the marketplace photo rules.")
+
+
 def test_affected_clause() -> None:
     clause = affected([("KURTA-001", "amazon"), ("KURTA-001", "flipkart")])
     assert "KURTA-001" in clause and "Amazon" in clause and "Flipkart" in clause

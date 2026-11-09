@@ -224,6 +224,32 @@ def test_ac3_lamp_and_tshirt_without_pieces() -> None:
     assert _targets()["number_of_pieces"].mode == "check"
 
 
+def test_tshirt_photos_are_never_asked_for_a_piece_count() -> None:
+    """Prod demo 9 Nov: both T-shirts were asked "How many pieces are in this set?". The seeded
+    T-shirt templates list `number_of_pieces` (Amazon `number_of_items`), but only a set
+    category gets the piece-count target; every other photo key is still read."""
+    for pair in (("amazon", "SHIRT"), ("flipkart", "t_shirt")):
+        template = TEMPLATES[pair]
+        assert "number_of_pieces" in pf._template_keys(template)
+        assert not pf.multi_piece(template)
+        targets = _targets(template=template)
+        assert "number_of_pieces" not in targets, pair
+        assert {"neckline", "sleeve_length", "fit"} <= set(targets), pair
+    for pair in (("amazon", "KURTA"), ("flipkart", "kurta")):
+        assert pf.multi_piece(TEMPLATES[pair])
+        assert _targets(template=TEMPLATES[pair])["number_of_pieces"].mode == "check"
+
+
+def test_multi_piece_reads_whole_words_of_the_category() -> None:
+    def cat(slug: str) -> CategoryTemplate:
+        return KURTA.model_copy(update={"category": slug})
+
+    assert pf.multi_piece(cat("ethnic_wear_kurta_sets"))
+    assert pf.multi_piece(cat("saree_combo"))
+    assert not pf.multi_piece(cat("tshirts"))
+    assert not pf.multi_piece(cat("sunset_dresses"))  # "set" inside a word is not a set
+
+
 # ---- allowed_for (CP-D18) ----
 
 
