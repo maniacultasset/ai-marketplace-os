@@ -18,8 +18,9 @@ The prod worker is meant to be on (`WORKER_ENABLED=true` in `prod.env`, worker p
 ## Where to look
 
 - **Cloud Monitoring** (project `aimos-prod`): the policies `aimos-edge uptime failing`,
-  `aimos-worker heartbeat missing`, `aimos-worker restarting`, `aimos-maintenance errors`
-  (`DEPLOY-GCP.md` "Alerts and Slack").
+  `aimos-worker heartbeat missing`, `aimos-worker restarting`, `aimos-worker job lag`,
+  `aimos-maintenance errors`, `aimos-db cpu high`, `aimos-db disk filling`,
+  `aimos-db connections high`, `aimos-api 5xx` (`DEPLOY-GCP.md` "Alerts and Slack").
 - **Logs Explorer**: the api (`resource.type="cloud_run_revision"`, service `aimos-api`), the
   worker pool (`aimos-worker`), the job `aimos-maintenance`. Lines are JSON: search
   `jsonPayload.message`, then follow `request_id` or `job_run_id`. Lines carry ids and codes only.
@@ -81,6 +82,27 @@ The job exits 1 when a step failed or the Amazon DPP purge could not finish an a
 `maintenance.step_failed` / `maintenance.step_incomplete` lines, fix the cause, then rerun it:
 `gcloud run jobs execute aimos-maintenance --region=asia-south1 --project=aimos-prod --wait`. Every
 step is idempotent. An account left unpurged must be purged within the DPP 20-day window.
+
+### Jobs waiting too long (`aimos-worker job lag`)
+
+The worker saw a queue whose oldest job waited past its limit. Check the heartbeat first: a
+worker that is alive but behind still logs `periodic.alerts_checked`. The admin page
+`/admin/ops/queue` shows depth and oldest age per queue. A burst of imports or generations clears by itself; a
+queue that does not move points at a stuck job (`job.timeout`, `job.body_failed`) or at the AI
+provider (see "AI paused"). Scaling the worker is a `WORKER_INSTANCES` change and a deploy.
+
+### Database under load (`aimos-db cpu high`, `aimos-db connections high`, `aimos-db disk filling`)
+
+Cloud SQL Query Insights (console, instance `aimos-db`) names the heaviest queries. Connections
+near `SQL_MAX_CONNECTIONS` (100) usually mean too many api instances or a leak: compare with the
+api's instance count (`API_MAX_INSTANCES`) and look for `idle in transaction` sessions (app_rw
+ends them after 60 s). Disk: storage auto-increase is on, so a disk alert means fast growth;
+check the biggest tables before raising the tier. A tier change restarts the instance: plan it.
+
+### Api errors (`aimos-api 5xx`)
+
+More than 10 api 5xx answers in 5 minutes. Sentry groups the crashes by route and `request_id`.
+Just after a deploy: roll back the api (below). With the database alerts firing too, start there.
 
 ## Roll back
 
