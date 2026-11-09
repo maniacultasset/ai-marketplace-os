@@ -120,7 +120,7 @@ class Product(TenantScoped, Base):
     variant_attributes: Mapped[dict[str, str]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     variant_key: Mapped[str | None] = mapped_column(Text)
     # the classifier's suggestion (0027): model text, never granted to app_platform_ro
-    category_suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    category_suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     # fact columns (DATABASE.md §5.6); each non-null one has its `provenance` key
     mrp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     selling_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))

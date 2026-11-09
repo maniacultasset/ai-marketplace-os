@@ -73,6 +73,7 @@ from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.catalog import RequirementsOut
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
+from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
@@ -887,6 +888,17 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Suggest a category for the seller to confirm", "SI14",
               path_id="product_id", idempotency=True, action=A.PRODUCT_IMPORT,
               extra_codes=_SIZE_CHART_READ, also_status=200),
+    # ---- SI14: the spreadsheet column maps ----
+    Operation("imports_column_map_create", "POST", "/imports/column-maps", 202, ColumnMapOut,
+              "imports", "Map a spreadsheet header row onto the import columns", "SI14",
+              has_body=True, idempotency=True, action=A.PRODUCT_IMPORT, also_status=201),
+    Operation("imports_column_map_get", "GET", "/imports/column-maps/{map_id}", 200, ColumnMapOut,
+              "imports", "One column map", "SI14", path_id="map_id", action=A.TENANT_READ),
+    Operation("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm", 200,
+              ColumnMapOut, "imports", "Confirm a column map with your answers", "SI14",
+              path_id="map_id", has_body=True, idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
+              extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)})),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

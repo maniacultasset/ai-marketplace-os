@@ -143,6 +143,9 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
+    ("imports_column_map_create", "POST", "/imports/column-maps"),
+    ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
+    ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
 )
 
 E = ErrorCode
@@ -280,6 +283,8 @@ D9_IDEMPOTENT = {
     "image_candidates_create",  # SI7
     "size_chart_read_create",  # SI12
     "products_category_suggest",  # SI14
+    "imports_column_map_create",  # SI14
+    "imports_column_map_confirm",  # SI14
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -444,8 +449,8 @@ def test_login_response_is_login_result() -> None:
 
 
 def test_operation_count() -> None:
-    # 102 through SI13; SI14 adds the category suggestion
-    assert len(OPS) == 103
+    # 102 through SI13; SI14 adds the category suggestion and the three column-map ops
+    assert len(OPS) == 106
 
 
 def test_error_codes_per_d2() -> None:
@@ -469,6 +474,10 @@ def test_error_codes_per_d2() -> None:
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.INVALID_STATUS_TRANSITION,
+        ),
         "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
@@ -566,6 +575,7 @@ def test_error_codes_per_d2() -> None:
                 "tasks_answer": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI3 CP-D8
                 "size_chart_read_create": (E.FACT_LEVEL_INVALID,),  # SI12: a variant
                 "products_category_suggest": (E.FACT_LEVEL_INVALID,),  # SI14: a variant
+                "imports_column_map_confirm": (E.IMPORT_FAILED,),  # SI14: required columns
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id

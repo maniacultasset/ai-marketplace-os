@@ -18,6 +18,9 @@ Auth and brand rows (audit DB-3; DATABASE.md retention table): `refresh_tokens` 
 or else expired), `password_reset_links` 30 days after they closed (used, revoked, or else
 expired; SI5, ADR-0029), and inactive `brand_chunks` 30 days after they were deactivated
 (`updated_at`, stamped by the trigger when `is_active` went false).
+
+SI14: the seller sample cells of an `import_column_maps` row are cleared 7 days after the map was
+made (`samples` only; the map itself has no DELETE grant and lives until the tenant purge).
 """
 
 from __future__ import annotations
@@ -48,6 +51,7 @@ PRUNED_TABLES: Final = (
     "invitations",
     "password_reset_links",
     "brand_chunks",
+    "column_map_samples",  # SI14: an UPDATE of `samples`, counted like the deletes
 )
 
 _IMPORT_ROWS: Final = text(
@@ -118,6 +122,19 @@ _JOB_CHAINS: Final = text("""
     """)
 
 
+# SI14: the samples column only, in batches (an UPDATE, so `_drain` counts updated rows)
+COLUMN_MAP_SAMPLE_DAYS: Final = 7
+_COLUMN_MAP_SAMPLES: Final = text("""
+    UPDATE import_column_maps SET samples = NULL
+     WHERE tenant_id = :t AND id IN (
+       SELECT id FROM import_column_maps
+        WHERE tenant_id = :t AND samples IS NOT NULL
+          AND created_at < now() - make_interval(days => :days)
+        ORDER BY id
+        LIMIT :batch)
+    """)
+
+
 async def tenant_ids(session: Any) -> list[uuid.UUID]:
     """Every tenant id, in id order. Cross-tenant: run it only in `platform_scope()`."""
     return list((await session.execute(select(Tenant.id).order_by(Tenant.id))).scalars())
@@ -166,6 +183,9 @@ async def prune_tenant(session: Any, tenant_id: uuid.UUID) -> dict[str, tuple[in
         ),
         "brand_chunks": await _drain(
             session, _BRAND_CHUNKS, {"t": tenant_id, "days": BRAND_CHUNK_DAYS}
+        ),
+        "column_map_samples": await _drain(
+            session, _COLUMN_MAP_SAMPLES, {"t": tenant_id, "days": COLUMN_MAP_SAMPLE_DAYS}
         ),
     }
     return out

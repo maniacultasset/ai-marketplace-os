@@ -18,6 +18,47 @@ PRODUCT_2: Final = "0b1c2d3e-0000-4000-8000-000000000102"
 LISTING: Final = "0b1c2d3e-0000-4000-8000-000000000201"
 VERSION: Final = "0b1c2d3e-0000-4000-8000-000000000202"
 JOB: Final = "0b1c2d3e-0000-4000-8000-000000000301"
+COLUMN_MAP: Final = "0b1c2d3e-0000-4000-8000-000000000451"
+_COLUMN_MAP: Final[dict[str, Any]] = {
+    "id": COLUMN_MAP,
+    "status": "ready",
+    "mappings": [
+        {
+            "position": 1,
+            "header_shown": "item sku",
+            "key": "seller_sku",
+            "method": "alias",
+            "confidence": 1.0,
+            "needs_review": False,
+        },
+        {
+            "position": 2,
+            "header_shown": "product_name",
+            "key": "product_name",
+            "method": "exact",
+            "confidence": 1.0,
+            "needs_review": False,
+        },
+        {
+            "position": 3,
+            "header_shown": "category",
+            "key": "category",
+            "method": "exact",
+            "confidence": 1.0,
+            "needs_review": False,
+        },
+        {
+            "position": 4,
+            "header_shown": "column 4",
+            "key": None,
+            "method": "none",
+            "confidence": 0.0,
+            "needs_review": True,
+        },
+    ],
+    "needs_review_count": 1,
+    "created_at": "2026-11-09T09:30:00Z",
+}
 IMPORT: Final = "0b1c2d3e-0000-4000-8000-000000000401"
 IMAGE: Final = "0b1c2d3e-0000-4000-8000-000000000501"
 ACCOUNT: Final = "0b1c2d3e-0000-4000-8000-000000000601"
@@ -992,6 +1033,17 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "admin_ai_credit_get": _AI_CREDIT,
         "products_category_suggest": {"product_id": PRODUCT_1, "status": "queued", "job_id": JOB},
+        "imports_column_map_create": _COLUMN_MAP,
+        "imports_column_map_get": _COLUMN_MAP,
+        "imports_column_map_confirm": {
+            **_COLUMN_MAP,
+            "status": "confirmed",
+            "mappings": [
+                {**entry, "key": entry["key"] or "color_name", "needs_review": False}
+                for entry in _COLUMN_MAP["mappings"]
+            ],
+            "needs_review_count": 0,
+        },
         "size_chart_read_create": {
             "image_id": IMAGE,
             "status": "queued",

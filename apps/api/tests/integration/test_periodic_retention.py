@@ -81,6 +81,7 @@ async def test_retention_children_first(jobs_db: JobWorld) -> None:
         "invitations": 0,
         "password_reset_links": 0,  # SI5
         "brand_chunks": 0,
+        "column_map_samples": 0,  # SI14
         "trusted_devices": 0,
         "image_orphans": 0,
         "deleted_image_objects": 0,  # SI1 T22: runs at the end of retention
@@ -374,6 +375,43 @@ async def test_retention_inactive_brand_chunks_30_days(jobs_db: JobWorld) -> Non
     assert totals["brand_chunks"] == 1
     assert not _exists(jobs_db, "brand_chunks", stale)
     assert _exists(jobs_db, "brand_chunks", fresh) and _exists(jobs_db, "brand_chunks", active)
+
+
+# ---- SI14 T16: column-map sample cells past 7 days ----
+
+
+def _column_map(jw: JobWorld, slug: str, days: int) -> Any:
+    from psycopg.types.json import Jsonb
+
+    from . import factories as f
+
+    tenant = jw.tenant(slug)
+    return f.insert(
+        jw.conn,
+        "import_column_maps",
+        tenant_id=tenant,
+        status="ready",
+        headers=["colour"],
+        headers_digest="0" * 64,
+        mappings=Jsonb([]),
+        samples={"colour": ["red"]},
+        created_by_user_id=jw.owner(slug),
+        created_at=_ago(days),
+    )
+
+
+def _samples(jw: JobWorld, map_id: Any) -> Any:
+    row = jw.conn.execute("SELECT samples FROM import_column_maps WHERE id = %s", [map_id])
+    return row.fetchone()[0]  # type: ignore[index]
+
+
+async def test_retention_clears_column_map_samples_after_7_days(jobs_db: JobWorld) -> None:
+    old = _column_map(jobs_db, "acme", days=8)
+    fresh = _column_map(jobs_db, "acme", days=1)
+    totals = await retention_daily()
+    assert totals["column_map_samples"] == 1
+    assert _samples(jobs_db, old) is None
+    assert _samples(jobs_db, fresh) == {"colour": ["red"]}
 
 
 # ---- SI7 T16 (AC16): candidates past 30 days that were never accepted ----

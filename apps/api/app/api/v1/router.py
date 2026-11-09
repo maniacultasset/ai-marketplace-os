@@ -14,6 +14,7 @@ from app.api.v1.routers import (
     brand,
     catalog,
     category_suggestion,
+    column_maps,
     google,
     image_candidates,
     images,
@@ -56,5 +57,6 @@ for module in (
     size_chart_read,
     catalog,
     category_suggestion,
+    column_maps,
 ):
     router.include_router(module.router)
