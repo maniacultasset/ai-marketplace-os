@@ -36,6 +36,39 @@ Guideline = Annotated[NonBlankStr, Field(max_length=GUIDELINE_MAX), AfterValidat
 Term = Annotated[NonBlankStr, Field(max_length=TERM_MAX), AfterValidator(_no_nul)]
 
 
+class TenantCapabilitiesOut(WireModel):
+    """What this deployment does today, read from its settings (the same switches the services
+    check). The dashboard reads these to word its screens truthfully; they never grant access."""
+
+    amazon_publishing_enabled: bool = Field(
+        default=True,
+        description=(
+            "The Amazon publish kill switch (`AMAZON_PUBLISH_ENABLED`). False: nothing is sent "
+            "to Amazon (publish, retry, the automatic resend and the dry run are refused); "
+            "approving still works and keeps the listing ready. Same value as "
+            "`MarketplaceAccountOut.publishing_enabled` on an Amazon account."
+        ),
+    )
+    category_suggest_enabled: bool = Field(
+        default=False, description="`CATEGORY_SUGGEST_ENABLED`: the AI category suggestion."
+    )
+    column_map_ai_enabled: bool = Field(
+        default=False, description="`COLUMN_MAP_AI_ENABLED`: the AI column mapping for imports."
+    )
+    photo_qa_enabled: bool = Field(
+        default=False, description="`PHOTO_QA_ENABLED`: the photo QA warnings."
+    )
+    category_lamps_enabled: bool = Field(
+        default=False, description="`CATEGORY_LAMPS_ENABLED`: listings in the lamps category."
+    )
+    size_chart_read_enabled: bool = Field(
+        default=False, description="`SIZE_CHART_READ_ENABLED`: the size-chart read."
+    )
+    image_edit_enabled: bool = Field(
+        default=False, description="`IMAGE_EDIT_ENABLED`: the AI white-background edit."
+    )
+
+
 class TenantOut(WireModel):
     id: UUID
     name: NonBlankStr
@@ -46,6 +79,10 @@ class TenantOut(WireModel):
     status: Literal["trial", "active", "suspended", "offboarded"]
     trial_ends_at: AwareDatetime | None = Field(
         default=None, description="When the trial ends, while the brand is on trial; else null."
+    )
+    capabilities: TenantCapabilitiesOut = Field(
+        default_factory=TenantCapabilitiesOut,
+        description="This deployment's feature switches, so screens never promise what is off.",
     )
 
 
