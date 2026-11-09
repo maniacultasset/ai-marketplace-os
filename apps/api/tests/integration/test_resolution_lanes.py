@@ -123,6 +123,25 @@ async def test_a_seller_step_asks_one_question_and_only_for_its_rows(prev: PubWo
     assert (row["status"], row["status_reason"]) == ("blocked", "validation_errors")
 
 
+async def test_a_refused_value_is_never_offered_back(prev: PubWorld) -> None:
+    """QA: the colour question after a 99300 refusal of Indigo offered Indigo again."""
+    refused = _error(
+        "attributes.color",
+        ErrorCode.VALUE_NOT_ALLOWED,
+        "99300",
+        "The value provided for 'color' is not one of the allowed values.",
+    ).model_copy(update={"value_submitted": "Blue"})
+    made = await _previewed(prev, [refused])
+    expected = prev.scalar(
+        "SELECT t.expected_answer FROM human_tasks t JOIN listing_issues i "
+        "ON i.human_task_id = t.id WHERE i.listing_id = %s AND i.field_path = 'attributes.color'",
+        [made.listing_id],
+    )
+    allowed = [v.casefold() for v in expected["allowed_values"]]
+    assert allowed and "blue" not in allowed
+    assert len(allowed) == len(set(allowed))
+
+
 async def test_the_tasks_are_opened_once_on_a_rerun(prev: PubWorld) -> None:
     from app.repositories.uow import tenant_uow
     from app.services.resolution.run import resolve

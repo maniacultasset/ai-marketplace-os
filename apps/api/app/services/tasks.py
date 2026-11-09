@@ -75,8 +75,11 @@ async def list_tasks(
 ) -> tuple[list[dict[str, Any]], bool, Keyset | None]:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, more = await uow.human_tasks.page(status, after=after, limit=limit)
+        blocking = await uow.listing_issues.blocking_task_ids(
+            [r.id for r in rows if r.status == "open"]
+        )
     next_key = (rows[-1].created_at, rows[-1].id) if more and rows else None
-    return [task_fields(r) for r in rows], more, next_key
+    return [{**task_fields(r), "blocking": r.id in blocking} for r in rows], more, next_key
 
 
 def _json(fields: dict[str, Any]) -> dict[str, Any]:
@@ -246,6 +249,9 @@ async def _answer(
             "evidence_snapshot": _snapshot(task.question, answer["value"]),
         }
         await uow.facts.set_attribute(product.id, key, fact)
+        # the same bypass as the column branch: the revalidation of the fact version must read
+        # (and pin the digest of) the answered attribute, not the loaded row's old one
+        uow.session.expire(product, ["attributes", "photo_rejections"])
         written = {key: fact}
     if (
         await uow.human_tasks.answer_and_apply(task.id, answer=answer, user_id=principal.user_id)

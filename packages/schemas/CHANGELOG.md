@@ -20,6 +20,18 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- QA fixes, 9 Nov (additive optional response fields and one member on the unreleased SI11 `NextStepOut.kind`, under the open 2.1.0 heading; no new error code or operation).
+  - `TaskOut.blocking` (default false): an open listing ERROR waits on this answer, so the question blocks a listing. A photo question can block too, so the FE reads this flag and stops assuming "a photo question never blocks". Set on `tasks_list`.
+  - `IssueOut.product_id?` (default null): the listing's product, so an inbox issue row can name its SKU. Set on `issues_list`.
+  - `NextStepOut.kind` gains `edit_content`: the seller's own text (an edit over a limit) failed Kuinn's pre-send check. Only the seller's next edit fixes it, and no inbox question opens. The issue row now reads `lane: seller` and no longer says staff.
+  - **Behaviour (no contract change):**
+    - The resolution read gives `needs_you` with next step `regenerate` for a listing blocked on questions that are all answered. A seller's checked fact version after a refused send gives `fix_ready` with next step `approve`.
+    - `AttemptOut.number` counts sends across the listing's versions (description changed), so a resend of version 2 reads 2, not 1 again.
+    - A fact answer's version is audited as `listing.fact_answered`, not `listing.edited`, because no text changed.
+    - Answer choices are offered once each (template `value_map` keys are aliases, never extra choices) and never include the value the marketplace just refused.
+    - The image rules seed checks resolution on secondary and lifestyle photos too: 500 px minimum (error) and 1000 px recommended (warning) on Amazon and Flipkart.
+  - **FE:** read `TaskOut.blocking` in the inbox copy, show the SKU from `product_id` on issue rows, add an "Edit the listing" action for `edit_content`, and add a history label for `listing.fact_answered`.
+
 - Saved photo views (fix: uploaded photos were not visible after a reload; additive optional response fields under the open 2.1.0 heading; no new error code or operation). Each live image on a product read now carries a short-lived signed GET of its server-made copy, the same pattern as `ImageCandidateOut.preview_url`.
   - **Read model.** `ProductImageOut.view_url?` and `view_expires_at?` (default null): a V4 signed GET of the image's `vision.jpg` copy (RGB JPEG, long side at most 1024 px, no metadata), else its clean copy, valid 10 minutes; `view_expires_at` is stated 30 seconds early. Null until the compliance check has derived a copy. The seller's original upload is never signed (it may carry EXIF).
   - **Lists.** `ProductOut.thumbnail_url?` and `thumbnail_expires_at?` (default null) on `products_list` and on single reads: the main photo's view (style-level main first; a variant without its own photo shows its style's main of the variant's colour, else the style-level main, never another colour's).

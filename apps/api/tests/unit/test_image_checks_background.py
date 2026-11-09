@@ -50,7 +50,7 @@ def test_pillow_checks_background_pass() -> None:
 def test_pillow_checks_background_fail() -> None:
     report = bg(fx.png(400, 400, border=(40, 40, 40)))
     assert codes(report) == ["BACKGROUND_OFF"] and report.pass_ is False
-    assert report.issues[0].suggestion == "Background removal / replacement"
+    assert report.issues[0].suggestion == "Place the product on a plain white background"
 
 
 def test_background_near_white_fails() -> None:

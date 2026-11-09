@@ -241,7 +241,7 @@ async def test_rules_seed_images_load_rules(images_db: JobWorld) -> None:
 
     acme = images_db.tenant("acme")
     async with tenant_uow(acme) as uow:
-        for market, n in ((Marketplace.AMAZON, 6), (Marketplace.FLIPKART, 7)):
+        for market, n in ((Marketplace.AMAZON, 10), (Marketplace.FLIPKART, 11)):
             loaded = await load_rules(uow, tenant_id=acme, marketplace=market, category="kurtas")
             assert len([r for r in loaded.ruleset.rules if r.field == "images"]) == n
 

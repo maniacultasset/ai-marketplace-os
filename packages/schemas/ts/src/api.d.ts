@@ -2328,7 +2328,7 @@ export interface components {
             kind: "precheck" | "submission";
             /**
              * Number
-             * @description The submission attempt (1-3); 0 for a pre-check.
+             * @description The send's order on the listing, across its versions (1 for the first send, capped at 99); 0 for a pre-check.
              */
             number: number;
             /**
@@ -3479,6 +3479,11 @@ export interface components {
             occurrences: number;
             /** Plain Message */
             plain_message?: string | null;
+            /**
+             * Product Id
+             * @description The listing's product, so an inbox row can name its SKU. Set on the list read.
+             */
+            product_id?: string | null;
             /** Raw Message */
             raw_message?: string | null;
             /** Recurrence Of Id */
@@ -4085,7 +4090,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "none" | "wait" | "approve" | "answer" | "marketplace" | "resume" | "regenerate" | "recategorize" | "edit_identifier";
+            kind: "none" | "wait" | "approve" | "answer" | "marketplace" | "resume" | "regenerate" | "recategorize" | "edit_identifier" | "edit_content";
             /** Task Ids */
             task_ids?: string[];
             /**
@@ -5222,6 +5227,12 @@ export interface components {
             answered_by_user_id?: string | null;
             /** Applied At */
             applied_at?: string | null;
+            /**
+             * Blocking
+             * @description An open listing ERROR waits on this answer, so the question blocks that listing (a photo question can too). Set on the list read; false once closed.
+             * @default false
+             */
+            blocking: boolean;
             /** Cancelled Reason */
             cancelled_reason?: string | null;
             /** Colourway Id */

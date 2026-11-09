@@ -34,12 +34,12 @@ def seed_image_rules(marketplace: str, category: str = "kurtas") -> list[Rule]:
     return [r for r in ruleset.rules if r.field == "images"]
 
 
-def run(data: bytes, marketplace: str) -> ImageReport:
+def run(data: bytes, marketplace: str, slot: ImageSlot = ImageSlot.MAIN) -> ImageReport:
     return check_image(
         data,
         image_id=IMAGE_ID,
         marketplace=Marketplace(marketplace),
-        slot=ImageSlot.MAIN,
+        slot=slot,
         rules=seed_image_rules(marketplace),
         now=NOW,
     )
@@ -51,8 +51,8 @@ def codes(report: ImageReport) -> list[str]:
 
 @pytest.mark.parametrize("category", ["kurtas", "home_decor_lamps", "anything_else"])
 def test_rules_seed_images_resolve_for_every_category(category: str) -> None:
-    assert len(seed_image_rules("amazon", category)) == 6
-    assert len(seed_image_rules("flipkart", category)) == 7
+    assert len(seed_image_rules("amazon", category)) == 10
+    assert len(seed_image_rules("flipkart", category)) == 11
 
 
 @pytest.mark.parametrize(
@@ -90,3 +90,23 @@ def test_rules_seed_images_vision_rows_not_listed(marketplace: str) -> None:
         "logo",
     } == set()
     assert all(c.method == "deterministic" for c in report.checks)
+
+
+@pytest.mark.parametrize("slot", [ImageSlot.SECONDARY, ImageSlot.LIFESTYLE])
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+def test_rules_seed_small_extra_photo_fails_resolution(marketplace: str, slot: ImageSlot) -> None:
+    """QA: a 200x150 Back, Close-up or More photo failed nothing; the floor is 500 px."""
+    report = run(jpeg(200, 150), marketplace, slot)
+    assert report.pass_ is False
+    assert codes(report) == ["RESOLUTION_LOW"]
+    assert "resolution" in {c.check for c in report.checks}
+
+
+@pytest.mark.parametrize("slot", [ImageSlot.SECONDARY, ImageSlot.LIFESTYLE])
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+def test_rules_seed_extra_photo_resolution(marketplace: str, slot: ImageSlot) -> None:
+    """800 px passes with a zoom warning; 1000 px passes clean; no 1:1 rule on extra photos."""
+    mid = run(jpeg(800, 800), marketplace, slot)
+    assert (mid.pass_, codes(mid)) == (True, ["RESOLUTION_LOW"])
+    big = run(jpeg(1000, 1333), marketplace, slot)
+    assert (big.pass_, codes(big)) == (True, [])

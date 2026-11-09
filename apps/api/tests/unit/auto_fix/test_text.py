@@ -127,3 +127,33 @@ def test_answer_choices() -> None:
     assert answer_choices(["a", "b"], _template(None), "fit") == ["a", "b"]  # no enum spec
     assert answer_choices(["a"], None, "fit") == ["a"]
     assert answer_choices(None, None, "fit") is None
+
+
+def test_answer_choices_once_each_and_never_the_refused_value() -> None:
+    """QA: a colour question offered 40 values with Grey and gray, Off White and off-white,
+    and Indigo, the value Amazon had just refused."""
+    from app.services.auto_fix.text import answer_choices
+
+    colours = _template(
+        ["Indigo", "Grey", "Off White", "Navy", "Navy "],
+        {"gray": "Grey", "off-white": "Off White", "off white": "Off White", "navy blue": "Navy"},
+    )
+    assert answer_choices(None, colours, "fit") == ["Indigo", "Grey", "Off White", "Navy"]
+    assert answer_choices(None, colours, "fit", exclude=["indigo "]) == [
+        "Grey",
+        "Off White",
+        "Navy",
+    ]
+    assert answer_choices(["grey", "GREY", "Indigo"], colours, "fit", exclude=["Indigo"]) == [
+        "grey"
+    ]
+    assert answer_choices(None, _template(["Indigo"]), "fit", exclude=["Indigo"]) is None
+    assert answer_choices(["a", "A", "b"], None, "fit", exclude=["b"]) == ["a"]
+
+
+def test_identifier_question_names_the_barcode_and_the_exemption() -> None:
+    """QA: "Add the identifier on the product." never said what an identifier is."""
+    question, reason = question_for(ErrorCode.IDENTIFIER_MISSING, "identifier", "")
+    assert question.startswith("Add the barcode on the product.")
+    assert "EAN, UPC or GTIN" in question and "GTIN exemption" in question
+    assert "barcode" in reason and "identifier" not in question + reason

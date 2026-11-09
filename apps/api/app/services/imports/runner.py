@@ -199,18 +199,22 @@ def batches(units: Sequence[Unit], size: int | None = None) -> list[list[Unit]]:
 
 def mark_duplicates(units: Sequence[Unit], earlier: dict[str, int] | None = None) -> None:
     """`DUPLICATE_SKU_IN_FILE` on every repeat of a SKU after its first row (file order); a
-    rows retry passes the imported rows' SKUs, which stay the first occurrences."""
+    rows retry passes the imported rows' SKUs, which stay the first occurrences.
+
+    A row that failed validation still claims its SKU: otherwise a later repeat of an invalid
+    row would import as the first occurrence. Only a typed row gets the error, so an invalid
+    repeat does not pile up extra errors."""
     first: dict[str, int] = dict(earlier or {})
     for p in sorted((p for u in units for p in u.rows), key=lambda p: p.row_number):
-        if p.row is None or p.sku is None:
+        if p.sku is None:
             continue
         seen = first.get(p.sku)
-        if seen is not None and seen < p.row_number:
+        if seen is None:
+            first[p.sku] = p.row_number
+        elif seen < p.row_number and p.row is not None:
             p.errors.append(
                 row_error(ErrorCode.DUPLICATE_SKU_IN_FILE, "seller_sku repeats an earlier row")
             )
-        elif seen is None:
-            first[p.sku] = p.row_number
 
 
 # ---- facts ----

@@ -53,6 +53,11 @@ class TaskOut(WireModel):
         description="SI9: how an account task (marketplace_error_review, permission_decision) "
         "was closed; null for every other task.",
     )
+    blocking: bool = Field(
+        default=False,
+        description="An open listing ERROR waits on this answer, so the question blocks that "
+        "listing (a photo question can too). Set on the list read; false once closed.",
+    )
     created_at: AwareDatetime
     updated_at: AwareDatetime
 

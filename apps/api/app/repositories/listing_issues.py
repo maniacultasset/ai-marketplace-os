@@ -270,6 +270,23 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         )
         return sorted(p for p in (await self.db.execute(stmt)).scalars() if p is not None)
 
+    async def blocking_task_ids(self, task_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """QA 2026-11-09: the tasks of `task_ids` an open ERROR row is linked to (the question
+        blocks a listing: `issue_questions` opens it for that row, or reuses it)."""
+        if not task_ids:
+            return set()
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.human_task_id.in_(list(task_ids)),
+                ListingIssue.status == "open",
+                ListingIssue.severity == "error",
+            )
+            .with_only_columns(ListingIssue.human_task_id)
+            .distinct()
+        )
+        return {row for row in (await self.db.execute(stmt)).scalars() if row is not None}
+
     async def live_task_ids(self, listing_id: uuid.UUID) -> builtins.list[uuid.UUID]:
         """SI4 A12: the distinct human tasks linked to this listing's rows (any status) whose
         task is still live (`open`/`answered`): the ones to re-check after a sync."""

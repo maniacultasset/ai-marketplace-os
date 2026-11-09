@@ -162,6 +162,15 @@ class ListingSubmissionRepository(TenantScopedRepository[ListingSubmission]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def count_for(self, listing_id: uuid.UUID) -> int:
+        """Every submission of the listing, all versions (the resolution read numbers sends)."""
+        stmt = (
+            self._select()
+            .where(ListingSubmission.listing_id == listing_id)
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
     async def count_for_version(self, listing_id: uuid.UUID, version_id: uuid.UUID) -> int:
         stmt = (
             self._select()

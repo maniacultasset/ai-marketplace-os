@@ -71,7 +71,7 @@ QUALIFICATION_CODES: Final = frozenset({"99320", "5665", "5461", "8541", "8542"}
 LOCKED_SKU_CODES: Final = frozenset({"4005013", "101168"})
 SKU_CODES: Final = frozenset({ErrorCode.SKU_CONFLICT.value, ErrorCode.SELLER_SKU_CONFLICT.value})
 # SI13 (CP-D8): seller steps that open no inbox question (the action is on the listing)
-SELLER_ACTIONS: Final = frozenset({"recategorize", "edit_identifier"})
+SELLER_ACTIONS: Final = frozenset({"recategorize", "edit_identifier", "edit_content"})
 _IDENTIFIER_PATH: Final = re.compile(r"(variants\[[^\]]+\]\.)?facts\.identifier")
 ANSWERABLE_FACTS: Final = ("facts.gender", "facts.brand_name")
 ADAPTER_SOURCES: Final = frozenset({"amazon_adapter", "flipkart_adapter"})
@@ -252,6 +252,10 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         # auto-fix job); any other content or keyword path is a staff content review (round 3)
         if issue.id in ctx.content_fixable and path.startswith(_CONTENT_ROOTS):
             return "auto_content", "content_fix"
+        if not adapter and path.startswith(_CONTENT_ROOTS):
+            # QA: Kuinn's own check of text (a seller's edit over the limit) has no staff task
+            # behind it and the executor never plans it: only the seller's next edit fixes it
+            return "seller", "edit_content"
         return _seller_or_staff(path)
     if routing.route is Route.AI_FIELD:
         key = path.split(".", 1)[1] if "." in path else path

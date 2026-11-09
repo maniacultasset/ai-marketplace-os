@@ -121,9 +121,12 @@ async def save_edit(
     parent: Any,
     new: CanonicalListing,
     changed: list[str],
+    *,
+    action: str = "listing.edited",
 ) -> dict[str, Any]:
     """Steps 4-7 of the module docstring: the `edit` version, its checks, the move and the
-    questions. SI11 T17's fact-only version (`fact_edit`) goes through the same steps."""
+    questions. SI11 T17's fact-only version (`fact_edit`) goes through the same steps, audited
+    as `listing.fact_answered` (no text changed, so the history never calls it a text edit)."""
     from_status = listing.status
     number = await uow.listing_versions.next_version(listing.id)
     check = await rules_check(uow, listing, new)
@@ -187,14 +190,14 @@ async def save_edit(
         tenant_id=principal.tenant_id,
         actor_type="user",
         actor_user_id=principal.user_id,
-        action="listing.edited",
+        action=action,
         entity_type="listing",
         entity_id=listing.id,
         before=json.dumps({"status": from_status}),
         after=json.dumps({"status": to, "status_reason": reason}),
     )
     log.info(
-        "listing.edited",
+        action,
         listing_id=str(listing.id),
         version_id=str(version.id),
         status=to,
@@ -247,7 +250,9 @@ async def fact_edit(
     old = previous_listing(listing, parent)
     if parent is None or old is None:
         return None
-    await save_edit(uow, principal, listing, parent, old, sorted(set(paths)))
+    await save_edit(
+        uow, principal, listing, parent, old, sorted(set(paths)), action="listing.fact_answered"
+    )
     moved = await uow.listings.get(listing.id)
     if moved is None or moved.current_version_id is None:
         return None

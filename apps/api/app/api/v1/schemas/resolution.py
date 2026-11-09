@@ -72,7 +72,8 @@ class AttemptFailureOut(WireModel):
 class AttemptOut(WireModel):
     kind: Literal["precheck", "submission"]
     number: Annotated[int, Field(ge=0, le=99)] = Field(
-        description="The submission attempt (1-3); 0 for a pre-check."
+        description="The send's order on the listing, across its versions (1 for the first "
+        "send, capped at 99); 0 for a pre-check."
     )
     version: Annotated[int, Field(ge=1)]
     at: AwareDatetime
@@ -85,7 +86,8 @@ class AttemptOut(WireModel):
 class NextStepOut(WireModel):
     # SI13 (2.1.0, unreleased): `recategorize` (choose the category the marketplace now files the
     # product under, then regenerate) and `edit_identifier` (fix the barcode or claim an
-    # exemption) are seller actions on the listing that open no inbox question
+    # exemption) are seller actions on the listing that open no inbox question; `edit_content`
+    # (QA 2026-11-09): the seller's own text failed Kuinn's pre-send check (no staff task)
     kind: Literal[
         "none",
         "wait",
@@ -96,6 +98,7 @@ class NextStepOut(WireModel):
         "regenerate",
         "recategorize",
         "edit_identifier",
+        "edit_content",
     ]
     task_ids: Annotated[list[UUID], Field(max_length=20)] = Field(default_factory=list)
     text: Annotated[str, Field(max_length=300)] = ""

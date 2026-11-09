@@ -155,8 +155,10 @@ _QUESTIONS: Final[Mapping[ErrorCode, tuple[str, str]]] = {
         "The {label} is a compliance declaration the marketplace requires.",
     ),
     ErrorCode.IDENTIFIER_MISSING: (
-        "Add the {label} on the product.",
-        "The marketplace needs the {label} to identify this product.",
+        # QA 2026-11-09: name what an identifier is, and the exemption a brand may hold
+        "Add the {label} on the product. Use its EAN, UPC or GTIN, or a GTIN exemption.",
+        "The marketplace needs the {label} to identify this product, or a GTIN exemption if it "
+        "approved one for your brand.",
     ),
     ErrorCode.VALUE_NOT_ALLOWED: (
         "Set the {label} on the product to one of the values the marketplace accepts.",
@@ -170,9 +172,13 @@ _DEFAULT_QUESTION: Final = (
 )
 
 
+# QA 2026-11-09: the seller's word for a key whose name is internal
+KEY_WORDS: Final[Mapping[str, str]] = {"identifier": "barcode"}
+
+
 def _label(key: str, label: str) -> str:
     shown = " ".join(label.split())[:LABEL_MAX].strip()
-    return shown or key.replace("_", " ")[:LABEL_MAX]
+    return shown or KEY_WORDS.get(key) or key.replace("_", " ")[:LABEL_MAX]
 
 
 def _fit(text: str) -> str:
@@ -190,12 +196,34 @@ def question_for(
     return _fit(question.format(label=shown) + hint), _fit(reason.format(label=shown))
 
 
+def _fold(value: str) -> str:
+    return value.strip().casefold()
+
+
+def _unique(values: Sequence[str], exclude: frozenset[str]) -> list[str]:
+    """`values` once each by the Rules fold (the first spelling kept), less `exclude`."""
+    out: dict[str, str] = {}
+    for v in values:
+        folded = _fold(v)
+        if folded not in exclude:
+            out.setdefault(folded, v)
+    return list(out.values())
+
+
 def answer_choices(
-    vocabulary: Sequence[str] | None, template: CategoryTemplate | None, key: str
+    vocabulary: Sequence[str] | None,
+    template: CategoryTemplate | None,
+    key: str,
+    *,
+    exclude: Sequence[str] = (),
 ) -> list[str] | None:
     """SI9 CP-D23: the choices a question for `key` offers. With an enum spec on the listing's
     template: the dictionary vocabulary kept to the template's accepted spellings (matched with
-    the Rules fold, `strip().casefold()`), else those spellings; otherwise the vocabulary."""
+    the Rules fold, `strip().casefold()`), else the template's allowed values; otherwise the
+    vocabulary. QA 2026-11-09: each choice once by the fold (a `value_map` key is an alias of
+    an allowed value, never a choice of its own when allowed values exist), and never a value
+    in `exclude` (the value the marketplace just refused)."""
+    refused = frozenset(_fold(v) for v in exclude)
     spec = None if template is None else template.specs.get(key)
     spellings = (
         None
@@ -203,10 +231,15 @@ def answer_choices(
         else [*(spec.allowed_values or []), *sorted(spec.value_map)]
     )  # the Rules check's accepted list (`rules_engine.template.template_allowed`)
     if spellings is None:
-        return list(vocabulary) if vocabulary else None
-    accepted = {s.strip().casefold() for s in spellings}
-    kept = [v for v in (vocabulary or ()) if v.strip().casefold() in accepted]
-    return kept or list(dict.fromkeys(spellings))
+        return _unique(vocabulary, refused) or None if vocabulary else None
+    accepted = {_fold(s) for s in spellings}
+    kept = _unique([v for v in (vocabulary or ()) if _fold(v) in accepted], refused)
+    if kept:
+        return kept
+    base = list(spec.allowed_values or []) if spec is not None and spec.allowed_values else []
+    if not base and spec is not None:
+        base = sorted(spec.value_map)
+    return _unique(base, refused) or None
 
 
 def expected_answer(

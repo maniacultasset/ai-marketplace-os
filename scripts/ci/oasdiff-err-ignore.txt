@@ -9073,3 +9073,7 @@ POST /api/v1/products added `#/components/schemas/SuggestedSizeChart` to the `si
 GET /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
 PATCH /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
 POST /api/v1/products/{product_id}/recategorize added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
+# Contract 2.1.0 (QA fixes 2026-11-09; additive under the open heading, conductor under the user's
+# V1 delegation, packages/schemas/CHANGELOG.md): SI11's unreleased NextStepOut.kind gains the
+# seller action edit_content. Remove this line once main carries it.
+GET /api/v1/listings/{listing_id}/resolution added the new `edit_content` enum value to the `next_step/kind` response property for the response status `200`
