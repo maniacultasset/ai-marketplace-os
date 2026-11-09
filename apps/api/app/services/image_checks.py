@@ -88,10 +88,10 @@ CHECK_CODES: Final[Mapping[CheckName, ImageIssueCode]] = MappingProxyType(
 )
 DEFAULT_SUGGESTIONS: Final[Mapping[ImageIssueCode, str]] = MappingProxyType(
     {
-        ImageIssueCode.BACKGROUND_OFF: "Background removal / replacement",
-        ImageIssueCode.RESOLUTION_LOW: "Upscale or re-export",
+        ImageIssueCode.BACKGROUND_OFF: "Place the product on a plain white background",
+        ImageIssueCode.RESOLUTION_LOW: "Upload a larger, sharper photo",
         ImageIssueCode.WRONG_ASPECT: "Crop to correct ratio",
-        ImageIssueCode.FORMAT_UNSUPPORTED: "Re-export the image as JPEG, PNG or TIFF",
+        ImageIssueCode.FORMAT_UNSUPPORTED: "Save the image as JPEG, PNG or WebP and upload it again",
         ImageIssueCode.FILE_TOO_LARGE: "Reduce the file size or pixel dimensions and re-export",
         ImageIssueCode.CORRUPT: "The file could not be decoded; re-export it and upload again",
         ImageIssueCode.FILL_RATIO_LOW: "Zoom or crop so the product fills the frame",

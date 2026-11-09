@@ -39,6 +39,7 @@ from app.core.rbac import Principal
 from app.repositories.resolution import FIX_JOB_STATUSES, LinkedTask, VersionRow
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.resolution.plan import (
+    ADAPTER_SOURCES,
     Cause,
     IssueView,
     Lane,
@@ -71,11 +72,14 @@ ACTION_OF: Final[Mapping[str, str]] = {
     "CATEGORY_MISMATCH": "recategorize",
     "IDENTIFIER_DUPLICATE": "edit_identifier",
 }
+CONTENT_ROOTS: Final = ("content.", "keywords.")
 SELLER_ACTION_TEXT: Final[Mapping[str, str]] = {
     "recategorize": "Amazon files this product under another category. Choose the matching "
     "category, then regenerate the listing.",
     "edit_identifier": "Amazon lists this barcode under another brand. Check the barcode, or "
     "claim a GTIN exemption.",
+    "edit_content": "This text does not pass the marketplace's rules, for example a title that "
+    "is too long. Edit the listing to fix it, then save a new version.",
 }
 
 
@@ -183,16 +187,16 @@ async def recategorizable_listings(
 def seller_action(rows: Iterable[Any], lanes: Mapping[uuid.UUID, tuple[Lane, Cause]]) -> str | None:
     """SI13 (CP-D8): the seller action an open ERROR asks for with no inbox question:
     `recategorize` (a category the marketplace refiled) before `edit_identifier` (a barcode of
-    another brand)."""
-    kinds = {
-        ACTION_OF[r.error_code]
-        for r in rows
-        if r.status == "open"
-        and r.severity == "error"
-        and r.error_code in ACTION_OF
-        and lanes.get(r.id, ("",))[0] == "seller"
-    }
-    for kind in ("recategorize", "edit_identifier"):
+    another brand) before `edit_content` (text that failed Kuinn's own check)."""
+    kinds: set[str] = set()
+    for r in rows:
+        if r.status != "open" or r.severity != "error" or lanes.get(r.id, ("",))[0] != "seller":
+            continue
+        if r.error_code in ACTION_OF:
+            kinds.add(ACTION_OF[r.error_code])
+        elif r.source not in ADAPTER_SOURCES and r.field_path.startswith(CONTENT_ROOTS):
+            kinds.add("edit_content")  # QA: the seller's own text failed Kuinn's check
+    for kind in ("recategorize", "edit_identifier", "edit_content"):
         if kind in kinds:
             return kind
     return None
@@ -248,6 +252,9 @@ class ReadFacts:
     seller_action: str | None = None
     """SI13 (CP-D8): `recategorize` or `edit_identifier` when an open seller-lane ERROR asks
     for that action on the listing (no inbox question)."""
+    answer_ready: bool = False
+    """The current version is a seller's own fact answer or edit made after a refused or failed
+    send, checked and not approved: a teammate approves and resends it."""
 
 
 def state_of(f: ReadFacts) -> str:
@@ -273,9 +280,11 @@ def state_of(f: ReadFacts) -> str:
         return "needs_marketplace"
     if f.seller_tasks or f.seller_action:
         return "needs_you"
+    if f.status == "blocked" and f.status_reason == "human_task_open":
+        return "needs_you"  # every question answered: only a regenerate uses the answers
     if f.status == "failed" and f.status_reason == "generation_failed" and f.open_blocking:
         return "stopped"  # a fix job ended with no version: never `idle` with nobody told
-    if f.fix_ready:
+    if f.fix_ready or f.answer_ready:
         return "fix_ready"
     return "idle"
 
@@ -318,11 +327,22 @@ def next_step(state: str, f: ReadFacts) -> dict[str, Any]:
         }
     if state == "needs_you" and f.seller_action is not None and not f.seller_tasks:
         return {"kind": f.seller_action, "text": SELLER_ACTION_TEXT[f.seller_action]}
+    if state == "needs_you" and not f.seller_tasks and f.status_reason == "human_task_open":
+        return {
+            "kind": "regenerate",
+            "text": "Your answers are saved. Generate the listing again to use them.",
+        }
     if state == "needs_you":
         return {
             "kind": "answer",
             "task_ids": list(f.seller_tasks)[:20],
             "text": "Answer the open question so Kuinn can fix the listing.",
+        }
+    if state == "fix_ready" and not f.fix_ready:
+        return {
+            "kind": "approve",
+            "text": "Your change is in a new version. A teammate who did not make it approves "
+            "and resends it.",
         }
     if state == "fix_ready":
         return {
@@ -372,16 +392,24 @@ def _precheck(job: Any) -> _Attempt | None:
     )
 
 
-def _submission(row: Any) -> _Attempt:
+def _submission(row: Any, number: int) -> _Attempt:
     return _Attempt(
         "submission",
         start=row.created_at,
         at=row.created_at,
-        number=int(row.attempt),
+        number=number,
         version_id=row.listing_version_id,
         actor="system" if row.actor_type == "system" else "user",
         outcome=row.outcome,
     )
+
+
+def _numbered(submissions: Sequence[Any], total: int | None) -> list[_Attempt]:
+    """Each send numbered by its order on the whole listing (QA: `attempt` restarts at 1 for
+    every version, so a resend of version 2 read "Sent 1" again). `submissions` are the newest
+    ones, newest first; `total` is the listing's count (None: the page is all of them)."""
+    count = len(submissions) if total is None else max(total, len(submissions))
+    return [_submission(row, min(count - index, 99)) for index, row in enumerate(submissions)]
 
 
 def _within(at: datetime | None, start: datetime, end: datetime | None) -> bool:
@@ -401,9 +429,10 @@ def attempts(
     tasks: Sequence[LinkedTask],
     versions: Mapping[uuid.UUID, VersionRow],
     lanes: Mapping[uuid.UUID, tuple[Lane, Cause]],
+    total_submissions: int | None = None,
 ) -> list[dict[str, Any]]:
     found = [a for a in (_precheck(j) for j in jobs) if a is not None]
-    found += [_submission(s) for s in submissions]
+    found += _numbered(submissions, total_submissions)
     found = [a for a in found if a.version_id in versions]
     found.sort(key=lambda a: (a.start, a.kind))
     by_issue = {i.id: i for i in issues}
@@ -516,7 +545,8 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
     from app.services.listings import remote_check
 
     jobs = await uow.resolution.read_jobs(listing.id)
-    submissions, _more = await uow.submissions.page(listing.id, after=None, limit=MAX_ATTEMPTS)
+    submissions, more = await uow.submissions.page(listing.id, after=None, limit=MAX_ATTEMPTS)
+    total = await uow.submissions.count_for(listing.id) if more else None
     issues = await uow.resolution.issues_for(listing.id)
     repairs = await uow.resolution.repairs_for(listing.id)
     tasks = await uow.resolution.linked_tasks(listing.id)
@@ -566,6 +596,16 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
             i.field_path for i in open_errors if lanes.get(i.id, ("",))[0] == "auto_repair"
         ),
         seller_action=seller_action(open_errors, lanes),
+        answer_ready=(
+            current is not None
+            and current.origin == "edit"
+            and current.job_id is None
+            and listing.approved_version_id != listing.current_version_id
+            and listing.status in ("validated", "needs_review")
+            and latest is not None
+            and latest.listing_version_id != listing.current_version_id
+            and latest.outcome in ("rejected", "error")
+        ),
     )
     state = state_of(facts)
     return {
@@ -580,6 +620,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
             tasks=tasks,
             versions=versions,
             lanes=lanes,
+            total_submissions=total,
         ),
         "next_step": next_step(state, facts),
     }

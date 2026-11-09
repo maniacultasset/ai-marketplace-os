@@ -1413,7 +1413,7 @@
    "status": "covered",
    "owner": "backend-db",
    "ref": "apps/api/app/services/image_checks.py:83-90; T134",
-   "note": "BACKGROUND_OFF suggestion text \"Background removal / replacement\" (DEFAULT_SUGGESTIONS); SI7 fix and white_background candidates are the corrective actions"
+   "note": "BACKGROUND_OFF suggestion text \"Place the product on a plain white background\" (DEFAULT_SUGGESTIONS, the spec's corrective action in seller words); SI7 fix and white_background candidates are the corrective actions"
   },
   {
    "id": "R10081",

@@ -153,8 +153,12 @@ def test_check_code_map_frozen() -> None:
         "watermark": ImageIssueCode.WATERMARK,
     }
     assert set(DEFAULT_SUGGESTIONS) == set(CHECK_CODES.values())
-    assert DEFAULT_SUGGESTIONS[ImageIssueCode.BACKGROUND_OFF] == "Background removal / replacement"
-    assert DEFAULT_SUGGESTIONS[ImageIssueCode.RESOLUTION_LOW] == "Upscale or re-export"
+    background = DEFAULT_SUGGESTIONS[ImageIssueCode.BACKGROUND_OFF]
+    assert background == "Place the product on a plain white background"
+    # QA: the advice names what the upload accepts (JPEG, PNG, WebP), never TIFF.
+    fmt = DEFAULT_SUGGESTIONS[ImageIssueCode.FORMAT_UNSUPPORTED]
+    assert fmt == "Save the image as JPEG, PNG or WebP and upload it again"
+    assert DEFAULT_SUGGESTIONS[ImageIssueCode.RESOLUTION_LOW] == "Upload a larger, sharper photo"
     assert DEFAULT_SUGGESTIONS[ImageIssueCode.WRONG_ASPECT] == "Crop to correct ratio"
     assert all(1 <= len(text) <= 1000 for text in DEFAULT_SUGGESTIONS.values())
     with pytest.raises(TypeError):

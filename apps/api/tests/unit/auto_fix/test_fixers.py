@@ -106,6 +106,16 @@ def test_stub_title_is_cut_at_a_word_boundary() -> None:
     assert _dump_without(fixed, ("content", "title")) == _dump_without(base, ("content", "title"))
 
 
+def test_a_cut_never_ends_on_a_connector_word() -> None:
+    """QA: the 212-character stub title came back ending "... Cotton Kurta Set for"."""
+    base = listing(content={"title": STUB_212})
+    got = fix_reformat(base, _item("content.title", TITLE_RULE), _ctx())
+    assert got is not None
+    title = got[0].content.title
+    assert title.rsplit(" ", 1)[-1].casefold() not in {"for", "with", "and", "of", "the"}
+    assert title.endswith("Kurta Set")
+
+
 def test_bullet_is_fixed_alone() -> None:
     bullets = [
         "Soft cotton fabric",

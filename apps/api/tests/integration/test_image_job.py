@@ -241,8 +241,8 @@ async def test_rules_seed_images_load_rules(images_db: JobWorld) -> None:
 
     acme = images_db.tenant("acme")
     async with tenant_uow(acme) as uow:
-        # SI14: plus the text-overlay and watermark warnings
-        for market, n in ((Marketplace.AMAZON, 8), (Marketplace.FLIPKART, 9)):
+        # QA 9 Nov: secondary and lifestyle resolution; SI14: text-overlay and watermark warnings
+        for market, n in ((Marketplace.AMAZON, 12), (Marketplace.FLIPKART, 13)):
             loaded = await load_rules(uow, tenant_id=acme, marketplace=market, category="kurtas")
             assert len([r for r in loaded.ruleset.rules if r.field == "images"]) == n
 

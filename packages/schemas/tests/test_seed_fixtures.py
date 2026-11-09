@@ -279,10 +279,19 @@ BYTE_RULE_IDS = {
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
 
-def test_rules_seed_count_88() -> None:
-    """78 rows, plus SI8's six Amazon bullet and description limits, plus SI14's four photo QA
+# QA 2026-11-09: resolution on secondary and lifestyle photos (Amazon 7-10, Flipkart 8-11)
+EXTRA_PHOTO_RULE_IDS = {f"5eed0000-0000-4000-8000-00070100000{n}" for n in "789a"} | {
+    f"5eed0000-0000-4000-8000-00070200000{n}" for n in "89ab"
+}
+
+
+def test_rules_seed_count_96() -> None:
+    """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
+    secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
     warnings (text overlay and watermark, Amazon and Flipkart main)."""
-    assert sum(len(s.rules) for s in _load()) == 88
+    assert sum(len(s.rules) for s in _load()) == 96
+    ids = {str(r.id) for s in _load() for r in s.rules}
+    assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -330,6 +339,7 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
         | CLAIM_RULE_IDS
         | SI8_TEXT_RULE_IDS
         | SI14_PHOTO_QA_RULE_IDS
+        | EXTRA_PHOTO_RULE_IDS
     )
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:
@@ -347,12 +357,13 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     assert digest == APPAREL_RULES_SHA256
 
 
-# SI14: the photo QA warnings (Amazon 07/08, Flipkart 08/09 of the image block)
+# SI14: the photo QA warnings (Amazon 0b/0c, Flipkart 0c/0d of the image block; renumbered
+# after main's QA resolution rows took Amazon 07-0a and Flipkart 08-0b)
 SI14_PHOTO_QA_RULE_IDS = {
-    "5eed0000-0000-4000-8000-000701000007",
-    "5eed0000-0000-4000-8000-000701000008",
-    "5eed0000-0000-4000-8000-000702000008",
-    "5eed0000-0000-4000-8000-000702000009",
+    "5eed0000-0000-4000-8000-00070100000b",
+    "5eed0000-0000-4000-8000-00070100000c",
+    "5eed0000-0000-4000-8000-00070200000c",
+    "5eed0000-0000-4000-8000-00070200000d",
 }
 
 

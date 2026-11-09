@@ -185,7 +185,7 @@ def test_rule_suggestion_wins() -> None:
     report = run(SMALL, [_failing_resolution(suggestion="Shoot at 4096 px or more")])
     assert report.issues[0].suggestion == "Shoot at 4096 px or more"
     default = run(SMALL, [_failing_resolution()])
-    assert default.issues[0].suggestion == "Upscale or re-export"
+    assert default.issues[0].suggestion == "Upload a larger, sharper photo"
 
 
 def test_most_severe_rule_suggestion() -> None:

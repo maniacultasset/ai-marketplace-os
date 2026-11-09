@@ -219,6 +219,17 @@ class ListingRepository(TenantScopedRepository[Listing]):
     async def get(self, listing_id: uuid.UUID) -> Listing | None:
         return await self.get_by_id(listing_id)
 
+    async def product_ids(self, listing_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, uuid.UUID]:
+        """listing id -> its product id, for the given listings of this tenant."""
+        if not listing_ids:
+            return {}
+        stmt = (
+            self._select()
+            .where(Listing.id.in_(list(set(listing_ids))))
+            .with_only_columns(Listing.id, Listing.product_id)
+        )
+        return {row[0]: row[1] for row in (await self.db.execute(stmt)).all()}
+
     async def any_for_product(self, product_id: uuid.UUID) -> bool:
         """True when the product has a listing of any status (SI1: its category is then fixed)."""
         stmt = (

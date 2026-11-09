@@ -148,6 +148,11 @@ CATALOG_INCLUDED: Final = "summaries,identifiers"
 CATALOG_PAGE_SIZE: Final = 20
 CATALOG_MAX_PAGES: Final = 5  # one EAN can match several ASINs; past this the search is partial
 RESTRICTION_CONDITION: Final = "new_new"
+# The Amazon connection check (`app.workers.amazon_check`): Sellers API v1
+# getMarketplaceParticipations, a read with no query and no seller in the path. Believed from the
+# public docs (Amazon publishes 0.016 req/s, burst 15).
+# https://developer-docs.amazon.com/sp-api/reference/getmarketplaceparticipations
+PARTICIPATIONS_PATH: Final = "/sellers/v1/marketplaceParticipations"
 
 # The issue severities and the summary states SP-API answers with.
 ACCEPTED: Final = "ACCEPTED"

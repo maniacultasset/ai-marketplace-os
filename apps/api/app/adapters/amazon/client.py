@@ -23,6 +23,8 @@ connect 5 s / read 10 s, and each reply read through a 1 MiB cap.
   `app.adapters.amazon.definitions`). The product type must match `PRODUCT_TYPE_PATTERN` before
   the limiter or the token is touched, and the raw-path check holds for it too. A client built
   without a seller (`seller_id=None`, the platform PTD refresh) refuses every item call.
+- The connection check (`app.workers.amazon_check`): `get_participations`, Sellers API v1
+  getMarketplaceParticipations, GET only, with no query and no seller in the path.
 - The publish kill switch (`app.core.flags.publish_enabled`): with `AMAZON_PUBLISH_ENABLED=false`
   every call that is not a GET (`put`, `patch`, `put_preview`, and any write route added later)
   raises `PublishingPaused` before the limiter, the token or the network is touched, and logs
@@ -87,6 +89,7 @@ PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
 BARCODE_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
 ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
 CATALOG_DENIED: Final = "The Amazon account did not grant the Product Listing role to this app."
+SELLERS_DENIED: Final = "The Amazon account did not let this app read its marketplaces."
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
 _BEFORE_SEND: Final = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
 
@@ -319,13 +322,27 @@ class SpApiClient:
         route = self._read_route("restrictions_get", c.RESTRICTIONS_PATH, query)
         return await self._call(route, None)
 
+    async def get_participations(self) -> SpApiResponse:
+        """getMarketplaceParticipations: the marketplaces this seller takes part in (a read)."""
+        route = self._read_route(
+            "participations_get", c.PARTICIPATIONS_PATH, {}, denied=SELLERS_DENIED
+        )
+        return await self._call(route, None)
+
     # ---- internals ----
 
-    def _read_route(self, operation: str, path: str, query: Mapping[str, str]) -> _Route:
+    def _read_route(
+        self,
+        operation: str,
+        path: str,
+        query: Mapping[str, str],
+        *,
+        denied: str = CATALOG_DENIED,
+    ) -> _Route:
         """A GET with no body (`write=False`), checked raw-path-exact as every other route."""
-        raw = f"{path}?{urlencode(dict(query), safe='')}"
+        raw = f"{path}?{urlencode(dict(query), safe='')}" if query else path
         return _Route(
-            operation, "GET", path, self._endpoint + raw, raw.encode("ascii"), False, CATALOG_DENIED
+            operation, "GET", path, self._endpoint + raw, raw.encode("ascii"), False, denied
         )
 
     def _item_route(

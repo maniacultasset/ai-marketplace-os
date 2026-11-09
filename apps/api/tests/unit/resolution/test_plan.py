@@ -9,6 +9,7 @@ import pytest
 from app.services.auto_fix.policy import fact_key
 from app.services.issue_questions import _image_index
 from app.services.resolution.plan import (
+    ADAPTER_SOURCES,
     AUTOMATIC,
     SELLER_ACTIONS,
     IssueView,
@@ -166,11 +167,27 @@ def test_a_content_path_never_takes_a_lane_without_a_writer(
 ) -> None:
     """Fix round 3 (R3-2..R3-4), kept by T15: a content or keyword error the content fix cannot
     change (no `content_fixable`) never lands in `auto_content` or `ai_field` (nothing writes
-    for them), nor in `seller` (the seller's inbox asks only about facts and images): it goes
-    to a staff content review."""
+    for them), nor in a `seller` question (the seller's inbox asks only about facts and images):
+    a marketplace's refusal goes to a staff content review; Kuinn's own check of the text is the
+    seller's `edit_content` action (QA 2026-11-09: no staff task stands behind it)."""
     steps = plan([_issue(field_path=path, error_code=code.value, source=source)], PlanContext())
-    assert all(s.lane not in ("auto_content", "ai_field", "seller") for s in steps), steps
+    assert all(s.lane not in ("auto_content", "ai_field") for s in steps), steps
+    for s in steps:
+        if s.lane == "seller":
+            assert s.action == "edit_content" and source not in ADAPTER_SOURCES, s
     assert lane_for(code.value, "content_error") != "auto_content"
+
+
+def test_a_rules_engine_title_too_long_is_the_sellers_edit() -> None:
+    """QA: a seller's own 231-character title read "Kuinn team: our team is checking this"."""
+    issue = _issue(source="rules_engine", field_path="content.title",
+                   error_code="FIELD_TOO_LONG", error_class="invalid_value")  # fmt: skip
+    (step,) = plan([issue], PlanContext())
+    assert (step.lane, step.action) == ("seller", "edit_content")
+    refused = _issue(field_path="content.title", error_code="FIELD_TOO_LONG",
+                     error_class="invalid_value")  # fmt: skip
+    (step,) = plan([refused], PlanContext())
+    assert (step.lane, step.action) == ("staff", "content_review")
 
 
 def test_a_keyword_length_error_is_a_staff_content_review() -> None:
@@ -222,6 +239,13 @@ def test_a_seller_step_is_always_one_the_inbox_can_ask(
     staff step (`mapping` on `listing`), never a question the inbox cannot open."""
     issue = _issue(field_path=path, error_code=code.value, source=source, error_class=klass.value)
     for step in plan([issue], PlanContext(ai_allowed=True)):
+        if step.action == "edit_content":
+            # QA 2026-11-09: Kuinn's own check of the seller's text; an edit, no question
+            assert source not in ADAPTER_SOURCES and path.startswith(("content.", "keywords.")), (
+                path,
+                code,
+            )
+            continue
         if step.lane == "seller" and step.action in SELLER_ACTIONS:
             # SI13 (CP-D8): an action on the listing, no inbox question, on its own path only
             assert (code, step.action) in (
@@ -253,7 +277,8 @@ def test_no_seller_step_without_a_fact_key_or_an_image_index(
         return
     issue = _issue(field_path=path, error_code=code.value, source=source, error_class=klass.value)
     for step in plan([issue], PlanContext(ai_allowed=ai_allowed)):
-        assert step.lane != "seller", (path, code, source, klass)
+        # `edit_content` opens no question (SELLER_ACTIONS): the seller edits the listing
+        assert step.lane != "seller" or step.action == "edit_content", (path, code, source, klass)
 
 
 @pytest.mark.parametrize(

@@ -868,3 +868,38 @@ def condition_holds(
         "not_in": lambda: not any(_equals(value, v) for v in cond.values or ()),
     }
     return checks[cond.op]()
+
+
+# Prod QA 2026-11-09 item 24: a photo or AI value says "regular fit" where Amazon's KURTA enum
+# says "Regular". The attribute's own word is dropped when that is the only difference.
+ENUM_TRAILING_WORDS: Final = frozenset(
+    {"fit", "neck", "neckline", "collar", "sleeve", "sleeves", "length", "pattern", "print"}
+)
+
+
+def _enum_words(value: str) -> str:
+    text = unicodedata.normalize("NFKC", value).casefold()
+    return " ".join(re.sub(r"[-_/]+", " ", text).split())
+
+
+def _without_trailing(words: str) -> str:
+    head, _, last = words.rpartition(" ")
+    return head if head and last in ENUM_TRAILING_WORDS else words
+
+
+def enum_match(value: str, allowed: Sequence[str]) -> str | None:
+    """The allowed spelling of `value`: equal after casefold and trim; else equal once hyphens
+    and spacing are evened out ("v neck" = "V-Neck"); else equal once a trailing attribute word
+    ("fit", "neck", "sleeve" ...) is dropped from either side ("regular fit" = "Regular"). A loose
+    step answers only when exactly one allowed value matches; else None."""
+    folded = fold(value)
+    for one in allowed:
+        if fold(one) == folded:
+            return one
+    words = _enum_words(value)
+    for step in (lambda w: w, _without_trailing):
+        want = step(words)
+        hits = [one for one in allowed if step(_enum_words(one)) == want]
+        if len(hits) == 1:
+            return hits[0]
+    return None

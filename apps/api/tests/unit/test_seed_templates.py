@@ -402,3 +402,34 @@ def test_si14_lamp_templates_ship_and_their_keys_are_in_the_dictionary() -> None
     assert sorted(t.marketplace.value for t in lamps) == ["amazon", "flipkart"]
     for template in lamps:
         assert set(template.required_attributes) <= keys, template.marketplace
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+def test_photo_and_ai_values_reach_the_kurta_fit_enum(marketplace: str) -> None:
+    """Prod QA 2026-11-09 item 24: the photo read's "regular fit" was sent to Amazon, whose KURTA
+    fit enum is Regular / Relaxed / Slim, and refused."""
+    from importlib import import_module
+
+    from app.services.photo_facts import VOCAB
+
+    map_enum = import_module(f"app.adapters.{marketplace}.mapping").map_enum
+    fit = _apparel(marketplace, "ethnic_wear_kurta_sets").template.specs["fit"]
+    assert fit.allowed_values == ["Regular", "Relaxed", "Slim"]
+    assert map_enum(fit, "regular fit") == "Regular"
+    assert map_enum(fit, "Regular Fit") == "Regular"
+    assert map_enum(fit, "SLIM") == "Slim"
+    assert map_enum(fit, "relaxed-fit") == "Relaxed"
+    assert map_enum(fit, "loose fit") is None  # not in the enum: still refused
+    # every photo fit the enum has a word for maps
+    for value in VOCAB["fit"]:
+        assert (map_enum(fit, value) is None) == (value in {"loose fit", "oversized"}), value
+
+
+def test_enum_match_needs_one_clear_match() -> None:
+    from app.services.rules_engine.text import enum_match
+
+    assert enum_match("v neck", ["Round Neck", "V-Neck"]) == "V-Neck"
+    assert enum_match("round", ["Round Neck", "V-Neck"]) == "Round Neck"
+    assert enum_match("slim fit", ["Slim", "Slim Fit"]) == "Slim Fit"  # exact wins
+    assert enum_match("regular", ["Regular Fit", "Regular Neck"]) is None  # two answers: none
+    assert enum_match("cotton", ["Cotton Lycra"]) is None

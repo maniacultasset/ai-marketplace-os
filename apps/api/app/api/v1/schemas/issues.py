@@ -12,7 +12,7 @@ from uuid import UUID
 from mkos_schemas.base import WireModel
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ErrorClass, ErrorSource, FixAction, Marketplace, RetryClass, Severity
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 
 from app.api.pagination import Page
 from app.api.v1.schemas.resolution import Cause, Lane
@@ -33,6 +33,11 @@ IssueResolution = Literal[
 class IssueOut(WireModel):
     id: UUID
     listing_id: UUID
+    product_id: UUID | None = Field(
+        default=None,
+        description="The listing's product, so an inbox row can name its SKU. Set on the list "
+        "read.",
+    )
     marketplace: Marketplace
     listing_item_id: UUID | None = None
     listing_version_id: UUID | None = None
