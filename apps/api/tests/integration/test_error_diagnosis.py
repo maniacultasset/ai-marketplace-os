@@ -42,7 +42,6 @@ async def _unknown(world: GenWorld, slug: str = "acme", code: str = CODE, **over
         listing_id = made.listing_id
     else:
         made = None
-        f.facts_guard_off(world.conn, "products")
         product = f.product(world.conn, world.tenant(slug))
         listing_id = f.listing(world.conn, world.tenant(slug), product)
     issue = f.listing_issue(
@@ -418,6 +417,19 @@ async def test_a_dead_job_fails_the_pending_proposal(gen_world: GenWorld) -> Non
 
 
 # ---- T13: the scheduling ----
+
+
+async def test_other_tenant_set_up_keeps_the_facts_guard_on(
+    gen_world: GenWorld, diagnosis_on: None
+) -> None:
+    """The admin connection autocommits: a guard switched off there would stay off for every
+    later test on this xdist worker's database."""
+    await _unknown(gen_world, "bharat")
+    enabled = gen_world.conn.execute(
+        "SELECT tgenabled FROM pg_trigger "
+        "WHERE tgrelid = 'products'::regclass AND tgname = 'facts_guard'"
+    ).fetchone()
+    assert enabled == ("O",)
 
 
 async def test_two_tenants_one_proposal_billed_to_the_newest(
