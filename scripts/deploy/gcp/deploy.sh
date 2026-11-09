@@ -293,6 +293,21 @@ if [ -n "$RATE_LIMIT_PER_TENANT_PER_MIN" ] &&
   ! printf '%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN" | grep -Eqx '[1-9][0-9]{0,5}'; then
   die "RATE_LIMIT_PER_TENANT_PER_MIN must be a whole number of requests a minute (in $ENV_NAME.env)"
 fi
+# V1 hardening #9: the image check children one worker runs at once (blank: the Settings default,
+# 1). Each child may map up to 1 GiB, so the worker needs that many GiB plus 1 for itself, and a
+# second child only runs in parallel with a second vCPU.
+IMAGE_CHECK_CONCURRENCY="${IMAGE_CHECK_CONCURRENCY-}"
+if [ -n "$IMAGE_CHECK_CONCURRENCY" ]; then
+  printf '%s\n' "$IMAGE_CHECK_CONCURRENCY" | grep -Eqx '[1-4]' ||
+    die "IMAGE_CHECK_CONCURRENCY must be 1 to 4 (in $ENV_NAME.env)"
+  if [ "$IMAGE_CHECK_CONCURRENCY" -gt 1 ]; then
+    worker_gib="$(printf '%s\n' "$WORKER_MEMORY" | sed -n 's/^\([0-9][0-9]*\)Gi$/\1/p')"
+    [ -n "$worker_gib" ] && [ "$worker_gib" -ge $((IMAGE_CHECK_CONCURRENCY + 1)) ] ||
+      die "IMAGE_CHECK_CONCURRENCY=$IMAGE_CHECK_CONCURRENCY needs WORKER_MEMORY of at least $((IMAGE_CHECK_CONCURRENCY + 1))Gi (in $ENV_NAME.env)"
+    printf '%s\n' "$WORKER_CPU" | grep -Eqx '[2-8]' ||
+      die "IMAGE_CHECK_CONCURRENCY=$IMAGE_CHECK_CONCURRENCY needs WORKER_CPU of at least 2 (in $ENV_NAME.env)"
+  fi
+fi
 if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
   die "PIPELINE_REF must be a full 40-character lowercase commit sha (in $ENV_NAME.env)"
 fi
@@ -1066,6 +1081,9 @@ app_env() {
     [ -z "$LLM_MODEL_VISION" ] || printf 'LLM_MODEL_VISION\t%s\n' "$LLM_MODEL_VISION"
     [ -z "$LLM_MODEL_VISION_SIZE_CHART" ] ||
       printf 'LLM_MODEL_VISION_SIZE_CHART\t%s\n' "$LLM_MODEL_VISION_SIZE_CHART"
+    # V1 hardening #9: the parallel image check children (the worker runs every image job)
+    [ -z "$IMAGE_CHECK_CONCURRENCY" ] ||
+      printf 'IMAGE_CHECK_CONCURRENCY\t%s\n' "$IMAGE_CHECK_CONCURRENCY"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
