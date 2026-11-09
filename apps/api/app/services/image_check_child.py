@@ -74,13 +74,20 @@ def run(stdin: bytes) -> tuple[int, bytes]:
             Marketplace(m): [Rule.model_validate(r) for r in rows]
             for m, rows in spec["rules"].items()
         }
+        photo_qa = spec.get("photo_qa", False) is True  # SI14: PHOTO_QA_ENABLED
     except (ValueError, KeyError, TypeError):
         return EXIT_BAD_HEADER, b""
     reports: dict[str, Any] = {}
     try:
         for market, market_rules in rules.items():
             report = check_image(
-                data, image_id=image_id, marketplace=market, slot=slot, rules=market_rules, now=now
+                data,
+                image_id=image_id,
+                marketplace=market,
+                slot=slot,
+                rules=market_rules,
+                now=now,
+                photo_qa=photo_qa,
             )
             reports[market.value] = report.model_dump(mode="json", by_alias=True)
     except ValueError:

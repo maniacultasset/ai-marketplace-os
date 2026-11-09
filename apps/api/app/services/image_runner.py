@@ -160,12 +160,14 @@ async def run_checks_isolated(
     slot: ImageSlot,
     rules: Mapping[Marketplace, Sequence[Rule]],
     now: datetime,
+    photo_qa: bool = False,
 ) -> CheckOutcome:
     marketplaces = list(rules)
     header = {
         "image_id": str(image_id),
         "slot": ImageSlot(slot).value,
         "now": now.isoformat(),
+        "photo_qa": photo_qa,
         "rules": {
             Marketplace(m).value: [r.model_dump(mode="json", by_alias=True) for r in rs]
             for m, rs in rules.items()

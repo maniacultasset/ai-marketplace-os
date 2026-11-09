@@ -30,6 +30,8 @@ from mkos_schemas.images import CheckName, ImageCheck, ImageIssue, ImageReport
 from mkos_schemas.rules import ImageRequirement, Rule
 from PIL import Image, ImageChops
 
+from app.services import image_qa
+
 __all__ = [
     "CHECK_CODES",
     "DECODE_FORMATS",
@@ -78,6 +80,10 @@ CHECK_CODES: Final[Mapping[CheckName, ImageIssueCode]] = MappingProxyType(
         "resolution": ImageIssueCode.RESOLUTION_LOW,
         "aspect_ratio": ImageIssueCode.WRONG_ASPECT,
         "background": ImageIssueCode.BACKGROUND_OFF,
+        # SI14 (AI-43): the deterministic photo QA checks, warnings only
+        "fill_ratio": ImageIssueCode.FILL_RATIO_LOW,
+        "text_overlay": ImageIssueCode.TEXT_DETECTED,
+        "watermark": ImageIssueCode.WATERMARK,
     }
 )
 DEFAULT_SUGGESTIONS: Final[Mapping[ImageIssueCode, str]] = MappingProxyType(
@@ -88,11 +94,18 @@ DEFAULT_SUGGESTIONS: Final[Mapping[ImageIssueCode, str]] = MappingProxyType(
         ImageIssueCode.FORMAT_UNSUPPORTED: "Re-export the image as JPEG, PNG or TIFF",
         ImageIssueCode.FILE_TOO_LARGE: "Reduce the file size or pixel dimensions and re-export",
         ImageIssueCode.CORRUPT: "The file could not be decoded; re-export it and upload again",
+        ImageIssueCode.FILL_RATIO_LOW: "Zoom or crop so the product fills the frame",
+        ImageIssueCode.TEXT_DETECTED: "Remove the text from the image",
+        ImageIssueCode.WATERMARK: "Remove the watermark",
     }
 )
 _DOWNSCALE: Final = "Downscale and re-export"
 
 _VISION_ONLY: Final = frozenset({"fill_ratio", "text_overlay", "watermark", "logo"})
+# SI14: the photo QA checks run deterministically while `PHOTO_QA_ENABLED` is on, and are always
+# warnings whatever the rule says (AI-43: never blocking)
+_QA_CHECKS: Final = frozenset({"fill_ratio", "text_overlay", "watermark"})
+_WARNING_ONLY: Final[frozenset[CheckName]] = frozenset({"fill_ratio", "text_overlay", "watermark"})
 _RESOLUTION_RULES: Final = frozenset({"min_resolution", "recommended_resolution"})
 _FORMAT_ALIASES: Final[Mapping[str, str]] = MappingProxyType({"jpg": "jpeg", "tif": "tiff"})
 _ORIENTATION_TAG: Final = 0x0112
@@ -130,6 +143,8 @@ class _Checks:
     ) -> None:
         """Record one evaluation. No rule = an intrinsic check, error severity."""
         severity = Severity.ERROR if rule is None else rule.severity
+        if check in _WARNING_ONLY:
+            severity = Severity.WARNING
         suggestion = rule.rule_def.suggestion if rule is not None else None
         if suggestion is None:
             code = CHECK_CODES.get(check)
@@ -186,13 +201,18 @@ def _require(rule: Rule, req: ImageRequirement) -> None:
         missing = "max_bytes"
     elif req.check == "format" and not p.allowed_formats:
         missing = "allowed_formats"
+    elif req.check == "fill_ratio" and p.min_fill is None:
+        missing = "min_fill"
     if missing is not None:
         raise ValueError(f"image rule {rule.id}: {req.check} needs {missing}")
 
 
-def _select(rules: Sequence[Rule], marketplace: Marketplace, slot: ImageSlot) -> list[_Selected]:
-    """Enabled image rules for this marketplace and slot (or `any`), vision-only checks dropped.
-    Rules arrive resolved: category shadowing and versions are the caller's."""
+def _select(
+    rules: Sequence[Rule], marketplace: Marketplace, slot: ImageSlot, photo_qa: bool = False
+) -> list[_Selected]:
+    """Enabled image rules for this marketplace and slot (or `any`), vision-only checks dropped
+    (the QA checks kept while `photo_qa` is on). Rules arrive resolved: category shadowing and
+    versions are the caller's."""
     selected: list[_Selected] = []
     for rule in rules:
         req = rule.rule_def
@@ -200,7 +220,7 @@ def _select(rules: Sequence[Rule], marketplace: Marketplace, slot: ImageSlot) ->
             continue
         if rule.marketplace != marketplace or req.slot not in (slot.value, "any"):
             continue
-        if req.check in _VISION_ONLY:
+        if req.check in _VISION_ONLY and not (photo_qa and req.check in _QA_CHECKS):
             continue
         _require(rule, req)
         selected.append((rule, req))
@@ -301,6 +321,7 @@ class _Decoded:
     width: int  # measured: EXIF orientation 5-8 swapped
     height: int
     background: tuple[bool, ...]  # one verdict per requested background colour, in order
+    fill: float | None = None  # SI14: the product's bounding box over the image area
 
 
 _Line = Callable[[tuple[int, int, int, int]], Image.Image]
@@ -360,7 +381,10 @@ _DECODE_TOO_LARGE: Final = (
 
 
 def _decode(
-    data: bytes, fmt: str, backgrounds: Sequence[tuple[int, int, int]]
+    data: bytes,
+    fmt: str,
+    backgrounds: Sequence[tuple[int, int, int]],
+    qa: frozenset[str] = frozenset(),
 ) -> _Decoded | _Failure:
     """Open with the sniffed decoder only, cap pixels and side length on the header, verify,
     reopen and load frame 0, then crop the background band and judge each requested background
@@ -393,9 +417,10 @@ def _decode(
             return _rgba(img.crop(box))
 
         verdicts = tuple(_background_passes(band, rgb, line) for rgb in backgrounds) if band else ()
+        fill = image_qa.fill_ratio(img) if "fill_ratio" in qa else None
     if orientation in _SWAPPING_ORIENTATIONS:
         width, height = height, width
-    return _Decoded(width, height, verdicts)
+    return _Decoded(width, height, verdicts, fill)
 
 
 # --- geometry ---
@@ -557,10 +582,13 @@ def check_image(
     slot: ImageSlot,
     rules: Sequence[Rule],
     now: datetime,
+    photo_qa: bool = False,
 ) -> ImageReport:
     """Run every deterministic check that applies and return the report. Only an error-severity
-    failure of `file_size`, `format` or `corruption` stops early (nothing after is measurable)."""
-    selected = _select(rules, marketplace, slot)
+    failure of `file_size`, `format` or `corruption` stops early (nothing after is measurable).
+    SI14: with `photo_qa` (the caller passes `PHOTO_QA_ENABLED`; this module reads no settings)
+    the fill ratio, text-overlay and watermark rules are evaluated too, as warnings."""
+    selected = _select(rules, marketplace, slot, photo_qa)
     by_check: dict[str, list[_Selected]] = {}
     for item in selected:
         by_check.setdefault(item[1].check, []).append(item)
@@ -597,7 +625,8 @@ def check_image(
         if rgb is None:  # unreachable after _require; keeps the types honest
             raise ValueError(f"image rule {rule.id}: background needs rgb")
         rgbs.append(rgb)
-    decoded = _decode(data, fmt, rgbs)
+    qa = frozenset(check for check in _QA_CHECKS if check in by_check)
+    decoded = _decode(data, fmt, rgbs, qa)
     if isinstance(decoded, _Failure):
         checks.add("file_size" if decoded is _Failure.TOO_LARGE else "corruption", False)
         return done()
@@ -609,4 +638,8 @@ def check_image(
     _aspect(checks, by_check.get("aspect_ratio", []), decoded.width, decoded.height)
     for (rule, _req), verdict in zip(background, decoded.background, strict=True):
         checks.add("background", verdict, rule)
+    for rule, req in by_check.get("fill_ratio", ()):
+        floor = req.params.min_fill
+        if decoded.fill is not None and floor is not None:
+            checks.add("fill_ratio", decoded.fill >= floor, rule)
     return done()

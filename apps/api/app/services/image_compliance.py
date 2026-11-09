@@ -39,6 +39,7 @@ from app.adapters.storage import (
     get_storage,
     images_bucket,
 )
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.repositories.images import CleanMeta
 from app.repositories.uow import tenant_uow
@@ -108,7 +109,12 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
         raise _failed("the image object is over the size cap", ctx) from None
 
     outcome = await image_runner.run_checks_isolated(
-        data, image_id=image_id, slot=slot, rules=rules, now=datetime.now(UTC)
+        data,
+        image_id=image_id,
+        slot=slot,
+        rules=rules,
+        now=datetime.now(UTC),
+        photo_qa=get_settings().photo_qa_enabled,  # SI14 (AI-43): warnings only
     )
 
     clean = None
