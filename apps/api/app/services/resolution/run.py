@@ -74,6 +74,7 @@ from app.adapters.amazon.precheck import link_in
 from app.adapters.registry import repairer
 from app.core.config import get_settings
 from app.core.errors import DomainError
+from app.core.flags import PAUSED_REASON, publish_enabled
 from app.core.logging import get_logger
 from app.db.models.ops import JobRun
 from app.repositories.jobs import EnqueueSpec
@@ -409,6 +410,28 @@ async def _auto_resubmit(
         or listing.approved_version_id is None
         or listing.approved_version_id != listing.current_version_id
     ):
+        return None
+    if not publish_enabled(listing.marketplace, get_settings()):
+        # the publish kill switch: no automatic resend is enqueued (nothing piles up, no cycle
+        # is used); the repaired issues stay open and go out with the next publish
+        await uow.audit.write(
+            tenant_id=listing.tenant_id,
+            actor_type="system",
+            actor_user_id=None,
+            action="listing.publish_paused",
+            entity_type="listing",
+            entity_id=listing.id,
+            reason=PAUSED_REASON,
+            job_id=job.id,
+            after=json.dumps({"trigger": "resolution"}),
+        )
+        log.warning(
+            "publish.paused",
+            listing_id=str(listing.id),
+            job_run_id=str(job.id),
+            marketplace=listing.marketplace,
+            trigger="resolution",
+        )
         return None
     version = listing.approved_version_id
     count = await uow.submissions.count_for_version(listing.id, version)
