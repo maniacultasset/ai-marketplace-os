@@ -25,8 +25,9 @@ import asyncio
 import base64
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, Final
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind, Marketplace
@@ -57,6 +58,10 @@ MAX_IMAGE_BYTES: Final = 10_485_760
 SEAM_GRACE_S: Final = 15
 # the source changed or went away before the job ran (never cached, unlike a child verdict)
 SOURCE_CHANGED: Final = "source_changed"
+# a fidelity refusal gets one fresh edit of the same input before the seller sees it
+FIDELITY_TRIES: Final = 2
+# the child work after the retry's seam call (finish, store) must still fit in the body timeout
+RETRY_MARGIN_S: Final = 30
 
 
 def candidate_id_of(ctx: JobContext) -> UUID:
@@ -323,20 +328,42 @@ async def _call_model(
     )
 
 
-async def _store_runs(ctx: JobContext, candidate: ImageCandidate, trusted: EditTrusted) -> None:
-    """Invariant 7: every model call's record, before any pixel work, in one short unit."""
-    record = trusted.records[0] if trusted.records else None
+async def _store_runs(
+    ctx: JobContext,
+    candidate: ImageCandidate,
+    trusted: EditTrusted,
+    *,
+    taken: set[UUID],
+    prior_cost: Decimal,
+    try_no: int,
+) -> Decimal:
+    """Invariant 7: every model call's record, before any pixel work, in one short unit. Each try
+    stores its own records: an id an earlier try of this job already stored (a deterministic
+    pipeline id) is re-derived from it, so the retry's record is never dropped as a duplicate.
+    The candidate points at this try's record and carries the cost of every try. Returns the
+    cost of every try so far."""
+    records = [
+        (
+            each
+            if each.id not in taken
+            else each.model_copy(update={"id": uuid5(each.id, f"fidelity_retry:{try_no}")})
+        )
+        for each in trusted.records
+    ]
+    record = records[0] if records else None
+    cost = prior_cost + (record.cost_usd if record is not None else Decimal(0))
     async with tenant_uow(ctx.tenant_id) as uow:
-        for each in trusted.records:
+        for each in records:
             await uow.agent_runs.insert(each)
         if record is not None:
             await uow.image_candidates.record_run(
                 candidate.id,
                 ctx.job_run_id,
                 agent_run_id=record.id,
-                cost_usd=record.cost_usd,
+                cost_usd=cost,
                 served_provider=trusted.result.served_provider,
             )
+    taken.update(each.id for each in records)
     log.info(
         "image_candidate.model_done",
         candidate_id=str(candidate.id),
@@ -344,7 +371,9 @@ async def _store_runs(ctx: JobContext, candidate: ImageCandidate, trusted: EditT
         status=trusted.result.status,
         served_provider=trusted.result.served_provider,
         cost_usd=str(record.cost_usd) if record is not None else "0",
+        try_no=try_no,
     )
+    return cost
 
 
 def _refused_reason(refused: Any) -> str:
@@ -376,16 +405,46 @@ async def _provider_refusal(ctx: JobContext, code: ErrorCode | None, checked: Ed
     return "model_failed"
 
 
+@dataclass(frozen=True, slots=True)
+class _Unfaithful:
+    """A try whose output the fidelity judge refused (its record is stored)."""
+
+    fidelity: dict[str, Any] | None
+    cost: Decimal
+
+
+def _time_for_a_retry(inputs: _EditInputs, seam_s: float) -> bool:
+    """The retry's seam call fits in what is left of the job's body timeout, with a margin for
+    the child work after it."""
+    used = (datetime.now(UTC) - inputs.claim_started_at).total_seconds()
+    left = POLICIES[JobKind.IMAGE_COMPLIANCE].timeout_s - used
+    return left > seam_s + SEAM_GRACE_S + RETRY_MARGIN_S
+
+
+def _seam_timeout_s(settings: Any) -> float:
+    from app.services.pipeline_deps import image_edit_credentials
+
+    return float(image_edit_credentials(settings).timeout_seconds)
+
+
 async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
-    """One paid edit, never retried (`max_attempts=1`). The reservation is zeroed whenever no
-    model call was made or its record is stored; an untrusted result, a seam exception or a
-    timeout keeps it counted (the call may have been billed, its record is lost)."""
+    """A paid edit, the job never retried (`max_attempts=1`). A fidelity refusal gets ONE fresh
+    edit of the same prepared input (FIDELITY_TRIES), only when the D21 limits and the budget
+    caps still admit it: the reservation is re-taken through `reserve` (credit, the platform's
+    image share and the tenant and global caps are checked again). The retry never counts again
+    toward the tenant's daily candidate limit: the limit counts candidates and the seller asked
+    once. Each try stores its own `agent_runs` record. A second refusal, or a retry the caps
+    refuse, ends as the first refusal would have (`fidelity`).
+
+    The reservation is zeroed whenever no model call was made or its record is stored; an
+    untrusted result, a seam exception or a timeout keeps it counted (the call may have been
+    billed, its record is lost)."""
     from app.core.config import get_settings
-    from app.services.pipeline_deps import SeamPortError
     from app.workers.budget import (
         IMAGE_EDIT_RESERVATION_USD,
         BudgetRefused,
         ImageEditLimits,
+        release,
         reserve,
     )
 
@@ -395,18 +454,23 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
     inputs = await _edit_inputs(ctx, candidate)
     if inputs is None:
         return await _ai_fail(ctx, candidate.id, SOURCE_CHANGED, zero=True)
-    try:
+    limits = ImageEditLimits.from_settings(settings, exclude_id=candidate.id)
+
+    async def take() -> None:
         reserved = await reserve(
             ctx.tenant_id,
             ctx.job_run_id,
             ctx.attempt,
             amount=IMAGE_EDIT_RESERVATION_USD,
-            image_edit=ImageEditLimits.from_settings(settings, exclude_id=candidate.id),
+            image_edit=limits,
         )
+        if not reserved:  # the fence moved: a newer attempt owns the row
+            raise _failed("the candidate job lost its claim", ctx)
+
+    try:
+        await take()
     except BudgetRefused as refused:  # SI10 D4: AI paused is not the daily budget
         return await _ai_fail(ctx, candidate.id, _refused_reason(refused), zero=True)
-    if not reserved:  # the fence moved: a newer attempt owns the row
-        raise _failed("the candidate job lost its claim", ctx)
     try:
         vision = await read_object(inputs.vision_key)
         clean = await read_object(inputs.clean_key)
@@ -420,6 +484,54 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
     if not prepared.ok:
         return await _ai_fail(ctx, candidate.id, prepared.reason or "source_unusable", zero=True)
+
+    taken: set[UUID] = set()
+    cost = Decimal(0)
+    try_no = 1
+    while True:
+        step = await _edit_try(ctx, candidate, inputs, prepared, clean, taken, cost, try_no)
+        if not isinstance(step, _Unfaithful):
+            return step
+        cost = step.cost
+        retry = try_no < FIDELITY_TRIES and _time_for_a_retry(inputs, _seam_timeout_s(settings))
+        if retry:
+            # this try's spend is in its stored record: settle it before the caps look again
+            await release(ctx.tenant_id, ctx.job_run_id, ctx.attempt)
+            try:
+                await take()
+            except BudgetRefused as refused:
+                log.info(
+                    "image_candidate.fidelity_retry_refused",
+                    candidate_id=str(candidate.id),
+                    job_run_id=str(ctx.job_run_id),
+                    scope=refused.scope,
+                )
+                retry = False
+        if not retry:
+            return await _ai_fail(ctx, candidate.id, "fidelity", zero=True, fidelity=step.fidelity)
+        try_no += 1
+        log.info(
+            "image_candidate.fidelity_retry",
+            candidate_id=str(candidate.id),
+            job_run_id=str(ctx.job_run_id),
+            try_no=try_no,
+        )
+
+
+async def _edit_try(
+    ctx: JobContext,
+    candidate: ImageCandidate,
+    inputs: _EditInputs,
+    prepared: CandidateReply,
+    clean: bytes,
+    taken: set[UUID],
+    prior_cost: Decimal,
+    try_no: int,
+) -> Outcome | _Unfaithful:
+    """One model call and its finish: a terminal outcome, or `_Unfaithful` for a fidelity
+    refusal (the caller decides whether to try once more)."""
+    from app.services.pipeline_deps import SeamPortError
+
     try:
         result = await _call_model(ctx, candidate, inputs, prepared)
     except SeamPortError:
@@ -430,6 +542,7 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
             candidate_id=str(candidate.id),
             job_run_id=str(ctx.job_run_id),
             error=type(error).__name__,
+            try_no=try_no,
         )
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=False)
     if result is None:  # the installed pipeline has no edit_image: no call was made
@@ -450,9 +563,12 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
             candidate_id=str(candidate.id),
             job_run_id=str(ctx.job_run_id),
             check=checked.check,
+            try_no=try_no,
         )
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=False)
-    await _store_runs(ctx, candidate, checked)
+    cost = await _store_runs(
+        ctx, candidate, checked, taken=taken, prior_cost=prior_cost, try_no=try_no
+    )
     edit = checked.result
     if edit.status == "failed" or edit.image_b64 is None:
         code = edit.error.error_code if edit.error is not None else None
@@ -470,6 +586,14 @@ async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outco
         )
     except CandidateChildFailed:  # CP-D19: never cached; the record is already stored
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
+    if not reply.ok and reply.reason == "fidelity":
+        log.info(
+            "image_candidate.unfaithful",
+            candidate_id=str(candidate.id),
+            job_run_id=str(ctx.job_run_id),
+            try_no=try_no,
+        )
+        return _Unfaithful(fidelity=reply.fidelity, cost=cost)
     if not reply.ok:
         return await _ai_fail(
             ctx,

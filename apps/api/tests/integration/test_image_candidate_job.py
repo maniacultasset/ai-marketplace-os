@@ -384,15 +384,80 @@ def _recoloured(result: ImageEditResult, request: ImageEditRequest) -> ImageEdit
 
 
 @pytest.mark.parametrize("change", [_halved, _recoloured], ids=["halved", "recoloured"])
-async def test_unfaithful_edits_fail_fidelity_with_one_run(
+async def test_unfaithful_twice_fails_fidelity_with_a_run_per_try(
     images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch, change: Any
 ) -> None:
+    """Two unfaithful edits: one retry of the same input, then the same refusal as before."""
     candidate, job, _ = await _edit(images_db, store)
-    _stub_with(edit_on, change)
+    seen = _stub_with(edit_on, change)
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
     assert (row["status"], row["failure_reason"]) == ("failed", "fidelity")
-    assert len(_runs(images_db.conn, job)) == 1
+    assert row["fidelity_json"] is not None
+    assert len(seen) == 2 and seen[0] == seen[1]
+    runs = _runs(images_db.conn, job)
+    assert len(runs) == 2 and len({r["id"] for r in runs}) == 2
+    assert row["cost_usd"] == sum(r["cost_usd"] for r in runs)
+    assert row["agent_run_id"] in {r["id"] for r in runs}
+    assert _reserved(images_db.conn, job) == 0
+
+
+def _first_halved(tries: list[int]) -> Callable[[ImageEditResult, ImageEditRequest], Any]:
+    def change(result: ImageEditResult, request: ImageEditRequest) -> ImageEditResult:
+        tries.append(1)
+        return _halved(result, request) if len(tries) == 1 else result
+
+    return change
+
+
+async def test_unfaithful_then_faithful_is_ready(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """A first unfaithful edit, then a faithful one: the retry's image is the candidate."""
+    candidate, job, _ = await _edit(images_db, store)
+    seen = _stub_with(edit_on, _first_halved([]))
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert row["status"] == "ready", row["failure_reason"]
+    assert len(seen) == 2 and seen[0] == seen[1]
+    runs = _runs(images_db.conn, job)
+    assert len(runs) == 2 and row["cost_usd"] == Decimal("0.078000")
+    assert row["agent_run_id"] in {r["id"] for r in runs}
+    assert _reserved(images_db.conn, job) == 0
+    assert row["storage_key"] in store.objects
+
+
+async def test_fidelity_retry_does_not_count_again_toward_the_daily_limit(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """A daily limit of one candidate: the retry is part of that one candidate."""
+    from app.core.config import get_settings
+
+    edit_on.setenv("IMAGE_EDIT_TENANT_DAILY_LIMIT", "1")
+    get_settings.cache_clear()
+    tries: list[int] = []
+    candidate, job, _ = await _edit(images_db, store)
+    _stub_with(edit_on, _first_halved(tries))
+    await run_image_job(job)
+    assert candidate_row(images_db.conn, candidate)["status"] == "ready"
+    assert len(tries) == 2
+
+
+async def test_fidelity_retry_refused_by_the_cap_keeps_the_first_refusal(
+    images_db: JobWorld, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """A tenant cap that admits one edit (0.10) but not a second after its 0.039 spend: no
+    retry call, the first refusal stands, one run."""
+    images_db.conn.execute(
+        "UPDATE tenants SET llm_daily_budget_usd = 0.12 WHERE id = %s", [images_db.tenant("acme")]
+    )
+    candidate, job, _ = await _edit(images_db, store)
+    seen = _stub_with(edit_on, _halved)
+    await run_image_job(job)
+    row = candidate_row(images_db.conn, candidate)
+    assert (row["status"], row["failure_reason"]) == ("failed", "fidelity")
+    assert len(seen) == 1 and len(_runs(images_db.conn, job)) == 1
+    assert _reserved(images_db.conn, job) == 0
 
 
 async def test_grey_source_echo_is_not_white(
