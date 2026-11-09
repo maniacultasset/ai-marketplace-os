@@ -297,6 +297,24 @@ async def test_amazon_get_states() -> None:
     assert got.marketplace_state == "live"
 
 
+async def test_amazon_get_keeps_the_product_type() -> None:
+    """SI13 T6: the read keeps `summaries[0].productType`; a hostile value is dropped."""
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    sent = _five()
+    await adapter.create_listing(sent)
+    got = await adapter.get_listing(sent.seller_sku)
+    sent_type = app.state.fake.spapi_items[("A1FAKESELLER", sent.seller_sku)]["productType"]
+    assert got.product_type == sent_type
+    app.state.fake.spapi_scenario[sent.seller_sku] = "wrong_product_type"
+    assert (await adapter.get_listing(sent.seller_sku)).product_type == "PANTS"
+    for hostile in ("pants", "P" * 65, "PAN TS", "<b>"):
+        app.state.fake.spapi_items[("A1FAKESELLER", sent.seller_sku)]["productType"] = hostile
+        del app.state.fake.spapi_scenario[sent.seller_sku]
+        assert (await adapter.get_listing(sent.seller_sku)).product_type is None
+        app.state.fake.spapi_scenario[sent.seller_sku] = "enum_fold"
+
+
 async def test_amazon_get_unknown_raises() -> None:
     from app.adapters.base import ListingNotFound
 

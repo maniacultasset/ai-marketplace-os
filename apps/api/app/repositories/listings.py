@@ -229,6 +229,12 @@ class ListingRepository(TenantScopedRepository[Listing]):
         )
         return (await self.db.execute(stmt)).first() is not None
 
+    async def for_product(self, product_id: uuid.UUID) -> list[Listing]:
+        """Every listing of the product in id order, unlocked (SI13: the planner's read-only
+        recategorise check)."""
+        stmt = self._select().where(Listing.product_id == product_id).order_by(Listing.id)
+        return list((await self.db.execute(stmt)).scalars())
+
     async def for_product_for_update(self, product_id: uuid.UUID) -> list[Listing]:
         """Every listing of the product, locked in id order with NOWAIT (SI9 recategorize). The
         caller already holds the product row, and a generation persist takes the listing before

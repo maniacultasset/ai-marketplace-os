@@ -107,6 +107,8 @@ class ItemRead:
     fields: tuple[str, ...] = ()
     # SI9 B3: the adapter read the product on the marketplace, not buyable yet
     not_buyable: bool = False
+    # SI13: the product type the marketplace files the item under (the reassignment signal)
+    product_type: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

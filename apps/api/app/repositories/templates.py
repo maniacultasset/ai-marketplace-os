@@ -83,6 +83,21 @@ class CategoryTemplateRepository:
         template = _wire(marketplace, category, row)
         return CurrentTemplate(id=row.id, version=row.version, template=template)
 
+    async def categories_for_product_type(self, marketplace: str, product_type: str) -> list[str]:
+        """SI13: the categories whose current template maps to `product_type` (sorted), for the
+        reassignment item's suggestion."""
+        stmt = (
+            select(CategoryTemplate.category)
+            .where(
+                CategoryTemplate.marketplace == marketplace,
+                CategoryTemplate.product_type == product_type,
+                CategoryTemplate.is_current.is_(True),
+            )
+            .order_by(CategoryTemplate.category)
+            .limit(5)
+        )
+        return [str(c) for c in (await self.db.execute(stmt)).scalars()]
+
     async def pinned(self, template_id: UUID) -> PinnedTemplate | None:
         t = CategoryTemplate
         stmt = select(

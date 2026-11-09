@@ -81,8 +81,22 @@ def test_ptd_constants() -> None:
     assert c.PTD_LOCALE == "en_IN"
     assert set(c.PTD_RATES) == set(c.PTD_OPERATIONS) == {"ptd_get"}
     # item-call operations and rates: the three item calls, plus SI11's dry-run bucket
-    assert c.OPERATIONS == ("put", "patch", "get", "put_preview")
-    assert dict(c.RATES) == {"put": 1, "patch": 1, "get": 1, "put_preview": 1}
+    assert c.OPERATIONS == (
+        "put",
+        "patch",
+        "get",
+        "put_preview",
+        "catalog_search",  # SI13
+        "restrictions_get",  # SI13
+    )
+    assert dict(c.RATES) == {
+        "put": 1,
+        "patch": 1,
+        "get": 1,
+        "put_preview": 1,
+        "catalog_search": 1,
+        "restrictions_get": 1,
+    }
     pattern = re.compile(c.PRODUCT_TYPE_PATTERN)
     assert pattern.fullmatch("KURTA") and pattern.fullmatch("A" * 64)
     for bad in ("kurta", "A" * 65, "", "KURTA/..", "KÜRTA"):

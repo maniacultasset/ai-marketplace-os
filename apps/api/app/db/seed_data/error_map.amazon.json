@@ -145,5 +145,236 @@
       "observed": false
     },
     "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4000003",
+    "version": 1,
+    "error_code": "CATEGORY_MISMATCH",
+    "error_class": "category_mismatch",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.category",
+    "plain_text": "Amazon does not accept the product type this listing was sent with.",
+    "seller_action": "Choose the category that matches the product, then regenerate the listing.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "101158",
+    "version": 1,
+    "error_code": "CATEGORY_MISMATCH",
+    "error_class": "category_mismatch",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.category",
+    "plain_text": "Amazon does not accept the product category (browse node) this listing was sent with.",
+    "seller_action": "Choose the category that matches the product, then regenerate the listing.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100980",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon already links this barcode to a different product.",
+    "seller_action": "Check the barcode on the product. If it is right, keep your GS1 certificate ready for Amazon support.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005015",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon matched this listing to a product that does not fit its details.",
+    "seller_action": "Check the barcode and the product details, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005007",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says this barcode is not registered to the listing's brand.",
+    "seller_action": "Check the barcode. If it is right, give Amazon proof that the brand owns it.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005008",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says this barcode is restricted or not registered with GS1.",
+    "seller_action": "Check the barcode. If you own the product, send Amazon your GS1 certificate.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005006",
+    "version": 1,
+    "error_code": "IDENTIFIER_INVALID",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon does not let the barcode of an existing item change.",
+    "seller_action": "Send the original barcode for this SKU, or ask Amazon support to change it.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005038",
+    "version": 1,
+    "error_code": "IDENTIFIER_INVALID",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon has a different barcode on record for this SKU.",
+    "seller_action": "Send the original barcode for this SKU, or ask Amazon support to change it.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005013",
+    "version": 1,
+    "error_code": "SKU_CONFLICT",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says this product already exists in your account under another SKU.",
+    "seller_action": "Kuinn's team checks the existing listing; a SKU cannot be renamed on Amazon.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "101168",
+    "version": 1,
+    "error_code": "SKU_CONFLICT",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not let a SKU change from its original value.",
+    "seller_action": "Kuinn's team checks the original SKU; a SKU cannot be renamed on Amazon.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005033",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not let this attribute change once the item exists.",
+    "seller_action": "Kuinn keeps Amazon's original value; edit it only through Amazon support.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
   }
 ]

@@ -187,6 +187,30 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def open_adapter_category_issue(
+        self, listing_id: uuid.UUID, version_id: uuid.UUID | None
+    ) -> uuid.UUID | None:
+        """SI13 T8: the open marketplace `CATEGORY_MISMATCH` row of the listing's current version
+        (the reason a rejected listing may still be recategorised), or None."""
+        if version_id is None:
+            return None
+        stmt = (
+            self._select()
+            .where(
+                ListingIssue.listing_id == listing_id,
+                ListingIssue.listing_version_id == version_id,
+                ListingIssue.status == OPEN,
+                ListingIssue.severity == "error",
+                ListingIssue.error_code == "CATEGORY_MISMATCH",
+                ListingIssue.source.in_(("amazon_adapter", "flipkart_adapter")),
+            )
+            .with_only_columns(ListingIssue.id)
+            .order_by(ListingIssue.created_at, ListingIssue.id)
+            .limit(1)
+        )
+        found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def open_by_ids(
         self, listing_id: uuid.UUID, issue_ids: Sequence[uuid.UUID]
     ) -> builtins.list[ListingIssue]:
@@ -469,6 +493,11 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         stmt = stmt.order_by(ListingIssue.created_at.desc(), ListingIssue.id.desc())
         rows = builtins.list((await self.db.execute(stmt.limit(limit + 1))).scalars())
         return rows[:limit], len(rows) > limit
+
+    async def get(self, issue_id: uuid.UUID) -> ListingIssue | None:
+        """SI13: one row of this tenant (the diagnosis job's sample), unlocked."""
+        stmt = self._select().where(ListingIssue.id == issue_id)
+        return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def lock(self, issue_id: uuid.UUID) -> ListingIssue | None:
         stmt = (

@@ -110,17 +110,28 @@ class OpsView(BaseView):
         import json
 
         from app.repositories.error_catalog import catalog_rows
+        from app.repositories.error_proposals import list_rows
         from app.services.resolution.catalog import catalog_line
+        from app.services.resolution.value_map_report import value_map_report
 
         async with PlatformSessionMaker()() as session:
             stats = await catalog_rows(session, limit=200)
+            # SI13 T17: each unmapped code's AI-drafted proposal, if any (staff read only)
+            drafts = {
+                (p["marketplace"], p["raw_value"]): p
+                for p in await list_rows(session, status=None, limit=500)
+            }
+            value_maps, unpaired = await value_map_report(session, 3)
         rows = []
         for stat in stats:
             line = catalog_line(stat)
             suggested = line.pop("suggested_row")
             line["suggested"] = None if suggested is None else json.dumps(suggested, indent=2)
+            line["proposal"] = drafts.get((stat.marketplace, stat.marketplace_code))
             rows.append(line)
-        return await self._render(request, "ops/errors.html", rows=rows)
+        return await self._render(
+            request, "ops/errors.html", rows=rows, value_maps=value_maps, unpaired=unpaired
+        )
 
     @expose("/ops/dlq", methods=["GET"])
     async def dlq(self, request: Request) -> Response:

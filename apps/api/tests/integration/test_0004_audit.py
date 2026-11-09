@@ -48,6 +48,8 @@ ALLOWLIST: dict[str, set[str]] = {
     "image_candidate": {"kind", "status"},
     # 0022 (SI11)
     "listing_repair": {"rule", "attribute"},
+    # 0024 (SI13)
+    "marketplace_error_proposal": {"status"},
 }
 AUDIT_SQL = "SELECT audit(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 

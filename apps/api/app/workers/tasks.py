@@ -28,7 +28,7 @@ def register_bodies() -> None:
     """The job bodies the steps own (S13b `bulk_import`, S16 `brand_embed`, S17b
     `image_compliance`, S18 `listing_generate`, S21 `listing_publish`); a body already set is kept (tests install fakes
     first)."""
-    from app.services.brand_embed import run_brand_embed
+    from app.workers.embed_jobs import run_embed_job
     from app.workers.generation import run_listing_generate
     from app.workers.image_jobs import run_image_job
     from app.workers.publish import run_listing_publish
@@ -37,7 +37,8 @@ def register_bodies() -> None:
     if registry.body_for(JobKind.BULK_IMPORT) is None:
         registry.register(JobKind.BULK_IMPORT, run_import)
     if registry.body_for(JobKind.BRAND_EMBED) is None:
-        registry.register(JobKind.BRAND_EMBED, run_brand_embed)
+        # SI13: the error diagnosis rides the same kind (`op: diagnose`, CP-D1)
+        registry.register(JobKind.BRAND_EMBED, run_embed_job)
     if registry.body_for(JobKind.IMAGE_COMPLIANCE) is None:
         # SI7 T11: the upload checks, or a candidate when the payload names one
         registry.register(JobKind.IMAGE_COMPLIANCE, run_image_job)

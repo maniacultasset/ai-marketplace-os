@@ -5,6 +5,7 @@ Every row comes from Amazon's published SP-API material (`policy_ref.observed` f
 
 from __future__ import annotations
 
+import json
 from typing import Any, Final
 
 import pytest
@@ -43,19 +44,34 @@ def test_file_parses(rows: list[ErrorMapIn]) -> None:
     assert ERROR_MAP_AMAZON_PATH.name == "error_map.amazon.json"
 
 
+def assert_documented(row: ErrorMapIn) -> None:
+    """SI13 (CP-D20): a seed row comes from Amazon's published SP-API material (`sp-api-docs`, an
+    https `doc`, `user_action`) or from a staff-approved AI proposal (a UUID `proposal_id` and
+    `approved_by`, no email, the code's own retry class). Any other source fails."""
+    import uuid as _uuid
+
+    assert row.marketplace.value == "amazon", row.raw_value
+    assert row.error_code in ERROR_CODE_META, row.raw_value
+    assert row.seller_action, row.raw_value
+    assert row.fix_action is None and row.auto_fixable is False, row.raw_value
+    assert row.severity.value == "error", row.raw_value
+    assert not row.raw_value.startswith("FAKE"), row.raw_value
+    ref = row.policy_ref or {}
+    assert ref.get("observed") is False, row.raw_value
+    if ref.get("source") == "staff-approved-ai-proposal":
+        _uuid.UUID(str(ref.get("proposal_id")))
+        _uuid.UUID(str(ref.get("approved_by")))
+        assert "@" not in json.dumps(ref) and "doc" not in ref, row.raw_value
+        assert row.retry_class == ERROR_CODE_META[row.error_code].retry_class, row.raw_value
+        return
+    assert ref.get("source") == "sp-api-docs", row.raw_value
+    assert row.retry_class.value == "user_action", row.raw_value
+    assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
+
+
 def test_every_row_is_a_documented_amazon_row(rows: list[ErrorMapIn]) -> None:
     for row in rows:
-        assert row.marketplace.value == "amazon", row.raw_value
-        assert row.error_code in ERROR_CODE_META, row.raw_value
-        assert row.seller_action, row.raw_value
-        assert row.fix_action is None and row.auto_fixable is False, row.raw_value
-        assert row.retry_class.value == "user_action", row.raw_value
-        assert row.severity.value == "error", row.raw_value
-        ref = row.policy_ref or {}
-        assert ref.get("source") == "sp-api-docs", row.raw_value
-        assert ref.get("observed") is False, row.raw_value
-        assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
-        assert not row.raw_value.startswith("FAKE"), row.raw_value
+        assert_documented(row)
 
 
 def test_plain_text_is_plain_language(rows: list[ErrorMapIn]) -> None:
@@ -249,3 +265,65 @@ def test_mapped_codes_reach_si4_routes(
     # the stored row's auto_fixable comes from the item and the code metadata (SI4 classify);
     # the rows set no fix_action (D5), so no Amazon row is shown as auto-fixable
     assert classify(item, critical_keys=frozenset(), source="amazon_adapter")[2] is None
+
+
+# ---- SI13 T10 (AC7): the v2 code rows from Amazon's public troubleshooting page ----
+
+SI13_CODES: Final = {
+    "4000003": ("CATEGORY_MISMATCH", "facts.category"),
+    "101158": ("CATEGORY_MISMATCH", "facts.category"),
+    "100980": ("IDENTIFIER_DUPLICATE", "facts.identifier"),
+    "4005015": ("IDENTIFIER_DUPLICATE", "facts.identifier"),
+    "4005007": ("ACCOUNT_PERMISSION_DENIED", None),
+    "4005008": ("ACCOUNT_PERMISSION_DENIED", None),
+    "4005006": ("IDENTIFIER_INVALID", "facts.identifier"),
+    "4005038": ("IDENTIFIER_INVALID", "facts.identifier"),
+    "4005013": ("SKU_CONFLICT", None),
+    "101168": ("SKU_CONFLICT", None),
+    "4005033": ("VALUE_NOT_ALLOWED", None),
+}
+LEFT_OUT: Final = ("8541", "8542", "8572")  # their help pages need a login (KNOWN-ISSUES)
+
+
+def test_si13_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+    for code, (error_code, hint) in SI13_CODES.items():
+        row = by_code[code]
+        assert row.error_code.value == error_code, code
+        assert ErrorCode(error_code) in ERROR_CODE_META
+        assert row.field_hint == hint, code
+        doc = str((row.policy_ref or {}).get("doc", ""))
+        assert doc.startswith("https://developer-docs.amazon.com/sp-api/"), code
+        assert "sellercentral" not in doc, code
+    for code in LEFT_OUT:
+        assert code not in by_code, code
+
+
+def test_si13_rows_route_to_their_lanes(rows: list[ErrorMapIn]) -> None:
+    import uuid
+
+    from app.services.resolution.plan import IssueView, PlanContext, plan
+
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+
+    def lane(code: str, **ctx: object) -> tuple[str, str]:
+        row = by_code[code]
+        view = IssueView(
+            uuid.uuid4(),
+            "amazon_adapter",
+            row.field_hint or "listing",
+            row.error_code.value,
+            row.error_class.value,
+            "error",
+            marketplace_code=code,
+        )
+        (step,) = plan([view], PlanContext(**ctx))  # type: ignore[arg-type]
+        return step.lane, step.action
+
+    assert lane("4000003", recategorizable=True) == ("seller", "recategorize")
+    assert lane("101158") == ("staff", "recategorize_review")
+    assert lane("100980") == ("seller", "edit_identifier")
+    assert lane("4005007")[0] == "marketplace"
+    assert lane("4005013") == ("staff", "sku_conflict")
+    assert lane("101168") == ("staff", "sku_conflict")
+    assert ErrorClass.ACCOUNT_PERMISSION.value == by_code["4005008"].error_class.value

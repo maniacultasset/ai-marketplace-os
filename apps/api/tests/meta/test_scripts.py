@@ -3421,3 +3421,50 @@ def test_prove_gates_has_s26_legs(repo_root: Path) -> None:
         "apps/api/app/workers/publish.py",
     ):
         assert path in code, path
+
+
+# ---- SI13 T18 (P:AC20): brief_gaps.sh ----
+
+BRIEF_GAPS_FLOW = "scripts/e2e/brief_gaps.sh"
+BRIEF_GAPS_STEPS = (
+    "health",
+    "fake_health",
+    "errors_load",
+    "login_acme_owner",
+    "cleanup_live_amazon",
+    "connect_confirm",
+    "login_acme_operator",
+    "login_acme_reviewer",
+    "worker_start",
+    "category_code_seller_lane",
+    "category_next_step_recategorize",
+    "recategorize_200",
+    "regenerate_and_approve",
+    "publish_new_type",
+    "other_brand_ean_blocks",
+    "brand_restricted_task_link",
+    "unknown_code_staff_lane",
+    "worker_stop",
+    "revoke_account",
+)
+
+
+def test_brief_gaps_e2e_steps(repo_root: Path) -> None:
+    path = repo_root / BRIEF_GAPS_FLOW
+    assert path.stat().st_mode & 0o111, "not executable"
+    code = _code(path.read_text(encoding="utf-8"))
+    assert "set -euo pipefail" in code
+    assert _steps(code) == BRIEF_GAPS_STEPS
+    assert 'prefix="E2E-GAP-$run"' in code and "/__control/reset" in code
+    assert 'cat "$body"' not in code
+    assert "psql" not in code and "docker compose" not in code
+
+
+def test_brief_gaps_e2e_refuses_non_local_url(
+    repo_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("FAKE_URL", "http://127.0.0.1:4020")
+    monkeypatch.setenv("ERRORS_LOAD", "true")
+    result = _run_flow(repo_root, tmp_path, BRIEF_GAPS_FLOW, "http://api.example.com")
+    assert result.returncode == 2
+    assert not (tmp_path / "curl.log").exists()
