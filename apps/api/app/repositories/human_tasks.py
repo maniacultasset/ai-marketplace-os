@@ -8,7 +8,8 @@ applying is two steps. Inserts go through Core (the `request_id` column default 
 SI3 adds the fact tasks a generation's photo screen opens (`missing_fact`, `conflicting_facts` on
 `facts.attributes.<key>`, `resume_from='generate'`): one live task per product and target
 (`ht_one_live_fact`, so a second run or the other marketplace opens no duplicate), cancelled
-(`superseded`) when the seller writes the key, answered and applied by `tasks_answer`."""
+(`superseded`) when the seller writes the key or rejects its photo value, answered and applied by
+`tasks_answer`."""
 
 from __future__ import annotations
 
@@ -388,6 +389,27 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
             .values(status="cancelled", cancelled_reason="superseded")
         )
         return _rowcount(await self.db.execute(stmt))
+
+    async def cancel_rejected_fact_tasks(
+        self, product_id: uuid.UUID, target_paths: builtins.list[str] | tuple[str, ...]
+    ) -> builtins.list[str]:
+        """Cancel (`superseded`) the live fact questions on these targets of one product after the
+        seller rejected the photo value for them: the seller has decided the key, so the Inbox
+        stops asking. The target paths cancelled, in order; empty when none was live (a repeat)."""
+        if not target_paths:
+            return []
+        stmt = self._scoped_write(
+            update(HumanTask)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                HumanTask.product_id == product_id,
+                HumanTask.kind.in_(FACT_TASK_KINDS),
+                HumanTask.status.in_(LIVE),
+                HumanTask.target_path.in_(builtins.list(target_paths)),
+            )
+            .values(status="cancelled", cancelled_reason="superseded")
+        ).returning(HumanTask.target_path)
+        return sorted(str(path) for path in (await self.db.execute(stmt)).scalars())
 
     async def get_for_update(self, task_id: uuid.UUID) -> HumanTask | None:
         """One task of this tenant, row-locked for the answer (two answers serialise here)."""

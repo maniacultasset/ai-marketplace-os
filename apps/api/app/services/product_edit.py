@@ -19,6 +19,8 @@ SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_
 `ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. SI9 B5: the reject of an
 unconfirmed photo value records the value in `products.photo_rejections[key]`, so the next photo
 read never writes or asks it again; a seller value or a confirmation for the key clears it. The
+reject also cancels (`superseded`) the key's live photo question, with one `human_task.cancelled`
+audit row on the product (`reason` names the cancelled targets), so the Inbox stops asking. The
 same request re-validates the product's `validated|needs_review|approved` listings (skipping one
 another transaction holds), so a listing that still uses the value is flagged at once. A seller write of a key
 cancels any live fact question on it (`superseded`, CP-D11).
@@ -575,6 +577,12 @@ async def _update_product(
             await uow.human_tasks.cancel_fact_tasks(
                 row.id, [f"facts.attributes.{k}" for k in change.attrs_set]
             )
+        closed: list[str] = []
+        if rejected:
+            # the reject decides the key: its open photo question closes too (DECISIONS 11-07)
+            closed = await uow.human_tasks.cancel_rejected_fact_tasks(
+                row.id, [f"facts.attributes.{k}" for k in rejected]
+            )
         after: dict[str, Any] = {
             "attributes": {
                 **dict(change.attrs_set),
@@ -601,6 +609,16 @@ async def _update_product(
             before=json.dumps(before, sort_keys=True),
             after=json.dumps(after, sort_keys=True),
         )
+        if closed:
+            await uow.audit.write(
+                tenant_id=principal.tenant_id,
+                actor_type="user",
+                actor_user_id=principal.user_id,
+                action="human_task.cancelled",
+                entity_type="product",
+                entity_id=row.id,
+                reason="photo_value_rejected " + ",".join(closed),
+            )
         await uow.session.refresh(row)
         if rejected:
             # SI9 B5 (D8): the listings that may still use the rejected value are re-checked in
