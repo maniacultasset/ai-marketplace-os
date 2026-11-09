@@ -96,12 +96,17 @@ async def open_questions(
     SI11 T17: `rows` are the marketplace's rows the resolution planner gave the `seller` lane
     (never every adapter row, so a staff or marketplace row never asks the seller); a fact path
     then asks `missing_fact` and an image path `image_replacement` when the fix policy names no
-    question."""
+    question.
+
+    SI13 T9 (CP-D11): a row on a child item (`listing_item_id`) about a variation axis
+    (`facts.attributes.size|color`) asks the child product, the owner of that value; every
+    other row asks the listing's product (the style or the standalone)."""
     chosen = rows is not None
     if rows is None:
         rows = await uow.listing_issues.open_errors(listing.id, QUESTION_SOURCES)
-    facts: dict[str, list[Any]] = {}
+    facts: dict[tuple[uuid.UUID, str], list[Any]] = {}
     pictures: dict[uuid.UUID, list[Any]] = {}
+    children = await _child_items(uow, listing, rows)
     for row in rows:
         kind = ask_kind(route(_item(row), source=row.source, critical_keys=critical_keys))
         if kind is None and chosen:
@@ -109,15 +114,20 @@ async def open_questions(
         if kind == MISSING_FACT:
             key = fact_key(row.field_path)
             if key is not None:
-                facts.setdefault(key, []).append(row)
+                owner = listing.product_id
+                child = children.get(getattr(row, "listing_item_id", None))
+                if child is not None and key in AXIS_KEYS:
+                    owner = child
+                facts.setdefault((owner, key), []).append(row)
         elif kind == IMAGE_REPLACEMENT:
             index = _image_index(row.field_path)
             if index is not None and index < len(images):
                 pictures.setdefault(images[index].image_id, []).append(row)
     opened: list[uuid.UUID] = []
     if facts:
-        known = {d.key: d for d in await uow.attribute_definitions.resolve(facts)}
-        for key, group in sorted(facts.items()):
+        keys = sorted({key for _owner, key in facts})
+        known = {d.key: d for d in await uow.attribute_definitions.resolve(keys)}
+        for (owner, key), group in sorted(facts.items(), key=lambda kv: (kv[0][1], str(kv[0][0]))):
             definition = known.get(key)
             if definition is None or definition.key != key:
                 continue  # no dictionary target: the row stays an open issue (P:§2.6)
@@ -130,7 +140,7 @@ async def open_questions(
                 ErrorCode(group[0].error_code), key, "", value_type=value_type
             )
             task = await uow.human_tasks.open_fact_task(
-                listing.product_id,
+                owner,
                 fact_target(definition),
                 question,
                 reason,
@@ -148,6 +158,19 @@ async def open_questions(
     if opened:
         log.info("issues.questions_opened", listing_id=str(listing.id), tasks=len(opened))
     return opened
+
+
+AXIS_KEYS: Final = frozenset({"size", "color"})
+
+
+async def _child_items(
+    uow: TenantUnitOfWork, listing: Any, rows: Sequence[Any]
+) -> dict[uuid.UUID | None, uuid.UUID]:
+    """listing item id -> its product, for the child items the rows name (SI13 T9)."""
+    if not any(getattr(r, "listing_item_id", None) for r in rows):
+        return {}
+    items = await uow.listing_items.for_listing(listing.id)
+    return {i.id: i.product_id for i in items if i.item_role == "child"}
 
 
 async def reconcile_tasks(uow: TenantUnitOfWork, listing: Any) -> int:

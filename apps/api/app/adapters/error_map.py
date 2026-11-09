@@ -180,6 +180,9 @@ class ListingRead(ListingResult):
     )
     # SI9 B3: on the marketplace (an id exists) but not buyable yet; only the adapter decides it
     not_buyable: bool = False
+    # SI13: the product type the marketplace files the item under (Amazon
+    # `summaries[0].productType`), only when it matches `^[A-Z0-9_]{1,64}$`; else None
+    product_type: str | None = None
 
 
 def read_issue(item: ErrorItem, *, warning: bool) -> ErrorItem:

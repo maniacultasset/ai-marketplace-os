@@ -43,6 +43,7 @@ invariants 1, 4, 8, 9, 10; S20 T11, T12).
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import date
 from typing import Any, Final
@@ -54,6 +55,7 @@ from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from mkos_schemas.publish import FieldResult, ItemResult, ListingResult
 
 from app.adapters.amazon import constants as c
+from app.adapters.amazon import precheck
 from app.adapters.amazon.client import SpApiClient, SpApiResponse, failure
 from app.adapters.amazon.mapping import (
     DEFAULT_MARKETPLACE_ID,
@@ -61,11 +63,13 @@ from app.adapters.amazon.mapping import (
     MappedItem,
     build,
     error,
+    fact_path,
     is_mapped,
     item_index,
     preview,
     reverse_index,
 )
+from app.adapters.amazon.precheck import PrecheckResult
 from app.adapters.base import (
     AdapterError,
     AdapterItem,
@@ -89,6 +93,7 @@ from app.adapters.error_map import ErrorMapper, ListingRead, fold_read_issue, re
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
+PRODUCT_TYPE_READ: Final = re.compile(r"[A-Z0-9_]{1,64}", re.ASCII)
 
 NO_LISTING_ID: Final = UUID(int=0)
 PREVIEW_VERDICTS: Final = frozenset({"VALID", "INVALID"})
@@ -591,6 +596,69 @@ class AmazonAdapter(MarketplaceAdapter):
             applied += int(outcome.applied)
         return self._result(item, results, ref=ref, bodies=bodies)
 
+    async def precheck_catalog(self, item: AdapterListing, *, restrictions: bool) -> PrecheckResult:
+        """SI13: the read-only catalog and brand-restriction pre-check (`precheck` module). One
+        search per 20 barcodes in SKU order; restrictions once per distinct matched or
+        other-brand ASIN when `restrictions`. A failed call puts its SKUs in `failed` and the
+        check goes on; a partial search (a `nextToken` left) puts the chunk's unflagged SKUs in
+        `failed`. It never raises an adapter error and never writes."""
+        units = sorted(
+            (u for u in item.units() if precheck.barcode_of(item, u) is not None),
+            key=lambda u: u.seller_sku,
+        )
+        parties = party_secrets(item)
+        items: list[ErrorItem] = []
+        matched: list[tuple[str, str]] = []
+        failed: list[str] = []
+        asin_skus: dict[str, list[str]] = {}
+        size = c.CATALOG_MAX_IDENTIFIERS
+        for start in range(0, len(units), size):
+            chunk = units[start : start + size]
+            kinds = {precheck.identifier_type_of(item, u) for u in chunk}
+            id_type = kinds.pop() if len(kinds) == 1 else "EAN"
+            barcodes = list(dict.fromkeys(str(precheck.barcode_of(item, u)) for u in chunk))
+            try:
+                response = await self._client.search_catalog(barcodes, id_type)
+                body = response.json if isinstance(response.json, dict) else {}
+                found, same, others = precheck.from_catalog(item, chunk, body.get("items"))
+            except (AdapterError, ValueError):
+                failed += [u.seller_sku for u in chunk]
+                continue
+            pagination = body.get("pagination")
+            if isinstance(pagination, dict) and pagination.get("nextToken"):
+                # a partial search: an unflagged unit may match on a page never read, so it is
+                # not checked and stays out of `scope` (its open row is kept, never closed)
+                flagged = {i.field for i in found}
+                failed += [u.seller_sku for u in chunk if fact_path(u, "identifier") not in flagged]
+            items += found
+            matched += same
+            for sku, asin in same:
+                asin_skus.setdefault(asin, []).append(sku)
+            for asin in others:
+                asin_skus.setdefault(asin, [])
+        if restrictions:
+            for asin in sorted(asin_skus):
+                try:
+                    response = await self._client.get_restrictions(asin)
+                except (AdapterError, ValueError):
+                    failed += asin_skus[asin]
+                    continue
+                secrets = (*parties, *self._client.used_secrets())
+                items += precheck.from_restrictions(response.json, secrets)
+        lost = set(failed)
+        return precheck.PrecheckResult(
+            items=tuple(items[:MAX_ERROR_ITEMS]),
+            matched=tuple(matched),
+            failed=tuple(dict.fromkeys(failed)),
+            checked=len(units),
+            scope=tuple(
+                sorted(
+                    {fact_path(u, "identifier") for u in units if u.seller_sku not in lost}
+                    | ({"listing"} if restrictions and not lost else set())
+                )
+            ),
+        )
+
     async def get_listing(
         self, seller_sku: str, *, listing_id: UUID | None = None
     ) -> ListingResult:
@@ -643,6 +711,7 @@ class AmazonAdapter(MarketplaceAdapter):
             marketplace_state=state,
             raw_response_digest=hashlib.sha256(response.raw).hexdigest(),
             not_buyable=not_buyable,
+            product_type=_read_product_type(summary),
         )
 
     def _read_fields(
@@ -691,6 +760,12 @@ class AmazonAdapter(MarketplaceAdapter):
 
 
 # ---- helpers ----
+
+
+def _read_product_type(summary: Mapping[str, Any]) -> str | None:
+    """SI13: the summary's `productType`, only when it is a plain product-type name."""
+    value = summary.get("productType")
+    return value if isinstance(value, str) and PRODUCT_TYPE_READ.fullmatch(value) else None
 
 
 def _without_images(response: SpApiResponse, body: Mapping[str, Any]) -> SpApiResponse:

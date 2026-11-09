@@ -364,3 +364,104 @@ def test_no_repair_payload_is_unchanged() -> None:
 def test_fold_and_digest_are_stable() -> None:
     assert fold("  \uff32\uff45\uff44   Blue ") == "red blue"
     assert digest({"b": 1, "a": [Decimal("1.5")]}) == digest({"a": [Decimal("1.5")], "b": 1})
+
+
+# ---- SI13 T9: fill_variant_axis (CP-D11) ----
+
+
+def _missing(attribute: str) -> ErrorItem:
+    return ErrorItem(
+        field="listing",
+        error_code=ErrorCode.MISSING_ATTRIBUTE,
+        severity=Severity.ERROR,
+        message=f"'{attribute}' is required but not supplied.",
+        source=ErrorSource.AMAZON_ADAPTER,
+        retryable=False,
+        raw_code="90220",
+    )
+
+
+def _family(size: str = "M", theme: str = "size_color") -> Any:
+    return amazon_family(children=[{"size": size, "color": "maroon"}], theme=theme)
+
+
+def _axis(
+    attribute: str, *, sent: dict[str, Any] | None = None, unit_index: int = 1, **fam: Any
+) -> Any:
+    family = _family(**fam)
+    unit = family.units()[unit_index]
+    return propose(family, unit, _missing(attribute), attribute, sent or {}, RepairContext())
+
+
+def test_child_missing_size_name_is_filled_from_its_variant() -> None:
+    repair = _axis("size_name")
+    assert repair is not None and repair.rule == "fill_variant_axis"
+    assert repair.field_path == "attributes.size" and repair.attribute == "size_name"
+    assert _v(repair)[0]["value"] == "M" and _v(repair)[0]["marketplace_id"] == MID
+    family = _family()
+    assert repair.seller_sku == family.units()[1].seller_sku or repair.seller_sku is not None
+
+
+def test_enum_spec_maps_the_value_as_the_payload() -> None:
+    lower = _axis("size_name", size="m")
+    upper = _axis("size_name", size="M")
+    assert lower is not None and upper is not None
+    assert _v(lower)[0]["value"] == _v(upper)[0]["value"]
+
+
+def test_full_width_value_maps_as_the_payload_maps_it() -> None:
+    from app.adapters.amazon.mapping import _attribute_entries
+    from tests.adapters.amazon_support import template
+
+    value = chr(0xFF2D)  # full-width M
+    repair = _axis("size_name", size=value)
+    spec = template().template.specs["size"]
+    entries, problem = _attribute_entries("size", spec, value, MID, "attributes.size")
+    if problem is not None:
+        assert repair is None
+    else:
+        assert repair is not None and list(_v(repair)) == entries
+
+
+@pytest.mark.parametrize(
+    ("attribute", "over", "why"),
+    [
+        ("size_name", {"unit_index": 0}, "a parent"),
+        ("fabric_type", {}, "not an axis"),
+        ("color_name", {"theme": "size"}, "an axis outside the theme"),
+        ("size_name", {"size": " "}, "a blank value"),
+    ],
+)
+def test_refusals(attribute: str, over: dict[str, Any], why: str) -> None:
+    assert _axis(attribute, **over) is None, why
+
+
+def test_a_present_attribute_is_left_to_enum_fold() -> None:
+    assert _axis("size_name", sent=_sent("size_name", "Medium")) is None
+
+
+def test_a_standalone_unit_is_never_filled() -> None:
+    sent = amazon_item()
+    unit = sent.units()[0]
+    assert propose(sent, unit, _missing("size_name"), "size_name", {}, RepairContext()) is None
+
+
+@settings(max_examples=80, deadline=None)
+@given(size=st.sampled_from(["S", "M", "L", "XL", "2XL"]), index=st.integers(0, 1))
+def test_fill_variant_axis_property(size: str, index: int) -> None:
+    """Touches only its attribute and only a child; deterministic; applying twice equals once."""
+    family = _family(size=size)
+    unit = family.units()[index]
+    first = propose(family, unit, _missing("size_name"), "size_name", {}, RepairContext())
+    again = propose(family, unit, _missing("size_name"), "size_name", {}, RepairContext())
+    if unit.item_role != "child":
+        assert first is None
+        return
+    assert first is not None and first == again
+    live = dataclasses.replace(family, repairs=(as_adapter_repair(first, uuid.uuid4()),))
+    base = {"item_name": [{"value": "x"}]}
+    once = apply_repairs(base, live, unit).attributes
+    twice = apply_repairs(once, live, unit).attributes
+    assert once == twice
+    assert set(once) - set(base) == {"size_name"}
+    assert once["item_name"] == base["item_name"]

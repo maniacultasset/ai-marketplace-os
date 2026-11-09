@@ -67,6 +67,24 @@ confirmed at DW1): `PUT|PATCH|GET /listings/2021-08-01/items/{sellerId}/{sku}?ma
   `enum_fold` issue until a resend fixes it), `recurring` (the `color` issue after any resend).
   A GET of a scenario SKU answers BUYABLE once no scenario issue remains. The reset by prefix
   clears scenarios, preview replies and the first-image memory too.
+- SI13 (T2): more `spapi_scenario` names. Read side: `wrong_product_type` (a GET's
+  `summaries[0].productType` is `PANTS`, whatever was sent), `reassign_burst` (a GET carries three
+  90220 MISSING_ATTRIBUTE issues once the SKU is stored). Write side: `category_code` (writes
+  answer 4000003 while the product type is the first one sent), `child_missing_axis` (a write
+  without `size_name` answers 90220 naming it; cleared once sent).
+  Catalog Items 2022-04-01 `GET /catalog/2022-04-01/items` (`identifiers`, `identifiersType`,
+  `marketplaceIds`, `includedData`) answers `{numberOfResults, items: [{asin, summaries: [{brand,
+  itemName, productType, marketplaceId}], identifiers}]}`; Listings Restrictions 2021-08-01
+  `GET /listings/2021-08-01/restrictions` (`asin`, `sellerId`, `marketplaceIds`, `conditionType`)
+  answers `{restrictions: [{marketplaceId, conditionType, reasons: [{reasonCode, message, links}]}]}`.
+  `/__control spapi_catalog {ean: {"scenario": name, "brand": "<the seller's brand>",
+  "restriction": name}}` (sticky) scripts them: `other_brand_ean` (brand `Acme Traders`),
+  `similar_brand_ean` (`<brand> Co`), `same_brand_ean` (`<brand>`), `no_brand_ean` (no brand),
+  `catalog_5xx`; `"copies": "<n>"` files the EAN under n ASINs. Search pages as Amazon does
+  (`pageSize` default 10, max 20; `pagination.nextToken`, sent back as `pageToken`);
+  `spapi_catalog_page_5xx: true` fails every page after the first. Restriction `brand_restricted` (APPROVAL_REQUIRED with a Seller Central https
+  link), `brand_restricted_bad_link` (an `http://` link), `restrictions_5xx`. An unscripted EAN has
+  no match and an unscripted ASIN no restriction. Both are recorded in `/__calls`.
 
 Flipkart Seller API listings v3 (S22 T9; believed, DW1) under `/flipkart/sellers`:
 `POST /listings/v3` (create, a batch), `POST /listings/v3/update` (named attributes only) and
@@ -210,6 +228,10 @@ class FakeState:
     spapi_preview_reply: dict[str, str] = field(default_factory=dict)
     spapi_scenario: dict[str, str] = field(default_factory=dict)
     spapi_first_main: dict[str, Any] = field(default_factory=dict)
+    # ---- SI13: catalog search, restrictions, the first product type sent ----
+    spapi_catalog: dict[str, dict[str, str]] = field(default_factory=dict)
+    spapi_catalog_page_5xx: bool = False  # a request with a pageToken answers 500
+    spapi_first_type: dict[str, str] = field(default_factory=dict)
     # ---- S26 failure injection ----
     spapi_drop_after_write: set[str] = field(default_factory=set)
     spapi_bad_seller: set[str] = field(default_factory=set)  # V1 hardening #11
@@ -418,6 +440,12 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
     async def spapi(request: Request) -> Response:
         return await _spapi(state, request)
 
+    async def catalog(request: Request) -> Response:
+        return _catalog_search(state, request)
+
+    async def restrictions(request: Request) -> Response:
+        return _restrictions(state, request)
+
     async def calls(request: Request) -> Response:
         marketplace = request.query_params.get("marketplace")
         if marketplace is None:
@@ -441,6 +469,8 @@ def build_fake(config: FakeConfig | None = None) -> Starlette:
             Route("/__control", control, methods=["POST"]),
             Route("/__control/reset", reset, methods=["POST"]),
             Route("/__calls", calls, methods=["GET"]),
+            Route(CATALOG_ROUTE, catalog, methods=["GET"]),
+            Route(RESTRICTIONS_ROUTE, restrictions, methods=["GET"]),
             Route(SPAPI_ROUTE, spapi, methods=["GET", "PUT", "PATCH"]),
             Route(PTD_GET_ROUTE, ptd_get, methods=["GET"]),
             Route(PTD_SCHEMA_ROUTE, ptd_schema, methods=["GET"]),
@@ -512,6 +542,13 @@ def _spapi_control(state: FakeState, body: dict[str, Any]) -> None:
     scenarios = body.get("spapi_scenario")
     if isinstance(scenarios, dict):
         state.spapi_scenario.update({k: v for k, v in scenarios.items() if v in SCENARIOS})
+    catalog = body.get("spapi_catalog")
+    if isinstance(catalog, dict):
+        for ean, spec in catalog.items():
+            if isinstance(spec, dict) and spec.get("scenario") in CATALOG_SCENARIOS:
+                state.spapi_catalog[str(ean)] = {k: str(v) for k, v in spec.items()}
+    if isinstance(body.get("spapi_catalog_page_5xx"), bool):
+        state.spapi_catalog_page_5xx = body["spapi_catalog_page_5xx"]
     replies = body.get("spapi_preview_reply")
     if isinstance(replies, dict):
         state.spapi_preview_reply.update({k: str(v) for k, v in replies.items()})
@@ -531,6 +568,7 @@ def reset_prefix(state: FakeState, prefix: str) -> int:
         state.spapi_scenario,
         state.spapi_preview_reply,
         state.spapi_first_main,
+        state.spapi_first_type,
     ):
         for sku in [s for s in table if s.startswith(prefix)]:
             del table[sku]
@@ -613,7 +651,18 @@ SCENARIOS: Final[dict[str, dict[str, Any]]] = {
     "unknown_code": {"attribute": None, "code": "77777", "category": None},
     "async_after_accept": {"attribute": "color", "code": "99300", "category": "INVALID_ATTRIBUTE"},
     "recurring": {"attribute": "color", "code": "99300", "category": "INVALID_ATTRIBUTE"},
+    # SI13 (T2)
+    "wrong_product_type": {"attribute": None, "code": None, "category": None},
+    "reassign_burst": {"attribute": None, "code": "90220", "category": "MISSING_ATTRIBUTE"},
+    "category_code": {"attribute": None, "code": "4000003", "category": "INVALID_ATTRIBUTE"},
+    "child_missing_axis": {
+        "attribute": "size_name",
+        "code": "90220",
+        "category": "MISSING_ATTRIBUTE",
+    },
 }
+BURST_ATTRIBUTES: Final = ("fabric_type", "neck_style", "sleeve_type")
+READ_PRODUCT_TYPE: Final = "PANTS"
 SCENARIO_MESSAGES: Final[dict[str, str]] = {
     "enum_fold": "The value provided for 'color' is not one of the allowed values.",
     "size_alias": "The value provided for 'size' is not one of the allowed values.",
@@ -626,6 +675,10 @@ SCENARIO_MESSAGES: Final[dict[str, str]] = {
     "unknown_code": "Something unusual went wrong with this listing.",
     "async_after_accept": "The value provided for 'color' is not one of the allowed values.",
     "recurring": "The value provided for 'color' is not one of the allowed values.",
+    "wrong_product_type": "",
+    "reassign_burst": "'{attribute}' is required but not supplied.",
+    "category_code": "The product type is not valid for this item.",
+    "child_missing_axis": "'size_name' is required but not supplied.",
 }
 
 
@@ -680,8 +733,14 @@ def _scenario_write_issues(
 ) -> list[dict[str, Any]]:
     if name in ("brand_gating", "unknown_code"):
         return [_scenario_issue(name)]
-    if name == "async_after_accept":
-        return []  # accepted now; the GETs carry the issue
+    if name in ("async_after_accept", "wrong_product_type", "reassign_burst"):
+        return []  # accepted now; the GETs carry the signal
+    if name == "category_code":
+        return []  # decided on the product type in `_issues_for`
+    if name == "child_missing_axis":
+        held = dict(state_attributes(state, sku)) if stored else {}
+        held.update(attributes)
+        return [] if "size_name" in held else [_scenario_issue(name)]
     if name == "missing_derivable":
         held = dict(state_attributes(state, sku)) if stored else {}
         held.update(attributes)
@@ -701,6 +760,19 @@ def _scenario_read_issues(
 ) -> list[dict[str, Any]]:
     """What a GET reads for a scenario SKU: the scenario's rule on the stored attributes."""
     held = stored["attributes"]
+    if name == "reassign_burst":
+        return [
+            _scenario_issue(name)
+            | {
+                "message": SCENARIO_MESSAGES[name].format(attribute=attribute),
+                "attributeNames": [attribute],
+            }
+            for attribute in BURST_ATTRIBUTES
+        ]
+    if name == "child_missing_axis":
+        return [] if "size_name" in held else [_scenario_issue(name)]
+    if name in ("wrong_product_type", "category_code"):
+        return []
     if name == "missing_derivable":
         return [] if "department" in held else [_scenario_issue(name)]
     if _value_fails(name, held, state.spapi_first_main.get(sku)):
@@ -723,6 +795,8 @@ def _blocks_write(state: FakeState, sku: str, issues: list[dict[str, Any]], *, p
         return False
     if name in ("brand_gating", "unknown_code"):
         return True
+    if name in ("wrong_product_type", "reassign_burst", "category_code", "child_missing_axis"):
+        return False  # accepted with the issue (stored), as a MISSING_ATTRIBUTE after accept
     code = SCENARIOS[name]["code"]
     return put and any(i.get("code") == code and i.get("severity") == "ERROR" for i in issues)
 
@@ -735,6 +809,7 @@ def _spapi_preview(state: FakeState, key: tuple[str, str], body: dict[str, Any])
         return _errors("InvalidInput", "productType and attributes are required", 400)
     state.spapi_preview_calls += 1
     issues = _issues_for(state, sku, attributes, stored=key in state.spapi_items, preview=True)
+    issues.extend(_category_issues(state, sku, body["productType"]))
     status = "INVALID" if any(i.get("severity") == "ERROR" for i in issues) else "VALID"
     forced = state.spapi_preview_reply.pop(sku, None)
     return JSONResponse({"sku": sku, "status": forced or status, "issues": issues})
@@ -838,6 +913,9 @@ def _spapi_put(state: FakeState, key: tuple[str, str], body: dict[str, Any]) -> 
     if not isinstance(attributes, dict) or not isinstance(body.get("productType"), str):
         return _errors("InvalidInput", "productType and attributes are required", 400)
     issues = _issues_for(state, sku, attributes, stored=key in state.spapi_items)
+    category = _category_issues(state, sku, body["productType"])
+    if category:
+        return _accepted(state, sku, issues + category, "INVALID")
     rejected = _rejected(issues)
     sent = set(attributes)
     if (
@@ -906,7 +984,9 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
     summary: dict[str, Any] = {
         "marketplaceId": "A21TJRUUN4KGV",
         "asin": "B0" + hashlib.sha256("/".join(key).encode()).hexdigest()[:8].upper(),
-        "productType": stored["productType"],
+        "productType": (
+            READ_PRODUCT_TYPE if scenario == "wrong_product_type" else stored["productType"]
+        ),
         "status": statuses,
     }
     if mode == "no_asin":
@@ -917,6 +997,157 @@ def _spapi_get(state: FakeState, key: tuple[str, str]) -> Response:
             "summaries": [] if mode == "no_summary" else [summary],
             "attributes": stored["attributes"],
             "issues": issues,
+        }
+    )
+
+
+def _category_issues(state: FakeState, sku: str, product_type: str) -> list[dict[str, Any]]:
+    """`category_code`: 4000003 while the write names the first product type ever sent."""
+    if state.spapi_scenario.get(sku) != "category_code":
+        return []
+    first = state.spapi_first_type.setdefault(sku, product_type)
+    return [_scenario_issue("category_code")] if product_type == first else []
+
+
+# ---- SI13: Catalog Items search and Listings Restrictions ----
+
+CATALOG_ROUTE: Final = "/catalog/2022-04-01/items"
+RESTRICTIONS_ROUTE: Final = "/listings/2021-08-01/restrictions"
+CATALOG_SCENARIOS: Final = frozenset(
+    {"other_brand_ean", "similar_brand_ean", "same_brand_ean", "no_brand_ean", "catalog_5xx"}
+)
+RESTRICTION_SCENARIOS: Final = frozenset(
+    {"brand_restricted", "brand_restricted_bad_link", "restrictions_5xx"}
+)
+OTHER_BRAND: Final = "Acme Traders"
+SELLER_CENTRAL_LINK: Final = "https://sellercentral.amazon.in/hz/approvalrequest?asin={asin}"
+
+
+def catalog_asin(ean: str) -> str:
+    """The ASIN the fake catalog files an EAN under (deterministic, so tests can name it)."""
+    return "B0" + hashlib.sha256(f"catalog:{ean}".encode()).hexdigest()[:8].upper()
+
+
+def _record(state: FakeState, request: Request) -> None:
+    state.calls.append(
+        {
+            "marketplace": "amazon",
+            "method": request.method,
+            "path": request.url.path,
+            "raw_path": request.scope.get("raw_path", b"").decode("latin-1"),
+            "query": str(request.url.query),
+            "time": time.monotonic(),
+            "body_sha256": hashlib.sha256(b"").hexdigest(),
+        }
+    )
+
+
+def _read_auth(state: FakeState, request: Request) -> Response | None:
+    if request.query_params.get("marketplaceIds") is None:
+        return _errors("InvalidInput", "marketplaceIds is required", 400)
+    if request.headers.get("x-amz-access-token", "") not in state.access_tokens:
+        return _errors("Unauthorized", "Access to requested resource is denied.", 403)
+    return None
+
+
+def _catalog_item(ean: str, spec: Mapping[str, str], copy: int = 0) -> dict[str, Any]:
+    scenario = spec["scenario"]
+    brand = {
+        "other_brand_ean": OTHER_BRAND,
+        "similar_brand_ean": f"{spec.get('brand', 'Brand')} Co",
+        "same_brand_ean": spec.get("brand", "Brand"),
+    }.get(scenario)
+    summary: dict[str, Any] = {
+        "marketplaceId": "A21TJRUUN4KGV",
+        "itemName": "A catalog item",
+        "productType": "SHIRT",
+    }
+    if brand is not None:
+        summary["brand"] = brand
+    return {
+        "asin": catalog_asin(ean if copy == 0 else f"{ean}#{copy}"),
+        "summaries": [summary],
+        "identifiers": [
+            {
+                "marketplaceId": "A21TJRUUN4KGV",
+                "identifiers": [{"identifierType": "EAN", "identifier": ean}],
+            }
+        ],
+    }
+
+
+def _catalog_search(state: FakeState, request: Request) -> Response:
+    _record(state, request)
+    refused = _read_auth(state, request)
+    if refused is not None:
+        return refused
+    eans = [e for e in request.query_params.get("identifiers", "").split(",") if e]
+    if not eans or request.query_params.get("identifiersType") not in ("EAN", "UPC", "GTIN"):
+        return _errors("InvalidInput", "identifiers and identifiersType are required", 400)
+    if len(eans) > 20:
+        return _errors("InvalidInput", "at most 20 identifiers", 400)
+    specs = {ean: state.spapi_catalog[ean] for ean in eans if ean in state.spapi_catalog}
+    if any(spec["scenario"] == "catalog_5xx" for spec in specs.values()):
+        return _errors("InternalFailure", "We encountered an internal error.", 500)
+    items = [
+        _catalog_item(ean, spec, copy)
+        for ean, spec in specs.items()
+        for copy in range(max(1, min(int(spec.get("copies", "1") or 1), 20)))
+    ]
+    size_text = request.query_params.get("pageSize", "10")
+    token = request.query_params.get("pageToken")
+    if not size_text.isdigit() or not 1 <= int(size_text) <= 20:
+        return _errors("InvalidInput", "pageSize must be 1 to 20", 400)
+    if token is not None and (not token.startswith("o") or not token[1:].isdigit()):
+        return _errors("InvalidInput", "bad pageToken", 400)
+    if token is not None and state.spapi_catalog_page_5xx:
+        return _errors("InternalFailure", "We encountered an internal error.", 500)
+    size, start = int(size_text), 0 if token is None else int(token[1:])
+    body: dict[str, Any] = {"numberOfResults": len(items), "items": items[start : start + size]}
+    if start + size < len(items):
+        body["pagination"] = {"nextToken": f"o{start + size}"}
+    return JSONResponse(body)
+
+
+def _restrictions(state: FakeState, request: Request) -> Response:
+    _record(state, request)
+    refused = _read_auth(state, request)
+    if refused is not None:
+        return refused
+    asin = request.query_params.get("asin", "")
+    if not request.query_params.get("sellerId") or not asin:
+        return _errors("InvalidInput", "asin and sellerId are required", 400)
+    scenario = next(
+        (
+            spec.get("restriction")
+            for ean, spec in state.spapi_catalog.items()
+            if catalog_asin(ean) == asin
+        ),
+        None,
+    )
+    if scenario == "restrictions_5xx":
+        return _errors("InternalFailure", "We encountered an internal error.", 500)
+    if scenario not in ("brand_restricted", "brand_restricted_bad_link"):
+        return JSONResponse({"restrictions": []})
+    link = SELLER_CENTRAL_LINK.format(asin=asin)
+    if scenario == "brand_restricted_bad_link":
+        link = link.replace("https://", "http://", 1)
+    reason = {
+        "reasonCode": "APPROVAL_REQUIRED",
+        "message": "You need approval to list in this brand.",
+        "links": [
+            {"resource": link, "verb": "GET", "title": "Request approval", "type": "text/html"}
+        ],
+    }
+    return JSONResponse(
+        {
+            "restrictions": [
+                {
+                    "marketplaceId": "A21TJRUUN4KGV",
+                    "conditionType": request.query_params.get("conditionType", "new_new"),
+                    "reasons": [reason],
+                }
+            ]
         }
     )
 

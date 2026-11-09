@@ -315,3 +315,54 @@ def test_a_superseded_submission_is_an_attempt() -> None:
         lanes={},
     )
     assert out[0]["outcome"] == "superseded" and out[0]["actor"] == "user"
+
+
+# ---- SI13 (CP-D8): seller actions with no inbox question ----
+
+
+@pytest.mark.parametrize("action", ["recategorize", "edit_identifier"])
+def test_a_seller_action_reads_needs_you_with_its_kind(action: str) -> None:
+    from app.api.v1.schemas.resolution import NextStepOut
+
+    facts = ReadFacts(status="failed", status_reason="marketplace_rejected", seller_action=action)
+    assert state_of(facts) == "needs_you"
+    step = next_step("needs_you", facts)
+    assert step["kind"] == action and step["text"]
+    assert NextStepOut.model_validate(step).kind == action
+
+
+def test_an_open_question_wins_over_a_seller_action() -> None:
+    task = T()
+    facts = ReadFacts(status="blocked", seller_tasks=(task,), seller_action="recategorize")
+    assert next_step("needs_you", facts)["kind"] == "answer"
+
+
+def test_seller_action_picks_recategorize_first() -> None:
+    from app.services.resolution.read import seller_action
+
+    @dataclass
+    class Row:
+        id: uuid.UUID
+        error_code: str
+        status: str = "open"
+        severity: str = "error"
+
+    cat, ean, other = Row(T(), "CATEGORY_MISMATCH"), Row(T(), "IDENTIFIER_DUPLICATE"), Row(T(), "X")
+    lanes: dict[uuid.UUID, Any] = {
+        cat.id: ("seller", "mapping"),
+        ean.id: ("seller", "seller_fact"),
+        other.id: ("seller", "seller_fact"),
+    }
+    assert seller_action([ean, cat, other], lanes) == "recategorize"
+    assert seller_action([ean], lanes) == "edit_identifier"
+    assert seller_action([ean], {ean.id: ("staff", "mapping")}) is None
+
+
+def test_next_step_kind_accepts_only_the_two_new_members() -> None:
+    from app.api.v1.schemas.resolution import NextStepOut
+    from pydantic import ValidationError
+
+    for kind in ("recategorize", "edit_identifier"):
+        assert NextStepOut(kind=kind).kind == kind
+    with pytest.raises(ValidationError):
+        NextStepOut(kind="rename_sku")

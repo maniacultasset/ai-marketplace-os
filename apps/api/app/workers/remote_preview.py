@@ -4,8 +4,13 @@
    CP-D23: a preview never makes or sends a public image copy) and the live repairs. A version
    that is no longer current, a listing no longer pre-approval, or an account that is not
    `active` ends the job `{"skipped": ...}` with no marketplace call.
-2. Outside any transaction: `PreviewView.preview_remote` (the only marketplace call this body can
-   make; `.importlinter` `remote-preview-preview-only`). A failed call raises `RetryableJobError`
+2. Outside any transaction: `PreviewView.preview_remote` (the only marketplace write-shaped call
+   this body can make, and it saves nothing; `.importlinter` `remote-preview-preview-only`).
+   SI13: with both `AMAZON_VALIDATION_PREVIEW_ENABLED` and `AMAZON_CATALOG_PRECHECK_ENABLED` on
+   (CP-D6), `PreviewView.precheck` then searches the catalog by barcode and reads the matched
+   ASINs' brand restrictions; its items join the verdict's (an ERROR blocks approval through the
+   same gate) and `result_json.precheck` records `{checked, matched: [asin...], failed}`. A failed
+   pre-check never blocks: the verdict stays the preview's. A failed call raises `RetryableJobError`
    (the job's retry; a dead letter marks the check `failed`), an account that refuses to open
    fails the job with AUTH_EXPIRED.
 3. The writes run in the wrapper's fenced terminal transaction (`apply_preview`).
@@ -13,10 +18,15 @@
 
 from __future__ import annotations
 
+import dataclasses
 from typing import Any
 
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import Severity
+from mkos_schemas.errors import MAX_ERROR_ITEMS
 
+from app.adapters.base import PrecheckResult, RemotePreview
+from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.adapter_input import build_adapter_listing
@@ -37,6 +47,7 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
     version_id = payload.version_id
     async with tenant_uow(ctx.tenant_id) as uow:
         listing = await uow.listings.get(payload.listing_id)
+        marketplace = None if listing is None else listing.marketplace
         if (
             listing is None
             or version_id is None
@@ -72,8 +83,12 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
         raise JobFailed(auth_expired_report()) from None
     except ReadFailed:
         raise RetryableJobError(ErrorCode.MARKETPLACE_UNAVAILABLE) from None
+    checked: PrecheckResult | None = None
     try:
         verdict = await view.preview_remote(item)
+        if precheck_on(marketplace) and verdict.status != "failed":
+            checked = await view.precheck(item, restrictions=True)
+            verdict = with_precheck(verdict, checked)
     except ReadFailed:
         raise RetryableJobError(ErrorCode.MARKETPLACE_UNAVAILABLE) from None
     finally:
@@ -83,6 +98,12 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
         "items": len(verdict.errors),
         "account_id": str(account),
     }
+    if checked is not None:
+        result["precheck"] = {
+            "checked": checked.checked,
+            "matched": sorted({asin for _, asin in checked.matched})[:20],
+            "failed": len(checked.failed),
+        }
     if verdict.applied:
         result["preview_applied"] = True
 
@@ -95,3 +116,26 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
 
     log.info("preview.read", job_run_id=str(ctx.job_run_id), status=verdict.status)
     return Outcome("succeeded", result=result, persist=persist)
+
+
+def precheck_on(marketplace: str | None) -> bool:
+    """CP-D6: the pre-check runs only inside the Amazon dry run, with both switches on."""
+    settings = get_settings()
+    return (
+        marketplace == "amazon"
+        and settings.amazon_validation_preview_enabled
+        and settings.amazon_catalog_precheck_enabled
+    )
+
+
+def with_precheck(verdict: RemotePreview, checked: PrecheckResult) -> RemotePreview:
+    """The verdict with the pre-check's items and checked paths joined: an ERROR among them
+    turns a `clean` dry run into `issues`; nothing else changes."""
+    if not checked.items and not checked.scope:
+        return verdict
+    errors = (*verdict.errors, *checked.items)[:MAX_ERROR_ITEMS]
+    status = verdict.status
+    if status == "clean" and any(e.severity is Severity.ERROR for e in checked.items):
+        status = "issues"
+    scope = tuple(sorted({*verdict.scope, *checked.scope}))
+    return dataclasses.replace(verdict, status=status, errors=errors, scope=scope)

@@ -39,6 +39,7 @@ def test_periodic_table_literal() -> None:
         "schedule_status_sync": "* * * * *",  # S21
         "check_alerts": "*/5 * * * *",  # S23
         "refresh_ai_credit": "*/5 * * * *",  # SI10
+        "schedule_error_diagnosis": "*/10 * * * *",  # SI13
     }
 
 

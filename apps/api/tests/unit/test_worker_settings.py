@@ -69,3 +69,34 @@ def test_entrypoint_worker_role_has_no_port() -> None:
     assert "PORT" not in block and "uvicorn" not in block and "health" not in block
     assert "exec python -m app.workers.main" in block
     assert os.access(ENTRYPOINT, os.R_OK)
+
+
+# ---- SI13 (T2, P:AC4): the two new switches default off; local runs turn them on ----
+
+SI13_FLAGS = ("amazon_catalog_precheck_enabled", "marketplace_error_diagnosis_enabled")
+
+
+def test_si13_flags_default_off(clean_env: Path) -> None:
+    """The code default holds under every APP_ENV (staging and production set no override)."""
+    from app.core.config import Settings
+
+    for name in SI13_FLAGS:
+        assert Settings.model_fields[name].default is False, name
+    plain = Settings(_env_file=None, app_env="local", jwt_secret="x" * 32)
+    assert not any(getattr(plain, name) for name in SI13_FLAGS)
+    deploy = (ENTRYPOINT.parents[2] / "infra").rglob("*")
+    for path in deploy:
+        if path.is_file() and path.suffix in (".tf", ".yaml", ".yml", ".tfvars"):
+            text = path.read_text("utf-8", errors="ignore").upper()
+            assert not any(f"{name.upper()}" in text for name in SI13_FLAGS), path
+
+
+def test_si13_flags_on_in_env_example() -> None:
+    text = (ENTRYPOINT.parents[2] / ".env.example").read_text(encoding="utf-8").splitlines()
+    for name in SI13_FLAGS:
+        assert f"{name.upper()}=true" in text, name
+
+
+def test_si13_precheck_on_in_the_preview_test_world() -> None:
+    support = ENTRYPOINT.parent / "tests" / "integration" / "preview_support.py"
+    assert 'setenv("AMAZON_CATALOG_PRECHECK_ENABLED", "true")' in support.read_text("utf-8")

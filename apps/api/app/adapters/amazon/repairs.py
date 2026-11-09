@@ -18,6 +18,11 @@ on their own).
 - `fill_from_facts`: a missing attribute filled from a seller fact (`FILL`); a blank fact: None.
 - `drop_locked`: Amazon keeps the first value of an attribute it locks (4005033): leave it out.
 - `image_slot`: another approved image that passed our main rules becomes the main image.
+- `fill_variant_axis` (SI13, CP-D11): a child that was sent without one of its theme's variation
+  attributes (the template's `marketplace_field` for the axis, or a name in `AXIS_ATTRIBUTES`)
+  gets it from its own variant value, built as the payload builds it (`_attribute_entries`;
+  `[{value, marketplace_id}]` with no spec). Never a parent, a standalone unit, an attribute
+  outside the theme or one that was sent; a blank value or a mapping problem: None.
 
 `apply_repairs(attributes, listing, unit)` (the end of `item_payload`) applies each live repair of
 the unit while the seller's source value still hashes to the repair's `source_digest`; any other
@@ -197,7 +202,8 @@ def repair_names(
     if field_path != "listing":
         return []
     named = set(_WORD.findall(text.casefold()))
-    known = {*attributes, *FILL, c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE}
+    axes = {n for names in c.AXIS_ATTRIBUTES.values() for n in names}  # SI13: a child's axis
+    known = {*attributes, *FILL, *axes, c.EXTERNAL_ID_ATTRIBUTE, c.EXEMPTION_ATTRIBUTE}
     return sorted(n for n in known if n in named)
 
 
@@ -323,6 +329,13 @@ def propose(
         if facts is None or not facts.identifier_exempt or attribute in attributes:
             return None
         return made("exemption_flag", ({"value": True, "marketplace_id": mid},), "facts.identifier")
+    if unit.item_role == "child" and attribute not in attributes:
+        axis = _axis_of(listing, attribute)
+        if axis is not None:
+            filled = _axis_entries(listing, unit, axis, mid)
+            if filled is None:
+                return None
+            return made("fill_variant_axis", filled, f"attributes.{axis}")
     if attribute not in attributes and attribute in FILL:
         fact_path = FILL[attribute]
         value = source_value(listing, unit, fact_path)
@@ -350,6 +363,39 @@ def propose(
         value, alias = folded
         return made("enum_fold", _with_value(attributes, attribute, value), path, alias)
     return None
+
+
+def _axis_of(listing: AdapterListing, attribute: str) -> str | None:
+    """The theme axis `attribute` is asked under, or None (no theme, or not an axis name)."""
+    from app.adapters.amazon.mapping import _axes
+
+    template = listing.template.template if listing.template is not None else None
+    for axis in sorted(_axes(listing) or ()):
+        names = set(c.AXIS_ATTRIBUTES.get(axis, ()))
+        spec = template.specs.get(axis) if template is not None else None
+        if spec is not None and spec.marketplace_field:
+            names.add(str(spec.marketplace_field))
+        if attribute in names:
+            return axis
+    return None
+
+
+def _axis_entries(
+    listing: AdapterListing, unit: AdapterItem, axis: str, mid: str
+) -> tuple[Mapping[str, Any], ...] | None:
+    from app.adapters.amazon.mapping import _attribute_entries
+
+    value = unit.variant_attributes.get(axis)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    template = listing.template.template if listing.template is not None else None
+    spec = template.specs.get(axis) if template is not None else None
+    if spec is None:
+        return ({"value": value.strip(), "marketplace_id": mid},)
+    entries, problem = _attribute_entries(axis, spec, value, mid, f"attributes.{axis}")
+    if problem is not None or not entries:
+        return None
+    return tuple(entries)
 
 
 @dataclass(frozen=True)

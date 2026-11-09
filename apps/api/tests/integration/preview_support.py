@@ -18,6 +18,7 @@ async def prev(auth_db: Any, monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[P
     from app.workers import previewers
 
     monkeypatch.setenv("AMAZON_VALIDATION_PREVIEW_ENABLED", "true")
+    monkeypatch.setenv("AMAZON_CATALOG_PRECHECK_ENABLED", "true")  # SI13
     get_settings.cache_clear()
     async with build_pub_world(auth_db, monkeypatch) as pw:
 

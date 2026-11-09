@@ -92,6 +92,7 @@ async def run_listing_status_sync(ctx: JobContext) -> Outcome:
                     errors=() if got is None else tuple(_read_errors(got)),
                     fields=() if got is None else tuple(f.field for f in got.fields),
                     not_buyable=bool(getattr(got, "not_buyable", False)),
+                    product_type=getattr(got, "product_type", None),
                 )
             )
     finally:

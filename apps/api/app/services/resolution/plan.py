@@ -23,6 +23,18 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    answers, CP-D25); otherwise `staff`: `content_review` on a content or keyword path, `mapping`
    on `listing`, else `unanswerable_fact`.
 
+SI13 (T7; CP-D8) adds, after rule 2 and before rule 3:
+- an adapter `SKU_CONFLICT`/`SELLER_SKU_CONFLICT`, or a locked-SKU code (`LOCKED_SKU_CODES`) ->
+  `staff` `sku_conflict` (a SKU cannot be renamed on Amazon; never a repair, never the seller);
+- an adapter `CATEGORY_MISMATCH` -> `seller` `recategorize` when the listing can still be
+  recategorised (`ctx.recategorizable`: never live, failed or never seen, no live variants), else
+  `staff` `recategorize_review`;
+- an adapter `IDENTIFIER_DUPLICATE` on exactly `facts.identifier` or
+  `variants[<sku>].facts.identifier` -> `seller` `edit_identifier`.
+The two seller actions open no inbox question: the issue row is the seller's signal and the action
+is on the listing (`SELLER_ACTIONS`). And a plan-level hold: while an adapter `CATEGORY_MISMATCH`
+ERROR is planned, adapter `MISSING_ATTRIBUTE` rows get no step (one ask, not ten).
+
 `cause` says whose value was wrong (P:D16). `lane_for(code, class)` is the issue-free lane of the
 error catalogue (T19).
 """
@@ -55,6 +67,12 @@ Cause = Literal["seller_fact", "ai_content", "mapping", "image", "marketplace", 
 AUTOMATIC: Final = frozenset({"auto_repair", "auto_content", "ai_field", "retry"})
 FIXED_RESOLUTIONS: Final = frozenset({"deterministic_fix", "ai_correction"})
 QUALIFICATION_CODES: Final = frozenset({"99320", "5665", "5461", "8541", "8542"})
+# SI13: Amazon's codes for a SKU whose identity is locked (F:62): a SKU cannot be renamed
+LOCKED_SKU_CODES: Final = frozenset({"4005013", "101168"})
+SKU_CODES: Final = frozenset({ErrorCode.SKU_CONFLICT.value, ErrorCode.SELLER_SKU_CONFLICT.value})
+# SI13 (CP-D8): seller steps that open no inbox question (the action is on the listing)
+SELLER_ACTIONS: Final = frozenset({"recategorize", "edit_identifier"})
+_IDENTIFIER_PATH: Final = re.compile(r"(variants\[[^\]]+\]\.)?facts\.identifier")
 ANSWERABLE_FACTS: Final = ("facts.gender", "facts.brand_name")
 ADAPTER_SOURCES: Final = frozenset({"amazon_adapter", "flipkart_adapter"})
 _CONTENT_ROOTS: Final = ("content.", "keywords.")
@@ -88,6 +106,9 @@ class PlanContext:
     ai_allowed: bool = False
     content_fixable: frozenset[uuid.UUID] = frozenset()
     """Content and keyword issues the deterministic content fix can change (T15)."""
+    recategorizable: bool = False
+    """SI13: the listing may still be recategorised by the seller (failed, never live, no
+    family with live variants, no other listing of the product the marketplace has seen)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,6 +170,8 @@ def cause_of(issue: IssueView, lane: Lane, provenance: Mapping[str, str]) -> Cau
     path = issue.field_path
     if lane == "marketplace":
         return "marketplace"
+    if issue.error_code == ErrorCode.CATEGORY_MISMATCH.value and issue.source in ADAPTER_SOURCES:
+        return "mapping"  # SI13: the category we chose no longer fits Amazon's product type
     if path.startswith("images"):
         return "image"
     if path.startswith(_CONTENT_ROOTS):
@@ -204,6 +227,19 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         return "staff", "recurrence"
     if issue.id in ctx.repair_rejected:
         return "staff", "repair_rejected"
+    adapter = issue.source in ADAPTER_SOURCES
+    if adapter and (issue.error_code in SKU_CODES or issue.marketplace_code in LOCKED_SKU_CODES):
+        return "staff", "sku_conflict"
+    if adapter and issue.error_code == ErrorCode.CATEGORY_MISMATCH.value:
+        if ctx.recategorizable:
+            return "seller", "recategorize"
+        return "staff", "recategorize_review"
+    if (
+        adapter
+        and issue.error_code == ErrorCode.IDENTIFIER_DUPLICATE.value
+        and _IDENTIFIER_PATH.fullmatch(issue.field_path)
+    ):
+        return "seller", "edit_identifier"
     klass = _klass(issue.error_class)
     if klass is ErrorClass.ACCOUNT_PERMISSION or issue.marketplace_code in QUALIFICATION_CODES:
         return "marketplace", "permission"
@@ -239,9 +275,28 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
     return "staff", "ops"
 
 
+def _holds_missing(issues: Sequence[IssueView], ctx: PlanContext) -> bool:
+    """SI13: an adapter CATEGORY_MISMATCH ERROR is planned, so the burst of missing attributes
+    that came with it waits for the category (one ask, not ten)."""
+    return any(
+        i.severity == "error"
+        and i.source in ADAPTER_SOURCES
+        and i.error_code == ErrorCode.CATEGORY_MISMATCH.value
+        and _lane(i, ctx) is not None
+        for i in issues
+    )
+
+
 def plan(issues: Sequence[IssueView], ctx: PlanContext) -> tuple[Step, ...]:
     steps: list[Step] = []
+    hold = _holds_missing(issues, ctx)
     for issue in issues:
+        if (
+            hold
+            and issue.source in ADAPTER_SOURCES
+            and issue.error_code == ErrorCode.MISSING_ATTRIBUTE.value
+        ):
+            continue
         found = _lane(issue, ctx)
         if found is None:
             continue
@@ -250,17 +305,25 @@ def plan(issues: Sequence[IssueView], ctx: PlanContext) -> tuple[Step, ...]:
     return tuple(steps)
 
 
-def lane_for(error_code: str, error_class: str, source: str = "amazon_adapter") -> Lane:
-    """The lane an issue of this code and class takes with no listing context (the catalogue)."""
+def lane_for(
+    error_code: str,
+    error_class: str,
+    source: str = "amazon_adapter",
+    *,
+    field_path: str = "listing",
+    ctx: PlanContext | None = None,
+) -> Lane:
+    """The lane an issue of this code and class takes at `field_path` (the map row's field
+    hint, else `listing`) with no listing context unless `ctx` is given (the catalogue)."""
     view = IssueView(
         id=uuid.UUID(int=0),
         source=source,
-        field_path="listing",
+        field_path=field_path,
         error_code=error_code,
         error_class=error_class,
         severity="error",
     )
-    found = _lane(view, PlanContext())
+    found = _lane(view, PlanContext() if ctx is None else ctx)
     return "staff" if found is None else found[0]
 
 

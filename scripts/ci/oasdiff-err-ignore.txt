@@ -9059,6 +9059,11 @@ POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value t
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `422`
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `429`
 POST /api/v1/tasks/{task_id}/close added the new `TENANT_SUSPENDED` enum value to the `error/type` response property for the response status `default`
+# Contract 2.1.0 (SI13, CODE-PLAN §5 and §7; conductor under the user's V1 delegation, chat
+# 2026-11-08): SI11's unreleased NextStepOut.kind gains two seller actions. Remove these lines once
+# main carries SI13.
+GET /api/v1/listings/{listing_id}/resolution added the new `edit_identifier` enum value to the `next_step/kind` response property for the response status `200`
+GET /api/v1/listings/{listing_id}/resolution added the new `recategorize` enum value to the `next_step/kind` response property for the response status `200`
 # Contract 2.1.0 (SI12 size-chart unit; additive MINOR under the open heading, conductor under the
 # user's V1 delegation, 2026-11-09, packages/schemas/CHANGELOG.md): size_chart_suggestion.chart is
 # now SuggestedSizeChart (unit cm, in or unknown). The field itself is new in the unreleased 2.1.0.

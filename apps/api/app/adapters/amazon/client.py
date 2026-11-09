@@ -35,7 +35,7 @@ import json
 import random
 import re
 import time
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, Literal, Protocol
 from urllib.parse import quote, urlencode
@@ -75,6 +75,11 @@ PTD_DENIED: Final = "The Amazon app may not read product type definitions for th
 UNSAFE_SKUS: Final = frozenset({".", ".."})
 GET_INCLUDED: Final = "summaries,attributes,issues"
 PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
+# SI13: the read-only pre-check routes. Only ASCII digits for a barcode and an upper-case ASIN, so
+# no other character (a full-width digit, a separator, a slash) ever reaches a query string.
+BARCODE_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
+ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
+CATALOG_DENIED: Final = "The Amazon account did not grant the Product Listing role to this app."
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
 _BEFORE_SEND: Final = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
 
@@ -89,6 +94,26 @@ class SpApiResponse:
     json: Any
     headers: Mapping[str, str]
     raw: bytes
+
+
+_PAGE_TOKEN_MAX: Final = 2048
+# marks a partial search whose next token was refused (not a credential)
+UNFOLLOWED_TOKEN: Final = "unfollowed"  # noqa: S105
+
+
+def _next_token(body: Mapping[str, Any]) -> str | None:
+    """`pagination.nextToken` of a searchCatalogItems reply, or None (a bounded string only)."""
+    pagination = body.get("pagination")
+    token = pagination.get("nextToken") if isinstance(pagination, dict) else None
+    if isinstance(token, str) and 0 < len(token) <= _PAGE_TOKEN_MAX and token.isprintable():
+        return token
+    return None
+
+
+def _has_more(body: Mapping[str, Any]) -> bool:
+    """True when the reply names any next page, even one `_next_token` refuses to follow."""
+    pagination = body.get("pagination")
+    return isinstance(pagination, dict) and bool(pagination.get("nextToken"))
 
 
 def backoff_delay(k: int, rng: Rng) -> float:
@@ -217,7 +242,84 @@ class SpApiClient:
         """DW2: a read of the Product Type Definitions API (`app.adapters.amazon.definitions`)."""
         return await self._call(self._ptd_route(operation, product_type, query), None)
 
+    async def search_catalog(
+        self,
+        identifiers: Sequence[str],
+        identifiers_type: Literal["EAN", "UPC", "GTIN"],
+    ) -> SpApiResponse:
+        """SI13: searchCatalogItems by barcode (at most 20). Sends only the barcodes, their type,
+        the marketplace and `pageSize=20`; refused before the limiter or a token when any value
+        is not a plain 8-14 digit barcode. Follows `pagination.nextToken` (`pageToken`, each page
+        through the limiter) for at most `CATALOG_MAX_PAGES` pages and merges the items. When a
+        later page fails, the bound is hit or a next token is refused (too long, not printable),
+        the merged reply keeps a `pagination.nextToken`, so the caller knows the search is partial; a failed first call raises as before.
+        """
+        values = list(identifiers) if not isinstance(identifiers, str) else []
+        if not values or len(values) > c.CATALOG_MAX_IDENTIFIERS:
+            raise ValueError("1 to 20 barcodes per search")
+        if not all(isinstance(v, str) and BARCODE_RE.fullmatch(v) for v in values):
+            raise ValueError("refused barcode")
+        if identifiers_type not in ("EAN", "UPC", "GTIN"):
+            raise ValueError("refused identifier type")
+        query = {
+            "identifiers": ",".join(values),
+            "identifiersType": identifiers_type,
+            "marketplaceIds": self._marketplace_id,
+            "includedData": c.CATALOG_INCLUDED,
+            "pageSize": str(c.CATALOG_PAGE_SIZE),
+        }
+        first = await self._call(self._read_route("catalog_search", c.CATALOG_PATH, query), None)
+        body = first.json if isinstance(first.json, dict) else {}
+        items = list(body.get("items") or []) if isinstance(body.get("items"), list) else []
+        token = _next_token(body)
+        unfollowed = token is None and _has_more(body)
+        pages = 1
+        while token is not None and pages < c.CATALOG_MAX_PAGES:
+            route = self._read_route(
+                "catalog_search", c.CATALOG_PATH, {**query, "pageToken": token}
+            )
+            try:
+                page = await self._call(route, None)
+            except AdapterError:
+                break  # the token stays: the caller treats the search as incomplete
+            found = page.json if isinstance(page.json, dict) else {}
+            if page.status != 200 or not isinstance(found.get("items"), list):
+                break
+            items += found["items"]
+            token = _next_token(found)
+            unfollowed = token is None and _has_more(found)
+            pages += 1
+        merged: dict[str, Any] = {**body, "items": items}
+        merged.pop("pagination", None)
+        if token is not None:
+            merged["pagination"] = {"nextToken": token}
+        elif unfollowed:  # a next page the client will not follow: still a partial search
+            merged["pagination"] = {"nextToken": UNFOLLOWED_TOKEN}
+        return SpApiResponse(status=first.status, json=merged, headers=first.headers, raw=first.raw)
+
+    async def get_restrictions(self, asin: str) -> SpApiResponse:
+        """SI13: getListingsRestrictions for one ASIN and this seller (condition new)."""
+        if not isinstance(asin, str) or not ASIN_RE.fullmatch(asin):
+            raise ValueError("refused ASIN")
+        if self._seller is None:
+            raise ValueError("seller_id is required")
+        query = {
+            "asin": asin,
+            "sellerId": self._seller,
+            "marketplaceIds": self._marketplace_id,
+            "conditionType": c.RESTRICTION_CONDITION,
+        }
+        route = self._read_route("restrictions_get", c.RESTRICTIONS_PATH, query)
+        return await self._call(route, None)
+
     # ---- internals ----
+
+    def _read_route(self, operation: str, path: str, query: Mapping[str, str]) -> _Route:
+        """A GET with no body (`write=False`), checked raw-path-exact as every other route."""
+        raw = f"{path}?{urlencode(dict(query), safe='')}"
+        return _Route(
+            operation, "GET", path, self._endpoint + raw, raw.encode("ascii"), False, CATALOG_DENIED
+        )
 
     def _item_route(
         self, operation: str, method: str, sku: str, *, preview: bool = False

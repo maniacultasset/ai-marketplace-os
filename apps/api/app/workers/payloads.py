@@ -78,3 +78,12 @@ def dump(payload: _Payload) -> dict[str, Any]:
         if getattr(payload, key) == fields[key].default:
             del data[key]
     return data
+
+
+class DiagnosisPayload(_Payload):
+    """SI13 T12: a `brand_embed` job with `entity_type 'error_proposal'` that drafts one
+    error-map proposal (CP-D1). Holds ids only, never marketplace text."""
+
+    op: Literal["diagnose"] = "diagnose"
+    proposal_id: UUID
+    sample_issue_id: UUID

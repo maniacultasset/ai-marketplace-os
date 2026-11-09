@@ -42,5 +42,26 @@ payload go back to the marketplace without a second approval?
 - Invariant 9 is enforced twice: the 3-cycle cap here and `ls_guard`'s 3 submissions per version.
 - The error database grows from real issues: the `marketplace_error_catalog` view (no tenant id, no message text)
   feeds a reviewed PR to `error_map.amazon.json`.
-- Open: SP-API notifications (EventBridge) instead of polling; preview support on Amazon India unconfirmed (F:61);
-  catalog and restriction pre-checks; AI diagnosis of unknown codes.
+- Open: SP-API notifications (EventBridge) instead of polling; preview support on Amazon India unconfirmed (F:61).
+
+## SI13 additions (proposed, 2026-11-08)
+
+- **Category reassignment.** A status read keeps Amazon's `summaries[0].productType`; a different type, or a burst
+  of 3+ MISSING_ATTRIBUTE errors on an accepted SKU, is one `CATEGORY_MISMATCH` item at `facts.category` that
+  holds the burst's questions (one ask, not ten). The seller recategorises (`recategorize` step) when the listing
+  was never live, else staff reviews (CP-D7). A rejected, never-live listing with the open item may be
+  recategorised; it keeps `failed` and the seller's regenerate voids the approval (no new edge, CP-D19: the user
+  `edit` edge needs an edit version).
+- **Catalog and restriction pre-check** inside the dry run (CP-D6, both switches): another brand's barcode is an
+  ERROR the seller fixes (`edit_identifier`); a restricted brand is a `permission_decision` task with Amazon's
+  Seller Central link (https, `sellercentral.amazon.in|com` only, CP-D13). A failed check never blocks.
+- **Seller actions with no inbox question** (CP-D8): `recategorize` and `edit_identifier` stay seller steps; the
+  issue row (lane seller, path, message) is the signal and `NextStepOut.kind` names the action.
+- **Child theme axis** (`fill_variant_axis`): a child sent without its theme attribute gets its own variant value.
+- **AI diagnosis of unknown codes** (CP-D1, CP-D2): a `brand_embed` job per unmapped code drafts one proposal
+  over the pipeline's `complete_json`, through the SI10 budget, with every AgentRun persisted. **Proposals never
+  act**: only a platform admin's `errors proposals approve` (full re-check of the final row) writes a map row,
+  whose `policy_ref` names the proposal and the approver's user id (CP-D20). The `--by` email is resolved by the
+  migrator connection; migrator access is the authorisation and the seed PR the second review.
+- **Value maps and the export** are read-only staff reports (`errors value-maps`, `errors export`); an alias change
+  stays a reviewed PR to `aliases.py`.

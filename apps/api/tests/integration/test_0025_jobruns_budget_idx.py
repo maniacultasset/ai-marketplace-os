@@ -72,7 +72,8 @@ def _scalar(db: ScratchDb, query: str) -> object:
 
 
 def test_0025_and_0026_round_trip(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
-    """Both V1 hardening revisions chain on SI12's 0023 and downgrade cleanly."""
+    """Both V1 hardening revisions chain on SI12's 0023 and downgrade cleanly (SI13's 0024 now sits
+    on 0026, so the downgrade to 0023 passes through it)."""
     script = ScriptDirectory.from_config(alembic_config())
     budget, flag = script.get_revision("0025_jobruns_budget_idx"), script.get_revision(
         "0026_invitee_email_unverified"

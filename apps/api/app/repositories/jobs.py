@@ -48,9 +48,17 @@ _KEY_BEGAN: Final = text(
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
-# SI12: `size_chart_read` (0023 widened `ck_job_runs_entity_type`)
+# SI12: `size_chart_read` (0023 widened `ck_job_runs_entity_type`); SI13: `error_proposal` (0024)
 ENTITY_TYPES: Final = frozenset(
-    {"listing", "import", "image", "brand_document", "image_candidate", "size_chart_read"}
+    {
+        "listing",
+        "import",
+        "image",
+        "brand_document",
+        "image_candidate",
+        "size_chart_read",
+        "error_proposal",
+    }
 )
 
 

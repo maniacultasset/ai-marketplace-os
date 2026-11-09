@@ -83,7 +83,20 @@ class AttemptOut(WireModel):
 
 
 class NextStepOut(WireModel):
-    kind: Literal["none", "wait", "approve", "answer", "marketplace", "resume", "regenerate"]
+    # SI13 (2.1.0, unreleased): `recategorize` (choose the category the marketplace now files the
+    # product under, then regenerate) and `edit_identifier` (fix the barcode or claim an
+    # exemption) are seller actions on the listing that open no inbox question
+    kind: Literal[
+        "none",
+        "wait",
+        "approve",
+        "answer",
+        "marketplace",
+        "resume",
+        "regenerate",
+        "recategorize",
+        "edit_identifier",
+    ]
     task_ids: Annotated[list[UUID], Field(max_length=20)] = Field(default_factory=list)
     text: Annotated[str, Field(max_length=300)] = ""
 
