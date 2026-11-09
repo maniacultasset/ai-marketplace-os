@@ -1412,12 +1412,15 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
     assert (staging["LLM_GATEWAY"], staging["LLM_PROVIDER"]) == ("direct", "openai")
     for name in ("LLM_MODEL_DEFAULT", "LLM_DAILY_BUDGET_USD", "LLM_TENANT_DAILY_BUDGET_USD"):
         assert staging[name] == "", name
-    # SI12: the size-chart read keeps LLM_MODEL_VISION until the AI lead picks its own model, and
-    # stays off on both; prod's photo facts run on gpt-4o (pipeline v0.5.0 prices it)
+    # SI12: the size-chart read keeps LLM_MODEL_VISION (gpt-4o in prod). It is on in prod since
+    # pipeline v0.6.0 met every G-size bar live (an unverified unit comes back unknown) and off on staging
     assert prod["LLM_MODEL_VISION_SIZE_CHART"] == staging["LLM_MODEL_VISION_SIZE_CHART"] == ""
-    assert prod["SIZE_CHART_READ_ENABLED"] == staging["SIZE_CHART_READ_ENABLED"] == "false"
+    assert (prod["SIZE_CHART_READ_ENABLED"], staging["SIZE_CHART_READ_ENABLED"]) == (
+        "true",
+        "false",
+    )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "f631923204f4ed9b4d617965c5c83e5cc347a75b"
+    assert prod["PIPELINE_REF"] == "bf4fbb8afa2562a0bf886f8038bd8813016a9084"
     assert staging["WORKER_ENABLED"] == "true"
 
 
