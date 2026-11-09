@@ -67,7 +67,9 @@ from app.repositories.jobs import JobRunRepository
 from app.repositories.parties import BrandProfileRepository, BusinessPartyRepository, PartyFields
 from app.repositories.products import ProductRepository, ProductUpsert
 from app.repositories.transactions import RowDbError, row_savepoint, unit_of_work
+from app.repositories.uow import repositories_on
 from app.repositories.variants import ColourwayRepository, MatrixCellRepository
+from app.services.category_confirm import settle_on_category_write
 from app.services.imports.column_map import Renamer, apply_map
 from app.services.imports.csv_file import CsvRow, ImportFileError, iter_rows
 from app.services.imports.db_errors import column_for_field, row_db_item
@@ -522,11 +524,30 @@ class _Writer:
             return
 
         async def write() -> uuid.UUID:
+            before = await self.products.category_of_sku(row.sku)
             done = await self.products.upsert_by_sku(self._upsert(row))
+            await self._settle_category(done.id, before, row.category)
             await self._row_facts(done.id, row, level="standalone")
             return done.id
 
         await self._guarded(p, write)
+
+    async def _settle_category(
+        self, product_id: uuid.UUID, before: str | None, category: str | None
+    ) -> None:
+        """SI14 (AC6): an import that changes a stored product's category is a seller category
+        write, like PATCH: it settles the suggestion and applies the live category review."""
+        if category is None or category == before:
+            return
+        product = await self.products.get_for_update(product_id)
+        if product is None:
+            return
+        await settle_on_category_write(
+            repositories_on(self.session, self.run.tenant),
+            self.run.imp.created_by,
+            product,
+            category,
+        )
 
     def _upsert(self, row: ProductImportRow, **family: Any) -> ProductUpsert:
         return ProductUpsert(
@@ -733,6 +754,7 @@ class _Writer:
 
         async def write_style() -> uuid.UUID:
             if identity is not None:
+                before = await self.products.category_of_sku(key)
                 done = await self.products.upsert_by_sku(
                     self._upsert(
                         identity,
@@ -742,6 +764,7 @@ class _Writer:
                     )
                 )
                 written = done.id
+                await self._settle_category(written, before, identity.category)
                 if style_row is not None:
                     await self._row_facts(written, identity, level="style")
                     await self._style_money(written, live)

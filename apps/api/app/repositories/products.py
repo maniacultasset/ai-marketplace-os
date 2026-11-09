@@ -249,6 +249,12 @@ class ProductRepository(TenantScopedRepository[Product]):
         found = (await self.db.execute(stmt)).one_or_none()
         return None if found is None else (found[0], found[1])
 
+    async def category_of_sku(self, sku: str) -> str | None:
+        """The stored category of `sku` (None when the SKU is new or has no category)."""
+        stmt = self._select().where(Product.sku == sku).with_only_columns(Product.category)
+        found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
