@@ -48,6 +48,7 @@ ALTER TABLE public.import_column_maps FORCE ROW LEVEL SECURITY;
 CREATE POLICY t_tenant ON public.import_column_maps TO app_rw
   USING (tenant_id = (SELECT public.app_tenant_id()))
   WITH CHECK (tenant_id = (SELECT public.app_tenant_id()));
-CREATE POLICY t_platform ON public.import_column_maps FOR SELECT TO app_ro
+-- `t_app_ro`, not `t_platform`: the samples stay off app_platform_ro, so only app_ro reads here
+CREATE POLICY t_app_ro ON public.import_column_maps FOR SELECT TO app_ro
   USING ((current_user = 'app_ro'));
 CREATE POLICY t_migrator ON public.import_column_maps TO migrator USING (true) WITH CHECK (true);

@@ -51,6 +51,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "trusted_devices": frozenset({"td_self", "t_platform", "t_migrator"}),
     # 0018 (SI7): the plain template
     "image_candidates": TEMPLATE,
+    # 0027 (SI14): app_ro reads (samples ungranted), never app_platform_ro
+    "import_column_maps": frozenset({"t_tenant", "t_app_ro", "t_migrator"}),
     # 0021 (SI10): one platform row with no tenant data; the guard trigger owns the clear
     "ai_credit_state": frozenset({"acs_read", "acs_write", "t_platform", "t_migrator"}),
     # 0022 (SI11): the plain template
