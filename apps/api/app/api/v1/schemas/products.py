@@ -312,7 +312,14 @@ IDENTIFIER_DOC: Final = (
 class ProductCreate(StrictModel):
     sku: Sku
     title: ProductTitle
-    category: Slug
+    category: Slug | None = Field(
+        default=None,
+        description=(
+            "SI14: optional; without it the product is created with no category, and while "
+            "`category_suggest_enabled` is on a classification is queued (the seller confirms "
+            "the suggestion with PATCH). A listing needs a category first."
+        ),
+    )
     images: Annotated[list[StorageKey], Field(max_length=MAX_PRODUCT_IMAGES)] = Field(
         default_factory=list
     )
@@ -506,8 +513,33 @@ class HsnSuggestionOut(WireModel):
     basis: Literal["category"]
 
 
+CategorySuggestionStatus = Literal["suggested", "unavailable", "failed", "confirmed", "overridden"]
+
+
+class CategoryCandidateOut(WireModel):
+    category: Slug
+    confidence: Annotated[float, Field(ge=0.0, le=1.0, allow_inf_nan=False)]
+    rationale: Annotated[str, Field(max_length=300)]
+
+
+class CategorySuggestionOut(WireModel):
+    """SI14: the classifier's suggestion (at most 3 candidates, highest confidence first). It is
+    never the product's category by itself: the seller picks one with PATCH (`confirmed` when it
+    is a candidate, `overridden` otherwise)."""
+
+    status: CategorySuggestionStatus
+    candidates: Annotated[list[CategoryCandidateOut], Field(max_length=3)] = Field(
+        default_factory=list
+    )
+    calibration_version: str | None = None
+    at: AwareDatetime | None = None
+
+
 class SuggestionsOut(WireModel):
     hsn_code: HsnSuggestionOut | None = None
+    category: CategorySuggestionOut | None = Field(
+        default=None, description="SI14: the stored category suggestion; null on lists."
+    )
 
 
 SizeChartReadStatus = Literal["queued", "reading", "read", "unreadable", "failed", "unavailable"]
@@ -538,7 +570,7 @@ class ProductOut(WireModel):
     sku: Sku
     title: ProductTitle
     status: Literal["draft", "active"]
-    category: Slug
+    category: Slug | None = Field(description="SI14: null until the seller sets a category.")
     attributes: dict[str, AttributeScalar] = Field(default_factory=dict)
     images: list[StorageKey] = Field(default_factory=list)
     parent_product_id: UUID | None = None
@@ -619,6 +651,13 @@ class ProductOut(WireModel):
         description=(
             "SI12: whether `POST /products/{product_id}/size-chart-read` can read the photo; while "
             "false it answers `unavailable` (hide the button). False on lists."
+        ),
+    )
+    category_suggest_enabled: bool = Field(
+        default=False,
+        description=(
+            "SI14: whether `POST /products/{product_id}/category-suggestion` can classify the "
+            "product; while false it answers `unavailable` (hide the button). False on lists."
         ),
     )
 

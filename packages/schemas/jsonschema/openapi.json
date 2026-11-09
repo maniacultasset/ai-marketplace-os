@@ -1112,6 +1112,85 @@
         "title": "CanonicalListing",
         "type": "object"
       },
+      "CategoryCandidateOut": {
+        "properties": {
+          "category": {
+            "pattern": "^[a-z0-9_]{2,64}$",
+            "title": "Category",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          },
+          "rationale": {
+            "maxLength": 300,
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "confidence",
+          "rationale"
+        ],
+        "title": "CategoryCandidateOut",
+        "type": "object"
+      },
+      "CategorySuggestionOut": {
+        "description": "SI14: the classifier's suggestion (at most 3 candidates, highest confidence first). It is\nnever the product's category by itself: the seller picks one with PATCH (`confirmed` when it\nis a candidate, `overridden` otherwise).",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "calibration_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Version"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryCandidateOut"
+            },
+            "maxItems": 3,
+            "title": "Candidates",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "suggested",
+              "unavailable",
+              "failed",
+              "confirmed",
+              "overridden"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "CategorySuggestionOut",
+        "type": "object"
+      },
       "ChangeOut": {
         "properties": {
           "field": {
@@ -6049,9 +6128,17 @@
             "title": "Brand Name"
           },
           "category": {
-            "pattern": "^[a-z0-9_]{2,64}$",
-            "title": "Category",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9_]{2,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI14: optional; without it the product is created with no category, and while `category_suggest_enabled` is on a classification is queued (the seller confirms the suggestion with PATCH). A listing needs a category first.",
+            "title": "Category"
           },
           "country_of_origin": {
             "anyOf": [
@@ -6251,8 +6338,7 @@
         },
         "required": [
           "sku",
-          "title",
-          "category"
+          "title"
         ],
         "title": "ProductCreate",
         "type": "object"
@@ -6450,9 +6536,23 @@
             "type": "boolean"
           },
           "category": {
-            "pattern": "^[a-z0-9_]{2,64}$",
-            "title": "Category",
-            "type": "string"
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9_]{2,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI14: null until the seller sets a category.",
+            "title": "Category"
+          },
+          "category_suggest_enabled": {
+            "default": false,
+            "description": "SI14: whether `POST /products/{product_id}/category-suggestion` can classify the product; while false it answers `unavailable` (hide the button). False on lists.",
+            "title": "Category Suggest Enabled",
+            "type": "boolean"
           },
           "colourways": {
             "items": {
@@ -8473,6 +8573,17 @@
       },
       "SuggestionsOut": {
         "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CategorySuggestionOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "SI14: the stored category suggestion; null on lists."
+          },
           "hsn_code": {
             "anyOf": [
               {
@@ -8673,7 +8784,8 @@
               "permission_decision",
               "reconnect_account",
               "image_replacement",
-              "marketplace_error_review"
+              "marketplace_error_review",
+              "category_review"
             ],
             "title": "Kind",
             "type": "string"
