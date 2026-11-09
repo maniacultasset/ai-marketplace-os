@@ -23,10 +23,16 @@ def loaded(
     clean_tenant_db: None, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, superuser_conn: Conn
 ) -> Iterator[None]:
     from app.core.config import get_settings
+    from app.db.session import get_engine, get_sessionmaker
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("ALEMBIC_DATABASE_URL", os.environ["DATABASE_URL"])
     get_settings.cache_clear()
+    # `errors export` reads through the cached app engine: one an earlier test in this worker built
+    # for another database (the unit suites' CI DATABASE_URL, the template with no error map) would
+    # read an empty map (CI shard 1, 2026-11-09)
+    get_sessionmaker.cache_clear()
+    get_engine.cache_clear()
     assert main(["errors", "load"]) == 0
     superuser_conn.execute("SET SESSION AUTHORIZATION migrator")
     try:
