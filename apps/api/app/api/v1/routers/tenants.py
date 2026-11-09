@@ -5,15 +5,32 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response
+from mkos_schemas.enums import Marketplace
 
 from app.api.v1.deps import IfMatch, get_current_principal
-from app.api.v1.schemas.tenants import TenantOut, TenantPatch
+from app.api.v1.schemas.tenants import TenantCapabilitiesOut, TenantOut, TenantPatch
 from app.api.v1.surface import OPS, route
+from app.core.config import get_settings
+from app.core.flags import publish_enabled
 from app.core.rbac import Principal
 from app.services import tenants
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+
+
+def capabilities_out() -> TenantCapabilitiesOut:
+    """The deployment's switches, read the way the services read them."""
+    s = get_settings()
+    return TenantCapabilitiesOut(
+        amazon_publishing_enabled=publish_enabled(Marketplace.AMAZON, s),
+        category_suggest_enabled=s.category_suggest_enabled,
+        column_map_ai_enabled=s.column_map_ai_enabled,
+        photo_qa_enabled=s.photo_qa_enabled,
+        category_lamps_enabled=s.category_lamps_enabled,
+        size_chart_read_enabled=s.size_chart_read_enabled,
+        image_edit_enabled=s.image_edit_enabled,
+    )
 
 
 def _out(view: tenants.TenantView) -> TenantOut:
@@ -27,6 +44,7 @@ def _out(view: tenants.TenantView) -> TenantOut:
             "glossary": view.glossary,
             "status": view.status,
             "trial_ends_at": view.trial_ends_at,
+            "capabilities": capabilities_out(),
         }
     )
 

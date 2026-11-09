@@ -5740,6 +5740,55 @@ export interface components {
             data: components["schemas"]["TenantAdminOut"][];
             page: components["schemas"]["PageInfo"];
         };
+        /**
+         * TenantCapabilitiesOut
+         * @description What this deployment does today, read from its settings (the same switches the services
+         *     check). The dashboard reads these to word its screens truthfully; they never grant access.
+         */
+        TenantCapabilitiesOut: {
+            /**
+             * Amazon Publishing Enabled
+             * @description The Amazon publish kill switch (`AMAZON_PUBLISH_ENABLED`). False: nothing is sent to Amazon (publish, retry, the automatic resend and the dry run are refused); approving still works and keeps the listing ready. Same value as `MarketplaceAccountOut.publishing_enabled` on an Amazon account.
+             * @default true
+             */
+            amazon_publishing_enabled: boolean;
+            /**
+             * Category Lamps Enabled
+             * @description `CATEGORY_LAMPS_ENABLED`: listings in the lamps category.
+             * @default false
+             */
+            category_lamps_enabled: boolean;
+            /**
+             * Category Suggest Enabled
+             * @description `CATEGORY_SUGGEST_ENABLED`: the AI category suggestion.
+             * @default false
+             */
+            category_suggest_enabled: boolean;
+            /**
+             * Column Map Ai Enabled
+             * @description `COLUMN_MAP_AI_ENABLED`: the AI column mapping for imports.
+             * @default false
+             */
+            column_map_ai_enabled: boolean;
+            /**
+             * Image Edit Enabled
+             * @description `IMAGE_EDIT_ENABLED`: the AI white-background edit.
+             * @default false
+             */
+            image_edit_enabled: boolean;
+            /**
+             * Photo Qa Enabled
+             * @description `PHOTO_QA_ENABLED`: the photo QA warnings.
+             * @default false
+             */
+            photo_qa_enabled: boolean;
+            /**
+             * Size Chart Read Enabled
+             * @description `SIZE_CHART_READ_ENABLED`: the size-chart read.
+             * @default false
+             */
+            size_chart_read_enabled: boolean;
+        };
         /** TenantExtendTrial */
         TenantExtendTrial: {
             /** Days */
@@ -5749,6 +5798,8 @@ export interface components {
         };
         /** TenantOut */
         TenantOut: {
+            /** @description This deployment's feature switches, so screens never promise what is off. */
+            capabilities?: components["schemas"]["TenantCapabilitiesOut"];
             /** Glossary */
             glossary?: {
                 [key: string]: string;
