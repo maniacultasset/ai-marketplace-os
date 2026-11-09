@@ -106,8 +106,11 @@ still works on the current schema (expand then contract).
 ## Restore the database (prod commands)
 
 Never over the live instance: clone into a new one, check it, then switch (DEPLOY-GCP.md "Restore
-the database" has the switch-over steps). The restore drill (launch gate 6, under 15 minutes) has
-not been run yet; time it on the first run.
+the database" has the switch-over steps). The restore drill (launch gate 6, under 15 minutes) is
+`scripts/deploy/gcp/deploy.sh prod restore-drill` (`--dry-run` first): it restores the latest
+backup into a throwaway instance, checks it, times it and deletes it (DEPLOY-GCP.md "Restore
+drill"). It has not been run on prod yet; record the first timing here. The commands below are
+the same steps by hand, for a real restore.
 
 ```bash
 # 1. clone to a point in time (UTC) inside the 7-day PITR window
@@ -131,4 +134,5 @@ The decrypt check of a restored `token_enc`: only `aimos-worker` may decrypt wit
 so it cannot be run against a throwaway clone. After a real switch-over, the first token refresh
 (`marketplace_token_refresh`, every 5 minutes) proves it: watch for `token_refresh_failed`.
 Backups sit in `asia-south1`, the same region as the zonal primary: cross-region backups
-(asia-south2) wait for the client's decision.
+(asia-south2) are prepared and wait for the client's decision (DEPLOY-GCP.md "Cross-region
+backups").

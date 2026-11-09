@@ -13,6 +13,8 @@
 #   deploy      the api service and the worker pool, then smoke
 #   release     build, migrate, deploy
 #   smoke       GET /healthz and /readyz on the service URL
+#   restore-drill  [--pitr YYYY-MM-DDTHH:MM:SSZ] [--keep]: the latest backup (or a point in time) into a
+#               throwaway <SQL_INSTANCE>-drill-<stamp>; alembic, row count and smoke checks, timed, deleted
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   amazon-check  (--slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]: the read-only
@@ -53,8 +55,9 @@ OPS_SECRETS="ALEMBIC_DATABASE_URL"
 MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 PW_MOUNT="/secrets/initial-password/value"
 
+# The header comment from line 5 to the bare `#` before "Every subcommand describes".
 usage() {
-  sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,/^# Every subcommand describes/p' "$0" | sed -e '$d' | sed -e '$d' -e 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -164,6 +167,12 @@ MAINT_TIME_ZONE="${MAINT_TIME_ZONE:-Asia/Kolkata}"
 # DPP 2.7.4: where Cloud SQL keeps its automated backups; an env file without the key keeps them in
 # the instance's region, as before.
 SQL_BACKUP_LOCATION="${SQL_BACKUP_LOCATION:-$REGION}"
+# Ops readiness (d): the backups stay in India. asia-south2 (Delhi) is the cross-region choice,
+# prepared and off until the client decides (DEPLOY-GCP.md "Cross-region backups").
+case "$SQL_BACKUP_LOCATION" in
+  asia-south1 | asia-south2) ;;
+  *) die "SQL_BACKUP_LOCATION must be asia-south1 or asia-south2, not '$SQL_BACKUP_LOCATION' (in $ENV_NAME.env)" ;;
+esac
 case "$MFA_ENFORCEMENT" in
   off | all) ;;
   *) die "MFA_ENFORCEMENT must be off or all (in $ENV_NAME.env)" ;;
@@ -341,10 +350,13 @@ chmod 0700 "$WORK"
 # On every exit (success, die, error, Ctrl-C): a locked deploy's `candidate` tag is removed
 # (candidate_close, ADR-0022), then the work dir.
 CANDIDATE_ARMED=0
+# restore-drill: set once the throwaway instance may exist, so any exit deletes it (drill_cleanup).
+DRILL_ARMED=0
 on_exit() {
   local rc=$?
   set +e
   [ "$CANDIDATE_ARMED" -eq 0 ] || candidate_close
+  [ "$DRILL_ARMED" -eq 0 ] || drill_cleanup
   rm -rf "$WORK"
   exit "$rc"
 }
@@ -2500,6 +2512,221 @@ cmd_edge() {
   esac
 }
 
+# ---- restore drill (launch gate 6; INCIDENTS.md "Restore the database") ----
+# The latest successful backup of SQL_INSTANCE (or, with --pitr, a point in time) goes into a new
+# throwaway instance <SQL_INSTANCE>-drill-<UTC ddHHMMSS>, labelled purpose=restore-drill. Then,
+# through cloud-sql-proxy on 127.0.0.1, read only: the alembic revision is one this repo knows (as
+# migrator in a read-only session), row counts of the core tables as app_ro (at least one tenant),
+# and a smoke (row level security still on, sealed Amazon tokens still carry their key version,
+# the newest job run). Every phase is timed against the 15-minute gate. The drill instance is
+# deleted at the end and on any failure (--keep leaves it and prints the delete command). Nothing
+# here creates, patches, restores into or deletes SQL_INSTANCE: every mutating command names the
+# drill instance, and drill_guard refuses any other name. The passwords go from Secret Manager
+# into a 0600 pgpass file in the work dir, never argv or the output.
+DRILL_PORT="${DRILL_PORT:-6544}"
+DRILL_WAIT_TRIES="${DRILL_WAIT_TRIES:-30}"
+DRILL_WAIT_SLEEP="${DRILL_WAIT_SLEEP:-2}"
+DRILL_GATE_S=900
+DRILL=""
+DRILL_KEEP=0
+DRILL_PROXY_PID=""
+# The tables counted (all readable by app_ro across tenants, migrations 0001 onwards).
+DRILL_TABLES="tenants users tenant_memberships products listings listing_versions job_runs agent_runs marketplace_accounts images audit_log"
+
+# NAME: dies unless NAME is this drill's own instance (never SQL_INSTANCE).
+drill_guard() {
+  [ -n "$1" ] && [ "$1" = "$DRILL" ] && [ "$1" != "$SQL_INSTANCE" ] ||
+    die "restore-drill: refusing to touch instance '$1' (only the drill instance '$DRILL')"
+  case "$1" in
+    "$SQL_INSTANCE"-drill-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+    *) die "restore-drill: refusing to touch instance '$1' (not a drill name)" ;;
+  esac
+}
+
+drill_cleanup() {
+  [ -z "$DRILL_PROXY_PID" ] || kill "$DRILL_PROXY_PID" 2>/dev/null
+  DRILL_PROXY_PID=""
+  if [ "$DRILL_KEEP" -eq 1 ]; then
+    say "restore-drill: kept $DRILL (--keep). Delete it when done:"
+    printf '  gcloud sql instances delete %s --project=%s\n' "$DRILL" "$PROJECT"
+  else
+    drill_guard "$DRILL"
+    gc sql instances delete "$DRILL" || say "restore-drill: could not delete $DRILL; delete it by hand: gcloud sql instances delete $DRILL --project=$PROJECT"
+  fi
+  DRILL_ARMED=0
+}
+
+# SECONDS_SINCE START LABEL
+drill_mark() {
+  local now
+  now="$(date +%s)"
+  say "restore-drill: $2 at $((now - $1)) s"
+}
+
+# SQL: one query through the proxy, as app_ro (or migrator with DRILL_AS=migrator), tuples only.
+drill_sql() {
+  local user="${DRILL_AS:-app_ro}"
+  show psql "host=127.0.0.1 port=$DRILL_PORT dbname=$DB_NAME user=$user sslmode=disable" -At -c "$1" >&2
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  PGPASSFILE="$WORK/drill.pgpass" PGOPTIONS="-c default_transaction_read_only=on" PGCONNECT_TIMEOUT=10 \
+    psql "host=127.0.0.1 port=$DRILL_PORT dbname=$DB_NAME user=$user sslmode=disable" -At -X -v ON_ERROR_STOP=1 -c "$1"
+}
+
+# The revisions under apps/api/alembic/versions, one per line.
+repo_revisions() {
+  python3 - "$ROOT/apps/api/alembic/versions" <<'EOF'
+import pathlib, re, sys
+for path in sorted(pathlib.Path(sys.argv[1]).glob("*.py")):
+    m = re.search(r'^revision(?:: str)? = "([^"]+)"', path.read_text(encoding="utf-8"), re.M)
+    if m:
+        print(m.group(1))
+EOF
+}
+
+cmd_restore_drill() {
+  local pitr="" i=0 arg info="" version="" tier="" disk="" backup="" started restored checked now total
+  while [ "$i" -lt "${#REST[@]}" ]; do
+    arg="${REST[$i]}"
+    case "$arg" in
+      --pitr) i=$((i + 1)); [ "$i" -lt "${#REST[@]}" ] || usage; pitr="${REST[$i]}" ;;
+      --keep) DRILL_KEEP=1 ;;
+      *) usage ;;
+    esac
+    i=$((i + 1))
+  done
+  if [ -n "$pitr" ]; then
+    printf '%s' "$pitr" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' ||
+      die "restore-drill: --pitr must be a UTC time like 2026-11-09T10:00:00Z, not '$pitr'"
+  fi
+  [ -d "$ROOT/apps/api/alembic/versions" ] || die "restore-drill: run it from a full checkout (no apps/api/alembic/versions)"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    for arg in cloud-sql-proxy psql; do
+      command -v "$arg" >/dev/null 2>&1 ||
+        die "restore-drill: needs $arg on PATH (cloud-sql-proxy v2: https://cloud.google.com/sql/docs/postgres/sql-proxy; psql: brew install libpq)"
+    done
+  fi
+  DRILL="$SQL_INSTANCE-drill-$(date -u +%d%H%M%S)"
+  drill_guard "$DRILL"
+  say "restore-drill: source $SQL_INSTANCE (read only), throwaway $DRILL"
+  # The source, read only: its version, tier and disk, so the restore target is at least as big.
+  if info="$(gq sql instances describe "$SQL_INSTANCE" --format='value(databaseVersion,settings.tier,settings.dataDiskSizeGb)')"; then
+    read -r version tier disk <<EOF
+$info
+EOF
+  elif [ "$DRY_RUN" -eq 1 ]; then
+    version="POSTGRES_17" tier="$SQL_TIER" disk="$SQL_STORAGE_GB"
+  else
+    die "restore-drill: cannot read the source instance $SQL_INSTANCE"
+  fi
+  [ -n "$version" ] && [ -n "$tier" ] && [ -n "$disk" ] || die "restore-drill: incomplete answer for $SQL_INSTANCE ('$info')"
+  if [ -z "$pitr" ]; then
+    backup="$(gq sql backups list --instance="$SQL_INSTANCE" --filter='status=SUCCESSFUL' \
+      --sort-by=~windowStartTime --limit=1 --format='value(id)' || true)"
+    [ -n "$backup" ] || [ "$DRY_RUN" -eq 0 ] || backup="<latest-backup-id>"
+    [ -n "$backup" ] || die "restore-drill: $SQL_INSTANCE has no successful backup"
+    say "restore-drill: backup $backup"
+  fi
+  # A name in use is never adopted: the cleanup would delete someone else's instance.
+  ! gq sql instances describe "$DRILL" --format='value(name)' >/dev/null ||
+    die "restore-drill: an instance named $DRILL already exists; run again in a second"
+  started="$(date +%s)"
+  DRILL_ARMED=1
+  if [ -z "$pitr" ]; then
+    gc sql instances create "$DRILL" --database-version="$version" --edition=ENTERPRISE \
+      --tier="$tier" --region="$REGION" --availability-type=zonal --storage-type=SSD \
+      --storage-size="${disk}GB" --no-backup --no-deletion-protection --assign-ip \
+      --connector-enforcement=REQUIRED --ssl-mode=ENCRYPTED_ONLY \
+      --labels="$LABELS,purpose=restore-drill"
+    drill_mark "$started" "drill instance ready"
+  else
+    # A clone copies the source's settings: the patch takes off deletion protection and backups.
+    gc sql instances clone "$SQL_INSTANCE" "$DRILL" --point-in-time="$pitr"
+    drill_guard "$DRILL"
+    gc sql instances patch "$DRILL" --no-deletion-protection --no-backup \
+      --update-labels="purpose=restore-drill"
+  fi
+  # Belt and braces before the restore overwrites an instance: it must carry the drill label.
+  if [ "$DRY_RUN" -eq 0 ]; then
+    [ "$(gq sql instances describe "$DRILL" --format='value(settings.userLabels.purpose)' || true)" = "restore-drill" ] ||
+      die "restore-drill: $DRILL has no purpose=restore-drill label; stopped before any restore"
+  fi
+  if [ -z "$pitr" ]; then
+    drill_guard "$DRILL"
+    gc sql backups restore "$backup" --restore-instance="$DRILL" --backup-instance="$SQL_INSTANCE"
+  fi
+  restored="$(date +%s)"
+  drill_mark "$started" "restored"
+  # The checks, through the proxy, with the role passwords in a 0600 pgpass file.
+  pipe_note "gcloud secrets versions access latest --secret=APP_RO_PASSWORD (and MIGRATOR_PASSWORD) --project=$PROJECT | <0600 pgpass file for 127.0.0.1:$DRILL_PORT>"
+  show cloud-sql-proxy --gcloud-auth --port "$DRILL_PORT" "$PROJECT:$REGION:$DRILL"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    : >"$WORK/drill.pgpass"
+    chmod 0600 "$WORK/drill.pgpass"
+    for arg in app_ro:APP_RO_PASSWORD migrator:MIGRATOR_PASSWORD; do
+      gcloud secrets versions access latest --secret="${arg#*:}" --project="$PROJECT" --quiet |
+        python3 -c 'import sys
+v = sys.stdin.read().replace("\\", "\\\\").replace(":", "\\:")
+sys.stdout.write("127.0.0.1:%s:%s:%s:%s\n" % (sys.argv[1], sys.argv[2], sys.argv[3], v))' \
+          "$DRILL_PORT" "$DB_NAME" "${arg%%:*}" >>"$WORK/drill.pgpass" ||
+        die "restore-drill: cannot read ${arg#*:}"
+    done
+    cloud-sql-proxy --gcloud-auth --port "$DRILL_PORT" "$PROJECT:$REGION:$DRILL" >"$WORK/drill-proxy.log" 2>&1 &
+    DRILL_PROXY_PID=$!
+    i=0
+    until drill_sql "SELECT 1" >/dev/null 2>&1; do
+      i=$((i + 1))
+      if [ "$i" -ge "$DRILL_WAIT_TRIES" ]; then
+        tail -n 5 "$WORK/drill-proxy.log" | sed 's/^/    /' >&2
+        die "restore-drill: no connection to $DRILL through cloud-sql-proxy (its log is above)"
+      fi
+      sleep "$DRILL_WAIT_SLEEP"
+    done
+  fi
+  drill_checks
+  checked="$(date +%s)"
+  drill_mark "$started" "checked"
+  drill_cleanup
+  now="$(date +%s)"
+  total=$((checked - started))
+  say "restore-drill: restore $((restored - started)) s, checks $((checked - restored)) s, delete $((now - checked)) s"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "restore-drill: dry run; a real run times every phase against the ${DRILL_GATE_S} s gate"
+  elif [ "$total" -le "$DRILL_GATE_S" ]; then
+    say "restore-drill: launch gate 6 met: restored and checked in $total s (gate ${DRILL_GATE_S} s)"
+  else
+    say "restore-drill: launch gate 6 NOT met: restored and checked in $total s (gate ${DRILL_GATE_S} s)"
+  fi
+}
+
+# The read-only checks of the restored database; dies on the first failed one.
+drill_checks() {
+  local revision table count rls tokens newest
+  revision="$(DRILL_AS=migrator drill_sql "SELECT version_num FROM alembic_version")" ||
+    die "restore-drill: cannot read alembic_version on $DRILL"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    repo_revisions | grep -qx -- "$revision" ||
+      die "restore-drill: the restored revision '$revision' is not in apps/api/alembic/versions"
+    say "restore-drill: alembic revision $revision (known to this checkout)"
+  fi
+  for table in $DRILL_TABLES; do
+    count="$(drill_sql "SELECT count(*) FROM $table")" || die "restore-drill: cannot count $table"
+    [ "$DRY_RUN" -eq 1 ] || say "restore-drill: rows $table=$count"
+    if [ "$table" = "tenants" ] && [ "$DRY_RUN" -eq 0 ] && [ "${count:-0}" -lt 1 ]; then
+      die "restore-drill: the restored database has no tenant"
+    fi
+  done
+  rls="$(drill_sql "SELECT count(*) FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relrowsecurity AND relforcerowsecurity")" ||
+    die "restore-drill: cannot read the row level security flags"
+  tokens="$(drill_sql "SELECT count(*) FILTER (WHERE kms_key_version IS NULL) FROM marketplace_accounts WHERE status = 'active'")" ||
+    die "restore-drill: cannot read marketplace_accounts"
+  newest="$(drill_sql "SELECT coalesce(max(created_at)::text, 'none') FROM job_runs")" ||
+    die "restore-drill: cannot read job_runs"
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  [ "${rls:-0}" -ge 1 ] || die "restore-drill: no table has forced row level security after the restore"
+  [ "${tokens:-1}" -eq 0 ] || die "restore-drill: $tokens active Amazon accounts lost their KMS key version"
+  say "restore-drill: smoke ok (forced RLS on $rls tables, every active account sealed, newest job run $newest)"
+}
+
 # ---- status ----
 cmd_status() {
   local url job
@@ -2527,6 +2754,7 @@ case "$CMD" in
   deploy) cmd_deploy ;;
   release) cmd_preflight; cmd_release ;;
   smoke) cmd_smoke ;;
+  restore-drill) cmd_restore_drill ;;
   tenant) cmd_tenant ;;
   templates) cmd_templates ;;
   amazon-check) cmd_amazon_check ;;

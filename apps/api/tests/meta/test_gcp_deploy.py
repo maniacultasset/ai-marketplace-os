@@ -2389,13 +2389,14 @@ def test_images_recheck_job_runs_a_real_cli_command(repo_root: Path) -> None:
 
 
 def test_usage_prints_every_subcommand_line(repo_root: Path) -> None:
-    script = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8").splitlines()
-    match = re.search(r"sed -n '5,(\d+)p'", "\n".join(script))
-    assert match is not None
-    last = int(match.group(1))
-    # the header comment block ends right after the last subcommand line
-    assert script[last - 1].startswith("#") and not script[last].startswith("#   ")
-    assert script[last].strip() in ("#", "")
+    text = (repo_root / DEPLOY / "deploy.sh").read_text(encoding="utf-8")
+    script = text.splitlines()
+    # usage prints from line 5 down to the bare `#` before "Every subcommand describes"
+    assert "sed -n '5,/^# Every subcommand describes/p'" in text
+    end = next(
+        i for i, line in enumerate(script) if line.startswith("# Every subcommand describes")
+    )
+    assert script[end - 1] == "#" and script[end - 2].startswith("#   ")
 
 
 def test_cli_quiets_the_http_client_loggers() -> None:
