@@ -383,3 +383,27 @@ async def test_a_settled_suggestion_is_never_overwritten(
     set_switch(monkeypatch, "category", on=True)
     await _run(images_db, p)  # nor does a failure
     assert suggestion(images_db.conn, p)["status"] == status  # type: ignore[index]
+
+
+async def test_a_result_of_the_pipelines_own_class_is_accepted(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Prod 2026-11-09: pipeline v0.7.0 returns its own copy of ClassifyResult (it pins an older
+    contracts package) and the worker refused it as `type`. The JSON round trip is the check."""
+    from app.workers import classify_seam
+    from pydantic import BaseModel, ConfigDict
+
+    class PipelineClassifyResult(BaseModel):
+        model_config = ConfigDict(extra="allow")
+
+    async def foreign(request: Any, credentials: Any) -> Any:
+        real = await stub.classify_product(request, credentials)
+        return PipelineClassifyResult.model_validate(real.model_dump(mode="json"))
+
+    monkeypatch.setattr(classify_seam, "call_classify_product", foreign)
+    p = _product(images_db, category=None, provenance={"title": f.fact()})
+    photo(images_db.conn, store, images_db.tenant("acme"), p)
+    job = await _run(images_db, p)
+    assert job_row(images_db.conn, job)["status"] == "succeeded"
+    stored = suggestion(images_db.conn, p)
+    assert stored is not None and stored["status"] == "suggested"

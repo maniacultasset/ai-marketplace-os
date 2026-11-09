@@ -34,7 +34,7 @@ from mkos_schemas.columns import (
     DictionaryEntry,
 )
 from mkos_schemas.enums import JobKind
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.core.logging import get_logger
 from app.repositories.uow import tenant_uow
@@ -143,7 +143,10 @@ def _request(ctx: JobContext, found: _Map, leftovers: list[tuple[int, str]]) -> 
 
 
 def _checked(ctx: JobContext, found: _Map, result: object) -> ColumnMapResult | str:
-    if not isinstance(result, ColumnMapResult):
+    # The pipeline pins an older contracts package and returns its own copy of ColumnMapResult, so the
+    # class is not ours: any pydantic model is accepted here and the JSON round trip below is the
+    # real check (field names follow the pipeline's contract 1.1.0).
+    if not isinstance(result, BaseModel):
         return "type"
     try:
         checked = ColumnMapResult.model_validate_json(result.model_dump_json())
