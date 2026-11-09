@@ -89,6 +89,26 @@ class ProductRepository(TenantScopedRepository[Product]):
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def soft_delete_many(self, ids: Sequence[uuid.UUID]) -> builtins.list[uuid.UUID]:
+        """Product delete: stamp `deleted_at` on these live rows (children before their style:
+        the variant guard refuses a style with live children). A CSV re-import of the SKU
+        revives the row (`upsert_by_sku`). The ids written, in the order given."""
+        out: builtins.list[uuid.UUID] = []
+        for product_id in ids:
+            stmt = self._scoped_write(
+                update(Product)
+                .where(
+                    self._tenant_criterion(include_platform=False),
+                    Product.id == product_id,
+                    Product.deleted_at.is_(None),
+                )
+                .values(deleted_at=func.now())
+            ).returning(Product.id)
+            found = (await self.db.execute(stmt)).scalar_one_or_none()
+            if found is not None:
+                out.append(found)
+        return out
+
     async def photo_rejections(self, product_id: uuid.UUID) -> dict[str, str]:
         """SI9 B5: `{key: rejected value}`, read on its own (never part of `ProductFacts`, so the
         facts digest is unchanged, CP-D12); `{}` for an unknown product."""

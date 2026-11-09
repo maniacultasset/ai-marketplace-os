@@ -34,6 +34,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
 from app.db.models.issues import HumanTask, ListingIssue
+from app.db.models.listings import Listing
 from app.repositories.base import TenantScopedRepository
 
 PAGE_LIMIT_MAX: Final = 200
@@ -520,7 +521,15 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
     ) -> tuple[builtins.list[ListingIssue], bool]:
         if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
-        stmt = self._select().where(ListingIssue.status == filters.status)
+        # an issue of an archived listing (its product was deleted) leaves the inbox
+        archived = exists(
+            select(Listing.id).where(
+                Listing.tenant_id == ListingIssue.tenant_id,
+                Listing.id == ListingIssue.listing_id,
+                Listing.archived_at.is_not(None),
+            )
+        )
+        stmt = self._select().where(ListingIssue.status == filters.status, ~archived)
         if filters.listing_id is not None:
             stmt = stmt.where(ListingIssue.listing_id == filters.listing_id)
         if filters.source is not None:
@@ -538,6 +547,21 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
         stmt = stmt.order_by(ListingIssue.created_at.desc(), ListingIssue.id.desc())
         rows = builtins.list((await self.db.execute(stmt.limit(limit + 1))).scalars())
         return rows[:limit], len(rows) > limit
+
+    async def open_ids_for_listings(
+        self, listing_ids: Sequence[uuid.UUID]
+    ) -> builtins.list[uuid.UUID]:
+        """The open rows of these listings, in id order (product delete: the audit names them;
+        they stay open with their archived listing and leave the inbox)."""
+        if not listing_ids:
+            return []
+        stmt = (
+            self._select()
+            .where(ListingIssue.listing_id.in_(list(listing_ids)), ListingIssue.status == OPEN)
+            .with_only_columns(ListingIssue.id)
+            .order_by(ListingIssue.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
 
     async def get(self, issue_id: uuid.UUID) -> ListingIssue | None:
         """SI13: one row of this tenant (the diagnosis job's sample), unlocked."""

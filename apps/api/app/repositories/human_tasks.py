@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import literal, select, text, tuple_, update
+from sqlalchemy import exists, literal, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models.catalog import Product
@@ -411,6 +411,24 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         ).returning(HumanTask.target_path)
         return sorted(str(path) for path in (await self.db.execute(stmt)).scalars())
 
+    async def cancel_for_products(
+        self, product_ids: builtins.list[uuid.UUID]
+    ) -> builtins.list[uuid.UUID]:
+        """Product delete: every live (`open`/`answered`) task of these products becomes
+        `cancelled` with reason `product_deleted`. The ids, in id order."""
+        if not product_ids:
+            return []
+        stmt = self._scoped_write(
+            update(HumanTask)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                HumanTask.product_id.in_(product_ids),
+                HumanTask.status.in_(LIVE),
+            )
+            .values(status="cancelled", cancelled_reason="product_deleted")
+        ).returning(HumanTask.id)
+        return sorted((await self.db.execute(stmt)).scalars())
+
     async def get_for_update(self, task_id: uuid.UUID) -> HumanTask | None:
         """One task of this tenant, row-locked for the answer (two answers serialise here)."""
         stmt = (
@@ -514,7 +532,15 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         `(tenant_id, status, created_at DESC, id DESC)`), and whether more rows follow."""
         if isinstance(limit, bool) or not 1 <= limit <= TASK_PAGE_MAX:
             raise ValueError(f"limit must be in 1..{TASK_PAGE_MAX}")
-        stmt = self._select().where(HumanTask.status == status)
+        # a task of a deleted product leaves the inbox, whatever its status
+        gone = exists(
+            select(Product.id).where(
+                Product.tenant_id == HumanTask.tenant_id,
+                Product.id == HumanTask.product_id,
+                Product.deleted_at.is_not(None),
+            )
+        )
+        stmt = self._select().where(HumanTask.status == status, ~gone)
         if after is not None:
             at, row_id = after
             bound = tuple_(

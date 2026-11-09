@@ -51,6 +51,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "imports_column_map_create": {"headers": ["seller_sku", "product_name", "category"]},  # SI14
     "imports_column_map_confirm": {"mappings": [{"position": 1, "key": "seller_sku"}]},  # SI14
     "products_recategorize": {"category": "ethnic_wear_kurta_sets"},  # SI9
+    "products_bulk_delete": {"product_ids": [ID]},  # PD1
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},

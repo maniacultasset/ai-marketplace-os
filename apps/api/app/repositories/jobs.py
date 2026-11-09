@@ -22,7 +22,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.enums import JobKind
-from sqlalchemy import and_, exists, func, null, select, text, update
+from sqlalchemy import and_, exists, func, null, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
@@ -762,6 +762,49 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         row = await self._update_returning(job_id, where, {"node": node})
         return row is not None
+
+    # ---- product delete: the live jobs of one product ----
+
+    async def live_for_product(
+        self,
+        *,
+        listing_ids: list[uuid.UUID],
+        image_ids: list[uuid.UUID],
+        candidate_ids: list[uuid.UUID],
+        product_ids: list[uuid.UUID],
+    ) -> list[JobRun]:
+        """The `queued` and `running` jobs of one product, locked `FOR UPDATE` in id order (a
+        worker's claim CAS waits for the caller): its listings' jobs, its images' checks and
+        size-chart reads, its image candidates and its classification. Another tenant's ids
+        match nothing."""
+        matches: list[ColumnElement[bool]] = []
+        if listing_ids:
+            matches.append(JobRun.listing_id.in_(listing_ids))
+        if image_ids:
+            matches.append(
+                and_(
+                    JobRun.entity_type.in_(("image", "size_chart_read")),
+                    JobRun.entity_id.in_(image_ids),
+                )
+            )
+        if candidate_ids:
+            matches.append(
+                and_(JobRun.entity_type == "image_candidate", JobRun.entity_id.in_(candidate_ids))
+            )
+        if product_ids:
+            matches.append(
+                and_(JobRun.entity_type == "category_suggestion", JobRun.entity_id.in_(product_ids))
+            )
+        if not matches:
+            return []
+        stmt = (
+            self._select()
+            .where(JobRun.status.in_(LIVE), or_(*matches))
+            .order_by(JobRun.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return list((await self.db.execute(stmt)).scalars())
 
     # ---- API cancel (A14) ----
 

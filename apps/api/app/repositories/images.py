@@ -318,6 +318,36 @@ class ImageRepository(TenantScopedRepository[Image]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
 
+    async def soft_delete_for_products(self, product_ids: Sequence[UUID]) -> builtins.list[UUID]:
+        """Product delete: mark every live image of these products deleted (objects stay; the
+        daily `sweep_deleted_image_objects` removes the derived and public copies). The ids."""
+        self._own_session()
+        if not product_ids:
+            return []
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.product_id.in_([_uuid("product_id", p) for p in product_ids]),
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(deleted_at=func.now())
+            .returning(Image.id)
+        )
+        return sorted((await self.db.execute(stmt)).scalars())
+
+    async def live_ids_for_products(self, product_ids: Sequence[UUID]) -> builtins.list[UUID]:
+        """The live image ids of these products, in id order."""
+        if not product_ids:
+            return []
+        stmt = (
+            self._select()
+            .where(Image.product_id.in_(list(product_ids)), Image.deleted_at.is_(None))
+            .with_only_columns(Image.id)
+            .order_by(Image.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
     async def write_report(
         self,
         image_id: UUID,
