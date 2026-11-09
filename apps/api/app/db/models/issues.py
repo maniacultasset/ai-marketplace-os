@@ -83,6 +83,14 @@ class HumanTask(TenantScoped, Base):
             text("id DESC"),
         ),
         Index(conv("ix_human_tasks_tenant_id_product_id"), "tenant_id", "product_id"),
+        # one live category review per product (0027, SI14)
+        Index(
+            conv("human_tasks_one_category_review"),
+            "tenant_id",
+            "product_id",
+            unique=True,
+            postgresql_where=text(f"kind = 'category_review' AND {LIVE_TASK}"),
+        ),
         Index(
             conv("ix_human_tasks_tenant_id_resume_batch_id"),
             "tenant_id",

@@ -285,12 +285,13 @@ EXTRA_PHOTO_RULE_IDS = {f"5eed0000-0000-4000-8000-00070100000{n}" for n in "789a
 }
 
 
-def test_rules_seed_count_92() -> None:
+def test_rules_seed_count_96() -> None:
     """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
-    secondary and lifestyle resolution rows (QA 2026-11-09)."""
-    assert sum(len(s.rules) for s in _load()) == 92
+    secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
+    warnings (text overlay and watermark, Amazon and Flipkart main)."""
+    assert sum(len(s.rules) for s in _load()) == 96
     ids = {str(r.id) for s in _load() for r in s.rules}
-    assert ids >= EXTRA_PHOTO_RULE_IDS
+    assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS
 
 
 def test_rules_seed_hidden_terms_byte_rule_amazon_only() -> None:
@@ -337,6 +338,7 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
         | CONTACT_RULE_IDS
         | CLAIM_RULE_IDS
         | SI8_TEXT_RULE_IDS
+        | SI14_PHOTO_QA_RULE_IDS
         | EXTRA_PHOTO_RULE_IDS
     )
 
@@ -353,6 +355,16 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     ]
     digest = hashlib.sha256(json.dumps(apparel, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_RULES_SHA256
+
+
+# SI14: the photo QA warnings (Amazon 0b/0c, Flipkart 0c/0d of the image block; renumbered
+# after main's QA resolution rows took Amazon 07-0a and Flipkart 08-0b)
+SI14_PHOTO_QA_RULE_IDS = {
+    "5eed0000-0000-4000-8000-00070100000b",
+    "5eed0000-0000-4000-8000-00070100000c",
+    "5eed0000-0000-4000-8000-00070200000c",
+    "5eed0000-0000-4000-8000-00070200000d",
+}
 
 
 # SI8: the Amazon bullet count, bullet length and description length rows (kurta 1, tshirts 3)

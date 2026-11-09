@@ -45,6 +45,7 @@ from app.db.models.tenancy import (
     tenant_fk,
     to_membership,
     to_row,
+    updated_at_column,
 )
 
 # the job kinds that hold a budget reservation (`app.repositories.budget.RESERVING_KINDS`)
@@ -187,6 +188,41 @@ class Import(TenantScoped, Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     error_report_json: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = created_at_column()
+    # the confirmed column map the upload used (0027; soft reference)
+    column_map_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+
+
+class ImportColumnMap(TenantScoped, Base):
+    """A seller header mapped onto the importer's accepted names (0027, SI14). `samples` are
+    seller cells for the seller's own review: never sent to a model, never on the read-only
+    roles, cleared at confirm or after 7 days."""
+
+    __tablename__ = "import_column_maps"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_import_column_maps")),
+        anchor("import_column_maps"),
+        tenant_fk("import_column_maps"),
+        to_membership("import_column_maps", "created_by_user_id"),
+        Index(
+            conv("ix_import_column_maps_tenant_id_created_at"),
+            "tenant_id",
+            text("created_at DESC"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    status: Mapped[str] = mapped_column(Text)
+    headers: Mapped[list[str]] = mapped_column(ARRAY(Text))
+    headers_digest: Mapped[str] = mapped_column(Text)
+    mappings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    # SQL NULL, never a JSON null (the samples CHECK refuses one)
+    samples: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ImportRow(TenantScoped, Base):

@@ -147,6 +147,10 @@ def test_check_code_map_frozen() -> None:
         "resolution": ImageIssueCode.RESOLUTION_LOW,
         "aspect_ratio": ImageIssueCode.WRONG_ASPECT,
         "background": ImageIssueCode.BACKGROUND_OFF,
+        # SI14: the photo QA checks (warnings only, while PHOTO_QA_ENABLED is on)
+        "fill_ratio": ImageIssueCode.FILL_RATIO_LOW,
+        "text_overlay": ImageIssueCode.TEXT_DETECTED,
+        "watermark": ImageIssueCode.WATERMARK,
     }
     assert set(DEFAULT_SUGGESTIONS) == set(CHECK_CODES.values())
     background = DEFAULT_SUGGESTIONS[ImageIssueCode.BACKGROUND_OFF]

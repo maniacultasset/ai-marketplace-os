@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Annotated
+from uuid import UUID
 
 from mkos_schemas.base import WireModel
 from mkos_schemas.enums import Marketplace
@@ -53,6 +54,62 @@ class AnalyticsSummary(WireModel):
 
     @model_validator(mode="after")
     def _range(self) -> AnalyticsSummary:
+        if self.from_ > self.to:
+            raise PydanticCustomError("mkos_invalid", "'from' must not be after 'to'.")
+        return self
+
+
+# ---- SI14: the quality dashboard (BE-13) ----
+
+
+class QualityMarket(WireModel):
+    marketplace: Marketplace
+    listings_generated: Count
+    first_pass_rate: Rate = None
+    blocked_rate: Rate = None
+    edit_rate: Rate = None
+    cost_usd: Annotated[float, Field(ge=0.0, allow_inf_nan=False)]
+    cost_per_listing_usd: Annotated[float | None, Field(ge=0.0, allow_inf_nan=False)] = None
+
+
+class EditedField(WireModel):
+    path: Annotated[str, Field(max_length=192)]
+    count: Count
+
+
+class QualityTenant(WireModel):
+    """Platform view only: ids and counts, never a name or any text."""
+
+    tenant_id: UUID
+    listings_generated: Count
+    first_pass_rate: Rate = None
+    blocked_rate: Rate = None
+    edit_rate: Rate = None
+    cost_usd: Annotated[float, Field(ge=0.0, allow_inf_nan=False)]
+
+
+class QualitySummary(WireModel):
+    """First-pass rate (approved with no correction and no edit), blocked rate (reached `blocked`
+    in the range, by the worker or a user), edit rate (approved after a person edited it) and the
+    model cost per generated listing. A rate is null when nothing was generated or approved yet.
+    The cost counts the generation runs of the listings; classify and column-map runs have no
+    listing and are not included."""
+
+    from_: date = Field(alias="from")
+    to: date
+    listings_generated: Count
+    first_pass_rate: Rate = None
+    blocked_rate: Rate = None
+    edit_rate: Rate = None
+    cost_per_listing_usd: Annotated[float | None, Field(ge=0.0, allow_inf_nan=False)] = None
+    by_marketplace: Annotated[list[QualityMarket], Field(max_length=2)] = Field(
+        default_factory=list
+    )
+    edited_fields: Annotated[list[EditedField], Field(max_length=20)] = Field(default_factory=list)
+    by_tenant: Annotated[list[QualityTenant] | None, Field(max_length=200)] = None
+
+    @model_validator(mode="after")
+    def _range(self) -> QualitySummary:
         if self.from_ > self.to:
             raise PydanticCustomError("mkos_invalid", "'from' must not be after 'to'.")
         return self

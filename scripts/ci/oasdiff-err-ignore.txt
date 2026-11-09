@@ -9073,6 +9073,23 @@ POST /api/v1/products added `#/components/schemas/SuggestedSizeChart` to the `si
 GET /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
 PATCH /api/v1/products/{product_id} added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
 POST /api/v1/products/{product_id}/recategorize added `#/components/schemas/SuggestedSizeChart` to the `size_chart_suggestion/anyOf[subschema #1: SizeChartSuggestionOut]/chart` response property `anyOf` list for the response status `200`
+# Contract 2.1.0 SI14 (a recorded one-time out-of-window MAJOR exception, the SI10 precedent):
+# A6a `ProductOut.category` is `Slug | null` (D3, approved by the user directly in chat
+# 2026-11-09, reversing the T115 answer (a)); A6b `TaskKind` gains `category_review` (approved
+# under the V1.1 delegation, chat 2026-11-09). Empty these lines once main carries them.
+GET /api/v1/products response property `data/items/category` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+GET /api/v1/products the `data/items/category` response's property pattern `^[a-z0-9_]{2,64}$` was removed for the status `200`
+POST /api/v1/products response property `category` list-of-types was widened by adding types `null` to media type `application/json` of response `201`
+POST /api/v1/products the `category` response's property pattern `^[a-z0-9_]{2,64}$` was removed for the status `201`
+GET /api/v1/products/{product_id} response property `category` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+GET /api/v1/products/{product_id} the `category` response's property pattern `^[a-z0-9_]{2,64}$` was removed for the status `200`
+PATCH /api/v1/products/{product_id} response property `category` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+PATCH /api/v1/products/{product_id} the `category` response's property pattern `^[a-z0-9_]{2,64}$` was removed for the status `200`
+POST /api/v1/products/{product_id}/recategorize response property `category` list-of-types was widened by adding types `null` to media type `application/json` of response `200`
+POST /api/v1/products/{product_id}/recategorize the `category` response's property pattern `^[a-z0-9_]{2,64}$` was removed for the status `200`
+GET /api/v1/tasks added the new `category_review` enum value to the `data/items/kind` response property for the response status `200`
+POST /api/v1/tasks/{task_id}/answer added the new `category_review` enum value to the `kind` response property for the response status `200`
+POST /api/v1/tasks/{task_id}/close added the new `category_review` enum value to the `kind` response property for the response status `200`
 # Contract 2.1.0 (QA fixes 2026-11-09; additive under the open heading, conductor under the user's
 # V1 delegation, packages/schemas/CHANGELOG.md): SI11's unreleased NextStepOut.kind gains the
 # seller action edit_content. Remove this line once main carries it.

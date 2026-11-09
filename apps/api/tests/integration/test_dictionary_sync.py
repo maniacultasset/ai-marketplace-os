@@ -121,6 +121,7 @@ def _typed_columns(conn: Conn, table: str) -> set[str]:
         "currency", "attributes", "provenance", "created_by", "deleted_at", "created_at",
         "updated_at", "onboarding_completed_at",
         "photo_rejections",  # SI9 B5 (0020): rejected photo reads, never a fact
+        "category_suggestion",  # SI14 (0027): the classifier's suggestion, never a fact
     }  # fmt: skip
     return names - not_facts
 

@@ -48,6 +48,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     # SI7
     "image_candidates_create": {"kind": "fix", "source_image_id": ID},
     "tasks_close": {"resolution": "done"},  # SI9
+    "imports_column_map_create": {"headers": ["seller_sku", "product_name", "category"]},  # SI14
+    "imports_column_map_confirm": {"mappings": [{"position": 1, "key": "seller_sku"}]},  # SI14
     "products_recategorize": {"category": "ethnic_wear_kurta_sets"},  # SI9
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
@@ -107,6 +109,8 @@ _QUERY: dict[str, dict[str, str]] = {
     "marketplaces_callback": {"code": "auth-code", "state": "st_0123456789"},
     "analytics_get": {"from": "2026-09-01", "to": "2026-09-30"},
     "analytics_summary": {"from": "2026-09-01", "to": "2026-09-30"},
+    "analytics_quality": {"from": "2026-09-01", "to": "2026-09-30"},  # SI14
+    "admin_quality": {"from": "2026-09-01", "to": "2026-09-30"},  # SI14
     # ADR-0020
     "auth_google_start": {"b": "B" * 43},
     "auth_google_callback": {"code": "g-code", "state": "st_0123456789"},

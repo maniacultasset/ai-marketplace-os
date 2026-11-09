@@ -540,6 +540,49 @@ export interface ListingKeywords {
 }
 /**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "CategoryCandidate".
+ */
+export interface CategoryCandidate {
+  category: string;
+  confidence: number;
+  /**
+   * @maxItems 12
+   */
+  evidence_refs?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string];
+  rationale: string;
+  [k: string]: unknown;
+}
+/**
+ * One category the backend offers (it has a current template).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "CategoryOption".
+ */
+export interface CategoryOption {
+  category: string;
+  /**
+   * @maxItems 30
+   */
+  key_attributes?: string[];
+  name?: string | null;
+  template_version?: number | null;
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "CategoryTemplate".
  */
 export interface CategoryTemplate {
@@ -595,6 +638,333 @@ export interface ClaimRequiresAttribute {
 }
 /**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ClassifyRequest".
+ */
+export interface ClassifyRequest {
+  /**
+   * @minItems 1
+   * @maxItems 40
+   */
+  categories: [CategoryOption, ...CategoryOption[]];
+  /**
+   * @maxItems 6
+   */
+  images?:
+    | []
+    | [ContextImage]
+    | [ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage, ContextImage, ContextImage];
+  job_id?: string | null;
+  product_id: string;
+  request_id: string;
+  schema_version?: string;
+  tenant_id: string;
+  text: ProductText;
+  [k: string]: unknown;
+}
+/**
+ * One product or label image the pipeline may look at (1.2.0).
+ *
+ * Not `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and
+ * the label must still reach the extractor. Only base64 bytes for now; no URL field.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ContextImage".
+ */
+export interface ContextImage {
+  colourway_id?: string | null;
+  data_b64: string;
+  height: number;
+  image_id: string;
+  role?: ("back" | "close_up") | null;
+  slot: ImageSlot;
+  width: number;
+  [k: string]: unknown;
+}
+/**
+ * The product's own words: title, description, brand, the seller's category words and the
+ * for-prompt attribute facts as text (no party, no contact).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ProductText".
+ */
+export interface ProductText {
+  attributes?: {
+    /**
+     * This interface was referenced by `undefined`'s JSON-Schema definition
+     * via the `patternProperty` "^[a-z][a-z0-9_]{0,63}$".
+     */
+    [k: string]: string;
+  };
+  brand?: string | null;
+  description?: string | null;
+  seller_category?: string | null;
+  title: string;
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ClassifyResult".
+ */
+export interface ClassifyResult {
+  /**
+   * @maxItems 12
+   */
+  agent_runs?:
+    | []
+    | [AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ];
+  calibration_version: string;
+  /**
+   * @maxItems 3
+   */
+  candidates?:
+    | []
+    | [CategoryCandidate]
+    | [CategoryCandidate, CategoryCandidate]
+    | [CategoryCandidate, CategoryCandidate, CategoryCandidate];
+  error?: ErrorReport | null;
+  needs_confirmation?: boolean;
+  samples?: number;
+  status: "ok" | "failed";
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ColumnMapRequest".
+ */
+export interface ColumnMapRequest {
+  /**
+   * @minItems 1
+   * @maxItems 120
+   */
+  dictionary: [DictionaryEntry, ...DictionaryEntry[]];
+  /**
+   * @minItems 1
+   * @maxItems 60
+   */
+  headers: [ColumnSample, ...ColumnSample[]];
+  job_id?: string | null;
+  product_id?: string | null;
+  request_id: string;
+  schema_version?: string;
+  /**
+   * @maxItems 120
+   */
+  taken_keys?: string[];
+  tenant_id: string;
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "DictionaryEntry".
+ */
+export interface DictionaryEntry {
+  /**
+   * @maxItems 12
+   */
+  aliases?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string];
+  allowed_values?: string[] | null;
+  key: string;
+  label?: string | null;
+  value_type?: "text" | "enum" | "number" | "measure" | "boolean" | "list";
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ColumnSample".
+ */
+export interface ColumnSample {
+  header: string;
+  /**
+   * @maxItems 5
+   */
+  samples?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string];
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ColumnMapResult".
+ */
+export interface ColumnMapResult {
+  /**
+   * @maxItems 12
+   */
+  agent_runs?:
+    | []
+    | [AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord, AgentRunRecord]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ]
+    | [
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord,
+        AgentRunRecord
+      ];
+  confidence_version: string;
+  error?: ErrorReport | null;
+  mappings?: {
+    [k: string]: ColumnMapping;
+  };
+  status: "ok" | "failed";
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ColumnMapping".
+ */
+export interface ColumnMapping {
+  confidence: number;
+  key: string | null;
+  [k: string]: unknown;
+}
+/**
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "ConditionalRequired".
  */
 export interface ConditionalRequired {
@@ -617,25 +987,6 @@ export interface ConditionalRequired {
     | [Condition, Condition]
     | [Condition, Condition, Condition]
     | [Condition, Condition, Condition, Condition];
-  [k: string]: unknown;
-}
-/**
- * One product or label image the pipeline may look at (1.2.0).
- *
- * Not `ImageRef`: that type belongs to the publishable listing and refuses `packaging_label`, and
- * the label must still reach the extractor. Only base64 bytes for now; no URL field.
- *
- * This interface was referenced by `MkosContracts`'s JSON-Schema
- * via the `definition` "ContextImage".
- */
-export interface ContextImage {
-  colourway_id?: string | null;
-  data_b64: string;
-  height: number;
-  image_id: string;
-  role?: ("back" | "close_up") | null;
-  slot: ImageSlot;
-  width: number;
   [k: string]: unknown;
 }
 /**

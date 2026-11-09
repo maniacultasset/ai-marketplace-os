@@ -1,0 +1,44 @@
+{
+  "status": "ok",
+  "mappings": {
+    "Shade": {
+      "key": "color_name",
+      "confidence": 0.86
+    },
+    "Wash care": {
+      "key": "care_instructions",
+      "confidence": 0.74
+    }
+  },
+  "confidence_version": "columns-conf/v1",
+  "agent_runs": [
+    {
+      "schema_version": "2.1.0",
+      "id": "7b3c9e10-22d5-4f6a-8c31-9e0a4d5b6f22",
+      "tenant_id": "11111111-1111-1111-1111-111111111111",
+      "product_id": null,
+      "listing_id": null,
+      "listing_version_id": null,
+      "request_id": "req-golden-1",
+      "job_id": "44444444-4444-4444-4444-444444444444",
+      "agent_name": "attribute",
+      "trigger": "generate",
+      "attempt": 1,
+      "model_used": null,
+      "prompt_version": "map_columns/v1",
+      "tokens": {
+        "input": 0,
+        "output": 0,
+        "cached_input": 0
+      },
+      "cost_usd": "0.012300",
+      "duration_ms": 0,
+      "status": "completed",
+      "error_report": null,
+      "input_digest": null,
+      "started_at": "2026-09-22T10:30:00Z",
+      "created_at": "2026-09-22T10:30:05Z"
+    }
+  ],
+  "error": null
+}

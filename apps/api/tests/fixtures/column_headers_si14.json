@@ -1,0 +1,76 @@
+{
+  "note": "SI14 T15: real-style seller headers and the key the deterministic mapper gives (null = left for review or the AI).",
+  "sheets": [
+    {
+      "name": "myntra_style_export",
+      "headers": {
+        "Style Code": "style_number",
+        "Item SKU": "seller_sku",
+        "Product Title": "product_name",
+        "Brand": "brand_name",
+        "Category": "category",
+        "Sub Category": "sub_category",
+        "Gender": "gender",
+        "Colour": "color_name",
+        "Size": "size_name",
+        "Fabric": "fabric_type",
+        "MRP (INR)": "mrp_inr",
+        "Selling Price": "selling_price",
+        "HSN": "hsn_code",
+        "EAN Code": "ean",
+        "Country of Origin": "country_of_origin",
+        "Wash Care": "wash_care",
+        "Neckline": "neckline",
+        "Sleeve Length": "sleeve_length"
+      }
+    },
+    {
+      "name": "client_master_sheet",
+      "headers": {
+        "seller_sku": "seller_sku",
+        "product_name": "product_name",
+        "category": "category",
+        "parent_sku": "parent_sku",
+        "brand_name": "brand_name",
+        "color_name": "color_name",
+        "size_name": "size_name",
+        "fabric_composition": "fabric_composition",
+        "mrp_inr": "mrp_inr",
+        "price_inr": "price_inr",
+        "package_weight_g": "package_weight_g",
+        "hsn_code": "hsn_code",
+        "bullet_1": "bullet_1",
+        "bullet_2": "bullet_2",
+        "bullet_3": "bullet_3",
+        "title": "title",
+        "barcode": "barcode",
+        "identifier_exemption": "identifier_exemption"
+      }
+    },
+    {
+      "name": "messy_marketplace_dump",
+      "headers": {
+        "SKU ID": "seller_sku",
+        "Item Name": "product_name",
+        "Category Name": "category",
+        "Shade": "color_name",
+        "Material": "fabric_type",
+        "Max Retail Price": "mrp",
+        "Sale Price": "selling_price",
+        "GST Rate": "tax_rate",
+        "Made In": "country_of_origin",
+        "Weight (g)": "weight_grams",
+        "Fitt": "fit",
+        "Patern": "pattern",
+        "Sleeve-Type": "sleeve_type",
+        "Collar Type": "collar_type",
+        "Ocassion": "occasion",
+        "Product Type": "product_type",
+        "Internal Notes": null,
+        "रंग": null,
+        "Warehouse Bin": null,
+        "Seller Rating": null
+      }
+    }
+  ]
+}

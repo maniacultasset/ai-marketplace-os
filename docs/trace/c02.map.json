@@ -2026,10 +2026,10 @@
   },
   {
    "id": "R00957",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:1498; BACKEND-ARCHITECTURE.md:1564",
-   "note": "No classify node in the 12 PipelineStages; category seller-supplied; 'classifying' reserved"
+   "ref": "DATABASE.md products.category_suggestion; CANON.md AI seam SI14 additions",
+   "note": "SI14: classify_product suggests up to 3 categories (calibrated confidence); the seller confirms; behind CATEGORY_SUGGEST_ENABLED (off until G-classify)"
   },
   {
    "id": "R00961",
@@ -2091,8 +2091,8 @@
    "id": "R00965b",
    "status": "needs-client",
    "owner": "client",
-   "ref": "T68; DATABASE.md:411",
-   "note": "No marketplace-side confidence; only provenance.category.confidence; T68 open"
+   "ref": "T68; DATABASE.md products.category_suggestion",
+   "note": "SI14 stores the classifier's calibrated confidence on the suggestion; provenance.category.confidence and T68 stay open"
   },
   {
    "id": "R00967",
@@ -3230,10 +3230,10 @@
   },
   {
    "id": "R01127",
-   "status": "gap",
+   "status": "covered-changed",
    "owner": "shared",
-   "ref": "DATABASE.md:1498; VISION-ALIGNMENT.md:132",
-   "note": "No classify stage, so no ambiguous-classification question; CATEGORY_MISMATCH user_action only"
+   "ref": "DATABASE.md human_tasks category_review",
+   "note": "SI14: a top confidence below 0.80 opens one category_review task for the seller (none while the switch is off)"
   },
   {
    "id": "R01129",

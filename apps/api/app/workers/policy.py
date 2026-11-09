@@ -83,7 +83,13 @@ CANDIDATE_LOCK_PREFIX: Final = "image_candidate:"
 # SI12 (PLAN D4): a size-chart read is an `image_compliance` job about a `size_chart_read`; it takes
 # the same per-tenant AI image lock, so one AI image call runs per brand and uploads never wait.
 SIZE_CHART_READ_ENTITY: Final = "size_chart_read"
-TENANT_LOCKED_ENTITIES: Final = frozenset({CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY})
+# SI14 (PLAN D5): a classification and a column map are `image_compliance` jobs about a
+# `category_suggestion` and a `column_map`; they take the same per-tenant AI lock.
+CATEGORY_SUGGESTION_ENTITY: Final = "category_suggestion"
+COLUMN_MAP_ENTITY: Final = "column_map"
+TENANT_LOCKED_ENTITIES: Final = frozenset(
+    {CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY, CATEGORY_SUGGESTION_ENTITY, COLUMN_MAP_ENTITY}
+)
 
 
 def lock_for(

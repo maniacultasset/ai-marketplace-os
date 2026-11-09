@@ -141,13 +141,20 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI12: the size-chart read and the marketplace needs (100 + 2)
     ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
+    # SI14: the V1.1 assist
+    ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
+    ("imports_column_map_create", "POST", "/imports/column-maps"),
+    ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
+    ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
+    ("analytics_quality", "GET", "/analytics/quality"),
+    ("admin_quality", "GET", "/admin/quality"),
 )
 
 E = ErrorCode
 
 
 def test_registry_equals_frozen_list() -> None:
-    assert len(FROZEN) == 102
+    assert len(FROZEN) == len(OPS)
     assert tuple((op.op_id, op.method, op.path) for op in OPS.values()) == FROZEN
     assert all(key == op.op_id for key, op in OPS.items())
     assert not any("dead-letter" in op.path for op in OPS.values())
@@ -277,6 +284,9 @@ D9_IDEMPOTENT = {
     "tasks_answer",  # SI3
     "image_candidates_create",  # SI7
     "size_chart_read_create",  # SI12
+    "products_category_suggest",  # SI14
+    "imports_column_map_create",  # SI14
+    "imports_column_map_confirm",  # SI14
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -440,8 +450,10 @@ def test_login_response_is_login_result() -> None:
     assert OPS["auth_switch_tenant"].response_model is TokenResponse
 
 
-def test_102_operations() -> None:
-    assert len(OPS) == 102
+def test_operation_count() -> None:
+    # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
+    # quality reads
+    assert len(OPS) == 108
 
 
 def test_error_codes_per_d2() -> None:
@@ -465,6 +477,10 @@ def test_error_codes_per_d2() -> None:
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.INVALID_STATUS_TRANSITION,
+        ),
         "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
@@ -491,7 +507,12 @@ def test_error_codes_per_d2() -> None:
         "admin_tenants_extend_trial": (E.INVALID_STATUS_TRANSITION,),
     }
     # SI10: generate and regenerate also answer a daily cap (429) and the platform AI pause (503)
-    ai_admission = {"listings_generate", "listings_regenerate", "size_chart_read_create"}
+    ai_admission = {
+        "listings_generate",
+        "listings_regenerate",
+        "size_chart_read_create",
+        "products_category_suggest",  # SI14
+    }
     for op in OPS.values():
         codes = op.error_codes
         c = cases(op)
@@ -556,6 +577,8 @@ def test_error_codes_per_d2() -> None:
                 "products_bulk": (E.IMPORT_FAILED,),  # S13b: the file-level import report
                 "tasks_answer": (E.FACT_LEVEL_INVALID, E.UNKNOWN_FACT_KEY),  # SI3 CP-D8
                 "size_chart_read_create": (E.FACT_LEVEL_INVALID,),  # SI12: a variant
+                "products_category_suggest": (E.FACT_LEVEL_INVALID,),  # SI14: a variant
+                "imports_column_map_confirm": (E.IMPORT_FAILED,),  # SI14: required columns
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
@@ -567,7 +590,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12",
+        "SI12", "SI14",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

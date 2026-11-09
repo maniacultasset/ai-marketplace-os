@@ -53,7 +53,7 @@ from app.api.v1.examples import (
     SUCCESS_EXAMPLES,
 )
 from app.api.v1.schemas.ai_credit import AiCreditOut
-from app.api.v1.schemas.analytics import AnalyticsSummary
+from app.api.v1.schemas.analytics import AnalyticsSummary, QualitySummary
 from app.api.v1.schemas.auth import (
     LoginConfirmOut,
     LoginResult,
@@ -72,6 +72,8 @@ from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
 from app.api.v1.schemas.catalog import RequirementsOut
+from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
+from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
@@ -880,6 +882,30 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("catalog_requirements_get", "GET", "/catalog/requirements", 200, RequirementsOut,
               "catalog", "What each marketplace needs for a category", "SI12",
               query=("category",), action=A.TENANT_READ),
+    # ---- SI14: the V1.1 assist (category suggestion) ----
+    Operation("products_category_suggest", "POST", "/products/{product_id}/category-suggestion",
+              202, CategorySuggestionAccepted, "products",
+              "Suggest a category for the seller to confirm", "SI14",
+              path_id="product_id", idempotency=True, action=A.PRODUCT_IMPORT,
+              extra_codes=_SIZE_CHART_READ, also_status=200),
+    # ---- SI14: the spreadsheet column maps ----
+    Operation("imports_column_map_create", "POST", "/imports/column-maps", 202, ColumnMapOut,
+              "imports", "Map a spreadsheet header row onto the import columns", "SI14",
+              has_body=True, idempotency=True, action=A.PRODUCT_IMPORT, also_status=201),
+    Operation("imports_column_map_get", "GET", "/imports/column-maps/{map_id}", 200, ColumnMapOut,
+              "imports", "One column map", "SI14", path_id="map_id", action=A.TENANT_READ),
+    Operation("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm", 200,
+              ColumnMapOut, "imports", "Confirm a column map with your answers", "SI14",
+              path_id="map_id", has_body=True, idempotency=True,
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
+              extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)})),
+    # ---- SI14: the quality dashboard ----
+    Operation("analytics_quality", "GET", "/analytics/quality", 200, QualitySummary, "analytics",
+              "First-pass, blocked and edit rates and cost per listing", "SI14",
+              query=("from", "to"), action=A.ANALYTICS_READ),
+    Operation("admin_quality", "GET", "/admin/quality", 200, QualitySummary, "admin",
+              "The quality dashboard across tenants", "SI14",
+              query=("from", "to", "target_tenant_id"), platform_admin=True),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

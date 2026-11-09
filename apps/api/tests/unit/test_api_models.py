@@ -185,12 +185,15 @@ def test_product_create_site_body() -> None:
     assert product.model_dump(exclude_defaults=True) == body
 
 
-def test_product_create_category_required() -> None:
-    """T115 (user, 2026-10-06): `products.category` is NOT NULL, so the contract requires it."""
+def test_product_create_category_optional() -> None:
+    """SI14 D3 (user, 2026-11-09, reversing T115 (a)): `products.category` is nullable (0027), so
+    a create may leave it out; a sent category is still a slug."""
+    assert ProductCreate.model_validate({"sku": "a", "title": "t"}).category is None
+    assert (
+        ProductCreate.model_validate({"sku": "a", "title": "t", "category": None}).category is None
+    )
     with pytest.raises(ValidationError):
-        ProductCreate.model_validate({"sku": "a", "title": "t"})
-    with pytest.raises(ValidationError):
-        ProductCreate.model_validate({"sku": "a", "title": "t", "category": None})
+        ProductCreate.model_validate({"sku": "a", "title": "t", "category": "Kurta Sets"})
     assert ProductCreate.model_validate({"sku": "a", "title": "t", "category": "kurta_sets"})
 
 

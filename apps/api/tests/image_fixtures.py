@@ -349,3 +349,100 @@ def amazon_rules() -> list[Rule]:
         image_rule("background", rgb=(255, 255, 255)),
         image_rule("fill_ratio", severity="warning", min_fill=0.85),
     ]
+
+
+# ---- SI14 T22: the photo QA fixtures (text, watermarks, hard negatives) ----
+
+
+def _font(size: int) -> Any:
+    from PIL import ImageFont
+
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:  # an older Pillow: the fixed bitmap font
+        return ImageFont.load_default()
+
+
+def qa_product(side: int = 1024, *, product: RGB = (40, 60, 90), fill: float = 0.55) -> Image.Image:
+    return canvas(side, side, product=product, fill=fill)
+
+
+def with_text(img: Image.Image, lines: Sequence[str] = ("SALE 50% OFF", "FREE SHIPPING")) -> bytes:
+    from PIL import ImageDraw
+
+    out = img.copy()
+    draw = ImageDraw.Draw(out)
+    font = _font(max(12, out.width // 18))
+    y = out.height // 30
+    for line in lines:
+        draw.text((out.width // 20, y), line, fill=(20, 20, 20), font=font)
+        y += out.width // 12
+    return encode(out, "JPEG", quality=92)
+
+
+def tiled_mark(img: Image.Image, period: float = 0.25) -> bytes:
+    from PIL import ImageDraw
+
+    base = img.convert("RGBA")
+    layer = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    step = int(base.width * period)
+    font = _font(max(12, step // 5))
+    for x in range(0, base.width, step):
+        for y in range(0, base.height, step):
+            draw.text((x + step // 6, y + step // 3), "STUDIO", fill=(120, 120, 120, 70), font=font)
+    return encode(Image.alpha_composite(base, layer).convert("RGB"), "JPEG", quality=92)
+
+
+def corner_logo(img: Image.Image) -> bytes:
+    from PIL import ImageDraw
+
+    out = img.copy()
+    draw = ImageDraw.Draw(out)
+    side = out.width // 9
+    x0, y0 = out.width - side - out.width // 40, out.height - side - out.height // 40
+    for i in range(0, side, max(2, side // 12)):
+        draw.line((x0 + i, y0, x0 + i, y0 + side), fill=(30, 30, 30), width=1)
+        draw.line((x0, y0 + i, x0 + side, y0 + i), fill=(200, 30, 30), width=1)
+    return encode(out, "JPEG", quality=92)
+
+
+def striped_shirt(side: int = 1024) -> bytes:
+    from PIL import ImageDraw
+
+    img = qa_product(side, product=(240, 240, 240), fill=0.6)
+    draw = ImageDraw.Draw(img)
+    left = top = int(side * 0.2)
+    right = bottom = int(side * 0.8)
+    stripe = max(4, side // 40)
+    for y in range(top, bottom, stripe * 2):
+        draw.rectangle((left, y, right, min(bottom, y + stripe)), fill=(20, 40, 120))
+    return encode(img, "JPEG", quality=92)
+
+
+def checked_pattern(side: int = 1024) -> bytes:
+    from PIL import ImageDraw
+
+    img = qa_product(side, product=(230, 230, 230), fill=0.6)
+    draw = ImageDraw.Draw(img)
+    left = top = int(side * 0.2)
+    right = bottom = int(side * 0.8)
+    cell = max(4, side // 32)
+    for i, y in enumerate(range(top, bottom, cell)):
+        for j, x in enumerate(range(left, right, cell)):
+            if (i + j) % 2 == 0:
+                draw.rectangle(
+                    (x, y, min(right, x + cell), min(bottom, y + cell)), fill=(150, 20, 20)
+                )
+    return encode(img, "JPEG", quality=92)
+
+
+def clean_products() -> dict[str, bytes]:
+    return {
+        "plain": encode(qa_product(), "JPEG", quality=92),
+        "large": encode(qa_product(fill=0.9), "JPEG", quality=92),
+        "light": encode(qa_product(product=(200, 180, 160)), "JPEG", quality=92),
+        "wide": encode(canvas(1200, 800, fill=0.7), "JPEG", quality=92),
+        "striped_shirt": striped_shirt(),
+        "checked": checked_pattern(),
+    }

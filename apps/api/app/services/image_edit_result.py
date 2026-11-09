@@ -12,11 +12,15 @@ An untrusted result stores no record and keeps the reservation counted.
 
 SI12: `trust_records(records, *, prompt_prefix, ...)` is that record check on its own, shared with
 the size-chart read (`app/workers/size_chart_read.py`, prompt prefix `size_chart_read/`).
+SI14: it also takes the agent the records must name (`image` by default), the triggers it accepts
+(any by default) and a product id that may be None (the column map's runs have no product): the
+classifier's records are `attribute` with `vision` or `generate`, the column map's `attribute`
+with `generate`.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
@@ -47,20 +51,24 @@ def trust_records(
     *,
     prompt_prefix: str,
     tenant_id: UUID,
-    product_id: UUID,
+    product_id: UUID | None,
     job_id: UUID,
     request_id: str,
     attempt: int,
     claim_started_at: datetime,
     now: datetime,
+    agent_name: str = "image",
+    triggers: Collection[str] | None = None,
 ) -> tuple[AgentRunRecord, ...] | str:
     """The records restamped from the job, or the name of the first check one failed."""
     out: list[AgentRunRecord] = []
     for record in records:
         if record.tenant_id != tenant_id or record.job_id != job_id:
             return "identity"
-        if record.agent_name != "image":
+        if record.agent_name != agent_name:
             return "agent"
+        if triggers is not None and record.trigger not in triggers:
+            return "trigger"
         if not (record.prompt_version or "").startswith(prompt_prefix):
             return "prompt_version"
         started = record.started_at

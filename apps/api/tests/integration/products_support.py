@@ -147,6 +147,8 @@ PRODUCT_FIELDS = frozenset(
         "size_chart_suggestion",
         # SI12 follow-up (#115): whether the size-chart read is switched on (detail only)
         "size_chart_read_enabled",
+        # SI14: whether the category classifier is switched on (detail only)
+        "category_suggest_enabled",
         # the main photo's signed view (lists and single reads)
         "thumbnail_url",
         "thumbnail_expires_at",
@@ -239,6 +241,6 @@ def as_listed(single: dict[str, Any]) -> dict[str, Any]:
         "brand_name": own,
         "brand_name_inherited": False,
         "field_sources": {},
-        "suggestions": {"hsn_code": None},
+        "suggestions": {"hsn_code": None, "category": None},
         "size_chart_suggestion": None,
     }

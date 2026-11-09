@@ -2,8 +2,9 @@
 
 - `create_product`: refusals that need no database come first, before any transaction:
   a NUL character in `sku`, `title` or a string attribute value (PostgreSQL rejects it as 22021,
-  which would be a 500) -> 422; no `category` -> 422 (`products.category` is NOT NULL,
-  DATABASE.md:410, so a NULL category cannot be stored); any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
+  which would be a 500) -> 422; no `category` is allowed since SI14 D3 (0027 made
+  `products.category` nullable: the row has no category and no `category` provenance until the
+  seller sets one, and no listing until then); any `images` key (no tenant image can exist before S17b, CP2) -> 404 `images[0]`. Then
   one `tenant_uow`: resolve the attribute keys, build the seller facts, insert the row, write the
   `product.created` audit row with the created facts. The SKU unique is the natural key: a
   duplicate or a lost-response retry is 409 `SKU_CONFLICT`.
@@ -36,6 +37,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
+from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.resolved_facts import match_brand
 from app.repositories.images import ImageDetail, MainImageRow
@@ -44,7 +46,8 @@ from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
-from app.services import image_views, product_identifier
+from app.services import category_suggest, image_views, product_identifier
+from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
@@ -59,6 +62,7 @@ from app.services.product_facts import (
     seller_provenance,
     size_chart_fact,
 )
+from app.workers.budget import CLASSIFY_RESERVATION_USD
 
 __all__ = [
     "NewProduct",
@@ -72,6 +76,7 @@ __all__ = [
     "size_chart_view",
 ]
 
+log = get_logger(__name__)
 PRODUCT_PK: Final = "pk_products"
 PRODUCT_ETAG_NS: Final = uuid.UUID("5d0f0b43-2a4e-4c55-9d47-6a3f3a1c8e21")
 SIZE_CHART_UNITS: Final = frozenset({"cm", "in"})
@@ -185,7 +190,7 @@ class ProductView:
     sku: str
     title: str
     status: Literal["draft", "active"]
-    category: str  # products.category is NOT NULL (DATABASE.md:410)
+    category: str | None  # NULL until the seller sets one (0027, SI14 D3)
     attributes: dict[str, FlatValue]
     images: list[str]
     parent_product_id: uuid.UUID | None
@@ -219,6 +224,9 @@ class ProductView:
     hsn_suggestion: HsnSuggestion | None = None
     size_chart_suggestion: dict[str, Any] | None = None
     size_chart_read_enabled: bool = False
+    # SI14: the classifier's stored suggestion (detail reads of a style or standalone only)
+    category_suggestion: dict[str, Any] | None = None
+    category_suggest_enabled: bool = False
     # the main photo's signed view (lists and single reads; `image_views`)
     thumbnail_url: str | None = None
     thumbnail_expires_at: datetime | None = None
@@ -610,6 +618,8 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
         size_chart_suggestion=await size_chart_suggestion(uow, row, details),
         size_chart_read_enabled=get_settings().size_chart_read_enabled,
+        category_suggestion=public_category_suggestion(row),
+        category_suggest_enabled=get_settings().category_suggest_enabled,
         **await _thumbnail(uow, row, details),
     )
 
@@ -653,6 +663,37 @@ async def _main_views(
         if pick is not None:
             picks[r.id] = pick
     return await image_views.sign_mains(tenant_id, picks)
+
+
+CATEGORY_SUGGESTION_STATUSES: Final = frozenset(
+    {"suggested", "unavailable", "failed", "confirmed", "overridden"}
+)
+
+
+def public_category_suggestion(row: Any) -> dict[str, Any] | None:
+    """SI14: what the seller sees of the stored suggestion (no digest, job or evidence refs);
+    None on a variant or when nothing is stored."""
+    stored = row.category_suggestion
+    if row.parent_product_id is not None or not isinstance(stored, Mapping):
+        return None
+    status = stored.get("status")
+    if status not in CATEGORY_SUGGESTION_STATUSES:
+        return None
+    candidates = [
+        {
+            "category": c.get("category"),
+            "confidence": c.get("confidence"),
+            "rationale": c.get("rationale", ""),
+        }
+        for c in stored.get("candidates") or []
+        if isinstance(c, Mapping)
+    ]
+    return {
+        "status": status,
+        "candidates": candidates,
+        "calibration_version": stored.get("calibration_version"),
+        "at": stored.get("at"),
+    }
 
 
 def _refuse_nul(cmd: NewProduct) -> None:
@@ -714,8 +755,6 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
 
 async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     _refuse_nul(cmd)
-    if cmd.category is None:
-        raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     if cmd.images:
         raise NotFoundError("images[0]")
     check_price_le_mrp(cmd.selling_price, cmd.mrp)
@@ -741,6 +780,7 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     )
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
+    classify = await _admit_classification(principal, cmd, now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         brand_name = await checked_brand(uow, cmd.brand_name)
         if (
@@ -756,6 +796,8 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
                 raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
             facts[SIZE_CHART_KEY] = size_chart_fact(cmd.size_chart, now=now)
         provenance = seller_provenance(now=now)
+        if cmd.category is None:  # a NULL fact column carries no provenance (0027)
+            provenance.pop("category", None)
         try:
             row = await uow.products.create(
                 sku=cmd.sku,
@@ -820,7 +862,42 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             after=json.dumps({"attributes": facts, "provenance": provenance}),
         )
         await uow.session.refresh(row)
+        if classify:
+            # SI14 (AC3): one classification for a product created without a category; the
+            # digest has no photo yet (the job reads the photos it finds when it runs)
+            inputs = await category_suggest.suggest_inputs(uow, row, get_settings())
+            job_id = await category_suggest.enqueue_suggestion(
+                uow,
+                principal.tenant_id,
+                principal.user_id,
+                row.id,
+                inputs.digest,
+                category=row.category,
+            )
+            log.info(
+                "category_suggest.queued_on_create",
+                tenant_id=str(principal.tenant_id),
+                product_id=str(row.id),
+                job_id=str(job_id),
+            )
         return await full_view(uow, row)
+
+
+async def _admit_classification(principal: Principal, cmd: NewProduct, now: datetime) -> bool:
+    """SI14: whether a create without a category queues a classification. Only while the switch
+    is on, and only when the SI10 admission lets it through, checked before the unit of work
+    (it opens its own session). A refusal never fails the create: the seller can ask later."""
+    if cmd.category is not None or not get_settings().category_suggest_enabled:
+        return False
+    refusal = await admit(principal.tenant_id, now, amount=CLASSIFY_RESERVATION_USD)
+    if refusal is not None:
+        log.info(
+            "category_suggest.create_not_admitted",
+            tenant_id=str(principal.tenant_id),
+            refusal=refusal,
+        )
+        return False
+    return True
 
 
 async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductView:

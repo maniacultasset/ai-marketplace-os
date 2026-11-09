@@ -130,18 +130,19 @@ async def test_create_images_refused_before_transaction(
     assert _row(auth_db, "S12-IMG") is None
 
 
-async def test_create_without_category_refused_before_transaction(
-    world: World, auth_db: Conn, uow_spy: list[uuid.UUID]
-) -> None:
-    from app.core.errors import InputError
+async def test_create_without_category_stores_none(world: World, auth_db: Conn) -> None:
+    """SI14 D3 (0027): a product may be created with no category, and then carries no
+    `category` provenance until the seller sets one."""
     from app.services.products import create_product
 
-    with pytest.raises(InputError) as caught:
-        await create_product(
-            _principal(world, "operator@acme.test"), _cmd("S12-NOCAT", category=None)
-        )
-    assert caught.value.field == "category"
-    assert uow_spy == []
+    view = await create_product(
+        _principal(world, "operator@acme.test"), _cmd("S12-NOCAT", category=None)
+    )
+    assert view.category is None
+    row = auth_db.execute(
+        "SELECT category, provenance ? 'category' FROM products WHERE id = %s", [view.id]
+    ).fetchone()
+    assert row == (None, False)
 
 
 @pytest.mark.parametrize(

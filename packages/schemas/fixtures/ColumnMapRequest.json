@@ -1,0 +1,38 @@
+{
+  "schema_version": "2.1.0",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "product_id": null,
+  "job_id": "44444444-4444-4444-4444-444444444444",
+  "request_id": "req-golden-columns",
+  "headers": [
+    {
+      "header": "Shade",
+      "samples": []
+    },
+    {
+      "header": "Wash care",
+      "samples": []
+    }
+  ],
+  "dictionary": [
+    {
+      "key": "color_name",
+      "label": "Colour name",
+      "aliases": [],
+      "value_type": "text",
+      "allowed_values": null
+    },
+    {
+      "key": "care_instructions",
+      "label": "Care instructions",
+      "aliases": [],
+      "value_type": "text",
+      "allowed_values": null
+    }
+  ],
+  "taken_keys": [
+    "seller_sku",
+    "product_name",
+    "category"
+  ]
+}

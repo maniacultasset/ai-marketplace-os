@@ -27,6 +27,15 @@ class CurrentTemplate:
 
 
 @dataclass(frozen=True, slots=True)
+class CurrentCategory:
+    """SI14: one category with a current template (any marketplace)."""
+
+    category: str
+    version: int
+    required_attributes: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class PinnedTemplate:
     id: UUID
     version: int
@@ -119,3 +128,27 @@ class CategoryTemplateRepository:
             external_category_id=row.external_category_id,
             template=_wire(row.marketplace, row.category, row),
         )
+
+    async def current_categories(self) -> list[CurrentCategory]:
+        """SI14: every category with a current template on any marketplace, sorted, with the
+        highest current version and the union of its required attribute keys (the classifier's
+        offer). Platform rows, so no tenant filter."""
+        stmt = (
+            select(CategoryTemplate.category, CategoryTemplate.version, CategoryTemplate.attributes)
+            .where(CategoryTemplate.is_current.is_(True))
+            .order_by(CategoryTemplate.category, CategoryTemplate.marketplace)
+        )
+        merged: dict[str, CurrentCategory] = {}
+        for category, version, attributes in (await self.db.execute(stmt)).all():
+            required = tuple((attributes or {}).get("required_attributes") or ())
+            seen = merged.get(category)
+            if seen is None:
+                merged[category] = CurrentCategory(str(category), int(version), required)
+            else:
+                keys = seen.required_attributes + tuple(
+                    k for k in required if k not in seen.required_attributes
+                )
+                merged[category] = CurrentCategory(
+                    seen.category, max(seen.version, int(version)), keys
+                )
+        return [merged[name] for name in sorted(merged)]

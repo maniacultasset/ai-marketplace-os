@@ -10,6 +10,7 @@ from uuid import UUID
 import psycopg
 import pytest
 from psycopg import sql
+from psycopg.types.json import Jsonb
 
 from . import factories as f
 from .conftest import expect_sqlstate
@@ -139,6 +140,18 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
         )
         # 0022 (SI11): an adapter repair on the listing's item
         f.listing_repair(db, side.tenant_id, side.listing_id, listing_item_id=side.item_id)
+        # 0027 (SI14): a column map with seller sample cells
+        f.insert(
+            db,
+            "import_column_maps",
+            tenant_id=side.tenant_id,
+            status="ready",
+            headers=["item sku", "colour"],
+            headers_digest="0" * 64,
+            mappings=Jsonb([]),
+            samples={"colour": ["red"]},
+            created_by_user_id=side.user_id,
+        )
         party = f.party(db, side.tenant_id)
         f.brand_profile(db, side.tenant_id, default_manufacturer_party_id=party)
         f.insert(

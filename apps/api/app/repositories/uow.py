@@ -24,6 +24,7 @@ from app.repositories.brand_chunks import BrandChunkRepository
 from app.repositories.brand_documents import BrandDocumentRepository
 from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.budget import BudgetRepository
+from app.repositories.column_maps import ImportColumnMapRepository
 from app.repositories.dictionary import DictionaryRevisionRepository
 from app.repositories.error_map import ErrorMapRepository
 from app.repositories.facts import FactWriter
@@ -110,6 +111,8 @@ class TenantUnitOfWork:
     # SI11: the adapter-side repairs
     listing_repairs: RepairRepository
     resolution: ResolutionRepository
+    # SI14: the spreadsheet column maps
+    column_maps: ImportColumnMapRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -155,6 +158,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         image_candidates=ImageCandidateRepository(session, tenant_id),
         listing_repairs=RepairRepository(session, tenant_id),
         resolution=ResolutionRepository(session, tenant_id),
+        column_maps=ImportColumnMapRepository(session, tenant_id),
     )
 
 

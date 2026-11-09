@@ -77,6 +77,12 @@ def test_pipeline_reexports() -> None:
         "SizeChartReadResult",
         "edit_image",
         "read_size_chart",
+        "ClassifyProductFn",
+        "ClassifyRequest",
+        "ClassifyResult",
+        "ColumnMapRequest",
+        "ColumnMapResult",
+        "MapColumnsFn",
     }
     assert len(pipeline_mod.__all__) == len(expected_all)
     assert set(pipeline_mod.__all__) == expected_all
@@ -96,6 +102,8 @@ def test_pipeline_defines_only_protocol_and_signature() -> None:
         "edit_image",
         "ReadSizeChart",
         "read_size_chart",
+        "ClassifyProductFn",
+        "MapColumnsFn",
     }
 
 

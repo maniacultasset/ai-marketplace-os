@@ -26,6 +26,7 @@ TaskKind = Literal[
     "reconnect_account",
     "image_replacement",
     "marketplace_error_review",
+    "category_review",
 ]
 
 

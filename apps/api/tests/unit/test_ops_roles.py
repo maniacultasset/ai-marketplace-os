@@ -89,6 +89,10 @@ Q7: dict[str, str] = {
     "images_delete": "product:import",
     "image_candidates_create": "product:import",
     "size_chart_read_create": "product:import",  # SI12
+    "products_category_suggest": "product:import",  # SI14
+    "imports_column_map_create": "product:import",  # SI14
+    "imports_column_map_get": "tenant:read",  # SI14
+    "imports_column_map_confirm": "product:import",  # SI14
     "catalog_requirements_get": "tenant:read",  # SI12
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
@@ -99,6 +103,7 @@ Q7: dict[str, str] = {
     "jobs_cancel": "listing:generate",
     "analytics_get": "analytics:read",
     "analytics_summary": "analytics:read",
+    "analytics_quality": "analytics:read",  # SI14
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)
@@ -121,6 +126,7 @@ Q7: dict[str, str] = {
     "admin_tenants_activate": PLATFORM_ADMIN,
     "admin_tenants_extend_trial": PLATFORM_ADMIN,
     "admin_ai_credit_get": PLATFORM_ADMIN,  # SI10
+    "admin_quality": PLATFORM_ADMIN,  # SI14
     "admin_ai_credit_resume": PLATFORM_ADMIN,
 }
 NARROWED_BY_S10 = (
@@ -149,8 +155,8 @@ def test_ops_are_the_q7_list() -> None:
     # S10 38 + S15 two + S16 three + S20 preview + S19 four + S21 two + ADR-0019 five
     # + DPP-1 ten + ADR-0020 seven + ADR-0023 three + SI1 four + SI3 one + SI5 eleven + SI7 four
     # + SI9 two
-    # + SI10 two + SI11 one + SI12 two
-    assert len(OPS) == 102
+    # + SI10 two + SI11 one + SI12 two + SI14 (the V1.1 assist)
+    assert len(OPS) == len(Q7)
     assert set(OPS) == set(Q7)
 
 

@@ -17,8 +17,10 @@ from mkos_schemas.enums import Marketplace
 
 from app.adapters.amazon import constants as amazon
 from app.adapters.flipkart import constants as flipkart
+from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.services.category_gate import UNCATEGORIZED, category_enabled
 
 __all__ = ["NEEDS", "Requirements", "get_requirements", "needs_for", "requirements"]
 
@@ -57,11 +59,14 @@ def needs_for(
 
 
 async def requirements(uow: TenantUnitOfWork, category: str) -> Requirements:
+    """SI14: a category switched off (lamps while CATEGORY_LAMPS_ENABLED is off) answers as an
+    unknown one: the marketplace facts only."""
+    enabled = category_enabled(category, get_settings())
     out: dict[Marketplace, tuple[str, ...]] = {}
     for marketplace in NEEDS:
-        current = await uow.templates.current(marketplace.value, category)
+        current = await uow.templates.current(marketplace.value, category) if enabled else None
         required = () if current is None else tuple(current.template.required_attributes)
-        out[marketplace] = needs_for(marketplace, category, required)
+        out[marketplace] = needs_for(marketplace, category if enabled else UNCATEGORIZED, required)
     return Requirements(
         category=category, amazon=out[Marketplace.AMAZON], flipkart=out[Marketplace.FLIPKART]
     )

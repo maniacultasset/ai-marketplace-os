@@ -68,7 +68,8 @@ def test_single_head_on_0026() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # SI14's 0027_v1_1_assist chains on 0024 (test_0027_v1_1_assist checks the head)
+    assert len(script.get_heads()) == 1
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 
@@ -84,6 +85,7 @@ def test_upgrade_downgrade_upgrade_clean(alembic_env: MakeConfig, scratch_db: Sc
     command.upgrade(cfg, REVISION)
     assert _has_table(scratch_db.libpq)
     assert _edges(scratch_db.libpq) == before  # P:AC19: 0024 adds no edge (CP-D19)
+    command.upgrade(cfg, "head")  # the ORM is the head's (0027 on top, SI14)
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not _has_table(scratch_db.libpq)

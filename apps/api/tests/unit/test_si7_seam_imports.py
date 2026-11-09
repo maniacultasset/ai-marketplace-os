@@ -35,6 +35,8 @@ def test_only_three_modules_reach_the_pipeline() -> None:
         if _reaches_pipeline(ast.parse(path.read_text(encoding="utf-8")))
     )
     assert hits == [
+        "workers/classify_seam.py",  # SI14: `classify_product`
+        "workers/column_map_seam.py",  # SI14: `map_columns`
         "workers/error_diagnosis.py",  # SI13: the diagnosis prompt over `complete_json`
         "workers/generation.py",
         "workers/image_edit_seam.py",
@@ -42,7 +44,16 @@ def test_only_three_modules_reach_the_pipeline() -> None:
     ]
 
 
-@pytest.mark.parametrize("seam", ["image_edit_seam.py", "size_chart_seam.py", "error_diagnosis.py"])
+@pytest.mark.parametrize(
+    "seam",
+    [
+        "image_edit_seam.py",
+        "size_chart_seam.py",
+        "error_diagnosis.py",
+        "classify_seam.py",
+        "column_map_seam.py",
+    ],
+)
 def test_the_seam_imports_lazily(seam: str) -> None:
     tree = ast.parse((APP / "workers" / seam).read_text(encoding="utf-8"))
     static = [

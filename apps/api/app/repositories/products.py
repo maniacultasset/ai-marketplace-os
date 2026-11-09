@@ -16,7 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, tuple_
+from sqlalchemy import case, cast, func, literal, literal_column, or_, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -25,6 +25,8 @@ from app.db.models.catalog import Product
 from app.repositories.base import TenantScopedRepository
 
 PAGE_LIMIT_MIN = 1
+# SI14: the seller's decision on a suggestion; a job never writes over it
+SETTLED_SUGGESTION_STATUSES = frozenset({"confirmed", "overridden"})
 PAGE_LIMIT_MAX = 200
 # The identity and family columns an import row sets; facts go through the FactWriter.
 UPSERT_COLUMNS = (
@@ -109,6 +111,33 @@ class ProductRepository(TenantScopedRepository[Product]):
             .execution_options(populate_existing=True)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def write_category_suggestion(
+        self,
+        product_id: uuid.UUID,
+        value: Mapping[str, Any] | None,
+        *,
+        keep_settled: bool = False,
+    ) -> bool:
+        """SI14: store the classifier's suggestion (only this column; never the category, the
+        facts or provenance). With `keep_settled`, a stored `confirmed` or `overridden` value
+        (the seller's decision) is left as it is. False when nothing was written."""
+        criteria = [
+            self._tenant_criterion(include_platform=False),
+            Product.id == product_id,
+            Product.deleted_at.is_(None),
+        ]
+        if keep_settled:
+            stored = Product.category_suggestion["status"].astext
+            criteria.append(
+                or_(stored.is_(None), stored.not_in(sorted(SETTLED_SUGGESTION_STATUSES)))
+            )
+        stmt = self._scoped_write(
+            update(Product)
+            .where(*criteria)
+            .values(category_suggestion=None if value is None else dict(value))
+        )
+        return int(getattr(await self.db.execute(stmt), "rowcount", 0) or 0) == 1
 
     async def live_child_ids(self, style_id: uuid.UUID) -> builtins.list[uuid.UUID]:
         """The live children of `style_id`, in id order (SI1 T20: each is a sellable unit)."""
@@ -220,6 +249,12 @@ class ProductRepository(TenantScopedRepository[Product]):
         found = (await self.db.execute(stmt)).one_or_none()
         return None if found is None else (found[0], found[1])
 
+    async def category_of_sku(self, sku: str) -> str | None:
+        """The stored category of `sku` (None when the SKU is new or has no category)."""
+        stmt = self._select().where(Product.sku == sku).with_only_columns(Product.category)
+        found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found
+
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
@@ -262,7 +297,7 @@ class ProductRepository(TenantScopedRepository[Product]):
         *,
         sku: str,
         title: str,
-        category: str,
+        category: str | None,
         attributes: Mapping[str, Any],
         provenance: Mapping[str, Any],
         created_by: uuid.UUID | None,

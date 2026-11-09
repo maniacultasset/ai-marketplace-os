@@ -15,7 +15,9 @@ from mkos_schemas.codes import ErrorCode
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import get_current_principal
+from app.api.v1.routers.analytics import From, To, answer_quality
 from app.api.v1.schemas.ai_credit import AiCreditOut
+from app.api.v1.schemas.analytics import QualitySummary
 from app.api.v1.schemas.signup import (
     SignupApprove,
     SignupReject,
@@ -31,7 +33,7 @@ from app.api.v1.schemas.tenants import (
 from app.api.v1.surface import OPS, route
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import Principal
-from app.services import ai_credit_admin, signup, tenant_admin
+from app.services import ai_credit_admin, quality, signup, tenant_admin
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -206,3 +208,17 @@ async def admin_ai_credit_resume(principal: CurrentPrincipal) -> AiCreditOut:
     """Clear the AI pause now (after a top-up or a key fix). Repeatable; the credit floor still
     applies at the next check."""
     return _credit_out(await ai_credit_admin.resume(principal))
+
+
+@route(router, OPS["admin_quality"])
+async def admin_quality(
+    principal: CurrentPrincipal,
+    from_: From = None,
+    to: To = None,
+    target_tenant_id: Annotated[UUID | None, Query()] = None,
+) -> QualitySummary:
+    """SI14: the quality dashboard across tenants (or one `target_tenant_id`), with the
+    per-tenant breakdown in `by_tenant` (ids and counts only, never a name or any text)."""
+    return await answer_quality(
+        quality.get_platform_quality(principal, from_, to, target_tenant_id)
+    )

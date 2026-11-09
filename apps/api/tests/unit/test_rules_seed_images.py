@@ -51,8 +51,10 @@ def codes(report: ImageReport) -> list[str]:
 
 @pytest.mark.parametrize("category", ["kurtas", "home_decor_lamps", "anything_else"])
 def test_rules_seed_images_resolve_for_every_category(category: str) -> None:
-    assert len(seed_image_rules("amazon", category)) == 10
-    assert len(seed_image_rules("flipkart", category)) == 11
+    # QA 9 Nov: secondary and lifestyle resolution rows; SI14: the text-overlay and watermark
+    # warnings (run only while PHOTO_QA_ENABLED is on)
+    assert len(seed_image_rules("amazon", category)) == 12
+    assert len(seed_image_rules("flipkart", category)) == 13
 
 
 @pytest.mark.parametrize(
@@ -90,6 +92,20 @@ def test_rules_seed_images_vision_rows_not_listed(marketplace: str) -> None:
         "logo",
     } == set()
     assert all(c.method == "deterministic" for c in report.checks)
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+def test_rules_seed_photo_qa_rows_are_warnings(marketplace: str) -> None:
+    """SI14 (A7): a text-overlay and a watermark row per marketplace, main slot, warnings."""
+    rows = [
+        r
+        for r in seed_image_rules(marketplace)
+        if r.rule_def.check in ("text_overlay", "watermark")  # type: ignore[union-attr]
+    ]
+    assert sorted(r.rule_def.check for r in rows) == ["text_overlay", "watermark"]  # type: ignore[union-attr]
+    assert {r.severity.value for r in rows} == {"warning"}
+    assert {r.rule_def.slot for r in rows} == {"main"}  # type: ignore[union-attr]
+    assert all(r.category is None for r in rows)
 
 
 @pytest.mark.parametrize("slot", [ImageSlot.SECONDARY, ImageSlot.LIFESTYLE])

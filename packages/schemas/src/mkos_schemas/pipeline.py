@@ -1,4 +1,5 @@
-"""AI seam protocol: PipelineDeps, run_listing_pipeline, edit_image (SI7) and read_size_chart (SI12)."""
+"""AI seam protocol: PipelineDeps, run_listing_pipeline, edit_image (SI7), read_size_chart (SI12),
+classify_product and map_columns (SI14)."""
 
 from __future__ import annotations
 
@@ -7,6 +8,8 @@ from typing import Any, Literal, Protocol
 from uuid import UUID
 
 from .agent import AgentRunRecord
+from .classify import ClassifyRequest, ClassifyResult
+from .columns import ColumnMapRequest, ColumnMapResult
 from .enums import PipelineStage
 from .errors import ErrorReport
 from .image_edit import ImageEditRequest, ImageEditResult
@@ -28,11 +31,17 @@ __all__ = [
     "AgentRunRecord",
     "BrandChunkDTO",
     "CategoryTemplate",
+    "ClassifyProductFn",
+    "ClassifyRequest",
+    "ClassifyResult",
+    "ColumnMapRequest",
+    "ColumnMapResult",
     "EditImage",
     "GenerationContext",
     "GenerationResult",
     "ImageEditRequest",
     "ImageEditResult",
+    "MapColumnsFn",
     "ModelCredentials",
     "PipelineDeps",
     "ReadSizeChart",
@@ -102,3 +111,21 @@ async def read_size_chart(
 ) -> SizeChartReadResult:
     """Implemented in mkos_pipeline; this module declares the contract only."""
     raise NotImplementedError("read_size_chart is implemented in mkos_pipeline")
+
+
+class ClassifyProductFn(Protocol):
+    """The fourth AI-seam entry point (SI14): one product classification, called only by the
+    backend worker. Optional in a pipeline pin: the backend looks it up lazily."""
+
+    async def __call__(
+        self, request: ClassifyRequest, credentials: ModelCredentials
+    ) -> ClassifyResult: ...
+
+
+class MapColumnsFn(Protocol):
+    """The fifth AI-seam entry point (SI14): the leftover spreadsheet headers of one column map,
+    called only by the backend worker. Optional in a pipeline pin, like `ClassifyProductFn`."""
+
+    async def __call__(
+        self, request: ColumnMapRequest, credentials: ModelCredentials
+    ) -> ColumnMapResult: ...

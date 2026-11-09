@@ -17,6 +17,7 @@ from uuid import UUID
 import psycopg
 import tests.integration.factories as f
 import tests.integration.ops_support as ops
+from psycopg.types.json import Jsonb
 
 Conn = psycopg.Connection[tuple[Any, ...]]
 _counter = itertools.count(1)
@@ -117,6 +118,21 @@ def _tenant_rows(conn: Conn, world: World) -> None:
     import_id = ops.import_run(conn, side)
     put("imports", import_id)
     put("import_rows", ops.import_row(conn, t, import_id))
+    # 0027 (SI14): a column map with seller sample cells
+    put(
+        "import_column_maps",
+        f.insert(
+            conn,
+            "import_column_maps",
+            tenant_id=t,
+            status="ready",
+            headers=["item sku"],
+            headers_digest="0" * 64,
+            mappings=Jsonb([]),
+            samples={"item sku": ["A-1"]},
+            created_by_user_id=side.user_id,
+        ),
+    )
     ops.idempotency_key(conn, side)
     put("idempotency_keys", None)
     put("refresh_tokens", ops.refresh_token(conn, side))

@@ -1,0 +1,47 @@
+{
+  "schema_version": "2.1.0",
+  "tenant_id": "11111111-1111-1111-1111-111111111111",
+  "product_id": "4e8a1b30-77cc-41d9-8f02-5b9c1de3a004",
+  "job_id": "44444444-4444-4444-4444-444444444444",
+  "request_id": "req-golden-classify",
+  "text": {
+    "title": "Fabrica Organic Cotton Kurta Set for Women",
+    "description": "A handloom cotton kurta with palazzo pants.",
+    "brand": "Fabrica",
+    "seller_category": "Kurta sets",
+    "attributes": {
+      "fabric": "cotton",
+      "color_name": "indigo"
+    }
+  },
+  "images": [
+    {
+      "image_id": "8a3f5c2e-1d4b-4e6a-9b7c-0d2e4f6a8b13",
+      "slot": "main",
+      "colourway_id": null,
+      "role": null,
+      "width": 8,
+      "height": 8,
+      "data_b64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2P/wAALCAAIAAgBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AJv/Z"
+    }
+  ],
+  "categories": [
+    {
+      "category": "ethnic_wear_kurta_sets",
+      "name": "Kurta sets",
+      "key_attributes": [
+        "fabric",
+        "color_name"
+      ],
+      "template_version": 2
+    },
+    {
+      "category": "ethnic_wear_kurtas",
+      "name": "Kurtas",
+      "key_attributes": [
+        "fabric"
+      ],
+      "template_version": 1
+    }
+  ]
+}
