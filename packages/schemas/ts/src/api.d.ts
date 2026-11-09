@@ -4428,6 +4428,16 @@ export interface components {
             slot: components["schemas"]["ImageSlot"];
             /** Status */
             status: string;
+            /**
+             * View Expires At
+             * @description When to fetch a fresh `view_url`; null with it.
+             */
+            view_expires_at?: string | null;
+            /**
+             * View Url
+             * @description A signed GET of the photo's server-made copy (long side at most 1024 px, no metadata), valid about 10 minutes; null until the photo has been checked. A bearer link: never log or store it. Read the product again before `view_expires_at`.
+             */
+            view_url?: string | null;
         };
         /** ProductOut */
         ProductOut: {
@@ -4543,6 +4553,16 @@ export interface components {
             style_number?: string | null;
             /** @description SI12: values to suggest while the field is empty; empty on lists. */
             suggestions?: components["schemas"]["SuggestionsOut"];
+            /**
+             * Thumbnail Expires At
+             * @description When to fetch a fresh `thumbnail_url`; null with it.
+             */
+            thumbnail_expires_at?: string | null;
+            /**
+             * Thumbnail Url
+             * @description A signed GET of the main photo's server-made copy (a variant shows its style's photo of its colour), valid about 10 minutes; on lists and single reads. Null when there is no checked main photo. A bearer link: never log or store it.
+             */
+            thumbnail_url?: string | null;
             /** Title */
             title: string;
             /**

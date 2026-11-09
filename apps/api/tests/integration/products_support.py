@@ -147,6 +147,9 @@ PRODUCT_FIELDS = frozenset(
         "size_chart_suggestion",
         # SI12 follow-up (#115): whether the size-chart read is switched on (detail only)
         "size_chart_read_enabled",
+        # the main photo's signed view (lists and single reads)
+        "thumbnail_url",
+        "thumbnail_expires_at",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
