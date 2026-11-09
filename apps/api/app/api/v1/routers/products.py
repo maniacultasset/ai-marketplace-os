@@ -196,6 +196,8 @@ def _out(view: products.ProductView) -> ProductOut:
         size_chart_suggestion=_suggestion(view.size_chart_suggestion),
         size_chart_read_enabled=view.size_chart_read_enabled,
         category_suggest_enabled=view.category_suggest_enabled,
+        thumbnail_url=view.thumbnail_url,
+        thumbnail_expires_at=view.thumbnail_expires_at,
         suggestions=SuggestionsOut.model_construct(
             category=(
                 None

@@ -462,6 +462,17 @@ class ProductImageOut(WireModel):
     parent_image_id: UUID | None = None
     fixes: list[Literal["fix", "white_background"]] = Field(default_factory=list)
     role: ImageRole | None = Field(default=None, description="SI12: Back or Close-up.")
+    view_url: str | None = Field(
+        default=None,
+        description=(
+            "A signed GET of the photo's server-made copy (long side at most 1024 px, no "
+            "metadata), valid about 10 minutes; null until the photo has been checked. A bearer "
+            "link: never log or store it. Read the product again before `view_expires_at`."
+        ),
+    )
+    view_expires_at: AwareDatetime | None = Field(
+        default=None, description="When to fetch a fresh `view_url`; null with it."
+    )
 
 
 class ColourwayOut(WireModel):
@@ -659,6 +670,17 @@ class ProductOut(WireModel):
             "SI14: whether `POST /products/{product_id}/category-suggestion` can classify the "
             "product; while false it answers `unavailable` (hide the button). False on lists."
         ),
+    )
+    thumbnail_url: str | None = Field(
+        default=None,
+        description=(
+            "A signed GET of the main photo's server-made copy (a variant shows its style's photo "
+            "of its colour), valid about 10 minutes; on lists and single reads. Null when there is "
+            "no checked main photo. A bearer link: never log or store it."
+        ),
+    )
+    thumbnail_expires_at: AwareDatetime | None = Field(
+        default=None, description="When to fetch a fresh `thumbnail_url`; null with it."
     )
 
 

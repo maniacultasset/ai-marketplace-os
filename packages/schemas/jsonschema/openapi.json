@@ -605,6 +605,17 @@
               }
             ],
             "title": "Request Id"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuditReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For `listing.approved` and `listing.rejected`: the version decided on and the reason code (never the free-text feedback). Null for other events."
           }
         },
         "required": [
@@ -616,6 +627,50 @@
           "occurred_at"
         ],
         "title": "AuditEventOut",
+        "type": "object"
+      },
+      "AuditReviewOut": {
+        "description": "The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab).",
+        "properties": {
+          "listing_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Version Id"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reject reason. The reviewer's free-text feedback is never sent here.",
+            "title": "Reason Code"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version's number.",
+            "title": "Version"
+          }
+        },
+        "title": "AuditReviewOut",
         "type": "object"
       },
       "BatchAccepted": {
@@ -4510,6 +4565,24 @@
             ],
             "title": "Current Version Id"
           },
+          "display_state": {
+            "default": "draft",
+            "description": "The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read. Always sent; an older payload without it reads as its status's value.",
+            "enum": [
+              "draft",
+              "working",
+              "needs_you",
+              "needs_review",
+              "ready_to_approve",
+              "ready_to_list",
+              "submitting",
+              "published",
+              "blocked",
+              "error"
+            ],
+            "title": "Display State",
+            "type": "string"
+          },
           "external_id": {
             "anyOf": [
               {
@@ -4544,6 +4617,13 @@
           },
           "marketplace_state": {
             "$ref": "#/components/schemas/MarketplaceState"
+          },
+          "needs_you_count": {
+            "default": 0,
+            "description": "Open blocking issues on the current version (the seller's fixes).",
+            "minimum": 0.0,
+            "title": "Needs You Count",
+            "type": "integer"
           },
           "product_id": {
             "format": "uuid",
@@ -4696,6 +4776,24 @@
             ],
             "title": "Current Version Id"
           },
+          "display_state": {
+            "default": "draft",
+            "description": "The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read. Always sent; an older payload without it reads as its status's value.",
+            "enum": [
+              "draft",
+              "working",
+              "needs_you",
+              "needs_review",
+              "ready_to_approve",
+              "ready_to_list",
+              "submitting",
+              "published",
+              "blocked",
+              "error"
+            ],
+            "title": "Display State",
+            "type": "string"
+          },
           "external_id": {
             "anyOf": [
               {
@@ -4730,6 +4828,13 @@
           },
           "marketplace_state": {
             "$ref": "#/components/schemas/MarketplaceState"
+          },
+          "needs_you_count": {
+            "default": 0,
+            "description": "Open blocking issues on the current version (the seller's fixes).",
+            "minimum": 0.0,
+            "title": "Needs You Count",
+            "type": "integer"
           },
           "product_id": {
             "format": "uuid",
@@ -5267,6 +5372,12 @@
               }
             ],
             "title": "Needs Reconnect Since"
+          },
+          "publishing_enabled": {
+            "default": true,
+            "description": "Whether this deployment may publish to the account's marketplace (the publish kill switch, `AMAZON_PUBLISH_ENABLED` for Amazon). False: publish and field retry answer 501 NOT_IMPLEMENTED \"Publishing to Amazon is paused for this workspace\" with nothing sent, and neither the automatic resend nor the marketplace dry run runs; reads and connect still work.",
+            "title": "Publishing Enabled",
+            "type": "boolean"
           },
           "region": {
             "anyOf": [
@@ -6741,6 +6852,31 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "view_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to fetch a fresh `view_url`; null with it.",
+            "title": "View Expires At"
+          },
+          "view_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A signed GET of the photo's server-made copy (long side at most 1024 px, no metadata), valid about 10 minutes; null until the photo has been checked. A bearer link: never log or store it. Read the product again before `view_expires_at`.",
+            "title": "View Url"
           }
         },
         "required": [
@@ -7088,6 +7224,31 @@
           "suggestions": {
             "$ref": "#/components/schemas/SuggestionsOut",
             "description": "SI12: values to suggest while the field is empty; empty on lists."
+          },
+          "thumbnail_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to fetch a fresh `thumbnail_url`; null with it.",
+            "title": "Thumbnail Expires At"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A signed GET of the main photo's server-made copy (a variant shows its style's photo of its colour), valid about 10 minutes; on lists and single reads. Null when there is no checked main photo. A bearer link: never log or store it.",
+            "title": "Thumbnail Url"
           },
           "title": {
             "maxLength": 500,

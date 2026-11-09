@@ -149,6 +149,9 @@ PRODUCT_FIELDS = frozenset(
         "size_chart_read_enabled",
         # SI14: whether the category classifier is switched on (detail only)
         "category_suggest_enabled",
+        # the main photo's signed view (lists and single reads)
+        "thumbnail_url",
+        "thumbnail_expires_at",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"

@@ -32,6 +32,7 @@ from app.api.v1.schemas.marketplaces import (
 from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
 from app.core.errors import ConflictError
+from app.core.flags import publish_enabled
 from app.core.rbac import Principal
 from app.services import marketplaces as service
 
@@ -54,6 +55,7 @@ def account_out(view: service.AccountView) -> MarketplaceAccountOut:
         needs_reconnect_since=view.needs_reconnect_since,
         expires_at=view.expires_at,
         created_at=view.created_at,
+        publishing_enabled=publish_enabled(view.marketplace, get_settings()),
     )
 
 

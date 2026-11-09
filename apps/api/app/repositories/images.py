@@ -88,6 +88,24 @@ class ImageDetail:
     size_chart_read: Mapping[str, Any] | None = None
     clean_content_hash: str | None = None
     created_at: datetime | None = None
+    # image views: which derived copy exists to sign (`vision.jpg` when `metadata.vision` is
+    # set, else the clean copy of `clean_mime_type`), and the signed GET the read adds
+    has_vision: bool = False
+    clean_mime_type: str | None = None
+    view_url: str | None = None
+    view_expires_at: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class MainImageRow:
+    """A live main image of a product, with what its signed view needs (the product list)."""
+
+    product_id: UUID
+    image_id: UUID
+    colourway_id: UUID | None
+    colour_key: str | None
+    has_vision: bool
+    clean_mime_type: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -582,6 +600,8 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.metadata_["size_chart_read"].label("size_chart_read"),
                 Image.clean_content_hash,
                 Image.created_at,
+                Image.metadata_["vision"].label("vision"),
+                Image.clean_mime_type,
             )
             .order_by(slot_rank, Image.position, Image.created_at, Image.id)
         )
@@ -603,9 +623,75 @@ class ImageRepository(TenantScopedRepository[Image]):
                 ),
                 clean_content_hash=row.clean_content_hash,
                 created_at=row.created_at,
+                has_vision=isinstance(row.vision, Mapping),
+                clean_mime_type=row.clean_mime_type,
             )
             for row in (await self.db.execute(stmt)).all()
         ]
+
+    async def main_images_for_products(
+        self, product_ids: Sequence[UUID]
+    ) -> builtins.list[MainImageRow]:
+        """The live main images of these products (a style's own and its colourways'), each with
+        its colourway's colour key: the style-level one first, then colourway position. Two
+        scoped reads, as `listing_set`."""
+        ids = [_uuid("product_id", p) for p in product_ids]
+        if not ids:
+            return []
+        stmt = (
+            self._select()
+            .where(
+                Image.product_id.in_(ids),
+                Image.slot == ImageSlot.MAIN.value,
+                Image.deleted_at.is_(None),
+            )
+            .with_only_columns(
+                Image.product_id,
+                Image.id,
+                Image.colourway_id,
+                Image.metadata_["vision"].label("vision"),
+                Image.clean_mime_type,
+                Image.created_at,
+            )
+        )
+        rows = (await self.db.execute(stmt)).all()
+        colourway_ids = sorted({r.colourway_id for r in rows if r.colourway_id is not None})
+        colourways: dict[UUID, tuple[int, str]] = {}
+        if colourway_ids:
+            found = await self.db.execute(
+                _Colourways(self.db, self.tenant_id)
+                ._select()
+                .where(ProductColourway.id.in_(colourway_ids))
+                .with_only_columns(
+                    ProductColourway.id, ProductColourway.position, ProductColourway.colour_key
+                )
+            )
+            colourways = {cid: (int(pos), str(key)) for cid, pos, key in found.all()}
+
+        def rank(row: Any) -> tuple[str, int, int, datetime, str]:
+            cw = None if row.colourway_id is None else colourways.get(row.colourway_id)
+            return (
+                str(row.product_id),
+                0 if row.colourway_id is None else 1,
+                -1 if cw is None else cw[0],
+                row.created_at,
+                str(row.id),
+            )
+
+        out: builtins.list[MainImageRow] = []
+        for row in sorted(rows, key=rank):
+            cw = None if row.colourway_id is None else colourways.get(row.colourway_id)
+            out.append(
+                MainImageRow(
+                    product_id=row.product_id,
+                    image_id=row.id,
+                    colourway_id=row.colourway_id,
+                    colour_key=None if cw is None else cw[1],
+                    has_vision=isinstance(row.vision, Mapping),
+                    clean_mime_type=row.clean_mime_type,
+                )
+            )
+        return out
 
     async def listing_set(self, product_id: UUID) -> builtins.list[ListingImageRow]:
         """The live images of a product (a style's own and its colourways' share `product_id`),

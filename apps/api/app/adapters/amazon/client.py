@@ -23,6 +23,10 @@ connect 5 s / read 10 s, and each reply read through a 1 MiB cap.
   `app.adapters.amazon.definitions`). The product type must match `PRODUCT_TYPE_PATTERN` before
   the limiter or the token is touched, and the raw-path check holds for it too. A client built
   without a seller (`seller_id=None`, the platform PTD refresh) refuses every item call.
+- The publish kill switch (`app.core.flags.publish_enabled`): with `AMAZON_PUBLISH_ENABLED=false`
+  every call that is not a GET (`put`, `patch`, `put_preview`, and any write route added later)
+  raises `PublishingPaused` before the limiter, the token or the network is touched, and logs
+  `marketplace.write_refused`. GETs (the listing read, PTD, catalog search, restrictions) pass.
 - One log line `marketplace.call` per try: operation, method, path template, duration, status,
   the rate-limit header, the first issue code and the try number. Never a URL, SKU, product
   type, body, header or token. The token is a `SecretStr` until the header is built.
@@ -54,10 +58,13 @@ from app.adapters.base import (
     MarketplaceUnavailable,
     OutboundLimiter,
     PermissionDenied,
+    PublishingPaused,
     RateLimited,
     TokenSource,
 )
 from app.adapters.telemetry import adapter_call_span
+from app.core.config import get_settings
+from app.core.flags import publish_enabled, publishing_paused_report
 from app.core.logging import get_logger
 
 log = get_logger(__name__)
@@ -399,8 +406,24 @@ class SpApiClient:
             return MarketplaceAmbiguous(failure(ErrorCode.MARKETPLACE_UNCONFIRMED, message))
         return MarketplaceUnavailable(failure(ErrorCode.MARKETPLACE_UNAVAILABLE, message))
 
+    def _refuse_paused_write(self, route: _Route) -> None:
+        """The kill switch, at the one door every request passes: anything but a GET is a write
+        (a preview included) and is refused while publishing to Amazon is paused."""
+        if route.method == "GET" or publish_enabled(Marketplace.AMAZON, get_settings()):
+            return
+        log.warning(
+            "marketplace.write_refused",
+            marketplace="amazon",
+            operation=route.operation,
+            method=route.method,
+            path=route.path_template,
+            reason="publishing_paused",
+        )
+        raise PublishingPaused(publishing_paused_report(Marketplace.AMAZON))
+
     async def _call(self, route: _Route, body: Mapping[str, Any] | None) -> SpApiResponse:
         # the route was built (and refused) before the limiter or the token is touched
+        self._refuse_paused_write(route)
         content = None
         if body is not None:
             content = json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")

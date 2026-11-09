@@ -2523,6 +2523,26 @@ export interface components {
             reason?: string | null;
             /** Request Id */
             request_id?: string | null;
+            /** @description For `listing.approved` and `listing.rejected`: the version decided on and the reason code (never the free-text feedback). Null for other events. */
+            review?: components["schemas"]["AuditReviewOut"] | null;
+        };
+        /**
+         * AuditReviewOut
+         * @description The decision behind an approve or reject event (prod QA 2026-11-09, the Activity tab).
+         */
+        AuditReviewOut: {
+            /** Listing Version Id */
+            listing_version_id?: string | null;
+            /**
+             * Reason Code
+             * @description The reject reason. The reviewer's free-text feedback is never sent here.
+             */
+            reason_code?: string | null;
+            /**
+             * Version
+             * @description The version's number.
+             */
+            version?: number | null;
         };
         /** BatchAccepted */
         BatchAccepted: {
@@ -3903,6 +3923,13 @@ export interface components {
             /** Current Version Id */
             current_version_id?: string | null;
             /**
+             * Display State
+             * @description The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read. Always sent; an older payload without it reads as its status's value.
+             * @default draft
+             * @enum {string}
+             */
+            display_state: "draft" | "working" | "needs_you" | "needs_review" | "ready_to_approve" | "ready_to_list" | "submitting" | "published" | "blocked" | "error";
+            /**
              * External Id
              * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
              */
@@ -3916,6 +3943,12 @@ export interface components {
             live_url?: string | null;
             marketplace: components["schemas"]["Marketplace"];
             marketplace_state: components["schemas"]["MarketplaceState"];
+            /**
+             * Needs You Count
+             * @description Open blocking issues on the current version (the seller's fixes).
+             * @default 0
+             */
+            needs_you_count: number;
             /**
              * Product Id
              * Format: uuid
@@ -3965,6 +3998,13 @@ export interface components {
             /** Current Version Id */
             current_version_id?: string | null;
             /**
+             * Display State
+             * @description The state every screen shows, computed by the server. `needs_you`: open blocking issues on the current version (`needs_you_count` of them) keep a person from approving it, whatever `status` says. The other values follow `status` (validated is ready_to_approve, approved is ready_to_list, publishing is submitting, failed is error). A stale reviewable listing is checked again with today's rules on read. Always sent; an older payload without it reads as its status's value.
+             * @default draft
+             * @enum {string}
+             */
+            display_state: "draft" | "working" | "needs_you" | "needs_review" | "ready_to_approve" | "ready_to_list" | "submitting" | "published" | "blocked" | "error";
+            /**
              * External Id
              * @description The marketplace's id for the product (the Amazon ASIN), set once the marketplace reads it. With status published and marketplace_state inactive the product is on the marketplace but not buyable yet.
              */
@@ -3978,6 +4018,12 @@ export interface components {
             live_url?: string | null;
             marketplace: components["schemas"]["Marketplace"];
             marketplace_state: components["schemas"]["MarketplaceState"];
+            /**
+             * Needs You Count
+             * @description Open blocking issues on the current version (the seller's fixes).
+             * @default 0
+             */
+            needs_you_count: number;
             /**
              * Product Id
              * Format: uuid
@@ -4187,6 +4233,12 @@ export interface components {
             marketplace: components["schemas"]["Marketplace"];
             /** Needs Reconnect Since */
             needs_reconnect_since?: string | null;
+            /**
+             * Publishing Enabled
+             * @description Whether this deployment may publish to the account's marketplace (the publish kill switch, `AMAZON_PUBLISH_ENABLED` for Amazon). False: publish and field retry answer 501 NOT_IMPLEMENTED "Publishing to Amazon is paused for this workspace" with nothing sent, and neither the automatic resend nor the marketplace dry run runs; reads and connect still work.
+             * @default true
+             */
+            publishing_enabled: boolean;
             /** Region */
             region?: string | null;
             /** Seller Id */
@@ -4693,6 +4745,16 @@ export interface components {
             slot: components["schemas"]["ImageSlot"];
             /** Status */
             status: string;
+            /**
+             * View Expires At
+             * @description When to fetch a fresh `view_url`; null with it.
+             */
+            view_expires_at?: string | null;
+            /**
+             * View Url
+             * @description A signed GET of the photo's server-made copy (long side at most 1024 px, no metadata), valid about 10 minutes; null until the photo has been checked. A bearer link: never log or store it. Read the product again before `view_expires_at`.
+             */
+            view_url?: string | null;
         };
         /** ProductOut */
         ProductOut: {
@@ -4817,6 +4879,16 @@ export interface components {
             style_number?: string | null;
             /** @description SI12: values to suggest while the field is empty; empty on lists. */
             suggestions?: components["schemas"]["SuggestionsOut"];
+            /**
+             * Thumbnail Expires At
+             * @description When to fetch a fresh `thumbnail_url`; null with it.
+             */
+            thumbnail_expires_at?: string | null;
+            /**
+             * Thumbnail Url
+             * @description A signed GET of the main photo's server-made copy (a variant shows its style's photo of its colour), valid about 10 minutes; on lists and single reads. Null when there is no checked main photo. A bearer link: never log or store it.
+             */
+            thumbnail_url?: string | null;
             /** Title */
             title: string;
             /**

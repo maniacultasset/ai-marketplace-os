@@ -9,7 +9,10 @@ stays 202):
 missing or another tenant's → 404; a marketplace switched off here (Flipkart with
 `FLIPKART_ENABLED=false`, S22 C3, C12) → 501 NOT_IMPLEMENTED "Flipkart is not enabled", before
 every other check, so the flag never answers for a foreign id and no status or account check
-hides it; paused / archived → 409 LISTING_PAUSED / LISTING_ARCHIVED;
+hides it; then the publish kill switch (`AMAZON_PUBLISH_ENABLED=false`, `core.flags`) → 501
+NOT_IMPLEMENTED "Publishing to Amazon is paused for this workspace", the listing unchanged, no
+job and no attempt, with an audit row `listing.publish_paused` (field retry: the whole-request
+501, logged `publish.paused`); paused / archived → 409 LISTING_PAUSED / LISTING_ARCHIVED;
 `generating|publishing` → 409 LISTING_BUSY; a `listing_version_id` that is not current → 409
 STALE_VERSION (D4); the current version not
 the approved one → 409 INVALID_STATUS_TRANSITION; the status has no publish event → 409
@@ -47,7 +50,15 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 
 from app.core.config import get_settings
 from app.core.errors import ConflictError, DomainError, NotFoundError
-from app.core.flags import MarketplaceNotEnabled, marketplace_enabled, not_enabled_report
+from app.core.flags import (
+    PAUSED_REASON,
+    MarketplaceNotEnabled,
+    PublishingPaused,
+    marketplace_enabled,
+    not_enabled_report,
+    publish_enabled,
+    publishing_paused_report,
+)
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.request_context import current_request_id
@@ -119,6 +130,16 @@ class Disabled(Refused):
         )
 
 
+class Paused(Disabled):
+    """Publishing to the listing's marketplace is paused here (the kill switch): item 501 with
+    the pause's report; nothing is enqueued and the listing does not move."""
+
+    def report(self, listing_id: uuid.UUID) -> ErrorReport:
+        return publishing_paused_report(self.marketplace).model_copy(
+            update={"request_id": current_request_id(), "listing_id": listing_id}
+        )
+
+
 def item_report(
     code: ErrorCode,
     listing_id: uuid.UUID | None = None,
@@ -174,6 +195,8 @@ def _gate(listing: Any | None, version_id: uuid.UUID | None) -> Any:
         raise Refused(ErrorCode.NOT_FOUND)
     if not marketplace_enabled(listing.marketplace, get_settings()):
         raise Disabled(listing.marketplace)
+    if not publish_enabled(listing.marketplace, get_settings()):
+        raise Paused(listing.marketplace)
     if listing.paused_at is not None:
         raise Refused(ErrorCode.LISTING_PAUSED)
     if listing.archived_at is not None:
@@ -383,6 +406,24 @@ async def enqueue_publish(
     return enqueued.job.id
 
 
+async def _audit_paused(
+    uow: TenantUnitOfWork, principal: Principal, listing_id: uuid.UUID, marketplace: str
+) -> None:
+    """The kill switch refused this publish: one audit row and one log line (nothing moved)."""
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action="listing.publish_paused",
+        entity_type="listing",
+        entity_id=listing_id,
+        reason=PAUSED_REASON,
+    )
+    log.warning(
+        "publish.paused", listing_id=str(listing_id), marketplace=marketplace, trigger="user"
+    )
+
+
 async def _one(
     uow: TenantUnitOfWork,
     principal: Principal,
@@ -403,6 +444,8 @@ async def _one(
             )
             return ItemOutcome(item.listing_id, 202, "publishing", job_id)
     except Disabled as disabled:
+        if isinstance(disabled, Paused):
+            await _audit_paused(uow, principal, item.listing_id, disabled.marketplace)
         return ItemOutcome(
             item.listing_id, disabled.status, status, error=disabled.report(item.listing_id)
         )
@@ -490,6 +533,14 @@ async def retry_fields(
         _gate(listing, None)
         plan = await plan_publish(uow, listing, retry_fields_only=True)
         return await enqueue_publish(uow, principal, listing, plan, http_key=http_key)
+    except Paused as paused:
+        log.warning(
+            "publish.paused",
+            listing_id=str(listing_id),
+            marketplace=paused.marketplace,
+            trigger="retry_fields",
+        )
+        raise PublishingPaused(paused.marketplace) from None
     except Disabled as disabled:
         raise MarketplaceNotEnabled(disabled.marketplace) from None
     except Refused as refused:

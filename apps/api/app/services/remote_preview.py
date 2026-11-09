@@ -48,6 +48,7 @@ from mkos_schemas.errors import ErrorReport
 from app.adapters.base import RemotePreview
 from app.core.config import get_settings
 from app.core.errors import ConflictError
+from app.core.flags import publish_enabled
 from app.core.logging import get_logger
 from app.core.resolved_facts import listing_facts_digest
 from app.db.models.ops import JobRun
@@ -145,6 +146,8 @@ async def request_preview(
         version_id is None
         or listing.marketplace != "amazon"
         or not settings.amazon_validation_preview_enabled
+        # the publish kill switch: the dry run is a write-mode call (VALIDATION_PREVIEW)
+        or not publish_enabled(listing.marketplace, settings)
         or not previewable(listing, trigger, recheck=recheck)
     ):
         return None

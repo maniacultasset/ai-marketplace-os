@@ -50,6 +50,16 @@ class MarketplaceAccountOut(WireModel):
     needs_reconnect_since: AwareDatetime | None = None
     expires_at: AwareDatetime | None = None
     created_at: AwareDatetime
+    publishing_enabled: bool = Field(
+        default=True,
+        description=(
+            "Whether this deployment may publish to the account's marketplace (the publish kill "
+            "switch, `AMAZON_PUBLISH_ENABLED` for Amazon). False: publish and field retry answer "
+            '501 NOT_IMPLEMENTED "Publishing to Amazon is paused for this workspace" with nothing '
+            "sent, and neither the automatic resend nor the marketplace dry run runs; reads and "
+            "connect still work."
+        ),
+    )
 
 
 class MarketplaceAccountPage(Page[MarketplaceAccountOut]):

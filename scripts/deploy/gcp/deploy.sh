@@ -185,6 +185,16 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
 
+# ---- the Amazon publish kill switch, refused before any gcloud call ----
+# true | false, set explicitly in the env file: a missing or misspelt value never deploys (the
+# Settings default is on). Sent to every role (api, worker, maintenance), so no process that could
+# reach Amazon runs with the code default.
+AMAZON_PUBLISH_ENABLED="${AMAZON_PUBLISH_ENABLED-}"
+case "$AMAZON_PUBLISH_ENABLED" in
+  true | false) ;;
+  *) die "AMAZON_PUBLISH_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
+
 # ---- the Amazon SP-API app, refused before any gcloud call ----
 # The switch is AMAZON_APP_ID: blank keeps Amazon connect off (it answers 501) and binds no
 # secret. Set, it needs the LWA client id and the https consent page, and the api and the worker
@@ -1019,7 +1029,7 @@ app_env() {
     KMS_KEY_URI "$KMS_KEY_URI" AMAZON_USE_SANDBOX "$AMAZON_USE_SANDBOX" \
     AMAZON_SPAPI_ENDPOINT "$AMAZON_SPAPI_ENDPOINT" \
     AMAZON_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/amazon/callback" \
-    FLIPKART_ENABLED "$FLIPKART_ENABLED" \
+    AMAZON_PUBLISH_ENABLED "$AMAZON_PUBLISH_ENABLED" FLIPKART_ENABLED "$FLIPKART_ENABLED" \
     FLIPKART_OAUTH_REDIRECT_URI "$url/api/v1/marketplaces/flipkart/callback" \
     APP_NAME "marketplace-os-$role" OTEL_SERVICE_NAME "marketplace-os-$role"
   [ "$role" != "api" ] || printf 'JWT_ISSUER\t%s\n' "${JWT_ISSUER:-$url}"

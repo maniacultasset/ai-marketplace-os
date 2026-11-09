@@ -25,13 +25,14 @@ from __future__ import annotations
 import json
 import math
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import ImageSlot
 from sqlalchemy.exc import DBAPIError
 
 from app.core.config import get_settings
@@ -39,13 +40,13 @@ from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.resolved_facts import match_brand
-from app.repositories.images import ImageDetail
+from app.repositories.images import ImageDetail, MainImageRow
 from app.repositories.jobs import PhotoReadRow
 from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
-from app.services import category_suggest, product_identifier
+from app.services import category_suggest, image_views, product_identifier
 from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
@@ -226,6 +227,9 @@ class ProductView:
     # SI14: the classifier's stored suggestion (detail reads of a style or standalone only)
     category_suggestion: dict[str, Any] | None = None
     category_suggest_enabled: bool = False
+    # the main photo's signed view (lists and single reads; `image_views`)
+    thumbnail_url: str | None = None
+    thumbnail_expires_at: datetime | None = None
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
@@ -568,6 +572,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         )
         for detail in await uow.images.details_for_product(row.id)
     )
+    details = await image_views.with_views(row.tenant_id, row.id, details)
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
@@ -615,7 +620,49 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         size_chart_read_enabled=get_settings().size_chart_read_enabled,
         category_suggestion=public_category_suggestion(row),
         category_suggest_enabled=get_settings().category_suggest_enabled,
+        **await _thumbnail(uow, row, details),
     )
+
+
+async def _thumbnail(
+    uow: TenantUnitOfWork, row: Any, details: tuple[ImageDetail, ...]
+) -> dict[str, Any]:
+    """A single read's `thumbnail_url`: its own main photo's view (style-level first), else, for
+    a variant, the list's pick from its style."""
+    mains = [d for d in details if d.slot == ImageSlot.MAIN.value and d.view_url is not None]
+    mains.sort(key=lambda d: d.colourway_id is not None)
+    if mains:
+        return {
+            "thumbnail_url": mains[0].view_url,
+            "thumbnail_expires_at": mains[0].view_expires_at,
+        }
+    if row.parent_product_id is None or details:
+        return {}
+    views = await _main_views(uow, row.tenant_id, [row])
+    view = views.get(row.id)
+    return (
+        {} if view is None else {"thumbnail_url": view.url, "thumbnail_expires_at": view.expires_at}
+    )
+
+
+async def _main_views(
+    uow: TenantUnitOfWork, tenant_id: uuid.UUID, rows: Sequence[Any]
+) -> dict[uuid.UUID, image_views.ImageView]:
+    """Per product, the signed view of its main photo (`image_views.pick_main`), two queries."""
+    ids = {r.id for r in rows} | {r.parent_product_id for r in rows if r.parent_product_id}
+    found = await uow.images.main_images_for_products(sorted(ids, key=str))
+    picks: dict[uuid.UUID, MainImageRow] = {}
+    for r in rows:
+        colour = (r.variant_attributes or {}).get("color")
+        pick = image_views.pick_main(
+            found,
+            product_id=r.id,
+            parent_product_id=r.parent_product_id,
+            colour=colour if isinstance(colour, str) else None,
+        )
+        if pick is not None:
+            picks[r.id] = pick
+    return await image_views.sign_mains(tenant_id, picks)
 
 
 CATEGORY_SUGGESTION_STATUSES: Final = frozenset(
@@ -863,5 +910,18 @@ async def list_products(
         rows, has_more = await uow.products.list_page(limit=limit, after=after)
         keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
         exempt = await uow.products.style_exemptions([r.id for r in rows if _is_style(r)])
-        views = [_view(r, keys[r.id], style_exempt=exempt.get(r.id, False)) for r in rows]
+        thumbs = await _main_views(uow, principal.tenant_id, rows)
+        views = [
+            _with_thumb(_view(r, keys[r.id], style_exempt=exempt.get(r.id, False)), thumbs)
+            for r in rows
+        ]
         return views, has_more
+
+
+def _with_thumb(
+    view: ProductView, thumbs: Mapping[uuid.UUID, image_views.ImageView]
+) -> ProductView:
+    found = thumbs.get(view.id)
+    if found is None:
+        return view
+    return replace(view, thumbnail_url=found.url, thumbnail_expires_at=found.expires_at)

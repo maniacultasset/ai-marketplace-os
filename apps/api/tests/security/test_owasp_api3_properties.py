@@ -136,6 +136,13 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
     # SI5 (ADR-0029): the copied link is shown once, to the owner or admin who asked for it
     "invites_create": {"invite_url": True},
     "members_password_reset": {"reset_url": True},
+    # saved photo views: 10-minute signed GETs of the tenant's own derived copies (never stored
+    # or logged), the main photo's at the top of a product and each image's under `image_details`
+    **{
+        op: {"thumbnail_url": True, "view_url": False}
+        for op in ("products_get", "products_create", "products_update", "products_recategorize")
+    },
+    "products_list": {"thumbnail_url": False, "view_url": False},
 }
 
 
@@ -343,6 +350,8 @@ def test_api3_secret_key_allow_list_matches_the_surface(auth_db: Any) -> None:
             (k, top)
             for k, top in _response_keys(spec, op_id)
             if denied(k) and not (k in PERSONAL_KEYS and op_id in PERSONAL_OPS)
+            # a GSTIN has its own allow list (`test_api3_business_key_allow_list_matches_the_surface`)
+            and not (k in BUSINESS_KEYS and op_id in BUSINESS_OPS)
         }
         assert found == set(allowed.items()), op_id
 

@@ -74,6 +74,10 @@ async def list_tasks(
     principal: Principal, status: str, *, after: Keyset | None, limit: int
 ) -> tuple[list[dict[str, Any]], bool, Keyset | None]:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        if after is None and status == "open":
+            from app.services.listing_display import recheck_queue
+
+            await recheck_queue(uow, principal)  # a stale "passed" opens its questions first
         rows, more = await uow.human_tasks.page(status, after=after, limit=limit)
     next_key = (rows[-1].created_at, rows[-1].id) if more and rows else None
     return [task_fields(r) for r in rows], more, next_key
