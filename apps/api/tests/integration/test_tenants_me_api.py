@@ -104,3 +104,58 @@ async def test_tenants_me_active_tenant_hides_a_stale_trial_date(
     )
     body = (await api.get(URL, headers=as_member(jobs_db, "owner@acme.test"))).json()
     assert body["trial_ends_at"] is None
+
+
+CAPABILITY_ENV = {
+    "amazon_publishing_enabled": "AMAZON_PUBLISH_ENABLED",
+    "category_suggest_enabled": "CATEGORY_SUGGEST_ENABLED",
+    "column_map_ai_enabled": "COLUMN_MAP_AI_ENABLED",
+    "photo_qa_enabled": "PHOTO_QA_ENABLED",
+    "category_lamps_enabled": "CATEGORY_LAMPS_ENABLED",
+    "size_chart_read_enabled": "SIZE_CHART_READ_ENABLED",
+    "image_edit_enabled": "IMAGE_EDIT_ENABLED",
+}
+
+
+def _set_switches(monkeypatch: pytest.MonkeyPatch, values: dict[str, bool]) -> None:
+    from app.core.config import get_settings
+
+    for key, on in values.items():
+        monkeypatch.setenv(CAPABILITY_ENV[key], "true" if on else "false")
+    get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("on", [True, False])
+async def test_tenants_me_capabilities_follow_settings(
+    jobs_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch, on: bool
+) -> None:
+    from app.core.config import get_settings
+
+    values = dict.fromkeys(CAPABILITY_ENV, on)
+    try:
+        _set_switches(monkeypatch, values)
+        response = await api.get(URL, headers=as_member(jobs_db, "reviewer@acme.test"))
+        assert response.status_code == 200, response.text
+        assert response.json()["capabilities"] == values
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+
+
+async def test_tenants_me_publishing_paused_with_assists_on(
+    jobs_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The prod shape: publishing off, the assists on; the tenant read says so (the connect
+    screen reads it before any account row exists)."""
+    from app.core.config import get_settings
+
+    try:
+        _set_switches(
+            monkeypatch, {"amazon_publishing_enabled": False, "category_suggest_enabled": True}
+        )
+        body = (await api.get(URL, headers=as_member(jobs_db, "owner@acme.test"))).json()
+        assert body["capabilities"]["amazon_publishing_enabled"] is False
+        assert body["capabilities"]["category_suggest_enabled"] is True
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()

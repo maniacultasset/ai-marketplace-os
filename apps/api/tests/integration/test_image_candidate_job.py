@@ -394,12 +394,21 @@ async def test_unfaithful_twice_fails_fidelity_with_a_run_per_try(
     row = candidate_row(images_db.conn, candidate)
     assert (row["status"], row["failure_reason"]) == ("failed", "fidelity")
     assert row["fidelity_json"] is not None
-    assert len(seen) == 2 and seen[0] == seen[1]
+    assert len(seen) == 2 and _same_input(seen)
     runs = _runs(images_db.conn, job)
     assert len(runs) == 2 and len({r["id"] for r in runs}) == 2
     assert row["cost_usd"] == sum(r["cost_usd"] for r in runs)
     assert row["agent_run_id"] in {r["id"] for r in runs}
     assert _reserved(images_db.conn, job) == 0
+
+
+def _same_input(seen: list[ImageEditRequest]) -> bool:
+    """The retry is the same prepared input sent as the next attempt (the pipeline samples it
+    anew); everything else in the request is equal."""
+    first, second = seen
+    return (first.attempt, second.attempt) == (1, 2) and first == second.model_copy(
+        update={"attempt": 1}
+    )
 
 
 def _first_halved(tries: list[int]) -> Callable[[ImageEditResult, ImageEditRequest], Any]:
@@ -419,7 +428,7 @@ async def test_unfaithful_then_faithful_is_ready(
     await run_image_job(job)
     row = candidate_row(images_db.conn, candidate)
     assert row["status"] == "ready", row["failure_reason"]
-    assert len(seen) == 2 and seen[0] == seen[1]
+    assert len(seen) == 2 and _same_input(seen)
     runs = _runs(images_db.conn, job)
     assert len(runs) == 2 and row["cost_usd"] == Decimal("0.078000")
     assert row["agent_run_id"] in {r["id"] for r in runs}

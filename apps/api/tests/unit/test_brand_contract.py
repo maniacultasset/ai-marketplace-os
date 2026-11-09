@@ -122,3 +122,28 @@ def test_upload_form_has_optional_type() -> None:
     form = spec["components"]["schemas"][ref]
     assert form["required"] == ["file"]
     assert form["properties"]["type"]["enum"] == ["tone_rule", "glossary", "compliance"]
+
+
+def test_tenant_capabilities_read_the_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api.v1.routers.tenants import capabilities_out
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("AMAZON_PUBLISH_ENABLED", "false")
+    monkeypatch.setenv("PHOTO_QA_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        caps = capabilities_out()
+        assert caps.amazon_publishing_enabled is False and caps.photo_qa_enabled is True
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()
+
+
+def test_tenant_out_capabilities_are_optional() -> None:
+    from app.api.v1.schemas.tenants import TenantOut
+
+    spec = TenantOut.model_json_schema()
+    assert "capabilities" not in spec.get("required", [])
+    caps = spec["$defs"]["TenantCapabilitiesOut"]
+    assert caps.get("required", []) == []
+    assert caps["properties"]["amazon_publishing_enabled"]["default"] is True

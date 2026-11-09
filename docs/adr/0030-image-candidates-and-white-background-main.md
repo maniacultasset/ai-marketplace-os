@@ -44,7 +44,8 @@ platform and USD 1 per brand. The backend never imports a model SDK, and the AI 
 5. Cost control:
    - one model call per (product, source `clean_content_hash`, model and prompt version), cached;
    - `max_attempts=1` and no automatic job retry; a `fidelity` refusal alone gets one fresh edit of the same
-     input inside the same job (2026-11-09), only when the D21 limits and the budget caps admit it again and
+     input inside the same job (2026-11-09), sent as the next `attempt` so the pipeline (>= 0.7.1) samples it
+     anew (a new seed above temperature 0) instead of repeating the refused request at full price, only when the D21 limits and the budget caps admit it again and
      the call fits in the body timeout; it does not count again toward the daily candidate limit, and each try
      stores its own `agent_runs` row;
    - USD 0.10 reserved per call (USD 0.039 to 0.078 real in the live check, 2026-11-07: image output tokens are not
