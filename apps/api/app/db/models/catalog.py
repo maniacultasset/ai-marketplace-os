@@ -103,7 +103,8 @@ class Product(TenantScoped, Base):
     sku: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, server_default=text("'draft'"))
-    category: Mapped[str] = mapped_column(Text)
+    # NULL until the seller confirms one (0027, SI14 D3)
+    category: Mapped[str | None] = mapped_column(Text)
     brand_name: Mapped[str | None] = mapped_column(Text)
     style_number: Mapped[str | None] = mapped_column(Text)
     sub_category: Mapped[str | None] = mapped_column(Text)
@@ -118,6 +119,8 @@ class Product(TenantScoped, Base):
     size_run: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     variant_attributes: Mapped[dict[str, str]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     variant_key: Mapped[str | None] = mapped_column(Text)
+    # the classifier's suggestion (0027): model text, never granted to app_platform_ro
+    category_suggestion: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     # fact columns (DATABASE.md §5.6); each non-null one has its `provenance` key
     mrp: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
     selling_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))

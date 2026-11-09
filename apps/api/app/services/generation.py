@@ -175,6 +175,8 @@ async def _generate_one(
     if product.parent_product_id is not None:
         raise InputError(ErrorCode.VALIDATION_FAILED, "product_id")
     category = item.category or product.category
+    if category is None:  # no category yet (0027, D3): the seller chooses one first
+        raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     if await uow.templates.current(marketplace, category) is None:
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     listing = await uow.listings.get_by_pair_for_update(product.id, marketplace)

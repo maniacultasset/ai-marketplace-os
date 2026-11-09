@@ -43,6 +43,7 @@ from app.core.logging import get_logger
 from app.repositories.images import CleanMeta
 from app.repositories.uow import tenant_uow
 from app.services import image_runner
+from app.services.category_gate import rules_category
 from app.services.image_keys import CLEAN_NAMES, derived_key, parse_image_key
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers.errors import JobFailed, RetryableJobError, system_report
@@ -84,7 +85,10 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
         for market in Marketplace:
             try:
                 loaded = await load_rules(
-                    uow, tenant_id=ctx.tenant_id, marketplace=market, category=product.category
+                    uow,
+                    tenant_id=ctx.tenant_id,
+                    marketplace=market,
+                    category=rules_category(product.category),
                 )
             except RuleLoadError:
                 raise _failed("the image rules cannot be loaded", ctx) from None

@@ -53,6 +53,7 @@ from app.adapters.storage import (
 )
 from app.core.logging import get_logger
 from app.repositories.uow import tenant_uow
+from app.services.category_gate import rules_category
 from app.services.image_edit_result import trust_records
 from app.services.image_keys import derived_key
 from app.services.intake_values import SizeChartError, normalize_size_chart
@@ -132,7 +133,7 @@ async def _inputs(ctx: JobContext, image_id: UUID) -> _Inputs | None:
         return _Inputs(
             image_id=image.id,
             product_id=product.id,
-            category=product.category,
+            category=rules_category(product.category),
             source_hash=image.clean_content_hash,
             width=size[0],
             height=size[1],

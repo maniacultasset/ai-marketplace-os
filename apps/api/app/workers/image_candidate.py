@@ -42,6 +42,7 @@ from app.core.logging import get_logger
 from app.db.models.catalog_assets import Image, ImageCandidate
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services import image_runner
+from app.services.category_gate import rules_category
 from app.services.image_candidates import size_chart_source
 from app.services.image_edit_result import EditTrusted, EditUntrusted, check_edit_result
 from app.services.image_keys import CLEAN_NAMES, candidate_key, derived_key
@@ -201,7 +202,7 @@ async def _deterministic(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
             if clean_key is None:
                 return await fail(ctx, candidate.id, SOURCE_CHANGED)
             params = {
-                "rules": await main_rules(uow, ctx, product.category),
+                "rules": await main_rules(uow, ctx, rules_category(product.category)),
                 "image_id": str(candidate.id),
                 "now": datetime.now(UTC).isoformat(),
             }
@@ -279,10 +280,10 @@ async def _edit_inputs(ctx: JobContext, candidate: ImageCandidate) -> _EditInput
             return None
         job = await uow.job_runs.get_by_id(ctx.job_run_id)
         return _EditInputs(
-            category=product.category,
+            category=rules_category(product.category),
             clean_key=clean,
             vision_key=derived_key(ctx.tenant_id, row.product_id, row.id, "vision.jpg"),
-            rules=await main_rules(uow, ctx, product.category),
+            rules=await main_rules(uow, ctx, rules_category(product.category)),
             claim_started_at=(job.started_at if job else None) or datetime.now(UTC),
         )
 
