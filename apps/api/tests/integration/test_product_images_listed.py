@@ -56,7 +56,8 @@ async def test_product_list_images_one_query(images_db: JobWorld, api: httpx.Asy
     assert response.status_code == 200
     by_id = {row["id"]: row["images"] for row in response.json()["data"]}
     assert all(len(by_id[str(p)]) == 1 for p in products)
-    assert len([s for s in seen if "FROM images" in s]) == 1
+    # the keys, and the main photos the thumbnails are signed from (test_product_image_views)
+    assert len([s for s in seen if "FROM images" in s]) == 2
 
 
 async def test_product_create_images_still_404(images_db: JobWorld, api: httpx.AsyncClient) -> None:

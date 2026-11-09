@@ -6446,6 +6446,31 @@
           "status": {
             "title": "Status",
             "type": "string"
+          },
+          "view_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to fetch a fresh `view_url`; null with it.",
+            "title": "View Expires At"
+          },
+          "view_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A signed GET of the photo's server-made copy (long side at most 1024 px, no metadata), valid about 10 minutes; null until the photo has been checked. A bearer link: never log or store it. Read the product again before `view_expires_at`.",
+            "title": "View Url"
           }
         },
         "required": [
@@ -6779,6 +6804,31 @@
           "suggestions": {
             "$ref": "#/components/schemas/SuggestionsOut",
             "description": "SI12: values to suggest while the field is empty; empty on lists."
+          },
+          "thumbnail_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to fetch a fresh `thumbnail_url`; null with it.",
+            "title": "Thumbnail Expires At"
+          },
+          "thumbnail_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A signed GET of the main photo's server-made copy (a variant shows its style's photo of its colour), valid about 10 minutes; on lists and single reads. Null when there is no checked main photo. A bearer link: never log or store it.",
+            "title": "Thumbnail Url"
           },
           "title": {
             "maxLength": 500,
