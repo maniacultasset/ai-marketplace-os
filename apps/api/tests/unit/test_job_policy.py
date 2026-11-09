@@ -142,3 +142,13 @@ def test_size_chart_read_takes_the_tenant_lock() -> None:
     with pytest.raises(ValueError):
         policy.lock_for(JobKind.IMAGE_COMPLIANCE, "size_chart_read", None)
     assert str(SIZE_CHART_READ_RESERVATION_USD) == "0.02"
+
+
+@pytest.mark.parametrize("entity", ["category_suggestion", "column_map"])
+def test_si14_jobs_take_the_tenant_lock(entity: str) -> None:
+    """SI14: a classification and a column map hold the brand's AI lock, as a size-chart read."""
+    import uuid
+
+    tenant = uuid.uuid4()
+    assert entity in policy.TENANT_LOCKED_ENTITIES
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, entity, tenant) == f"image_candidate:{tenant}"

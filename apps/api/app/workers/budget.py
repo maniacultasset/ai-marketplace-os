@@ -78,6 +78,10 @@ IMAGE_EDIT_RESERVATION_USD: Final = Decimal("0.10")
 # SI12 (PLAN D5): one vision read of a size-chart photo; the same as a generation reservation
 # (one call costs well under it). It counts toward the brand and platform daily caps.
 SIZE_CHART_READ_RESERVATION_USD: Final = Decimal("0.02")
+# SI14 (PLAN D7): one classification (text, up to 6 photos) and one column map (the leftover
+# headers, text only). Both count toward the brand and platform daily caps.
+CLASSIFY_RESERVATION_USD: Final = Decimal("0.005")
+COLUMN_MAP_RESERVATION_USD: Final = Decimal("0.002")
 ImageScope = Literal["image_tenant", "image_global"]
 Scope = Literal["tenant", "global", "credit", "image_tenant", "image_global"]
 
