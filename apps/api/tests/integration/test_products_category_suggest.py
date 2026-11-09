@@ -253,3 +253,60 @@ async def test_product_read_shows_switch_and_suggestion(
         {"category": "t_shirts", "confidence": 0.9, "rationale": "A tee."}
     ]
     assert "input_digest" not in str(body) and "evidence_refs" not in str(body)
+
+
+# ---- T12: a create without a category queues one classification ----
+
+
+async def _create(api: httpx.AsyncClient, jw: JobWorld, sku: str, **body: Any) -> httpx.Response:
+    from .jobs_support import as_member
+
+    return await api.post(
+        PREFIX,
+        headers=as_member(jw, "operator@acme.test"),
+        json={"sku": sku, "title": "Cotton crew tee", **body},
+    )
+
+
+def _created_jobs(jw: JobWorld) -> int:
+    return count(jw.conn, "SELECT count(*) FROM job_runs WHERE entity_type = 'category_suggestion'")
+
+
+async def test_create_without_category_queues_one_job(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    created = await _create(api, images_db, "NC-1")
+    assert created.status_code == 201, created.text
+    p = uuid.UUID(created.json()["id"])
+    assert suggest_jobs(images_db.conn, p) == 1
+    # the same SKU again is 409 SKU_CONFLICT and queues nothing more (products_create takes no key)
+    again = await _create(api, images_db, "NC-1")
+    assert again.status_code == 409 and _code(again) == "SKU_CONFLICT"
+    assert _created_jobs(images_db) == 1
+
+
+async def test_create_with_category_or_switch_off_queues_nothing(
+    images_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    assert (await _create(api, images_db, "NC-2", category="t_shirts")).status_code == 201
+    set_switch(monkeypatch, "category", on=False)
+    assert (await _create(api, images_db, "NC-3")).status_code == 201
+    assert _created_jobs(images_db) == 0
+
+
+async def test_paused_ai_still_creates_with_no_job(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    images_db.conn.execute(
+        "UPDATE ai_credit_state SET paused_reason = 'credit_exhausted', paused_at = now() "
+        "WHERE id = 1"
+    )
+    try:
+        created = await _create(api, images_db, "NC-4")
+    finally:
+        images_db.conn.execute(
+            "UPDATE ai_credit_state SET paused_reason = NULL, paused_at = NULL WHERE id = 1"
+        )
+    assert created.status_code == 201, created.text
+    assert created.json()["category"] is None
+    assert _created_jobs(images_db) == 0

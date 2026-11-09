@@ -36,6 +36,7 @@ from sqlalchemy.exc import DBAPIError
 
 from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
+from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.resolved_facts import match_brand
 from app.repositories.images import ImageDetail
@@ -44,7 +45,8 @@ from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
-from app.services import product_identifier
+from app.services import category_suggest, product_identifier
+from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
@@ -59,6 +61,7 @@ from app.services.product_facts import (
     seller_provenance,
     size_chart_fact,
 )
+from app.workers.budget import CLASSIFY_RESERVATION_USD
 
 __all__ = [
     "NewProduct",
@@ -72,6 +75,7 @@ __all__ = [
     "size_chart_view",
 ]
 
+log = get_logger(__name__)
 PRODUCT_PK: Final = "pk_products"
 PRODUCT_ETAG_NS: Final = uuid.UUID("5d0f0b43-2a4e-4c55-9d47-6a3f3a1c8e21")
 SIZE_CHART_UNITS: Final = frozenset({"cm", "in"})
@@ -729,6 +733,7 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     )
     now = datetime.now(UTC)
     column_fact = seller_column_fact(now=now)
+    classify = await _admit_classification(principal, cmd, now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         brand_name = await checked_brand(uow, cmd.brand_name)
         if (
@@ -810,7 +815,37 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             after=json.dumps({"attributes": facts, "provenance": provenance}),
         )
         await uow.session.refresh(row)
+        if classify:
+            # SI14 (AC3): one classification for a product created without a category; the
+            # digest has no photo yet (the job reads the photos it finds when it runs)
+            inputs = await category_suggest.suggest_inputs(uow, row, get_settings())
+            job_id = await category_suggest.enqueue_suggestion(
+                uow, principal.tenant_id, principal.user_id, row.id, inputs.digest
+            )
+            log.info(
+                "category_suggest.queued_on_create",
+                tenant_id=str(principal.tenant_id),
+                product_id=str(row.id),
+                job_id=str(job_id),
+            )
         return await full_view(uow, row)
+
+
+async def _admit_classification(principal: Principal, cmd: NewProduct, now: datetime) -> bool:
+    """SI14: whether a create without a category queues a classification. Only while the switch
+    is on, and only when the SI10 admission lets it through, checked before the unit of work
+    (it opens its own session). A refusal never fails the create: the seller can ask later."""
+    if cmd.category is not None or not get_settings().category_suggest_enabled:
+        return False
+    refusal = await admit(principal.tenant_id, now, amount=CLASSIFY_RESERVATION_USD)
+    if refusal is not None:
+        log.info(
+            "category_suggest.create_not_admitted",
+            tenant_id=str(principal.tenant_id),
+            refusal=refusal,
+        )
+        return False
+    return True
 
 
 async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductView:
