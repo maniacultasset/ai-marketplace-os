@@ -84,7 +84,43 @@ async def enqueue(tenant: uuid.UUID, product_id: uuid.UUID) -> uuid.UUID:
             ),
             {"t": tenant},
         )
-        return await enqueue_suggestion(uow, tenant, user.scalar_one(), product_id, "0" * 64)
+        product = await uow.products.get_by_id(product_id)
+        assert product is not None
+        return await enqueue_suggestion(
+            uow, tenant, user.scalar_one(), product_id, "0" * 64, category=product.category
+        )
+
+
+async def _digest(tenant: uuid.UUID, product_id: uuid.UUID) -> str:
+    from app.core.config import get_settings
+    from app.repositories.uow import tenant_uow
+    from app.services.category_suggest import suggest_inputs
+
+    async with tenant_uow(tenant) as uow:
+        product = await uow.products.get_by_id(product_id)
+        assert product is not None
+        return (await suggest_inputs(uow, product, get_settings())).digest
+
+
+def _settled(conn: Any, product_id: uuid.UUID, status: str, digest: str) -> None:
+    from psycopg.types.json import Jsonb
+
+    conn.execute(
+        "UPDATE products SET category_suggestion = %s WHERE id = %s",
+        [
+            Jsonb(
+                {
+                    "status": status,
+                    "candidates": [],
+                    "input_digest": digest,
+                    "calibration_version": "v1",
+                    "job_id": None,
+                    "at": datetime.now(UTC).isoformat(),
+                }
+            ),
+            product_id,
+        ],
+    )
 
 
 def _product(jw: JobWorld, title: str = "Cotton crew tee", **cols: Any) -> uuid.UUID:
@@ -302,3 +338,48 @@ async def test_staff_requeue_refused(images_db: JobWorld, store: FakeStorage) ->
             old, new = await JobRunRepository(session, tenant).requeue(job)
             await run_requeue_hook(session, old, new)
     await asyncio.sleep(0)
+
+
+async def test_a_category_written_before_the_run_settles_the_suggestion(
+    images_db: JobWorld, store: FakeStorage
+) -> None:
+    p = _product(images_db, category=None)
+    job = await enqueue(images_db.tenant("acme"), p)
+    images_db.conn.execute("UPDATE products SET category = 'shirts' WHERE id = %s", [p])
+    await run_image_job(job)
+    stored = suggestion(images_db.conn, p)
+    assert stored is not None and stored["status"] == "confirmed"
+    assert [c["category"] for c in stored["candidates"]] == ["shirts"]
+    assert review_tasks(images_db.conn, p) == 0
+
+
+async def test_another_category_written_before_the_run_is_overridden(
+    images_db: JobWorld, store: FakeStorage
+) -> None:
+    p = _product(images_db, "Tee [lowconf]", category=None)
+    job = await enqueue(images_db.tenant("acme"), p)
+    images_db.conn.execute("UPDATE products SET category = 't_shirts' WHERE id = %s", [p])
+    await run_image_job(job)
+    stored = suggestion(images_db.conn, p)
+    assert stored is not None and stored["status"] == "overridden"
+    assert review_tasks(images_db.conn, p) == 0
+
+
+@pytest.mark.parametrize("status", ["confirmed", "overridden"])
+async def test_a_settled_suggestion_is_never_overwritten(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch, status: str
+) -> None:
+    tenant = images_db.tenant("acme")
+    p = _product(images_db)
+    digest = await _digest(tenant, p)
+    _settled(images_db.conn, p, status, digest)
+    await _run(images_db, p)  # the same inputs: the seller already decided
+    kept = suggestion(images_db.conn, p)
+    assert kept is not None and kept["status"] == status and kept["job_id"] is None
+    set_switch(monkeypatch, "category", on=False)
+    await _run(images_db, p)  # `unavailable` never replaces the seller's decision
+    assert suggestion(images_db.conn, p)["status"] == status  # type: ignore[index]
+    images_db.conn.execute("UPDATE products SET title = 'Tee [badrecord]' WHERE id = %s", [p])
+    set_switch(monkeypatch, "category", on=True)
+    await _run(images_db, p)  # nor does a failure
+    assert suggestion(images_db.conn, p)["status"] == status  # type: ignore[index]

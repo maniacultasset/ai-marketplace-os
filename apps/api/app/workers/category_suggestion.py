@@ -24,6 +24,11 @@ provenance or a listing: the seller confirms a candidate with PATCH (AC6).
 7. `suggested` is stored. When the product still has no category and the top confidence is below
    0.80 (or nothing fits), one `category_review` task opens (one live per product).
 
+The seller's decision wins: a stored `confirmed` or `overridden` value is never replaced by a
+`failed` or `unavailable` write, nor by a `suggested` one for the same inputs. When the seller
+wrote another category after the ask (the payload's `category`) and before the answer, the answer
+is stored already settled: `confirmed` when that category is a candidate, else `overridden`.
+
 A timeout or a seam exception is retried by the job policy; after the last attempt the terminal
 hook stores `failed`. Log lines carry ids, counts and statuses only.
 """
@@ -52,6 +57,7 @@ from pydantic import ValidationError
 
 from app.adapters.storage import get_storage
 from app.core.logging import get_logger
+from app.repositories.products import SETTLED_SUGGESTION_STATUSES
 from app.repositories.uow import tenant_uow
 from app.services.category_suggest import SuggestInputs, suggest_inputs
 from app.services.generation_images import load_context_images
@@ -81,6 +87,9 @@ class _Job:
     inputs: SuggestInputs
     has_category: bool
     claim_started_at: datetime
+    # the category when the job was asked for; unknown on a job queued before it was recorded
+    asked_known: bool = False
+    asked_category: str | None = None
 
 
 def _failed(message: str, ctx: JobContext) -> JobFailed:
@@ -93,6 +102,14 @@ def _failed(message: str, ctx: JobContext) -> JobFailed:
             request_id=ctx.request_id,
         )
     )
+
+
+def _asked(ctx: JobContext) -> tuple[bool, str | None]:
+    payload = ctx.payload.get("category_suggestion")
+    if not isinstance(payload, dict) or "category" not in payload:
+        return False, None
+    category = payload["category"]
+    return True, category if isinstance(category, str) else None
 
 
 def _product_id(ctx: JobContext) -> UUID:
@@ -133,17 +150,23 @@ async def _read(ctx: JobContext, product_id: UUID) -> _Job | None:
             return None
         inputs = await suggest_inputs(uow, product, get_settings())
         job = await uow.job_runs.get_by_id(ctx.job_run_id)
+        asked_known, asked_category = _asked(ctx)
         return _Job(
             product_id=product.id,
             inputs=inputs,
             has_category=product.category is not None,
             claim_started_at=(job.started_at if job else None) or datetime.now(UTC),
+            asked_known=asked_known,
+            asked_category=asked_category,
         )
 
 
 async def _settle(ctx: JobContext, job: _Job, value: dict[str, Any]) -> Outcome:
+    """`failed` or `unavailable`, unless the seller already settled the suggestion."""
     async with tenant_uow(ctx.tenant_id) as uow:
-        written = await uow.products.write_category_suggestion(job.product_id, value)
+        written = await uow.products.write_category_suggestion(
+            job.product_id, value, keep_settled=True
+        )
     log.info(
         "category_suggestion.stored",
         product_id=str(job.product_id),
@@ -247,6 +270,14 @@ def screen(result: ClassifyResult, request: ClassifyRequest) -> ClassifyResult:
     return result.model_copy(update={"candidates": kept[:MAX_CANDIDATES]})
 
 
+def _status(job: _Job, product_category: str | None, result: ClassifyResult) -> str:
+    """`suggested`, or settled when the seller wrote another category after the ask."""
+    if not job.asked_known or product_category is None or product_category == job.asked_category:
+        return "suggested"
+    candidates = {c.category for c in result.candidates}
+    return "confirmed" if product_category in candidates else "overridden"
+
+
 def _needs_review(result: ClassifyResult) -> bool:
     if not result.candidates:
         return True
@@ -263,18 +294,35 @@ async def _store_suggested(ctx: JobContext, job: _Job, result: ClassifyResult) -
             return _done(job.product_id, "skipped")
         now_inputs = await suggest_inputs(uow, product, get_settings())
         if now_inputs.digest != job.inputs.digest:  # edited during the call: stale
-            await uow.products.write_category_suggestion(job.product_id, _value("failed", job, ctx))
+            written = await uow.products.write_category_suggestion(
+                job.product_id, _value("failed", job, ctx), keep_settled=True
+            )
             log.info(
                 "category_suggestion.stale",
                 product_id=str(job.product_id),
                 job_run_id=str(ctx.job_run_id),
+                written=written,
             )
-            return _done(job.product_id, "failed")
+            return _done(job.product_id, "failed" if written else "skipped")
+        stored = product.category_suggestion
+        if (
+            isinstance(stored, dict)
+            and stored.get("status") in SETTLED_SUGGESTION_STATUSES
+            and stored.get("input_digest") == job.inputs.digest
+        ):  # the seller already decided on these inputs
+            log.info(
+                "category_suggestion.kept_settled",
+                product_id=str(job.product_id),
+                job_run_id=str(ctx.job_run_id),
+                status=stored.get("status"),
+            )
+            return _done(job.product_id, "skipped")
+        status = _status(job, product.category, result)
         await uow.products.write_category_suggestion(
-            job.product_id, _value("suggested", job, ctx, result)
+            job.product_id, _value(status, job, ctx, result)
         )
         task = False
-        if product.category is None and _needs_review(result):
+        if status == "suggested" and product.category is None and _needs_review(result):
             task = await uow.human_tasks.open_category_review(
                 job.product_id,
                 reason=REVIEW_REASON,
@@ -285,11 +333,11 @@ async def _store_suggested(ctx: JobContext, job: _Job, result: ClassifyResult) -
         "category_suggestion.stored",
         product_id=str(job.product_id),
         job_run_id=str(ctx.job_run_id),
-        status="suggested",
+        status=status,
         candidates=len(result.candidates),
         task_opened=task,
     )
-    return _done(job.product_id, "suggested")
+    return _done(job.product_id, status)
 
 
 async def run_category_suggestion(ctx: JobContext) -> Outcome:

@@ -7,13 +7,16 @@ from uuid import UUID
 
 from mkos_schemas.base import WireModel
 
-CategorySuggestionAnswer = Literal["queued", "suggested", "unavailable", "failed"]
+CategorySuggestionAnswer = Literal[
+    "queued", "suggested", "unavailable", "failed", "confirmed", "overridden"
+]
 
 
 class CategorySuggestionAccepted(WireModel):
     """202 `queued` with the job; 200 `suggested` when the stored suggestion already matches the
-    product's current text, photos and categories (no job); 200 `unavailable` while the switch is
-    off or the pipeline has no classifier. Poll the product for `suggestions.category`."""
+    product's current text, photos and categories (no job), or `confirmed` / `overridden` when the
+    seller already settled that suggestion; 200 `unavailable` while the switch is off or the
+    pipeline has no classifier. Poll the product for `suggestions.category`."""
 
     product_id: UUID
     status: CategorySuggestionAnswer

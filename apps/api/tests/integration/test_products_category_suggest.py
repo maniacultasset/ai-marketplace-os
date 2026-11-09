@@ -88,7 +88,9 @@ async def test_switch_off_is_unavailable_and_spends_nothing(
     assert count(images_db.conn, "SELECT count(*) FROM job_runs") == 0
 
 
-def _store_suggested(jw: JobWorld, product_id: uuid.UUID, digest: str) -> None:
+def _store_suggested(
+    jw: JobWorld, product_id: uuid.UUID, digest: str, status: str = "suggested"
+) -> None:
     from psycopg.types.json import Jsonb
 
     jw.conn.execute(
@@ -96,7 +98,7 @@ def _store_suggested(jw: JobWorld, product_id: uuid.UUID, digest: str) -> None:
         [
             Jsonb(
                 {
-                    "status": "suggested",
+                    "status": status,
                     "candidates": [
                         {
                             "category": "t_shirts",
@@ -138,6 +140,18 @@ async def test_same_digest_answers_200_and_a_title_edit_asks_again(
     images_db.conn.execute("UPDATE products SET title = 'A new title' WHERE id = %s", [p])
     asked = await _ask(api, images_db, p)
     assert asked.status_code == 202 and suggest_jobs(images_db.conn, p) == 1
+
+
+@pytest.mark.parametrize("status", ["confirmed", "overridden"])
+async def test_a_settled_suggestion_for_the_same_digest_answers_200(
+    images_db: JobWorld, api: httpx.AsyncClient, status: str
+) -> None:
+    p = _product(images_db)
+    _store_suggested(images_db, p, await _digest(images_db, p), status)
+    cached = await _ask(api, images_db, p)
+    assert cached.status_code == 200, cached.text
+    assert cached.json() == {"product_id": str(p), "status": status, "job_id": None}
+    assert suggest_jobs(images_db.conn, p) == 0
 
 
 async def test_ai_paused_503_writes_nothing(images_db: JobWorld, api: httpx.AsyncClient) -> None:

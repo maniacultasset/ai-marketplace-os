@@ -16,7 +16,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, tuple_, update
+from sqlalchemy import case, cast, func, literal, literal_column, or_, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -25,6 +25,8 @@ from app.db.models.catalog import Product
 from app.repositories.base import TenantScopedRepository
 
 PAGE_LIMIT_MIN = 1
+# SI14: the seller's decision on a suggestion; a job never writes over it
+SETTLED_SUGGESTION_STATUSES = frozenset({"confirmed", "overridden"})
 PAGE_LIMIT_MAX = 200
 # The identity and family columns an import row sets; facts go through the FactWriter.
 UPSERT_COLUMNS = (
@@ -111,17 +113,28 @@ class ProductRepository(TenantScopedRepository[Product]):
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
     async def write_category_suggestion(
-        self, product_id: uuid.UUID, value: Mapping[str, Any] | None
+        self,
+        product_id: uuid.UUID,
+        value: Mapping[str, Any] | None,
+        *,
+        keep_settled: bool = False,
     ) -> bool:
         """SI14: store the classifier's suggestion (only this column; never the category, the
-        facts or provenance). False when the product is gone."""
+        facts or provenance). With `keep_settled`, a stored `confirmed` or `overridden` value
+        (the seller's decision) is left as it is. False when nothing was written."""
+        criteria = [
+            self._tenant_criterion(include_platform=False),
+            Product.id == product_id,
+            Product.deleted_at.is_(None),
+        ]
+        if keep_settled:
+            stored = Product.category_suggestion["status"].astext
+            criteria.append(
+                or_(stored.is_(None), stored.not_in(sorted(SETTLED_SUGGESTION_STATUSES)))
+            )
         stmt = self._scoped_write(
             update(Product)
-            .where(
-                self._tenant_criterion(include_platform=False),
-                Product.id == product_id,
-                Product.deleted_at.is_(None),
-            )
+            .where(*criteria)
             .values(category_suggestion=None if value is None else dict(value))
         )
         return int(getattr(await self.db.execute(stmt), "rowcount", 0) or 0) == 1

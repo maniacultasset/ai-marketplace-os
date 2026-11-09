@@ -1208,7 +1208,7 @@
         "type": "object"
       },
       "CategorySuggestionAccepted": {
-        "description": "202 `queued` with the job; 200 `suggested` when the stored suggestion already matches the\nproduct's current text, photos and categories (no job); 200 `unavailable` while the switch is\noff or the pipeline has no classifier. Poll the product for `suggestions.category`.",
+        "description": "202 `queued` with the job; 200 `suggested` when the stored suggestion already matches the\nproduct's current text, photos and categories (no job), or `confirmed` / `overridden` when the\nseller already settled that suggestion; 200 `unavailable` while the switch is off or the\npipeline has no classifier. Poll the product for `suggestions.category`.",
         "properties": {
           "job_id": {
             "anyOf": [
@@ -1232,7 +1232,9 @@
               "queued",
               "suggested",
               "unavailable",
-              "failed"
+              "failed",
+              "confirmed",
+              "overridden"
             ],
             "title": "Status",
             "type": "string"

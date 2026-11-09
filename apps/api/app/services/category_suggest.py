@@ -64,6 +64,8 @@ __all__ = [
 log = get_logger(__name__)
 METHOD: Final = "POST"
 LIVE: Final = frozenset({"queued", "running"})
+# a stored answer for the same digest needs no new call: the suggestion or the seller's decision
+ANSWERED: Final = frozenset({"suggested", "confirmed", "overridden"})
 MAX_IMAGES: Final = 6
 MAX_ATTRIBUTES: Final = 40
 TITLE_CHARS: Final = 500
@@ -173,14 +175,12 @@ async def _product(uow: TenantUnitOfWork, product_id: uuid.UUID) -> Product:
 async def _answer(
     uow: TenantUnitOfWork, product: Product, digest: str
 ) -> tuple[int, dict[str, Any]] | None:
-    """A stored suggestion for this digest (200) or the live job (202), else None."""
+    """A stored suggestion for this digest (200, also once the seller confirmed or overrode it)
+    or the live job (202), else None."""
     stored = stored_suggestion(product)
-    if (
-        stored is not None
-        and stored.get("status") == "suggested"
-        and stored.get("input_digest") == digest
-    ):
-        return 200, _body(product.id, "suggested")
+    status = None if stored is None else stored.get("status")
+    if status in ANSWERED and stored is not None and stored.get("input_digest") == digest:
+        return 200, _body(product.id, str(status))
     job = await uow.job_runs.latest_for_entity(CATEGORY_SUGGESTION_ENTITY, product.id)
     if job is not None and job.status in LIVE:
         return 202, _body(product.id, "queued", job.id)
@@ -193,8 +193,12 @@ async def enqueue_suggestion(
     user_id: uuid.UUID,
     product_id: uuid.UUID,
     digest: str,
+    *,
+    category: str | None,
 ) -> uuid.UUID:
-    """One classification job for the product (the caller holds the locks and admitted it)."""
+    """One classification job for the product (the caller holds the locks and admitted it).
+    `category` is the product's category at the ask: the job settles its answer when the seller
+    writes another one before it is stored."""
     enqueued = await uow.job_runs.enqueue(
         EnqueueSpec(
             kind=JobKind.IMAGE_COMPLIANCE,
@@ -202,7 +206,11 @@ async def enqueue_suggestion(
             entity_id=product_id,
             created_by=user_id,
             payload={
-                "category_suggestion": {"product_id": str(product_id), "input_digest": digest}
+                "category_suggestion": {
+                    "product_id": str(product_id),
+                    "input_digest": digest,
+                    "category": category,
+                }
             },
             lock=lock_for(JobKind.IMAGE_COMPLIANCE, CATEGORY_SUGGESTION_ENTITY, tenant_id),
         )
@@ -257,7 +265,9 @@ async def request_suggestion(
         again = await _answer(uow, current, fresh.digest)
         if again is not None:
             return again
-        job_id = await enqueue_suggestion(uow, tenant, principal.user_id, product_id, fresh.digest)
+        job_id = await enqueue_suggestion(
+            uow, tenant, principal.user_id, product_id, fresh.digest, category=current.category
+        )
         return 202, _body(product_id, "queued", job_id)
 
     status, body = await idempotent(principal, idem_key, METHOD, path, payload, handler)

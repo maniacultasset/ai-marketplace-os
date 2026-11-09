@@ -867,7 +867,12 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             # digest has no photo yet (the job reads the photos it finds when it runs)
             inputs = await category_suggest.suggest_inputs(uow, row, get_settings())
             job_id = await category_suggest.enqueue_suggestion(
-                uow, principal.tenant_id, principal.user_id, row.id, inputs.digest
+                uow,
+                principal.tenant_id,
+                principal.user_id,
+                row.id,
+                inputs.digest,
+                category=row.category,
             )
             log.info(
                 "category_suggest.queued_on_create",
