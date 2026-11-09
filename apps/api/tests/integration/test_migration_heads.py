@@ -10,7 +10,7 @@ from app.db.migrations import alembic_config
 
 from .conftest import REPO_ROOT
 
-LEDGER_ROW = re.compile(r"^\| `(\d{4}[a-z]?_[a-z_]+)` \|", re.M)
+LEDGER_ROW = re.compile(r"^\| `(\d{4}[a-z]?_[a-z0-9_]+)` \|", re.M)
 
 
 def _ledger() -> list[str]:
