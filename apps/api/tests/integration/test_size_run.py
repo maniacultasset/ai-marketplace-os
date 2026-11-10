@@ -205,6 +205,30 @@ async def test_sizes_must_come_from_the_saved_chart(
     assert _children(products_world, pid) == []
 
 
+async def test_a_style_holds_at_most_40_sizes(
+    api: httpx.AsyncClient, products_world: World
+) -> None:
+    first = {"unit": "cm", "basis": "garment", "rows": [{"size": f"A{i}"} for i in range(30)]}
+    pid = await _product(api, products_world, "KORA-CAP", chart=first)
+    made = await _post(api, products_world, pid, [f"A{i}" for i in range(30)])
+    assert made.status_code == 201, made.text
+    second = {"unit": "cm", "basis": "garment", "rows": [{"size": f"B{i}"} for i in range(11)]}
+    got = await api.get(f"{PRODUCTS}/{pid}", headers=_op(products_world))
+    saved = await api.patch(
+        f"{PRODUCTS}/{pid}",
+        json={"size_chart": second},
+        headers={**_op(products_world), "If-Match": got.headers["ETag"]},
+    )
+    assert saved.status_code == 200, saved.text
+    response = await _post(api, products_world, pid, [f"B{i}" for i in range(11)])
+    assert (response.status_code, _code(response), _field(response)) == (
+        422,
+        "VALIDATION_FAILED",
+        "sizes",
+    )
+    assert len(_children(products_world, pid)) == 30
+
+
 async def test_a_variant_or_a_colour_style_is_refused(
     api: httpx.AsyncClient, products_world: World
 ) -> None:

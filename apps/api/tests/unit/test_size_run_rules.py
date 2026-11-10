@@ -25,3 +25,20 @@ def test_size_sku_is_the_family_rule() -> None:
     assert size_sku("K" * 60, "XXL") == "K" * 60 + "-XXL"  # 64 characters at most
     assert size_sku("K" * 61, "XXL") is None
     assert size_sku("KORA", "M]") is None
+
+
+def test_only_a_seller_chart_makes_sizes() -> None:
+    from types import SimpleNamespace
+
+    from app.core.errors import InputError
+    from app.services.size_run import _chart_sizes
+
+    table = {"unit": "cm", "basis": "garment", "rows": [{"size": "S"}, {"size": "M"}]}
+    seller = SimpleNamespace(
+        attributes={"size_measurements": {"normalized": table, "source": "seller"}}
+    )
+    assert _chart_sizes(seller) == ["S", "M"]  # type: ignore[arg-type]
+    for fact in ({"normalized": table, "source": "ai"}, {"normalized": table}, None):
+        row = SimpleNamespace(attributes={"size_measurements": fact} if fact else {})
+        with pytest.raises(InputError):
+            _chart_sizes(row)  # type: ignore[arg-type]

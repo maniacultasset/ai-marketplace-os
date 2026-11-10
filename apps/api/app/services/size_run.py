@@ -13,9 +13,10 @@ transaction under the product's row lock, then its listings' locks in id order:
    style split by colour (`color`, `size_color`) is 422 `VARIATION_INVALID` (its sizes come per
    colourway from the sheet).
 2. The sizes: each must be a row of the saved size chart (`size_measurements`; none saved is 422
-   `VALIDATION_FAILED` at `size_chart`), matched case-insensitively and kept in the chart's order
+   `VALIDATION_FAILED` at `size_chart`; only a `seller` chart counts), matched case-insensitively and kept in the chart's order
    and spelling; its key (lower-cased, `SIZE_KEY_PATTERN`, as the import keys it) and its SKU must
-   be valid, else 422 at `sizes[i]`.
+   be valid, else 422 at `sizes[i]`. More than `MAX_SIZES` sizes on the style in all is 422 at
+   `sizes`.
 3. A standalone becomes a size style (`variation_theme='size'`). It must hold nothing a style may
    not own: a barcode (422 `VARIATION_INVALID` at `product_identifier`: a barcode belongs to one
    size), a stock reference (`stock_ref`) or its own size (`attributes.size`). A GTIN exemption
@@ -28,7 +29,7 @@ transaction under the product's row lock, then its listings' locks in id order:
    `-`; the family rule the seeds and imports use), the style's title and category, the `size`
    seller fact and one available matrix cell. Sizes the style already has are kept as they are.
    Any SKU already taken in the brand is 409 `SKU_CONFLICT` at `sizes[i]`, nothing created.
-6. One `product.size_run_created` audit row (the new SKUs in `after`).
+6. One `product.size_run_created` audit row (the new SKUs and superseded listings in `reason`).
 
 A repeat with only existing sizes answers 200 with nothing created.
 """
@@ -101,7 +102,10 @@ def size_sku(style_sku: str, label: str) -> str | None:
 def _chart_sizes(row: Product) -> list[str]:
     attrs = row.attributes if isinstance(row.attributes, Mapping) else {}
     fact = attrs.get(SIZE_CHART_KEY)
-    table = fact.get("normalized") if isinstance(fact, Mapping) else None
+    # only a chart the seller saved (typed, or a size-chart read they confirmed) makes sizes
+    if not isinstance(fact, Mapping) or fact.get("source") != "seller":
+        raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
+    table = fact.get("normalized")
     rows = table.get("rows") if isinstance(table, Mapping) else None
     if not isinstance(rows, list) or not rows:
         raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
@@ -222,6 +226,8 @@ async def _apply(
     converted = row.variation_theme is None
     exempt = converted and row.identifier_status == "exempt"
     size_run = [*stored, *(s.key for s in new)]
+    if len(size_run) > MAX_SIZES:  # ck_products_size_run: refuse here, never a 500 from the DB
+        raise InputError(ErrorCode.VALIDATION_FAILED, "sizes")
     if converted:
         provenance = {k: v for k, v in (row.provenance or {}).items() if k != "identifier"}
         await uow.products.update_one(
