@@ -2614,6 +2614,28 @@ def test_si14_switches_as_committed(repo_root: Path) -> None:
         assert not [k for k in values if k.startswith("LLM_GATEWAY_")], env_name
 
 
+def test_classify_model_as_committed_and_on_both_roles(
+    repo_root: Path, toolkit: Path, tmp_path: Path
+) -> None:
+    """The classifier's route stays `vision` in both envs (no live record covers a flip yet), and
+    one value reaches the api (its reservation) and the worker (its call)."""
+    for env_name in ("staging", "prod"):
+        text = (repo_root / DEPLOY / f"{env_name}.env").read_text(encoding="utf-8")
+        values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+        assert values["CATEGORY_SUGGEST_MODEL"] == "vision", env_name
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["CATEGORY_SUGGEST_MODEL"] == "vision"
+    assert _worker_container(out)[0]["CATEGORY_SUGGEST_MODEL"] == "vision"
+    _set_env(toolkit, "staging", CATEGORY_SUGGEST_MODEL="text")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["CATEGORY_SUGGEST_MODEL"] == "text"
+    assert _worker_container(out)[0]["CATEGORY_SUGGEST_MODEL"] == "text"
+    _set_env(toolkit, "staging", CATEGORY_SUGGEST_MODEL="gpt-4o")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "CATEGORY_SUGGEST_MODEL must be vision or text" in result.stderr
+
+
 def test_si14_switches_reach_both_roles(toolkit: Path, tmp_path: Path) -> None:
     out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
     for name in SI14_SWITCHES:

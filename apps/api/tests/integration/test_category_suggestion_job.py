@@ -407,3 +407,27 @@ async def test_a_result_of_the_pipelines_own_class_is_accepted(
     assert job_row(images_db.conn, job)["status"] == "succeeded"
     stored = suggestion(images_db.conn, p)
     assert stored is not None and stored["status"] == "suggested"
+
+
+async def test_text_route_sends_no_photos_and_keeps_the_digest(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`CATEGORY_SUGGEST_MODEL=text`: the product text only (the generation model has no
+    vision), the suggestion stored as on the vision route, and the same input digest."""
+    from app.core.config import get_settings
+
+    tenant = images_db.tenant("acme")
+    p = _product(images_db, category=None, provenance={"title": f.fact()})
+    photo(images_db.conn, store, tenant, p)
+    digest = await _digest(tenant, p)
+    monkeypatch.setenv("CATEGORY_SUGGEST_MODEL", "text")
+    get_settings.cache_clear()
+    job = await _run(images_db, p)
+    assert stub.LAST_REQUEST is not None and stub.LAST_REQUEST.images == []
+    stored = suggestion(images_db.conn, p)
+    assert stored is not None and stored["status"] == "suggested"
+    assert stored["input_digest"] == digest
+    assert all(not ref.startswith("images[") for ref in stored["candidates"][0]["evidence_refs"])
+    (run,) = _runs(images_db.conn, job)
+    assert (run["agent_name"], run["trigger"]) == ("attribute", "generate")
+    assert _reserved(images_db.conn, job) == 0
