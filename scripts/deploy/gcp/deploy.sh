@@ -1872,7 +1872,7 @@ cmd_sentry_alerts() {
   fi
   gcloud secrets versions access latest --secret="$SENTRY_TOKEN_SECRET" --project="$PROJECT" --quiet |
     py "$HERE/sentry_rules.py" "${args[@]}" --token-stdin ||
-    die "sentry-alerts: the Sentry API refused (above); nothing after the failed rule was changed"
+    die "sentry-alerts: stopped (the reading of $SENTRY_TOKEN_SECRET or the Sentry API failed, above); no rule after the failed one was changed"
   say "sentry-alerts: the kuinn rules are in place"
 }
 
