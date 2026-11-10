@@ -26,6 +26,7 @@ passed on a command line or written to a committed file.
 | `deploy` | The api service: public, the app does its own auth, Cloud SQL attached, secrets as env vars. A new revision gets 0% traffic until its tagged URL passes `smoke`, then takes all traffic; then every `sha-*` revision tag is removed, its own included, because a tag URL reaches that revision directly and would bypass settings a later revision changed (MFA, lockout). Roll back by revision name (`update-traffic --to-revisions`). On the first deploy, `JWT_ISSUER` and the OAuth redirect URIs are re-pointed to the URL the service got (a pinned `JWT_ISSUER` in the env file stays as set). Ingress comes from `INGRESS` (`all`, or `internal-and-cloud-load-balancing` once the edge is locked; the locked value needs `API_PUBLIC_URL=https://$EDGE_DOMAIN`). With ingress locked, the new revision is tagged `candidate` and smoked through the load balancer with the header `x-aimos-candidate` set to the random value `edge setup` wrote into the URL map (never printed); the tag is removed on every exit, and a failed smoke keeps traffic. A KMS guard (after the live-state guard below) checks that `oauth-token-key` and `mfa-secret-key` exist and stops with "run setup first" when one is missing (a release that added a key must run `setup` before `deploy`). A live-state guard first reads the running service (any describe error but NOT_FOUND stops the deploy) and refuses to unlock a locked service (`DEPLOY_ALLOW_UNLOCK=1` overrides), to lock an open one, which is `edge lock-ingress`'s job (`DEPLOY_ALLOW_LOCK=1` overrides), or to change its `JWT_ISSUER`, which signs every user out (`DEPLOY_ALLOW_ISSUER_CHANGE=1` overrides). Then the worker pool (`WORKER_ENABLED=true` only), then the daily maintenance job `aimos-maintenance` on the same image (`python -m app.workers.maintenance`: OAuth state and idempotency-key prunes, `retention_daily`, the marketplace account purge; `aimos-sched` may run it via `roles/run.invoker` on the job) and its Cloud Scheduler trigger `aimos-maintenance-daily` (`MAINT_SCHEDULE`, `MAINT_TIME_ZONE`; created once, updated after), then `smoke`. |
 | `release` | The KMS guard and the setup guard, then `build`, `migrate`, `deploy`: the normal update. The setup guard stops with "run setup first" before any build when `aimos-maint` or `aimos-sched` is missing or `cloudscheduler.googleapis.com` is off (a project whose `setup` predates the maintenance job); `deploy` runs both guards too. The model key guard (ADR-0024) stops the same way when the worker is on and one of its model keys (the gateway's) has no value. The google and amazon guards stop the same way when their switch is on and `GOOGLE_OAUTH_CLIENT_SECRET` or `AMAZON_CLIENT_SECRET` has no value. After pulling a release that adds a key, an account or an API, run `setup` before `release`. |
 | `smoke` | `GET /healthz` must answer 200 (on a `*.run.app` URL, whose front end answers `/healthz` itself with a 404, and on the edge domain, whose Cloud Armor path rule denies it, `GET /api/v1/auth/me` must answer 401 instead); `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
+| `restore-drill` | Launch gate 6, run and timed ("Restore drill" below): `restore-drill [--pitr YYYY-MM-DDTHH:MM:SSZ] [--keep]` restores the latest successful backup (or a point in time) of `SQL_INSTANCE` into a new throwaway `<SQL_INSTANCE>-drill-<ddHHMMSS>`, checks it read only through `cloud-sql-proxy`, times every phase against 15 minutes, then deletes it (also on any failure). Never creates, patches, restores into or deletes `SQL_INSTANCE`. `--dry-run` prints every command and runs none. |
 | `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`, `tenant make-admin --email E --staff-email F`, and (DPP-1, after the identity check in `MFA-STAFF.md`) `tenant unlock --email E --staff-email F` (no password) and `tenant reset-mfa --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>` (8 groups of an upper-case letter, a lower-case letter and a digit, so it meets the DPP rules; must-change at the next sign-in), and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `templates` | `templates refresh --product-type T --staff-email E --reason R` and `templates promote-definition --product-type T --version V [--digest D] --staff-email E --reason R` (DW2, `PTD-REFRESH.md`). Runs `python -m app.cli templates ...` in the one-off job `aimos-ptd` under its own identity `aimos-ptd` (secret access is per identity, so the shared ops identity never gets the token), with the Amazon app's public settings, `AMAZON_CLIENT_SECRET`, `AMAZON_PLATFORM_REFRESH_TOKEN` and the migrator URL. Only while `AMAZON_APP_ID` is set. The platform token is a self-authorization of the Kuinn app on the company's own seller account; the owner adds it with the printed `read -s` command. Only this job mounts it. |
 | `amazon-check` | `amazon-check (--slug S \| --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]`. The read-only Amazon connection check of one tenant's live account: runs `python -m app.cli ops amazon-check` in the one-off job `aimos-amazon-check` (it resolves the slug, or by `--seller-id` the one tenant whose connected Amazon account has that seller id, refusing when none or several match; it prints the tenant slug with the seller id masked, then hands the process to the worker entrypoint `python -m app.workers.amazon_check`) as the worker identity (it already opens tenant tokens with the token key, and reads `DATABASE_URL` and `AMAZON_CLIENT_SECRET`), under the shell role. Steps: the account and its KMS-sealed token, a fresh LWA token (kept in memory, the row is unchanged), getMarketplaceParticipations (Amazon.in), getDefinitionsProductType for KURTA and SHIRT against the stored versions, a Listings probe (404 expected), searchCatalogItems by the EAN, getListingsRestrictions for the first ASIN, and the rate-limit headers. Every SP-API request goes through a transport that refuses anything but GET; the LWA refresh is the one POST. One audit row names the staff email. The job log holds a PASS / WARN / FAIL table with no token, payload or full seller id; a FAIL row fails the job. Only while `AMAZON_APP_ID` is set. |
@@ -283,6 +284,48 @@ clone. To switch over:
 
 A daily backup can also be restored with `gcloud sql backups restore`. The live instance has
 deletion protection, and its backups are kept after deletion (`--retain-backups-on-delete`).
+
+### Restore drill
+
+`scripts/deploy/gcp/deploy.sh prod restore-drill` proves the backups restore, and times it (launch
+gate 6: restored and checked in under 15 minutes). It needs `cloud-sql-proxy` v2 and `psql` on
+`PATH` (`brew install cloud-sql-proxy libpq`), and the runner's own gcloud login with Cloud SQL
+Admin and Secret Manager access in the project. In order:
+1. Reads the source (`databaseVersion`, tier, disk size) and its latest successful backup. With
+   `--pitr <UTC time>` it clones to that time instead (inside the 7-day PITR window), then takes
+   deletion protection off the clone first, then its backups and point-in-time recovery (a refusal
+   there is reported and the drill goes on; the clone is deleted at the end anyway).
+2. Creates `<SQL_INSTANCE>-drill-<ddHHMMSS>` (same version and tier, at least the same disk, no
+   backups, no deletion protection, label `purpose=restore-drill`) and restores the backup into it.
+   A name already in use, or a target without the label, stops the drill before any restore.
+3. Through `cloud-sql-proxy --gcloud-auth` on `127.0.0.1:6544` (`DRILL_PORT`), every session read
+   only, the passwords from `APP_RO_PASSWORD` and `MIGRATOR_PASSWORD` in a 0600 pgpass file of the
+   work dir (removed on exit): the `alembic_version` revision (as `migrator`, the only role that
+   may read it) must be one this checkout knows; row counts of the core tables as `app_ro`, with at
+   least one tenant; a smoke: forced row level security still on, every `active` Amazon account
+   still has its `kms_key_version`, and the newest `job_runs.created_at` (how fresh the backup is).
+4. Deletes the drill instance, and prints the time of each phase and whether gate 6 was met.
+
+Any failure deletes the drill instance on the way out; `--keep` leaves it for a look and prints the
+delete command. Drill instance cost: the tier's hourly price for the run (well under a dollar).
+Run it from the repo root of a full checkout, so the revision check sees `apps/api/alembic`. The
+first prod run needs the owner's go-ahead (it reads prod passwords and makes a prod-sized
+instance for about 15 minutes).
+
+## Cross-region backups
+
+Prepared and OFF until the client decides (V1 hardening #4). Today `SQL_BACKUP_LOCATION=asia-south1`,
+the same region as the zonal primary, so a regional outage takes both. The other accepted value is
+`asia-south2` (Delhi), which keeps the data in India; any other value is refused before any gcloud
+call. To switch on:
+1. Set `SQL_BACKUP_LOCATION=asia-south2` in `prod.env` and commit.
+2. `scripts/deploy/gcp/deploy.sh prod setup --dry-run`: on the live instance it prints one
+   `gcloud sql instances patch aimos-db --backup-location=asia-south2` and changes nothing else.
+3. `scripts/deploy/gcp/deploy.sh prod setup`. New backups go to asia-south2; backups already
+   taken stay in asia-south1 until they age out (7 kept).
+4. After the next nightly backup (20:30 UTC), run `restore-drill`: it restores from the new
+   location into asia-south1.
+To switch back, set `asia-south1` and rerun `setup`.
 
 ## Cost notes (list prices before GST; ADR-0001, EXECUTION-PLAN §5.4)
 
