@@ -19,6 +19,8 @@
 #               Amazon connection check of one tenant (GET only, worker identity, one-off job)
 #   images      recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E: queue the photo checks
 #               again for photos the old photo rules judged (worker identity, one-off job; rerun to remaining=0)
+#   sentry-alerts  the Sentry issue alert rules of sentry_rules.py (new issue, regression, spike, ops alert
+#               repeats): SENTRY_ORG, SENTRY_PROJECT, SENTRY_API_URL and the SENTRY_ALERTS_TOKEN secret
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
 #               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, SQL, 5xx), cors and status, ADR-0025)
@@ -53,8 +55,9 @@ OPS_SECRETS="ALEMBIC_DATABASE_URL"
 MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 PW_MOUNT="/secrets/initial-password/value"
 
+# The header comment from line 5 to the bare `#` before "Every subcommand describes".
 usage() {
-  sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,/^# Every subcommand describes/p' "$0" | sed -e '$d' | sed -e '$d' -e 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -1839,6 +1842,43 @@ cmd_images() {
   job_logs_hint "$IMGRECHECK_JOB"
 }
 
+# ---- Sentry alert rules (ops readiness) ----
+# The issue alert rules of sentry_rules.py, applied with the Sentry API (DEPLOY-GCP.md "Sentry
+# alert rules"). The token (scopes alerts:read, alerts:write) lives in the SENTRY_ALERTS_TOKEN
+# secret, which no deployed process reads: it goes from `gcloud secrets versions access` straight
+# into the helper's stdin, never argv, a file or the output. --dry-run prints the rules and
+# contacts neither Google Cloud nor Sentry.
+SENTRY_TOKEN_SECRET="SENTRY_ALERTS_TOKEN"
+cmd_sentry_alerts() {
+  [ ${#REST[@]} -eq 0 ] || usage
+  local name missing="" value
+  for name in SENTRY_ORG SENTRY_PROJECT SENTRY_API_URL; do
+    eval "value=\"\${$name-}\""
+    [ -n "$value" ] || missing="$missing $name"
+  done
+  [ -z "$missing" ] ||
+    die "sentry-alerts: set$missing in scripts/deploy/gcp/$ENV_NAME.env (DEPLOY-GCP.md \"Sentry alert rules\")"
+  local args=(--org "$SENTRY_ORG" --project "$SENTRY_PROJECT" --api-url "$SENTRY_API_URL" --environment "$APP_ENV")
+  if [ -n "${SENTRY_SLACK_WORKSPACE-}" ] || [ -n "${SENTRY_SLACK_CHANNEL-}" ]; then
+    args+=(--slack-workspace "${SENTRY_SLACK_WORKSPACE-}" --slack-channel "${SENTRY_SLACK_CHANNEL-}")
+  fi
+  # The helper checks every value and prints the rules; it contacts nothing in this mode.
+  py "$HERE/sentry_rules.py" "${args[@]}" --dry-run || die "sentry-alerts: bad Sentry settings in scripts/deploy/gcp/$ENV_NAME.env"
+  ensure_secret "$SENTRY_TOKEN_SECRET"
+  pipe_note "gcloud secrets versions access latest --secret=$SENTRY_TOKEN_SECRET --project=$PROJECT | sentry_rules.py ${args[*]} --token-stdin"
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  if ! secret_has_version "$SENTRY_TOKEN_SECRET"; then
+    say "secret $SENTRY_TOKEN_SECRET has no value. Make a Sentry token with alerts:read and alerts:write, then add it in your own terminal (the value is never echoed):"
+    printf "  bash -c 'read -rsp \"%s: \" v; echo; printf %%s \"\$v\" | gcloud secrets versions add %s --data-file=- --project=%s'\n" \
+      "$SENTRY_TOKEN_SECRET" "$SENTRY_TOKEN_SECRET" "$PROJECT"
+    die "sentry-alerts: stopped until $SENTRY_TOKEN_SECRET has a value"
+  fi
+  gcloud secrets versions access latest --secret="$SENTRY_TOKEN_SECRET" --project="$PROJECT" --quiet |
+    py "$HERE/sentry_rules.py" "${args[@]}" --token-stdin ||
+    die "sentry-alerts: stopped (the reading of $SENTRY_TOKEN_SECRET or the Sentry API failed, above); no rule after the failed one was changed"
+  say "sentry-alerts: the kuinn rules are in place"
+}
+
 # ---- edge (DPP-2) ----
 # The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
 # Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
@@ -2635,6 +2675,7 @@ case "$CMD" in
   templates) cmd_templates ;;
   amazon-check) cmd_amazon_check ;;
   images) cmd_images ;;
+  sentry-alerts) cmd_sentry_alerts ;;
   status) cmd_status ;;
   edge) cmd_edge ;;
   *) usage ;;

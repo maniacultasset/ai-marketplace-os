@@ -30,6 +30,7 @@ passed on a command line or written to a committed file.
 | `templates` | `templates refresh --product-type T --staff-email E --reason R` and `templates promote-definition --product-type T --version V [--digest D] --staff-email E --reason R` (DW2, `PTD-REFRESH.md`). Runs `python -m app.cli templates ...` in the one-off job `aimos-ptd` under its own identity `aimos-ptd` (secret access is per identity, so the shared ops identity never gets the token), with the Amazon app's public settings, `AMAZON_CLIENT_SECRET`, `AMAZON_PLATFORM_REFRESH_TOKEN` and the migrator URL. Only while `AMAZON_APP_ID` is set. The platform token is a self-authorization of the Kuinn app on the company's own seller account; the owner adds it with the printed `read -s` command. Only this job mounts it. |
 | `amazon-check` | `amazon-check (--slug S \| --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]`. The read-only Amazon connection check of one tenant's live account: runs `python -m app.cli ops amazon-check` in the one-off job `aimos-amazon-check` (it resolves the slug, or by `--seller-id` the one tenant whose connected Amazon account has that seller id, refusing when none or several match; it prints the tenant slug with the seller id masked, then hands the process to the worker entrypoint `python -m app.workers.amazon_check`) as the worker identity (it already opens tenant tokens with the token key, and reads `DATABASE_URL` and `AMAZON_CLIENT_SECRET`), under the shell role. Steps: the account and its KMS-sealed token, a fresh LWA token (kept in memory, the row is unchanged), getMarketplaceParticipations (Amazon.in), getDefinitionsProductType for KURTA and SHIRT against the stored versions, a Listings probe (404 expected), searchCatalogItems by the EAN, getListingsRestrictions for the first ASIN, and the rate-limit headers. Every SP-API request goes through a transport that refuses anything but GET; the LWA refresh is the one POST. One audit row names the staff email. The job log holds a PASS / WARN / FAIL table with no token, payload or full seller id; a FAIL row fails the job. Only while `AMAZON_APP_ID` is set. |
 | `images` | `images recheck (--tenant ID \| --slug S \| --seller-id ID) --staff-email E`. Photo rules 2.1.0: queues the photo checks again for one tenant's live photos whose stored report the old photo rules wrote. Runs `python -m app.cli images recheck` in the one-off job `aimos-images-recheck` as the worker identity, under the shell role, with `DATABASE_URL` only (app_rw, tenant scope); no model key, no Amazon secret. `--slug` and `--seller-id` resolve the tenant as `amazon-check` does (the one tenant whose connected Amazon account has that seller id; refused when none or several match; the seller id is masked in the log). Each run queues at most the free per-brand photo job cap and writes one `images.recheck` audit row naming the staff email; the job log ends `images recheck: ok (queued=N remaining=M)`. Rerun it, after the worker drains the queued checks, until `remaining=0`. A listing's photo issues follow on its next check (a read of a reviewable listing, "Check again" or a regenerate). Nothing is approved, sent or published. |
+| `sentry-alerts` | The Sentry issue alert rules as code (`sentry_rules.py`; "Sentry alert rules" below), with the API token from the `SENTRY_ALERTS_TOKEN` secret piped to the helper's stdin. Needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_API_URL` in the env file; refused when any is blank or malformed. `--dry-run` prints the four rules and contacts neither Google Cloud nor Sentry. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
 | `edge` | Prod only (needs `EDGE_DOMAIN`; staging is refused). `edge setup` builds the global external load balancer for `api.kuinn.in` (managed certificate, SSL policy MODERN / TLS 1.2, serverless NEGs for the service and its `candidate` tag, logged backends with the Cloud Armor policy `kuinn-api-waf`); `edge rules` converges the policy to `armor-rules.yaml` rule by rule, every group in preview unless listed in `EDGE_ENFORCE`; `edge enforce` does the same after printing what leaves preview; `edge lock-ingress` / `edge unlock-ingress` close and reopen the `run.app` URLs; `edge alerts` sets up the uptime, worker and maintenance alerts (see "Alerts and Slack") plus the deny/429/5xx/Adaptive Protection alerts to `ALERT_EMAIL` and the 400-day `security-logs` bucket; `edge cors` resets the bucket CORS from `ALLOWED_ORIGINS`; `edge status` prints the read-only state and evidence. Order, gates and rollbacks: `docs/runbooks/EDGE-CUTOVER.md`. Interim (ADR-0025): with `EDGE_PROVIDER=cloudflare` only `edge alerts` (the provider-independent part, below), `edge cors` and `edge status` run, and the api gets the Worker's `EDGE_ORIGIN_SECRET`; see `docs/runbooks/EDGE-CLOUDFLARE.md`. |
 
@@ -209,9 +210,60 @@ job per day, at most 20 per job kind per 15 minutes, then one summary). To turn 
 incoming webhook in the team's Slack, add it with the `read -rsp` command `setup` prints, then
 `deploy.sh prod deploy` (or the next `release`). Every alert kind also reaches Sentry.
 
-**Who owns what.** The owner of `ALERT_EMAIL` owns the Cloud Monitoring policies above. Sentry
-alert rules (new issue, regression) are set in Sentry's UI by the on-call engineer named in
-`docs/runbooks/INCIDENTS.md`; nothing in this toolkit creates them.
+**Who owns what.** The owner of `ALERT_EMAIL` owns the Cloud Monitoring policies above. The
+Sentry alert rules are code (`sentry-alerts`, next section); the on-call engineer named in
+`docs/runbooks/INCIDENTS.md` owns them and the issues they raise.
+
+## Sentry alert rules
+
+`scripts/deploy/gcp/deploy.sh prod sentry-alerts` makes Sentry mail people. It owns four issue
+alert rules, all on the `production` environment (`APP_ENV`), each mailing the issue owners and,
+when there are none, every active member of the project:
+
+| Rule | Fires when |
+|---|---|
+| `kuinn: new issue` | an issue is seen for the first time (at most one mail per issue per 30 min) |
+| `kuinn: regression` | a resolved issue comes back |
+| `kuinn: issue spike` | one issue is seen more than 100 times in an hour |
+| `kuinn: ops alert repeats` | an app alert (`alert_kind` tag) `llm_provider_refused`, `llm_credit`, `token_refresh_failed` or `job_dead_lettered` is new, regressed or seen again within the hour (at most one mail per issue per hour) |
+
+Each rule is described before it changes: absent, it is created; present but different in a
+field the helper sets, it is updated in place; the same, it is kept. Rules with any other name
+are never changed or deleted, so a rule made by hand in Sentry stays. Two rules with the same
+`kuinn: ` name stop the run before any change.
+
+**One-time setup (the owner).**
+1. In Sentry, note the organisation and project slugs from the project's URL
+   (`https://<org>.sentry.io/projects/<project>/`) and the region from the `SENTRY_DSN` host
+   (`o<n>.ingest.de.sentry.io` means `https://de.sentry.io`; `.us.` or none means
+   `https://sentry.io`). Set `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_API_URL` in `prod.env` and
+   commit.
+2. Make a token with the scopes `alerts:read` and `alerts:write` only: Settings > Developer
+   Settings > Custom Integrations > Create New Integration > Internal Integration, name
+   `kuinn-alert-rules`, Permissions: Alerts Read & Write, everything else No Access, Save, then
+   copy the token. (A personal token under User Settings > Personal Tokens with the same two
+   scopes works too.)
+3. `scripts/deploy/gcp/deploy.sh prod sentry-alerts --dry-run` prints the rules. The first live
+   run creates the secret `SENTRY_ALERTS_TOKEN` (no value) and stops, printing the `read -rsp`
+   command that adds the token without echoing it. Add it, then run
+   `scripts/deploy/gcp/deploy.sh prod sentry-alerts` again.
+
+No deployed process reads `SENTRY_ALERTS_TOKEN`: no service account is granted it, and only a
+person with Secret Manager access in `aimos-prod` can run this. The token goes from
+`gcloud secrets versions access` into the helper's stdin, never argv, a file or the output. To
+rotate it: delete the integration's token in Sentry, make a new one, add it as a new version.
+
+**Slack (optional).** With Sentry's Slack integration installed (Settings > Integrations > Slack),
+set `SENTRY_SLACK_WORKSPACE` (the integration's numeric id, in its settings URL) and
+`SENTRY_SLACK_CHANNEL` (for example `#kuinn-alerts`) together, then rerun: every rule also posts
+there. Blank, the rules only mail.
+
+**If the API is not an option** (no token can be issued), make the same four rules by hand:
+Alerts > Create Alert > Issues, environment `production`, the "when" and "if" lines from the
+table above (for the ops rule: "The event's tags match `alert_kind` equals ..." once per kind,
+"any"), action "Send a notification to Suggested Assignees, falling back to All project
+members", the action interval from the table, and the rule name exactly as in the table, so a
+later `sentry-alerts` run adopts them instead of adding copies.
 
 ## Restore the database (point-in-time recovery)
 
