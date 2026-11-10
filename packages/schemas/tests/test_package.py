@@ -29,6 +29,7 @@ EXPECTED_MODULES = {
     "jobs.py",
     "listing.py",
     "paths.py",
+    "photo_facts_read.py",
     "pipeline.py",
     "publish.py",
     "rules.py",

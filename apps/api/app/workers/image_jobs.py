@@ -5,6 +5,7 @@
 `image_candidate`. `run_image_job` routes it: a payload naming a `candidate_id` goes to
 `run_image_candidate`, SI12's `size_chart_read` payload to `run_size_chart_read`, SI14's
 `category_suggestion` payload to `run_category_suggestion` and `column_map` to `run_column_map`,
+V1.1's `photo_facts_read` (the photo read on upload) to `run_photo_facts_read`,
 every other payload to the upload
 checks (`run_image_compliance`). The
 dispatcher lives in `app.workers` because the candidate body is the one that may reach the AI
@@ -17,6 +18,7 @@ from app.services.image_compliance import run_image_compliance
 from app.workers.category_suggestion import run_category_suggestion
 from app.workers.column_map import run_column_map
 from app.workers.image_candidate import run_image_candidate
+from app.workers.photo_facts_read import run_photo_facts_read
 from app.workers.registry import JobContext, Outcome
 from app.workers.size_chart_read import run_size_chart_read
 
@@ -26,6 +28,8 @@ async def run_image_job(ctx: JobContext) -> Outcome:
         return await run_category_suggestion(ctx)
     if "column_map" in ctx.payload:
         return await run_column_map(ctx)
+    if "photo_facts_read" in ctx.payload:
+        return await run_photo_facts_read(ctx)
     if "size_chart_read" in ctx.payload:
         return await run_size_chart_read(ctx)
     if "candidate_id" in ctx.payload:

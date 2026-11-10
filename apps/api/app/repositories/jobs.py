@@ -39,7 +39,7 @@ from app.db.models.tenancy import Tenant
 from app.db.queue import cancel_on_session, defer_on_session, retire_on_session
 from app.db.session import get_engine
 from app.repositories.base import TenantScopedRepository
-from app.workers.policy import POLICIES, lock_for, priority_for
+from app.workers.policy import PHOTO_FACTS_READ_ENTITY, POLICIES, lock_for, priority_for
 from app.workers.policy import lease_s as kind_lease_s
 
 log = get_logger(__name__)
@@ -63,6 +63,7 @@ ENTITY_TYPES: Final = frozenset(
         "error_proposal",
         "category_suggestion",
         "column_map",
+        "photo_facts_read",
     }
 )
 
@@ -369,18 +370,21 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
-    async def latest_photo_set(self, product_id: uuid.UUID) -> tuple[tuple[str, str], ...] | None:
-        """SI3 skip rule (CP-D2): the `photo_set` of the product's newest finished
-        `listing_generate` job that recorded one, across its listings; None when there is none.
-        A malformed record reads as None (logged by job id), so the next run calls vision again.
-        The join follows the generate job's entity (`entity_type 'listing'`, `entity_id` = the
-        listing, as `enqueue_generate` writes it), so the plan is the product's listings
-        (`uq_listings_product_id_marketplace`) then `ix_job_runs_entity` probes, never a scan of
-        the tenant's finished jobs (no index on finished rows leads with `listing_id`)."""
+    async def _newest_photo_record(
+        self, product_id: uuid.UUID, key: str
+    ) -> tuple[uuid.UUID, Any, datetime | None] | None:
+        """(job id, `result_json[key]`, finished_at) of the product's newest finished photo read
+        that recorded `key`: a `listing_generate` job of one of its listings (SI3), or, since
+        V1.1, a photo read on upload (an `image_compliance` job about a `photo_facts_read`,
+        entity = the product). Ties go to the larger job id, as before."""
         if not isinstance(product_id, uuid.UUID):
             raise ValueError("product_id must be a UUID")
-        stmt = (
-            select(JobRun.id, JobRun.result_json["photo_set"])
+        # The join follows the generate job's entity (`entity_type 'listing'`, `entity_id` = the
+        # listing, as `enqueue_generate` writes it), so the plan is the product's listings
+        # (`uq_listings_product_id_marketplace`) then `ix_job_runs_entity` probes, never a scan of
+        # the tenant's finished jobs (no index on finished rows leads with `listing_id`).
+        generated = (
+            select(JobRun.id, JobRun.result_json[key], JobRun.finished_at)
             .select_from(JobRun)
             .join(
                 Listing,
@@ -397,53 +401,56 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
                 Listing.product_id == product_id,
                 JobRun.kind == JobKind.LISTING_GENERATE.value,
                 JobRun.finished_at.is_not(None),
-                JobRun.result_json.has_key("photo_set"),
+                JobRun.result_json.has_key(key),
             )
             .order_by(JobRun.finished_at.desc(), JobRun.id.desc())
             .limit(1)
         )
-        row = (await self.db.execute(self._scoped_read(stmt))).first()
-        if row is None:
+        uploaded = (  # `ix_job_runs_entity` on (entity_type, entity_id)
+            select(JobRun.id, JobRun.result_json[key], JobRun.finished_at)
+            .where(
+                self._criterion_for(JobRun),
+                JobRun.entity_type == PHOTO_FACTS_READ_ENTITY,
+                JobRun.entity_id == product_id,
+                JobRun.kind == JobKind.IMAGE_COMPLIANCE.value,
+                JobRun.finished_at.is_not(None),
+                JobRun.result_json.has_key(key),
+            )
+            .order_by(JobRun.finished_at.desc(), JobRun.id.desc())
+            .limit(1)
+        )
+        rows = [
+            row
+            for stmt in (generated, uploaded)
+            if (row := (await self.db.execute(self._scoped_read(stmt))).first()) is not None
+        ]
+        if not rows:
             return None
-        job_id, raw = row
+        newest = max(rows, key=lambda r: (r[2], r[0]))
+        return newest[0], newest[1], newest[2]
+
+    async def latest_photo_set(self, product_id: uuid.UUID) -> tuple[tuple[str, str], ...] | None:
+        """SI3 skip rule (CP-D2): the `photo_set` of the product's newest finished photo read that
+        recorded one (`_newest_photo_record`: a generation of one of its listings, or a read on
+        upload); None when there is none. A malformed record reads as None (logged by job id),
+        so the next run calls vision again."""
+        found = await self._newest_photo_record(product_id, "photo_set")
+        if found is None:
+            return None
+        job_id, raw, _ = found
         parsed = _photo_pairs(raw)
         if parsed is None:
             log.warning("jobs.photo_set_malformed", job_run_id=str(job_id))
         return parsed
 
     async def latest_photo_read(self, product_id: uuid.UUID) -> PhotoReadRow | None:
-        """SI9 B7: the `photo_read` of the product's newest finished `listing_generate` job that
-        recorded one (the `latest_photo_set` join and indexes); None when there is none. A
-        malformed record reads as None, logged by job id."""
-        if not isinstance(product_id, uuid.UUID):
-            raise ValueError("product_id must be a UUID")
-        stmt = (
-            select(JobRun.id, JobRun.result_json["photo_read"], JobRun.finished_at)
-            .select_from(JobRun)
-            .join(
-                Listing,
-                and_(
-                    Listing.tenant_id == JobRun.tenant_id,
-                    JobRun.entity_type == "listing",
-                    JobRun.entity_id == Listing.id,
-                    JobRun.listing_id == Listing.id,
-                ),
-            )
-            .where(
-                self._criterion_for(JobRun),
-                self._criterion_for(Listing),
-                Listing.product_id == product_id,
-                JobRun.kind == JobKind.LISTING_GENERATE.value,
-                JobRun.finished_at.is_not(None),
-                JobRun.result_json.has_key("photo_read"),
-            )
-            .order_by(JobRun.finished_at.desc(), JobRun.id.desc())
-            .limit(1)
-        )
-        row = (await self.db.execute(self._scoped_read(stmt))).first()
-        if row is None:
+        """SI9 B7: the `photo_read` of the product's newest finished photo read that recorded one
+        (`_newest_photo_record`); None when there is none. A malformed record reads as None,
+        logged by job id."""
+        found = await self._newest_photo_record(product_id, "photo_read")
+        if found is None:
             return None
-        job_id, raw, finished_at = row
+        job_id, raw, finished_at = found
         parsed = _photo_read(raw, finished_at)
         if parsed is None:
             log.warning("jobs.photo_read_malformed", job_run_id=str(job_id))

@@ -40,6 +40,7 @@ def test_only_three_modules_reach_the_pipeline() -> None:
         "workers/error_diagnosis.py",  # SI13: the diagnosis prompt over `complete_json`
         "workers/generation.py",
         "workers/image_edit_seam.py",
+        "workers/photo_facts_seam.py",  # V1.1: `read_photo_facts`
         "workers/size_chart_seam.py",
     ]
 
@@ -52,6 +53,7 @@ def test_only_three_modules_reach_the_pipeline() -> None:
         "error_diagnosis.py",
         "classify_seam.py",
         "column_map_seam.py",
+        "photo_facts_seam.py",
     ],
 )
 def test_the_seam_imports_lazily(seam: str) -> None:

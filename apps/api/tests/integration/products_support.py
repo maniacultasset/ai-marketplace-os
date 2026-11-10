@@ -135,6 +135,7 @@ PRODUCT_FIELDS = frozenset(
         "variant_attributes",
         # SI9: the newest photo read (detail only; null on lists)
         "photo_read",
+        "photo_reading",  # V1.1: a photo read on upload is queued or running
         # SI5: the barcode and the GTIN exemption
         "product_identifier",
         "identifier_exemption",

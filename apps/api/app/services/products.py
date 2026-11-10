@@ -63,6 +63,7 @@ from app.services.product_facts import (
     size_chart_fact,
 )
 from app.workers.budget import classify_reservation_usd
+from app.workers.policy import PHOTO_FACTS_READ_ENTITY
 
 __all__ = [
     "NewProduct",
@@ -213,6 +214,7 @@ class ProductView:
     etag: str = ""
     photo_facts: tuple[PhotoFactView, ...] = ()
     photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
+    photo_reading: bool = False  # V1.1: a photo read on upload is queued or running (detail only)
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool = False
     # SI12: the seller fields (single reads: own → style, origin → brand default; lists: own)
@@ -590,6 +592,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         brand_inherited = brand_name is not None
     gender = row.gender if row.gender is not None else getattr(style, "gender", None)
     photo_read = await uow.job_runs.latest_photo_read(row.id)
+    upload_read = await uow.job_runs.latest_for_entity(PHOTO_FACTS_READ_ENTITY, row.id)
     exempt = False
     if _is_style(row):
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
@@ -623,6 +626,7 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         hsn_suggestion=suggest_hsn(row.category, seller.hsn_code),
         size_chart_suggestion=await size_chart_suggestion(uow, row, details),
         size_chart_read_enabled=get_settings().size_chart_read_enabled,
+        photo_reading=upload_read is not None and upload_read.status in ("queued", "running"),
         category_suggestion=public_category_suggestion(row),
         category_suggest_enabled=get_settings().category_suggest_enabled,
         **await _thumbnail(uow, row, details),

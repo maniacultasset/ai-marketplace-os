@@ -30,6 +30,7 @@ from .jobs import (
     ModelCredentials,
 )
 from .listing import CanonicalListing
+from .photo_facts_read import PhotoFactsReadRequest, PhotoFactsReadResult
 from .publish import ListingResult, MarketplacePreview, SubmissionOut
 from .rules import RuleSet
 from .size_chart_read import SizeChartReadRequest, SizeChartReadResult
@@ -66,6 +67,8 @@ MODELS: Final[tuple[type[BaseModel], ...]] = (
     ClassifyResult,
     ColumnMapRequest,
     ColumnMapResult,
+    PhotoFactsReadRequest,
+    PhotoFactsReadResult,
 )
 
 
