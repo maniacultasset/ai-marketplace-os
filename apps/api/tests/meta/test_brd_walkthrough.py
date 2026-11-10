@@ -39,6 +39,8 @@ PART2 = (
     "flipkart_publish_refused",
     "publish_replay",
     "analytics",
+    "product_delete_refused",
+    "product_delete",
     "ask_question_skip",
     "no_canaries_in_logs",
 )
