@@ -20,7 +20,7 @@ transaction under the product's row lock, then its listings' locks in id order:
 3. A standalone becomes a size style (`variation_theme='size'`). It must hold nothing a style may
    not own: a barcode (422 `VARIATION_INVALID` at `product_identifier`: a barcode belongs to one
    size), a stock reference (`stock_ref`) or its own size (`attributes.size`). A GTIN exemption
-   moves to every new size.
+   moves to every new size; a size added later to a style whose sizes are all exempt is exempt.
 4. Every listing: one the marketplace has seen is 409 `INVALID_STATUS_TRANSITION` at
    `listing_published`; a generating one 409 `LISTING_BUSY`. Its content was written for the old
    family, so a `validated`, `needs_review` or `approved` listing moves to
@@ -224,7 +224,10 @@ async def _apply(
     listings = await _listings(uow, row)
     stamp = fact_stamp(datetime.now(UTC))
     converted = row.variation_theme is None
-    exempt = converted and row.identifier_status == "exempt"
+    if converted:
+        exempt = row.identifier_status == "exempt"
+    else:  # a later size joins an exempt family exempt, or the style would read as not exempt
+        exempt = (await uow.products.style_exemptions([row.id]))[row.id]
     size_run = [*stored, *(s.key for s in new)]
     if len(size_run) > MAX_SIZES:  # ck_products_size_run: refuse here, never a 500 from the DB
         raise InputError(ErrorCode.VALIDATION_FAILED, "sizes")

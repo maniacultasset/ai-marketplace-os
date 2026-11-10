@@ -178,6 +178,14 @@ async def test_exemption_moves_to_every_size(api: httpx.AsyncClient, products_wo
     ]
     read = await api.get(f"{PRODUCTS}/{pid}", headers=_op(products_world))
     assert read.json()["identifier_exemption"] is True
+    later = await _post(api, products_world, pid, ["L"])
+    assert later.status_code == 201, later.text
+    added = products_world.conn.execute(
+        "SELECT identifier_status FROM products WHERE sku = 'KORA-EXEMPT-L'"
+    ).fetchone()
+    assert added is not None and added[0] == "exempt"
+    read = await api.get(f"{PRODUCTS}/{pid}", headers=_op(products_world))
+    assert read.json()["identifier_exemption"] is True
 
 
 # ---- refusals ----
