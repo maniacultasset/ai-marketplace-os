@@ -193,8 +193,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   pages need a login). 8542 has a row since the prod-codes fix below; 8541 and 8572 stay out on purpose. Added:
   4000003, 101158, 100980, 4005015, 4005007, 4005008, 4005006, 4005038, 4005013, 101168, 4005033.
 - **SI13 open:** child-level value-map pairs (a child refusal has no live counterpart: counted unpaired); a
-  category change from `blocked` or for a family with live variants (staff); the rejected listing keeps `failed`
-  after a recategorise, so a `retry_publish` before the regenerate resends the old version; the child-axis repair
+  category change from `blocked` or for a family with live variants (staff); the child-axis repair
   has no integration or e2e test (unit-proved).
 - **Amazon `VALIDATION_PREVIEW` before approval is deferred (SI9 D10, LOW).** The pre-approval check is the local
   mapping plus the stored Product Type Definition (`services/adapter_check.py`); Amazon's own preview call needs the

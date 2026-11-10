@@ -16,7 +16,10 @@ job and no attempt, with an audit row `listing.publish_paused` (field retry: the
 `generating|publishing` → 409 LISTING_BUSY; a `listing_version_id` that is not current → 409
 STALE_VERSION (D4); the current version not
 the approved one → 409 INVALID_STATUS_TRANSITION; the status has no publish event → 409
-INVALID_STATUS_TRANSITION; no active account → 409 AUTH_EXPIRED (D6); then, unless the latest
+INVALID_STATUS_TRANSITION; the approved version pinned a template of another category than the
+listing's (a recategorise after a rejection, SI13 T8, keeps `failed` until the regenerate) → 409
+INVALID_STATUS_TRANSITION at `facts.category`, so the old version is never resent; no active
+account → 409 AUTH_EXPIRED (D6); then, unless the latest
 submission is a `pending` row whose job ended (resolve-then-retry, CP1 (c): the new job reads the
 marketplace before anything else), 3 submissions of the version → 409
 SUBMISSION_ATTEMPTS_EXHAUSTED, and a retry with no justification (CP9) → 409
@@ -295,6 +298,28 @@ async def _require_mrp(uow: TenantUnitOfWork, listing: Any) -> None:
         raise Refused(ErrorCode.CRITICAL_FACT_MISSING, field=missing.field, message=missing.message)
 
 
+CATEGORY_FIELD: Final = "facts.category"
+CATEGORY_CHANGED: Final = (
+    "The category changed after this version was written. Regenerate the listing and approve it "
+    "again before publishing."
+)
+
+
+async def _require_version_category(uow: TenantUnitOfWork, listing: Any) -> None:
+    """KNOWN-ISSUES (SI13 open): the approved version must have been written for the listing's
+    category. A recategorise of a rejected listing keeps it `failed` with its old approved
+    version, so a publish or field retry before the regenerate would resend the old category's
+    content and product type. A version with no pinned template is not checked."""
+    version = await uow.listing_versions.get(listing.id, listing.approved_version_id)
+    if version is None or version.category_template_id is None:
+        return
+    pinned = await uow.templates.pinned(version.category_template_id)
+    if pinned is not None and pinned.template.category != listing.category:
+        raise Refused(
+            ErrorCode.INVALID_STATUS_TRANSITION, field=CATEGORY_FIELD, message=CATEGORY_CHANGED
+        )
+
+
 async def plan_publish(
     uow: TenantUnitOfWork, listing: Any, *, retry_fields_only: bool = False
 ) -> Plan:
@@ -307,6 +332,7 @@ async def plan_publish(
         and not (listing.status == "failed" and listing.status_reason in RETRY_FIELDS_REASONS)
     ):
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)
+    await _require_version_category(uow, listing)
     await _account(uow, listing)
     await _require_mrp(uow, listing)
     parent = (
