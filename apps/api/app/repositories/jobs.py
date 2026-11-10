@@ -21,6 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 from sqlalchemy import and_, exists, func, null, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -28,6 +29,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.core.errors import ConflictError
 from app.core.logging import get_logger
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.integrity import map_db_error, to_conflict
@@ -773,10 +775,11 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         candidate_ids: list[uuid.UUID],
         product_ids: list[uuid.UUID],
     ) -> list[JobRun]:
-        """The `queued` and `running` jobs of one product, locked `FOR UPDATE` in id order (a
-        worker's claim CAS waits for the caller): its listings' jobs, its images' checks and
+        """The `queued` and `running` jobs of one product, locked `FOR UPDATE NOWAIT` in id order
+        (a worker's claim CAS waits for the caller): its listings' jobs, its images' checks and
         size-chart reads, its image candidates and its classification. Another tenant's ids
-        match nothing."""
+        match nothing. The caller already holds the product and its listings, so a job row a
+        worker holds is 409 `LISTING_BUSY` rather than a wait that could deadlock."""
         matches: list[ColumnElement[bool]] = []
         if listing_ids:
             matches.append(JobRun.listing_id.in_(listing_ids))
@@ -801,10 +804,15 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             self._select()
             .where(JobRun.status.in_(LIVE), or_(*matches))
             .order_by(JobRun.id)
-            .with_for_update()
+            .with_for_update(nowait=True)
             .execution_options(populate_existing=True)
         )
-        return list((await self.db.execute(stmt)).scalars())
+        try:
+            return list((await self.db.execute(stmt)).scalars())
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == "55P03":
+                raise ConflictError(ErrorCode.LISTING_BUSY, "listings") from exc
+            raise
 
     # ---- API cancel (A14) ----
 
