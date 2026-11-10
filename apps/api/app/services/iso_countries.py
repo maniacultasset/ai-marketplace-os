@@ -2,7 +2,7 @@
 
 The one list the country of origin is checked against (`intake_values.normalize_country`, the
 CSV import's `row_model`). Pure data, no I/O. The dashboard's picker shows the same codes, India
-first (`ai-marketplace-os-web`, `features/products/seller-fields.ts`).
+first (`ai-marketplace-os-web`, `features/products/countries.ts`).
 """
 
 from __future__ import annotations
