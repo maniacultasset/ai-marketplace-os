@@ -191,8 +191,12 @@ def test_dry_run_point_in_time_clones_then_unprotects_the_clone(kit: Path, tmp_p
     assert_never_touches_the_source(lines)
     clone = next(x for x in lines if x.startswith("sql instances clone"))
     assert "--point-in-time=2026-11-09T10:00:00Z" in clone
-    patch = next(x for x in lines if x.startswith("sql instances patch"))
-    assert "--no-deletion-protection" in patch and "purpose=restore-drill" in patch
+    patches = [x for x in lines if x.startswith("sql instances patch")]
+    # deletion protection off on its own first, so the cleanup can always delete the clone
+    assert len(patches) == 2
+    assert "--no-deletion-protection" in patches[0] and "purpose=restore-drill" in patches[0]
+    assert "--no-backup" not in patches[0]
+    assert "--no-enable-point-in-time-recovery" in patches[1] and "--no-backup" in patches[1]
     assert not [x for x in lines if x.startswith(("sql backups", "sql instances create"))]
 
 
@@ -243,6 +247,21 @@ def test_live_drill_checks_times_and_deletes(kit: Path, tmp_path: Path) -> None:
     ]
     assert RO_PASSWORD not in live.out and MIGRATOR_PASSWORD not in live.out
     assert not [c for c in live.calls if RO_PASSWORD in c or MIGRATOR_PASSWORD in c]
+
+
+def test_live_point_in_time_survives_a_refused_backup_patch(kit: Path, tmp_path: Path) -> None:
+    """Deletion protection comes off before the backup patch, so a refusal there still deletes."""
+    refused = {"match": ["sql instances patch", "--no-backup"], "rc": 1}
+    live = drill_live(
+        kit, tmp_path, "--pitr", "2026-11-09T10:00:00Z", rules=[refused, SOURCE, LABEL, *SECRETS]
+    )
+    assert live.result.returncode == 0, live.out
+    assert_never_touches_the_source(live.calls)
+    assert "could not turn off backups" in live.out and "smoke ok" in live.out
+    unprotect = live.index("sql instances patch", "--no-deletion-protection")
+    assert -1 < unprotect < live.index("sql instances patch", "--no-backup")
+    assert live.index("sql instances clone aimos-db aimos-db-drill-") < unprotect
+    assert len([c for c in live.calls if c.startswith("sql instances delete")]) == 1
 
 
 @pytest.mark.parametrize(

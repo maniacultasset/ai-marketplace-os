@@ -215,7 +215,8 @@ gate 6: restored and checked in under 15 minutes). It needs `cloud-sql-proxy` v2
 Admin and Secret Manager access in the project. In order:
 1. Reads the source (`databaseVersion`, tier, disk size) and its latest successful backup. With
    `--pitr <UTC time>` it clones to that time instead (inside the 7-day PITR window), then takes
-   deletion protection and backups off the clone.
+   deletion protection off the clone first, then its backups and point-in-time recovery (a refusal
+   there is reported and the drill goes on; the clone is deleted at the end anyway).
 2. Creates `<SQL_INSTANCE>-drill-<ddHHMMSS>` (same version and tier, at least the same disk, no
    backups, no deletion protection, label `purpose=restore-drill`) and restores the backup into it.
    A name already in use, or a target without the label, stops the drill before any restore.

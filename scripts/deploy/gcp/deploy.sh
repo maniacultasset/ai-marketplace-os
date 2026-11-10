@@ -2647,11 +2647,15 @@ EOF
       --labels="$LABELS,purpose=restore-drill"
     drill_mark "$started" "drill instance ready"
   else
-    # A clone copies the source's settings: the patch takes off deletion protection and backups.
+    # A clone copies the source's settings. Deletion protection comes off first, on its own, so the
+    # cleanup can always delete the clone. Then backups and point-in-time recovery (Cloud SQL refuses
+    # backups off while PITR is on); a refusal there only costs a backup, so it does not stop the drill.
     gc sql instances clone "$SQL_INSTANCE" "$DRILL" --point-in-time="$pitr"
     drill_guard "$DRILL"
-    gc sql instances patch "$DRILL" --no-deletion-protection --no-backup \
-      --update-labels="purpose=restore-drill"
+    gc sql instances patch "$DRILL" --no-deletion-protection --update-labels="purpose=restore-drill"
+    drill_guard "$DRILL"
+    gc sql instances patch "$DRILL" --no-enable-point-in-time-recovery --no-backup ||
+      say "restore-drill: could not turn off backups on $DRILL; it is deleted at the end anyway"
   fi
   # Belt and braces before the restore overwrites an instance: it must carry the drill label.
   if [ "$DRY_RUN" -eq 0 ]; then
