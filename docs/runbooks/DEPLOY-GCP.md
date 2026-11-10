@@ -158,9 +158,11 @@ covers that, with an email channel that does not depend on the edge provider or 
 **Email alerts.** `ALERT_EMAIL` in `prod.env` is blank: the owner fills in one address (x@y.z),
 commits, then runs `scripts/deploy/gcp/deploy.sh prod edge alerts`. With
 `EDGE_PROVIDER=cloudflare` it enables `monitoring.googleapis.com` when it is off and creates, once
-each (a rerun changes nothing, except the channel's address when `ALERT_EMAIL` changed and a
-policy's channels when `ALERT_SLACK_CHANNEL` changed). `--dry-run` prints every command and every
-policy file and runs none:
+each. Every policy file carries the label `kuinn_spec`, a hash of its conditions, thresholds and
+channels: a rerun changes nothing, except the channel's address when `ALERT_EMAIL` changed and, in
+place, each policy whose `kuinn_spec` differs (a threshold, a filter or a channel changed; a policy
+made before the label is updated once). `--dry-run` prints every command and every policy file and
+runs none:
 
 | What | Fires when |
 |---|---|

@@ -1536,31 +1536,64 @@ def test_alerts_uptime_id_must_be_one(toolkit: Path, tmp_path: Path, answer: str
     assert live.index("policies create") == -1
 
 
+EXISTING_POLICIES: list[dict[str, Any]] = [
+    {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
+    {"match": "monitoring policies list", "stdout": "projects/aimos-prod/alertPolicies/1\n"},
+]
+
+
+def policy_stamps(output: str) -> list[str]:
+    """The kuinn_spec stamp of each policy file the run printed, in the order applied."""
+    return [json.loads(b)["userLabels"]["kuinn_spec"] for b in blocks(output, "policy")]
+
+
+def subdir(tmp_path: Path, name: str) -> Path:
+    path = tmp_path / name
+    path.mkdir()
+    return path
+
+
+def stamp_rules(stamps: list[str]) -> list[dict[str, Any]]:
+    """gcloud answers each policy's stamp in turn, as a rerun of the same policies would see."""
+    return [{"match": "userLabels.kuinn_spec", "stdout": f"{s}\n", "max": 1} for s in stamps]
+
+
 def test_alerts_rerun_creates_nothing(toolkit: Path, tmp_path: Path) -> None:
+    rules = [
+        *ALERT_BASE,
+        *EXISTING_POLICIES,
+        {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
+    ]
+    first = alerts_live(toolkit, subdir(tmp_path, "first"), rules)
+    assert first.result.returncode == 0, first.out
+    stamps = policy_stamps(first.result.stdout)
+    assert len(stamps) == 13 and all(re.fullmatch(r"[0-9a-f]{16}", x) for x in stamps)
     live = alerts_live(
         toolkit,
-        tmp_path,
+        subdir(tmp_path, "rerun"),
         [
-            *ALERT_BASE,
-            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
-            {
-                "match": "monitoring policies list",
-                "stdout": "projects/aimos-prod/alertPolicies/1\n",
-            },
-            {"match": "thresholdValue", "stdout": "50.0\n"},
-            {"match": "value(notificationChannels)", "stdout": CHANNEL_9},
+            *stamp_rules(stamps),
+            *rules,
             {"match": "sinks describe _Default", "stdout": "edge-callback-urls\n"},
-            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
             {"match": "services list", "stdout": "monitoring.googleapis.com\n"},
             {"match": "describe", "stdout": "present\n"},
         ],
     )
     assert live.result.returncode == 0, live.out
+    assert policy_stamps(live.result.stdout) == stamps
     assert not [c for c in live.calls if " create " in c and "--help" not in c]
     assert live.index("policies update") == -1
     assert live.index("services enable") == -1
     assert live.index("sinks update _Default") == -1
     assert live.index("channels update") == -1
+
+
+def test_alerts_policy_made_before_the_stamp_is_updated_once(toolkit: Path, tmp_path: Path) -> None:
+    """A policy with no kuinn_spec label (made by an older toolkit) is updated in place."""
+    live = alerts_live(toolkit, tmp_path, [*ALERT_BASE, *EXISTING_POLICIES])
+    assert live.result.returncode == 0, live.out
+    assert live.index("policies create") == -1
+    assert len([c for c in live.calls if "monitoring policies update" in c]) == 13
 
 
 def test_alerts_rerun_applies_new_email(toolkit: Path, tmp_path: Path) -> None:
@@ -1585,30 +1618,37 @@ def test_alerts_rerun_applies_new_email(toolkit: Path, tmp_path: Path) -> None:
     assert not [c for c in live.calls if "channels create" in c and "--help" not in c]
 
 
-def test_alerts_deny_threshold_updated_in_place(toolkit: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("extra", "changed"),
+    [
+        ({"EDGE_DENY_ALERT": "10"}, "policy-deny.json"),
+        ({"SQL_CPU_ALERT": "0.9"}, "policy-sqlcpu.json"),
+        ({"API_5XX_ALERT": "3"}, "policy-api5xx.json"),
+    ],
+    ids=["deny", "sql-cpu", "api-5xx"],
+)
+def test_alerts_changed_threshold_updated_in_place(
+    toolkit: Path, tmp_path: Path, extra: dict[str, str], changed: str
+) -> None:
+    """A rerun with one threshold changed updates exactly that policy, in place."""
     set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in")
+    rules = [*ALERT_BASE, *EXISTING_POLICIES]
+    first = run_live(toolkit, subdir(tmp_path, "first"), "prod", "edge", "alerts", responses=rules)
+    assert first.result.returncode == 0, first.out
     live = run_live(
         toolkit,
-        tmp_path,
+        subdir(tmp_path, "rerun"),
         "prod",
         "edge",
         "alerts",
-        responses=[
-            *ALERT_BASE,
-            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
-            {
-                "match": "monitoring policies list",
-                "stdout": "projects/aimos-prod/alertPolicies/1\n",
-            },
-            {"match": "thresholdValue", "stdout": "50.0\n"},
-            {"match": "value(notificationChannels)", "stdout": CHANNEL_9},
-        ],
-        extra={"EDGE_DENY_ALERT": "10"},
+        responses=[*stamp_rules(policy_stamps(first.result.stdout)), *rules],
+        extra=extra,
     )
     assert live.result.returncode == 0, live.out
-    update = live.calls[live.index("monitoring policies update")]
-    assert "policy-deny.json" in update
-    assert len([c for c in live.calls if "policies update" in c]) == 1
+    updates = [c for c in live.calls if "monitoring policies update" in c]
+    assert len(updates) == 1 and changed in updates[0]
+    assert "projects/aimos-prod/alertPolicies/1" in updates[0]
+    assert live.index("policies create") == -1
 
 
 # ---- T9: edge cors / edge status ----
@@ -2243,7 +2283,6 @@ def test_slack_added_later_updates_existing_policies_in_place(
                 "match": "monitoring policies list",
                 "stdout": "projects/aimos-prod/alertPolicies/1\n",
             },
-            {"match": "value(notificationChannels)", "stdout": EMAIL_9 + "\n"},
             {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
         ],
     )
@@ -2252,27 +2291,6 @@ def test_slack_added_later_updates_existing_policies_in_place(
     updates = [c for c in live.calls if "monitoring policies update" in c]
     assert len(updates) == 9
     assert all("projects/aimos-prod/alertPolicies/1" in c for c in updates)
-
-
-def test_policy_channels_compare_as_a_set(toolkit: Path, tmp_path: Path) -> None:
-    """gcloud prints the channel list `;`-joined in any order: the same set is no change."""
-    live = slack_live(
-        toolkit,
-        tmp_path,
-        [
-            {"match": ["channels list", 'type="slack"'], "stdout": SLACK_9},
-            *ALERT_BASE,
-            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
-            {
-                "match": "monitoring policies list",
-                "stdout": "projects/aimos-prod/alertPolicies/1\n",
-            },
-            {"match": "value(notificationChannels)", "stdout": f"{SLACK_9.strip()};{EMAIL_9}\n"},
-            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
-        ],
-    )
-    assert live.result.returncode == 0, live.out
-    assert live.index("policies update") == -1 and live.index("policies create") == -1
 
 
 def test_runbook_lists_the_ops_alerts(repo_root: Path) -> None:

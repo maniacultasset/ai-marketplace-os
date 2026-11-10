@@ -2257,28 +2257,36 @@ policy_display_name() {
   python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$1"
 }
 
-# FILE: describe before create. No policy of that display name: create it. One already there: update
-# it in place when its notification channels differ from FILE's (a Slack channel added or removed,
-# or a new email channel), else leave it. Sets POLICY_EXISTING (empty when created) and
-# POLICY_UPDATED (1 when updated) for the caller.
+# FILE: describe before create. The file is first stamped with userLabels.kuinn_spec, a short hash
+# of everything else in it (conditions, thresholds, channels). No policy of that display name:
+# create it. One already there: update it in place when its stamp differs from FILE's (a threshold,
+# a filter or a channel changed, or a policy made before the stamp), else leave it.
 apply_policy() {
   local file="$1" existing have want
+  want="$(python3 - "$file" <<'EOF'
+import hashlib, json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    doc = json.load(handle)
+doc.pop("userLabels", None)
+key = dict(doc, notificationChannels=sorted(doc["notificationChannels"]))
+stamp = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
+doc["userLabels"] = {"kuinn_spec": stamp}
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(doc, handle, indent=2)
+    handle.write("\n")
+print(stamp)
+EOF
+)"
   say "policy $file:"
   sed 's/^/    /' "$file"
-  POLICY_UPDATED=0
   existing="$(policy_name "$(policy_display_name "$file")" | head -n 1)"
-  POLICY_EXISTING="$existing"
   if [ -z "$existing" ]; then
     gc monitoring policies create --policy-from-file="$file"
     return 0
   fi
-  have="$(gq monitoring policies describe "$existing" --format='value(notificationChannels)' || true)"
-  have="$(printf '%s\n' "$have" | tr ';,' '\n\n' | sed '/^$/d' | sort | paste -sd, - || true)"
-  want="$(python3 -c 'import json,sys; print(",".join(sorted(json.load(open(sys.argv[1]))["notificationChannels"])))' "$file")"
-  if [ "$have" != "$want" ]; then
-    gc monitoring policies update "$existing" --policy-from-file="$file"
-    POLICY_UPDATED=1
-  fi
+  have="$(gq monitoring policies describe "$existing" --format='value(userLabels.kuinn_spec)' || true)"
+  [ "$have" = "$want" ] || gc monitoring policies update "$existing" --policy-from-file="$file"
 }
 
 # monitoring.googleapis.com, enabled once when absent (`setup` enables it only on the load
@@ -2442,7 +2450,7 @@ for key, (name, condition) in policies.items():
 OPS_POLICIES="uptime heartbeat restarts joblag maintenance sqlcpu sqldisk sqlconn api5xx"
 
 edge_alerts() {
-  local file name existing threshold metric
+  local file name existing metric
   ops_alerts
   # Logs-based metrics.
   for metric in \
@@ -2485,14 +2493,6 @@ for key, (name, condition) in policies.items():
   for name in deny 429 5xx ddos; do
     file="$WORK/policy-$name.json"
     apply_policy "$file"
-    existing="$POLICY_EXISTING"
-    if [ -n "$existing" ] && [ "$name" = "deny" ] && [ "$POLICY_UPDATED" -eq 0 ]; then
-      threshold="$(gq monitoring policies describe "$existing" \
-        --format='value(conditions[0].conditionThreshold.thresholdValue)' || true)"
-      if [ "${threshold%.0}" != "$EDGE_DENY_ALERT" ]; then
-        gc monitoring policies update "$existing" --policy-from-file="$file"
-      fi
-    fi
   done
   # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
   ensure_security_bucket
