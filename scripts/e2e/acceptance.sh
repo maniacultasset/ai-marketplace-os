@@ -28,6 +28,9 @@
 #                          status unchanged, no submissions, 0 Flipkart calls at the fake
 #   publish_replay         the first publish's key and body -> the stored 202 body
 #   analytics              4 metrics equal the values this run's HTTP answers imply
+#   product_delete_refused operator 403 PERMISSION_DENIED; the live style 409 INVALID_STATUS_TRANSITION
+#                          (one and bulk), its listing still live
+#   product_delete         a new draft: owner 204, then 404 on read, delete and bulk; off the list
 #   ask_question_skip      SKIP C2 ("ask one question": not in v1)
 #   no_canaries_in_logs    the stack's logs hold no password, issued JWT or refresh token
 #
@@ -58,6 +61,7 @@ operator_email="operator-$slug@example.test"
 reviewer_email="reviewer-$slug@example.test"
 staff_email="staff@example.test"
 seller="ACC$run"
+brand="Fashionista"
 style="FSH-TEE-001"
 sizes="S M L XL"
 guide="scripts/e2e/fixtures/brand_guide.md"
@@ -84,7 +88,25 @@ leg() {
 
 fail() {
   echo "acceptance: FAILED at leg $current (HTTP status ${status:-none}): $1" >&2
+  local hook="${on_fail:-}"
+  on_fail=""
+  if [ -n "$hook" ]; then "$hook" >&2 || true; fi
   exit 1
+}
+
+# import_row_errors: a failed import's row error codes and messages, one line each. The messages
+# are the row model's own text and never quote a cell (Q7), so no seller value reaches the log.
+import_row_errors() {
+  [ -n "${import_id:-}" ] || return 0
+  call GET "$api/imports/$import_id/rows?status=failed&limit=50" "$operator"
+  [ "$status" = 200 ] || return 0
+  python3 - "$body" <<'PY'
+import json, sys
+rows = json.load(open(sys.argv[1], encoding="utf-8"))["data"]
+seen = sorted({(e["error_code"], e["message"]) for r in rows for e in r["errors"]})
+for code, message in seen:
+    print(f"acceptance: import row error {code}: {message}")
+PY
 }
 
 expect() {
@@ -255,7 +277,8 @@ for who in owner operator reviewer owner_reset; do
 done
 cli /dev/null platform load
 [ "$cli_exit" -eq 0 ] || fail "platform load exited $cli_exit"
-cli "$work/owner.password" tenant create --name "Acceptance $slug" --slug "$slug" \
+# the tenant's name is its brand (SI8 CP-D9: a CSV brand_name must be one of the tenant's brands)
+cli "$work/owner.password" tenant create --name "$brand" --slug "$slug" \
   --owner-email "$owner_email" --staff-email "$staff_email"
 [ "$cli_exit" -eq 0 ] || fail "tenant create exited $cli_exit"
 cli "$work/operator.password" tenant add-member --slug "$slug" --email "$operator_email" \
@@ -299,13 +322,15 @@ leg import_csv
 {
   echo "seller_sku,parent_style_id,product_name,brand_name,category,gender,color_name,normalized_color,size_name,fabric_type,mrp,selling_price,tax_rate,hsn_code,country_of_origin,package_weight,main_image,identifier_exemption"
   for size in $sizes; do
-    echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,Fashionista,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg,yes"
+    echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg,yes"
   done
 } >"$work/products.csv"
 multipart "$operator" "acc-import-$run" "$api/products/bulk" "file=@$work/products.csv;type=text/csv"
 expect 202
 import_id="$(json 'b["import_id"]')"
+on_fail=import_row_errors
 wait_job "$operator" "$(json 'b["job_id"]')" succeeded
+on_fail=""
 call GET "$api/imports/$import_id" "$operator"
 expect 200
 json 'b["imported"] == 4 and b["failed"] == 0 and b["total_rows"] == 4' >/dev/null || fail "want 4 rows imported, 0 failed"
@@ -522,6 +547,43 @@ assert b["publish_success_rate"] == rate(succeeded, succeeded + failed) == 0.5
 assert c["validation_first_pass_total"] >= 2
 assert b["validation_pass_rate"] == rate(c["validation_first_pass_passed"], c["validation_first_pass_total"])
 PY
+
+leg product_delete_refused
+# PD1 (#143): settings:manage only, and never a product whose listing was sent to a marketplace
+call DELETE "$api/products/$style_id" "$operator"
+expect 403
+json 'b["error"]["type"] == "PERMISSION_DENIED"' >/dev/null || fail "want PERMISSION_DENIED"
+call DELETE "$api/products/$style_id" "$owner"
+expect 409
+json 'b["error"]["type"] == "INVALID_STATUS_TRANSITION"' >/dev/null || fail "want INVALID_STATUS_TRANSITION"
+call POST "$api/products/bulk-delete" "$owner" "acc-del-live-$run" "{\"product_ids\": [\"$style_id\"]}"
+expect 200
+json 'b["items"][0]["http_status"] == 409 and b["items"][0]["error"]["error_code"] == "INVALID_STATUS_TRANSITION"' >/dev/null \
+  || fail "want item 409 INVALID_STATUS_TRANSITION"
+call GET "$api/products/$style_id" "$owner"
+expect 200
+call GET "$api/listings/$listing_id" "$owner"
+expect 200
+json 'b["status"] == "published" and b["marketplace_state"] == "live"' >/dev/null \
+  || fail "the refused delete changed the live listing"
+
+leg product_delete
+call POST "$api/products" "$operator" "" '{"sku": "ACC-DEL-001", "title": "Acceptance delete draft", "category": "tshirts"}'
+expect 201
+draft_id="$(json 'b["id"]')"
+call DELETE "$api/products/$draft_id" "$owner"
+expect 204
+call GET "$api/products/$draft_id" "$owner"
+expect 404
+call DELETE "$api/products/$draft_id" "$owner"
+expect 404
+call POST "$api/products/bulk-delete" "$owner" "acc-del-again-$run" "{\"product_ids\": [\"$draft_id\"]}"
+expect 200
+json 'b["items"][0]["http_status"] == 404' >/dev/null || fail "want item 404 for a deleted product"
+call GET "$api/products?limit=50" "$operator"
+expect 200
+json 'all(p["id"] != "'"$draft_id"'" for p in b["data"]) and any(p["id"] == "'"$style_id"'" for p in b["data"])' >/dev/null \
+  || fail "the products list is wrong after the delete"
 
 leg ask_question_skip
 echo "acceptance: SKIP C2 (\"ask one question\" is not in v1)"
