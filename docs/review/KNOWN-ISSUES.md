@@ -277,3 +277,9 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | BE-13 trace export | The quality dashboard ships; the trace export of the same plan row does not. | A later step, with the AI lane's trace format |
 | Photo QA (AI-43) | Fill ratio, text overlay and watermark are deterministic heuristics tuned on generated fixtures; `PHOTO_QA_ENABLED` stays off until the 100-labelled-image precision gate (at least 90 %) passes. | Label the images, measure, then tune the constants in `app/services/image_qa.py` |
 | Quality blocked count | The blocked rate reads `job_runs.result_json.status` (kept 90 days) and `audit_log`; a range starting more than 90 days back undercounts the worker's blocks. | Keep ranges inside 90 days, or record the block in `audit_log` too |
+
+## Model call limits (LEFTOVERS 4.10)
+
+| Where | Gap | Next |
+|---|---|---|
+| `LLM_MODEL_ESCALATION` | The AI spec's Pro tier (one retry on a stronger model after two invalid JSON replies, only with more than 90 s left) is not reachable. `get_model_credentials` takes a closed `Literal["generation", "vision", "embedding"]` (`mkos_schemas.pipeline`), and adding `escalation` is a MAJOR contract change (RULES §11). mkos-pipeline v0.7.0 also has no escalation step. Today the retry after invalid JSON uses the generation model, and the setting is never read. | Contracts 3.0.0: add the `escalation` purpose (the backend returns the generation route with `LLM_MODEL_ESCALATION`), then the pipeline's escalation step and its eval. Set `LLM_MODEL_ESCALATION` to an OpenRouter id of the same vendor as `LLM_MODEL_DEFAULT` before switching it on |

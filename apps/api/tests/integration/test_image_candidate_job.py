@@ -630,7 +630,7 @@ async def test_hanging_seam_times_out(
         await asyncio.sleep(30)
 
     edit_on.setattr(image_edit_seam, "call_edit_image", hang)
-    edit_on.setenv("LLM_TIMEOUT_SECONDS", "1")
+    edit_on.setenv("IMAGE_EDIT_TIMEOUT_SECONDS", "1")
     edit_on.setattr(image_candidate, "SEAM_GRACE_S", 0)
     from app.core.config import get_settings
 
