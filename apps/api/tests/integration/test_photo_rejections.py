@@ -5,6 +5,7 @@ a confirmation clears it, and the next photo read never writes or asks it again.
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Any
 
 import httpx
@@ -300,3 +301,104 @@ async def test_editing_the_value_out_of_the_title_clears_the_flag(
     )
     assert response.status_code == 200, response.text
     assert [s for _f, _sev, s, _ in _mismatch(pw, accepted.listing_id)] == ["resolved"]
+
+
+# ---- DECISIONS 2026-11-07: the reject also closes the key's open photo question ----
+
+
+async def _ask(pw: PhotoWorld, key: str, kind: str = "conflicting_facts") -> None:
+    """Open one photo-screen question on `key` for the product, as the generation does."""
+    from app.db.session import unit_of_work
+    from app.repositories.human_tasks import HumanTaskRepository
+
+    async with unit_of_work(pw.tenant) as session:
+        assert await HumanTaskRepository(session, pw.tenant).open_photo_fact_task(
+            product_id=pw.product_id,
+            kind=kind,
+            target_path=f"facts.attributes.{key}",
+            question=f"Which {key.replace('_', ' ')} does this product have?",
+            reason="The photos and the stored value disagree.",
+            expected_answer={"kind": "enum", "allowed_values": ["a", "b"]},
+            suggestions=[{"value": "a", "label": "a", "source": "ai"}],
+            evidence=[{"kind": "source_value", "text": "photos: a", "ref": "image:x"}],
+        )
+
+
+def _task_states(pw: PhotoWorld) -> dict[str, tuple[str, str | None]]:
+    return {
+        t["target_path"]: (t["status"], t["cancelled_reason"])
+        for t in pw.tasks()
+        if t["target_path"] is not None
+    }
+
+
+@pytest.mark.parametrize("kind", ["conflicting_facts", "missing_fact"])
+async def test_reject_closes_the_keys_open_question_once(
+    photo_world: PhotoWorld, kind: str
+) -> None:
+    pw = photo_world
+    pw.put_fact("neckline", photo_fact("v-neck", pw.images["main"]))
+    pw.put_fact("fit", photo_fact("regular", pw.images["main"]))
+    await _ask(pw, "neckline", kind)
+    await _ask(pw, "fit")
+    await _ask(pw, "sleeve_length", "missing_fact")
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert _task_states(pw) == {
+        "facts.attributes.neckline": ("cancelled", "superseded"),
+        "facts.attributes.fit": ("open", None),
+        "facts.attributes.sleeve_length": ("open", None),
+    }
+    (row,) = pw.audit("human_task.cancelled")
+    assert row["reason"] == "photo_value_rejected facts.attributes.neckline"
+    assert row["actor_type"] == "user"
+    assert row["actor_user_id"] == pw.world.user("operator@acme.test")
+    # the same reject again cancels nothing more and writes no second row
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert len(pw.audit("human_task.cancelled")) == 1
+    assert _task_states(pw)["facts.attributes.fit"] == ("open", None)
+
+
+async def test_reject_with_no_open_question_writes_no_task_audit(photo_world: PhotoWorld) -> None:
+    pw = photo_world
+    pw.put_fact("neckline", photo_fact("v-neck", pw.images["main"]))
+    await _ask(pw, "fit")
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert pw.audit("human_task.cancelled") == []
+    assert _task_states(pw) == {"facts.attributes.fit": ("open", None)}
+
+
+async def test_plain_clear_of_a_seller_value_keeps_the_question(photo_world: PhotoWorld) -> None:
+    pw = photo_world
+    pw.put_fact("neckline", seller_fact("round neck"))
+    await _ask(pw, "neckline")
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert _task_states(pw) == {"facts.attributes.neckline": ("open", None)}
+    assert pw.audit("human_task.cancelled") == []
+
+
+async def test_confirm_keeps_the_question_as_before(photo_world: PhotoWorld) -> None:
+    pw = photo_world
+    pw.put_fact("neckline", photo_fact("v-neck", pw.images["main"]))
+    await _ask(pw, "neckline")
+    await seller_patch(pw, {"confirm_attributes": ["neckline"]})
+    assert _task_states(pw) == {"facts.attributes.neckline": ("open", None)}
+    assert pw.audit("human_task.cancelled") == []
+
+
+async def test_reject_leaves_another_products_question(photo_world: PhotoWorld) -> None:
+    from .products_support import insert_products
+
+    pw = photo_world
+    (other,) = insert_products(pw.conn, pw.tenant, 1, prefix=f"HT-{uuid.uuid4().hex[:6]}")
+    pw.put_fact("neckline", photo_fact("v-neck", pw.images["main"]))
+    await _ask(pw, "neckline")
+    mine = pw.product_id
+    pw.product_id = other
+    try:
+        await _ask(pw, "neckline")
+    finally:
+        pw.product_id = mine
+    await seller_patch(pw, {"attributes": {"neckline": None}})
+    assert pw.conn.execute(
+        "SELECT status FROM human_tasks WHERE product_id = %s", [other]
+    ).fetchone() == ("open",)

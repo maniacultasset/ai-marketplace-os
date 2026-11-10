@@ -44,6 +44,12 @@ def test_file_parses(rows: list[ErrorMapIn]) -> None:
     assert ERROR_MAP_AMAZON_PATH.name == "error_map.amazon.json"
 
 
+# Where a doc-sourced row's meaning comes from: Amazon's SP-API docs, Amazon's public seller
+# pages (sell.amazon.com), or, for a code whose Amazon help needs a login, the public integrator
+# guides that agree on it (the row keeps generic text and a `note` saying so)
+DOC_SOURCES: Final = frozenset({"sp-api-docs", "amazon-seller-docs", "public-integrator-docs"})
+
+
 def assert_documented(row: ErrorMapIn) -> None:
     """SI13 (CP-D20): a seed row comes from Amazon's published SP-API material (`sp-api-docs`, an
     https `doc`, `user_action`) or from a staff-approved AI proposal (a UUID `proposal_id` and
@@ -64,9 +70,14 @@ def assert_documented(row: ErrorMapIn) -> None:
         assert "@" not in json.dumps(ref) and "doc" not in ref, row.raw_value
         assert row.retry_class == ERROR_CODE_META[row.error_code].retry_class, row.raw_value
         return
-    assert ref.get("source") == "sp-api-docs", row.raw_value
+    assert ref.get("source") in DOC_SOURCES, row.raw_value
     assert row.retry_class.value == "user_action", row.raw_value
     assert str(ref.get("doc", "")).startswith("https://"), row.raw_value
+    for extra in ref.get("also", []):
+        assert str(extra).startswith("https://"), row.raw_value
+    if ref.get("source") == "public-integrator-docs":
+        # Amazon's own help for the code needs a Seller Central login: say so on the row
+        assert "login" in str(ref.get("note", "")), row.raw_value
 
 
 def test_every_row_is_a_documented_amazon_row(rows: list[ErrorMapIn]) -> None:
@@ -209,8 +220,9 @@ async def test_unicode_message_kept() -> None:
 async def test_item_level_issue_reads_as_plain_language() -> None:
     error = await _write(_issue("5665", None, "Brand X.", categories=["QUALIFICATION_REQUIRED"]))
     assert error.field == "listing"
-    assert error.error_code is ErrorCode.API_REJECTED_PARTIAL
-    assert error.message.startswith("Amazon needs your account to be approved")
+    # 5665 has its own code row now, which wins over the QUALIFICATION_REQUIRED category row
+    assert error.error_code is ErrorCode.ACCOUNT_PERMISSION_DENIED
+    assert error.message.startswith("Amazon has not approved your account to use this brand")
     assert "attributes." not in error.message and "amazon " not in error.message
 
 
@@ -282,7 +294,7 @@ SI13_CODES: Final = {
     "101168": ("SKU_CONFLICT", None),
     "4005033": ("VALUE_NOT_ALLOWED", None),
 }
-LEFT_OUT: Final = ("8541", "8542", "8572")  # their help pages need a login (KNOWN-ISSUES)
+LEFT_OUT: Final = ("8541", "8572")  # kept out on purpose (KNOWN-ISSUES, V1 checklist)
 
 
 def test_si13_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
@@ -327,3 +339,96 @@ def test_si13_rows_route_to_their_lanes(rows: list[ErrorMapIn]) -> None:
     assert lane("4005013") == ("staff", "sku_conflict")
     assert lane("101168") == ("staff", "sku_conflict")
     assert ErrorClass.ACCOUNT_PERMISSION.value == by_code["4005008"].error_class.value
+
+
+# ---- Prod codes with no row before: 5665, 5461, 8542, 8560, 99010, 8105 ----
+
+PROD_CODES: Final = {
+    # code: (error code, error class, field hint, lane with no listing context)
+    "5665": ("ACCOUNT_PERMISSION_DENIED", "account_permission", None, "marketplace"),
+    "5461": ("ACCOUNT_PERMISSION_DENIED", "account_permission", None, "marketplace"),
+    "8542": ("IDENTIFIER_DUPLICATE", "identifier_error", "facts.identifier", "seller"),
+    "8560": ("MISSING_ATTRIBUTE", "missing_data", None, "staff"),
+    "99010": ("MISSING_ATTRIBUTE", "missing_data", None, "staff"),
+    "8105": ("VALUE_NOT_ALLOWED", "invalid_value", None, "staff"),
+}
+
+
+def test_prod_code_rows_present(rows: list[ErrorMapIn]) -> None:
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+    for code, (error_code, klass, hint, _lane) in PROD_CODES.items():
+        row = by_code[code]
+        assert (row.error_code.value, row.error_class.value, row.field_hint) == (
+            error_code,
+            klass,
+            hint,
+        ), code
+        assert row.version == 1 and row.enabled, code
+        source = (row.policy_ref or {}).get("source")
+        # only Amazon's public seller page documents the brand codes; the rest are generic
+        want = "amazon-seller-docs" if code in ("5665", "5461") else "public-integrator-docs"
+        assert source == want, code
+
+
+@pytest.mark.parametrize("code", sorted(PROD_CODES))
+def test_prod_code_maps_through_the_mapper(code: str) -> None:
+    error_code, klass, _hint, _lane = PROD_CODES[code]
+    item = _mapped(code, "listing", [])
+    assert item.error_code is ErrorCode(error_code)
+    assert item.error_class is ErrorClass(klass)
+    assert item.raw_code == code
+    assert item.message.startswith("Amazon "), code
+    assert item.message.endswith("Marketplace message: Raw."), code
+    assert item.suggestion, code
+
+
+@pytest.mark.parametrize("code", ["5665", "8542", "8105"])
+async def test_prod_code_maps_on_write(code: str) -> None:
+    app = build_fake()
+    sent = _five()
+    app.state.fake.spapi_issues[sent.seller_sku] = [_issue(code, None, "Raw.")]
+    result = await amazon_adapter(app, rows=_rows()).create_listing(sent)
+    (error,) = [f.error for f in result.fields if f.error is not None]
+    assert error.field == (PROD_CODES[code][2] or "listing")
+    assert error.error_code is ErrorCode(PROD_CODES[code][0])
+    assert error.raw_code == code
+    assert "Marketplace message: Raw." in error.message
+
+
+async def test_prod_code_maps_on_read() -> None:
+    (read,) = await _read_errors(_issue("99010", "item_name", "Raw."))
+    assert read.error_code is ErrorCode.MISSING_ATTRIBUTE
+    assert read.raw_code == "99010"
+
+
+def test_prod_code_lanes(rows: list[ErrorMapIn]) -> None:
+    from app.services.resolution.plan import lane_for
+
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
+    for code, (_error_code, _klass, _hint, want) in PROD_CODES.items():
+        row = by_code[code]
+        got = lane_for(
+            row.error_code.value, row.error_class.value, field_path=row.field_hint or "listing"
+        )
+        assert got == want, code
+
+
+def test_8542_is_a_catalog_conflict_not_a_permission() -> None:
+    """8542 is a barcode matched to catalog products whose details differ (no approval fixes it):
+    on a named attribute it asks the seller, not the marketplace lane."""
+    import uuid
+
+    from app.services.resolution.plan import QUALIFICATION_CODES, IssueView, PlanContext, plan
+
+    assert "8542" not in QUALIFICATION_CODES
+    view = IssueView(
+        uuid.uuid4(),
+        "amazon_adapter",
+        "attributes.color",
+        "IDENTIFIER_DUPLICATE",
+        "identifier_error",
+        "error",
+        marketplace_code="8542",
+    )
+    (step,) = plan([view], PlanContext())
+    assert step.lane != "marketplace"

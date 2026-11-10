@@ -122,3 +122,47 @@ def test_columns_direct_under_openrouter_needs_the_generation_key() -> None:
 def test_messages_carry_names_only() -> None:
     s = _worker(llm_gateway_classify="openrouter", openai_api_key="sk-secret-value-123")
     assert all("sk-secret" not in message for message in _model_errors(s))
+
+
+def test_classify_model_defaults_to_vision_and_refuses_other_values() -> None:
+    assert Settings(_env_file=None, app_env="local").category_suggest_model == "vision"
+    assert (
+        Settings(
+            _env_file=None, app_env="local", category_suggest_model="text"
+        ).category_suggest_model
+        == "text"
+    )
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, app_env="local", category_suggest_model="gpt-4o")
+
+
+def test_text_classify_on_openrouter_checks_the_generation_model_not_the_vision_model() -> None:
+    """Classify routed alone to OpenRouter: on `vision` it needs an OpenAI vision id, on `text`
+    a vendor/model generation id."""
+    values: dict[str, Any] = {
+        "llm_gateway": "direct",
+        "llm_gateway_classify": "openrouter",
+        "openai_api_key": "sk-real-openai-key-0123456789",
+        "openrouter_api_key": "sk-or-real-key-0123456789",
+        "llm_model_vision": "openai/gpt-4o",
+        "llm_model_default": "gpt-4o-mini",
+        "llm_provider": "openai",
+    }
+    vision = config._gateway_errors(_worker(**values))
+    text = config._gateway_errors(_worker(**values, category_suggest_model="text"))
+    assert NO_ROUTER_VISION in vision and NO_ROUTER_MODEL not in vision
+    assert NO_ROUTER_MODEL in text and NO_ROUTER_VISION not in text
+
+
+def test_text_classify_under_direct_needs_the_generation_key_not_the_vision_key() -> None:
+    values: dict[str, Any] = {
+        "llm_gateway": "openrouter",
+        "llm_gateway_classify": "direct",
+        "openrouter_api_key": "sk-or-real-key-0123456789",
+        "llm_provider": "openai",
+        "llm_model_default": "openai/gpt-4o-mini",
+    }
+    vision = _model_errors(_worker(**values))
+    text = _model_errors(_worker(**values, category_suggest_model="text"))
+    assert NO_VISION_KEY in vision and NO_GEN_KEY not in vision
+    assert NO_GEN_KEY in text and NO_VISION_KEY not in text

@@ -293,8 +293,21 @@ async def _edit_inputs(ctx: JobContext, candidate: ImageCandidate) -> _EditInput
         )
 
 
+def edit_attempt(job_attempt: int, try_no: int) -> int:
+    """The `attempt` the edit request carries: the job's attempt on the first try, one more for
+    the fidelity retry (at most 3, the schema's bound). The pipeline (>= 0.7.1) samples a later
+    attempt anew (a new seed, above temperature 0); a byte-identical retry mostly repeated the
+    refused image at full price. The stored records still carry the job's attempt
+    (`check_edit_result` restamps them)."""
+    return min(max(job_attempt, 1) + try_no - 1, 3)
+
+
 async def _call_model(
-    ctx: JobContext, candidate: ImageCandidate, inputs: _EditInputs, prepared: CandidateReply
+    ctx: JobContext,
+    candidate: ImageCandidate,
+    inputs: _EditInputs,
+    prepared: CandidateReply,
+    try_no: int = 1,
 ) -> Any:
     """The seam call under a hard deadline. Returns the result, None (no `edit_image` in the
     installed pipeline) or raises."""
@@ -312,7 +325,7 @@ async def _call_model(
         product_id=candidate.product_id,
         job_id=ctx.job_run_id,
         request_id=ctx.request_id,
-        attempt=min(max(ctx.attempt, 1), 3),
+        attempt=edit_attempt(ctx.attempt, try_no),
         task="white_background",
         image=ContextImage(
             image_id=candidate.source_image_id,
@@ -430,7 +443,8 @@ def _seam_timeout_s(settings: Any) -> float:
 
 async def _white_background(ctx: JobContext, candidate: ImageCandidate) -> Outcome:
     """A paid edit, the job never retried (`max_attempts=1`). A fidelity refusal gets ONE fresh
-    edit of the same prepared input (FIDELITY_TRIES), only when the D21 limits and the budget
+    edit of the same prepared input (FIDELITY_TRIES), sent as the next `attempt` so the pipeline
+    samples it anew (`edit_attempt`), only when the D21 limits and the budget
     caps still admit it: the reservation is re-taken through `reserve` (credit, the platform's
     image share and the tenant and global caps are checked again). The retry never counts again
     toward the tenant's daily candidate limit: the limit counts candidates and the seller asked
@@ -534,7 +548,7 @@ async def _edit_try(
     from app.services.pipeline_deps import SeamPortError
 
     try:
-        result = await _call_model(ctx, candidate, inputs, prepared)
+        result = await _call_model(ctx, candidate, inputs, prepared, try_no)
     except SeamPortError:
         return await _ai_fail(ctx, candidate.id, "model_failed", zero=True)
     except Exception as error:

@@ -376,5 +376,145 @@
       "observed": false
     },
     "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "5665",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon has not approved your account to use this brand name.",
+    "seller_action": "Enrol the brand in Amazon Brand Registry, or apply to use the brand name through the link in Amazon's message in Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "amazon-seller-docs",
+      "doc": "https://sell.amazon.com/blog/amazon-listing-errors",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "5461",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not yet let your account create new products for this brand.",
+    "seller_action": "Check the brand name is spelled exactly as registered, link your Brand Registry and selling accounts, or apply through the link in Amazon's message, then send the listing again.",
+    "policy_ref": {
+      "source": "amazon-seller-docs",
+      "doc": "https://sell.amazon.com/blog/amazon-listing-errors",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8542",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon matched this listing's barcode to existing products whose details differ from this listing.",
+    "seller_action": "Check the barcode is right for this product. If it is and Amazon's product details are wrong, ask Amazon support to correct them.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://blog.lengow.com/amazon-marketplace/amazon-errors-1",
+      "observed": false,
+      "also": [
+        "https://barcodestalk.freshdesk.com/en/support/solutions/articles/16000096236-error-code-8542-the-sku-data-provided-conflicts-with-the-amazon-catalog-"
+      ],
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8560",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon could not match this listing to a product it knows, and needs more details to create a new one.",
+    "seller_action": "Check the barcode, add any detail Amazon names in its message, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://docs.wplab.com/article/14-amazon-error-8560",
+      "observed": false,
+      "also": [
+        "https://www.effectconnect.com/knowledge/amazon-errors",
+        "https://blog.lengow.com/amazon-marketplace/amazon-errors-1"
+      ],
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "99010",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a set of related details together, and at least one of them is missing.",
+    "seller_action": "Add the missing value Amazon names in its message, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://blog.lengow.com/amazon-marketplace/amazon-errors-1",
+      "observed": false,
+      "also": [
+        "https://sellercentral-europe.amazon.com/seller-forums/discussions/t/c6b82d18fec6e086acf09390fd86e6ac"
+      ],
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8105",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not accept one of the values in this listing: it is not on Amazon's list of allowed values for that detail.",
+    "seller_action": "Pick a value Amazon allows for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://www.effectconnect.com/knowledge/amazon-errors",
+      "observed": false,
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+    },
+    "enabled": true
   }
 ]
