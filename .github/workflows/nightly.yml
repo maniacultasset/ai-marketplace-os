@@ -17,7 +17,7 @@ on:
         default: false
 permissions: {}
 concurrency:
-  group: nightly
+  group: nightly-g1-lane
   cancel-in-progress: false
 jobs:
   pip-audit:
