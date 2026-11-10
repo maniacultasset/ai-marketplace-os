@@ -16,6 +16,7 @@ from app.services.intake_values import (
     MAX_GRAMS,
     check_dimension,
 )
+from app.services.iso_countries import ISO_3166_ALPHA2
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from pydantic import TypeAdapter, ValidationError
@@ -56,7 +57,11 @@ def test_hsn_agrees_with_the_import_pattern(value: str) -> None:
 )
 def test_country_agrees_with_the_import_pattern(value: str) -> None:
     accepted = _accepts(COUNTRY, value)
-    expected = value.isascii() and bool(COUNTRY_PATTERN.fullmatch(value))
+    expected = (
+        value.isascii()
+        and bool(COUNTRY_PATTERN.fullmatch(value))
+        and value.upper() in ISO_3166_ALPHA2
+    )
     assert (accepted is not None) == expected, value
     if accepted is not None:
         assert accepted == value.upper() and accepted.isupper()

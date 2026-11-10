@@ -42,6 +42,7 @@ from app.services.imports.headers import (
     row_key,
 )
 from app.services.intake_values import COUNTRY_PATTERN, DIMENSION_PATTERN, HSN_PATTERN, MAX_GRAMS
+from app.services.iso_countries import ISO_3166_ALPHA2
 
 __all__ = [
     "ATTRIBUTE_COLUMNS",
@@ -384,7 +385,7 @@ def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> Ro
 
     country = c.get("country_of_origin")
     if country is not None:
-        if not COUNTRY_PATTERN.fullmatch(country):
+        if not COUNTRY_PATTERN.fullmatch(country) or country.upper() not in ISO_3166_ALPHA2:
             c.fail(ErrorCode.PATTERN_MISMATCH, "country_of_origin must be an ISO alpha-2 code")
             country = None
         else:

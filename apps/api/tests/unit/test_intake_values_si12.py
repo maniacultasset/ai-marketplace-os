@@ -7,6 +7,7 @@ from decimal import Decimal
 import pytest
 from app.services import intake_values as iv
 from app.services.imports import row_model
+from app.services.iso_countries import ISO_3166_ALPHA2
 
 
 @pytest.mark.parametrize("value", ["6109", "610910", "61091000"])
@@ -42,6 +43,19 @@ def test_country_upper_cased(value: str, out: str) -> None:
 def test_country_refused(value: str) -> None:
     with pytest.raises(ValueError, match="country"):
         iv.normalize_country(value)
+
+
+@pytest.mark.parametrize("value", ["XX", "uk", "ZZ", "EU", "AA"])
+def test_country_unassigned_code_refused(value: str) -> None:
+    with pytest.raises(ValueError, match="ISO 3166 country code"):
+        iv.normalize_country(value)
+
+
+def test_country_list_is_the_assigned_iso_3166_codes() -> None:
+    codes = ISO_3166_ALPHA2
+    assert len(codes) == 249
+    assert {"IN", "BD", "CN", "GB", "US", "AX", "SS", "XK"} - codes == {"XK"}
+    assert all(len(code) == 2 and code.isascii() and code.isupper() for code in codes)
 
 
 @pytest.mark.parametrize("value", ["0.01", "99999.99", "12", "12.5"])
