@@ -1,10 +1,11 @@
 """Run the image checks in a killable child process (S17b PLAN D6, CP6; S17a hand-off).
 
 `run_checks_isolated(data, image_id=, slot=, rules=, now=)` starts `app.services.image_check_child`
-with an environment allow-list, under a per-process semaphore of one (the memory bound: each
-child may map up to 1 GiB on a 2 GiB worker; the queue lock is per tenant since V1 hardening #9,
-so two tenants' image jobs can now be fetched together and the second waits here), and waits at
-most `CHILD_TIMEOUT_S`. It never raises for a hostile image:
+with an environment allow-list, under a per-process semaphore of `IMAGE_CHECK_CONCURRENCY`
+children (default 1; the memory bound: each child may map up to 1 GiB, so the worker needs that
+many GiB plus 1 for itself, which `deploy.sh` checks; the queue lock is per tenant since V1
+hardening #9, so several tenants' image jobs are fetched together and the ones over the bound
+wait here), and waits at most `CHILD_TIMEOUT_S`. It never raises for a hostile image:
 
 - a timeout (the child is killed and reaped), a non-zero exit, a signal, or stdout that does not
   hold one valid report per requested marketplace → one `pass=false` CORRUPT report per
@@ -44,7 +45,7 @@ from mkos_schemas.images import ImageCheck, ImageIssue, ImageReport
 from mkos_schemas.rules import Rule
 from pydantic import ValidationError
 
-from app.core.config import child_process_env
+from app.core.config import child_process_env, get_settings
 from app.core.logging import get_logger
 from app.repositories.images import ImageMeta
 from app.services.image_checks import CHECK_CODES, DEFAULT_SUGGESTIONS
@@ -89,7 +90,7 @@ def _semaphore() -> asyncio.Semaphore:
     loop = asyncio.get_running_loop()
     found = _SEMAPHORES.get(loop)
     if found is None:
-        found = _SEMAPHORES[loop] = asyncio.Semaphore(1)
+        found = _SEMAPHORES[loop] = asyncio.Semaphore(get_settings().image_check_concurrency)
     return found
 
 

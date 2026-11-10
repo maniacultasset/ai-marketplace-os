@@ -275,6 +275,64 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if (await self.db.execute(stmt)).scalar_one_or_none() is None:
             raise RowCountError(1, 0)
 
+    async def archive_for_deleted_product(
+        self, listing_ids: Sequence[uuid.UUID], user_id: uuid.UUID
+    ) -> list[uuid.UUID]:
+        """Product delete (DATABASE.md "Pause and archive": soft-deleting a product archives its
+        listings): stamp `archived_at` and the user, event `archive`, and drop the sync slot.
+        The status is kept (the guard freezes it from now on). A pause is lifted, since the two
+        overlays are exclusive. Never on a `generating` or `publishing` listing (the CHECK
+        refuses it; the service checks first). Returns the ids archived now."""
+        self._own_session()
+        if not listing_ids:
+            return []
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(
+                criterion,
+                Listing.id.in_(sorted(set(listing_ids))),
+                Listing.archived_at.is_(None),
+            )
+            .values(
+                archived_at=func.now(),
+                archived_by_user_id=user_id,
+                paused_at=None,
+                paused_by_user_id=None,
+                next_sync_at=None,
+                last_event="archive",
+                last_event_at=func.now(),
+            )
+        ).returning(Listing.id)
+        try:
+            found = (await self.db.execute(stmt)).scalars()
+        except IntegrityError as exc:
+            raise to_conflict(exc) from exc
+        return sorted(found)
+
+    async def unarchive_for_revived_product(self, product_id: uuid.UUID) -> list[uuid.UUID]:
+        """A CSV import revived a deleted product: lift the archive its delete set on the
+        product's listings (event `unarchive`), so the product can be drafted again instead of
+        every generate answering 409 `LISTING_ARCHIVED`. The status is untouched (the guard only
+        checks a status change) and no sync slot is set: a deleted product's listing was never
+        with a marketplace. Returns the ids unarchived."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                Listing.product_id == product_id,
+                Listing.archived_at.is_not(None),
+            )
+            .values(
+                archived_at=None,
+                archived_by_user_id=None,
+                last_event="unarchive",
+                last_event_at=func.now(),
+            )
+        ).returning(Listing.id)
+        return sorted((await self.db.execute(stmt)).scalars())
+
     async def reviewable_for_product(self, product_id: uuid.UUID) -> list[Listing]:
         """SI9 B5 (CP-D15): the product's listings a reject re-validates (`validated`,
         `needs_review`, `approved`; not paused or archived), locked `FOR UPDATE SKIP LOCKED`, so
@@ -332,7 +390,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
         """One keyset page (module docstring) and whether more rows follow."""
         if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
-        stmt = self._select()
+        # an archived listing (its product was deleted) is in no list
+        stmt = self._select().where(Listing.archived_at.is_(None))
         if filters.status is not None:
             stmt = stmt.where(Listing.status == filters.status)
         if filters.marketplace is not None:

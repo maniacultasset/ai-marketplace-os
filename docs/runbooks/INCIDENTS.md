@@ -18,8 +18,9 @@ The prod worker is meant to be on (`WORKER_ENABLED=true` in `prod.env`, worker p
 ## Where to look
 
 - **Cloud Monitoring** (project `aimos-prod`): the policies `aimos-edge uptime failing`,
-  `aimos-worker heartbeat missing`, `aimos-worker restarting`, `aimos-maintenance errors`
-  (`DEPLOY-GCP.md` "Alerts and Slack").
+  `aimos-worker heartbeat missing`, `aimos-worker restarting`, `aimos-worker job lag`,
+  `aimos-maintenance errors`, `aimos-db cpu high`, `aimos-db disk filling`,
+  `aimos-db connections high`, `aimos-api 5xx` (`DEPLOY-GCP.md` "Alerts and Slack").
 - **Logs Explorer**: the api (`resource.type="cloud_run_revision"`, service `aimos-api`), the
   worker pool (`aimos-worker`), the job `aimos-maintenance`. Lines are JSON: search
   `jsonPayload.message`, then follow `request_id` or `job_run_id`. Lines carry ids and codes only.
@@ -82,6 +83,27 @@ The job exits 1 when a step failed or the Amazon DPP purge could not finish an a
 `gcloud run jobs execute aimos-maintenance --region=asia-south1 --project=aimos-prod --wait`. Every
 step is idempotent. An account left unpurged must be purged within the DPP 20-day window.
 
+### Jobs waiting too long (`aimos-worker job lag`)
+
+The worker saw a queue whose oldest job waited past its limit. Check the heartbeat first: a
+worker that is alive but behind still logs `periodic.alerts_checked`. The admin page
+`/admin/ops/queue` shows depth and oldest age per queue. A burst of imports or generations clears by itself; a
+queue that does not move points at a stuck job (`job.timeout`, `job.body_failed`) or at the AI
+provider (see "AI paused"). Scaling the worker is a `WORKER_INSTANCES` change and a deploy.
+
+### Database under load (`aimos-db cpu high`, `aimos-db connections high`, `aimos-db disk filling`)
+
+Cloud SQL Query Insights (console, instance `aimos-db`) names the heaviest queries. Connections
+near `SQL_MAX_CONNECTIONS` (100) usually mean too many api instances or a leak: compare with the
+api's instance count (`API_MAX_INSTANCES`) and look for `idle in transaction` sessions (app_rw
+ends them after 60 s). Disk: storage auto-increase is on, so a disk alert means fast growth;
+check the biggest tables before raising the tier. A tier change restarts the instance: plan it.
+
+### Api errors (`aimos-api 5xx`)
+
+More than 10 api 5xx answers in 5 minutes. Sentry groups the crashes by route and `request_id`.
+Just after a deploy: roll back the api (below). With the database alerts firing too, start there.
+
 ## Roll back
 
 **Api.** Move traffic to the last good revision (instant, no rebuild):
@@ -106,8 +128,11 @@ still works on the current schema (expand then contract).
 ## Restore the database (prod commands)
 
 Never over the live instance: clone into a new one, check it, then switch (DEPLOY-GCP.md "Restore
-the database" has the switch-over steps). The restore drill (launch gate 6, under 15 minutes) has
-not been run yet; time it on the first run.
+the database" has the switch-over steps). The restore drill (launch gate 6, under 15 minutes) is
+`scripts/deploy/gcp/deploy.sh prod restore-drill` (`--dry-run` first): it restores the latest
+backup into a throwaway instance, checks it, times it and deletes it (DEPLOY-GCP.md "Restore
+drill"). It has not been run on prod yet; record the first timing here. The commands below are
+the same steps by hand, for a real restore.
 
 ```bash
 # 1. clone to a point in time (UTC) inside the 7-day PITR window
@@ -131,4 +156,5 @@ The decrypt check of a restored `token_enc`: only `aimos-worker` may decrypt wit
 so it cannot be run against a throwaway clone. After a real switch-over, the first token refresh
 (`marketplace_token_refresh`, every 5 minutes) proves it: watch for `token_refresh_failed`.
 Backups sit in `asia-south1`, the same region as the zonal primary: cross-region backups
-(asia-south2) wait for the client's decision.
+(asia-south2) are prepared and wait for the client's decision (DEPLOY-GCP.md "Cross-region
+backups").

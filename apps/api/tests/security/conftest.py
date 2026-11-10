@@ -294,6 +294,8 @@ def resolve_id(world: World2, slug: str, name: str) -> Any:
     """The id `name` (a path id or body id, a list item's `items[].x` or
     `image_uploads[].storage_key` included) names in `slug`'s side."""
     key = name.rsplit("[].", 1)[-1]
+    if key == "product_ids[]":  # PD1: a list of product ids
+        key = "product_id"
     if key in {"images", "storage_key"}:
         return world.side(slug).ids["image_id"]
     return world.side(slug).ids[key]
@@ -326,6 +328,8 @@ def call_for(op: Operation, world: World2, slug: str) -> Call:
         for name in ("product_id", "listing_id", "target_tenant_id", "source_image_id"):
             if name in body:
                 body[name] = str(side.ids[name])
+        if "product_ids" in body:  # PD1
+            body["product_ids"] = [str(side.ids["product_id"])]
         if "items" in body:
             body["items"] = [
                 {

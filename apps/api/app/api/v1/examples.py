@@ -770,6 +770,33 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
             "category": "ethnic_wear_kurta_sets",
         },
+        "products_delete": None,
+        "products_bulk_delete": {
+            "items": [
+                {"product_id": PRODUCT_1, "http_status": 204, "error": None},
+                {
+                    "product_id": PRODUCT_2,
+                    "http_status": 409,
+                    "error": {
+                        "status": "failed",
+                        "error_code": "INVALID_STATUS_TRANSITION",
+                        "retryable": False,
+                        "errors": [
+                            {
+                                "field": "request",
+                                "error_code": "INVALID_STATUS_TRANSITION",
+                                "message": (
+                                    "A listing of this product was sent to a marketplace, so "
+                                    "it cannot be deleted here."
+                                ),
+                                "source": "system",
+                                "retryable": False,
+                            }
+                        ],
+                    },
+                },
+            ]
+        },
         "products_bulk": {
             "import_id": IMPORT,
             "job_id": JOB,

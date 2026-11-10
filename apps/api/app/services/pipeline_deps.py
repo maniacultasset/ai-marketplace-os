@@ -281,7 +281,7 @@ def image_edit_credentials(settings: Settings) -> ModelCredentials:
         api_key=key,
         api_base=api_base,
         model=settings.llm_model_image_edit,
-        timeout_seconds=float(settings.llm_timeout_seconds),
+        timeout_seconds=float(settings.image_edit_timeout_seconds),
     )
 
 

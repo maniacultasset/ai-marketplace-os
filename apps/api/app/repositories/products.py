@@ -78,6 +78,7 @@ class ProductUpsert:
 class Upserted:
     id: uuid.UUID
     inserted: bool
+    revived: bool = False  # the row was soft-deleted (a product delete) before this write
 
 
 class ProductRepository(TenantScopedRepository[Product]):
@@ -88,6 +89,26 @@ class ProductRepository(TenantScopedRepository[Product]):
             raise ValueError(f"id must be a UUID, got {type(id).__name__}")
         stmt = self._select().where(Product.id == id, Product.deleted_at.is_(None))
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def soft_delete_many(self, ids: Sequence[uuid.UUID]) -> builtins.list[uuid.UUID]:
+        """Product delete: stamp `deleted_at` on these live rows (children before their style:
+        the variant guard refuses a style with live children). A CSV re-import of the SKU
+        revives the row (`upsert_by_sku`). The ids written, in the order given."""
+        out: builtins.list[uuid.UUID] = []
+        for product_id in ids:
+            stmt = self._scoped_write(
+                update(Product)
+                .where(
+                    self._tenant_criterion(include_platform=False),
+                    Product.id == product_id,
+                    Product.deleted_at.is_(None),
+                )
+                .values(deleted_at=func.now())
+            ).returning(Product.id)
+            found = (await self.db.execute(stmt)).scalar_one_or_none()
+            if found is not None:
+                out.append(found)
+        return out
 
     async def photo_rejections(self, product_id: uuid.UUID) -> dict[str, str]:
         """SI9 B5: `{key: rejected value}`, read on its own (never part of `ProductFacts`, so the
@@ -327,13 +348,19 @@ class ProductRepository(TenantScopedRepository[Product]):
         merged in, key by key. A style's `size_run` keeps its stored sizes, new ones appended."""
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("products upsert for another tenant's unit of work")
+        # the stored row, if any: its size run (merged below) and whether a product delete
+        # soft-deleted it, so the caller can bring its archived listings back
+        found_row = (
+            await self.db.execute(
+                self._select()
+                .where(Product.sku == row.sku)
+                .with_only_columns(Product.size_run, Product.deleted_at)
+            )
+        ).first()
+        was_deleted = found_row is not None and found_row[1] is not None
         size_run: list[str] | None = None
         if row.size_run is not None:
-            stored = (
-                await self.db.execute(
-                    self._select().where(Product.sku == row.sku).with_only_columns(Product.size_run)
-                )
-            ).scalar_one_or_none()
+            stored = None if found_row is None else found_row[0]
             size_run = list(stored or [])
             size_run += [size for size in row.size_run if size not in size_run]
         values: dict[str, Any] = {
@@ -387,7 +414,7 @@ class ProductRepository(TenantScopedRepository[Product]):
         ).returning(table.c.id, literal_column("(xmax = 0)"))
         written = (await self.db.execute(upsert)).first()
         if written is not None:
-            return Upserted(written[0], bool(written[1]))
+            return Upserted(written[0], bool(written[1]), was_deleted)
         found = (
             await self.db.execute(
                 self._select().where(Product.sku == row.sku).with_only_columns(Product.id)

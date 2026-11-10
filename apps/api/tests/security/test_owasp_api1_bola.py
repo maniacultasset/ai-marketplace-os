@@ -26,7 +26,7 @@ LIST_OPS = [
     for op in OPS.values()
     if op.method == "GET" and "cursor" in op.query and not op.platform_admin
 ]
-BATCH_OPS = {"listings_approve", "listings_publish"}
+BATCH_OPS = {"listings_approve", "listings_publish", "products_bulk_delete"}
 # A role of bharat allowed to call the op (the owner holds every action but none of these).
 OWNER = "owner@bharat.test"
 

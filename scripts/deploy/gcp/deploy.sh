@@ -13,15 +13,19 @@
 #   deploy      the api service and the worker pool, then smoke
 #   release     build, migrate, deploy
 #   smoke       GET /healthz and /readyz on the service URL
+#   restore-drill  [--pitr YYYY-MM-DDTHH:MM:SSZ] [--keep]: the latest backup (or a point in time) into a
+#               throwaway <SQL_INSTANCE>-drill-<stamp>; alembic, row count and smoke checks, timed, deleted
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   amazon-check  (--slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]: the read-only
 #               Amazon connection check of one tenant (GET only, worker identity, one-off job)
 #   images      recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E: queue the photo checks
 #               again for photos the old photo rules judged (worker identity, one-off job; rerun to remaining=0)
+#   sentry-alerts  the Sentry issue alert rules of sentry_rules.py (new issue, regression, spike, ops alert
+#               repeats): SENTRY_ORG, SENTRY_PROJECT, SENTRY_API_URL and the SENTRY_ALERTS_TOKEN secret
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
-#               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, maintenance), cors and status, ADR-0025)
+#               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, SQL, 5xx), cors and status, ADR-0025)
 #
 # Every subcommand describes before it creates, so a rerun is safe. Each gcloud command is printed
 # before it runs; --dry-run prints them and runs none (its only gcloud call is a local `--help`
@@ -53,8 +57,9 @@ OPS_SECRETS="ALEMBIC_DATABASE_URL"
 MAINT_SECRETS="DATABASE_URL ALEMBIC_DATABASE_URL S3_ACCESS_KEY S3_SECRET_KEY SENTRY_DSN"
 PW_MOUNT="/secrets/initial-password/value"
 
+# The header comment from line 5 to the bare `#` before "Every subcommand describes".
 usage() {
-  sed -n '5,24p' "$0" | sed 's/^# \{0,1\}//' >&2
+  sed -n '5,/^# Every subcommand describes/p' "$0" | sed -e '$d' | sed -e '$d' -e 's/^# \{0,1\}//' >&2
   exit 2
 }
 
@@ -88,6 +93,9 @@ INGRESS="${INGRESS-all}"
 EDGE_ENFORCE="${EDGE_ENFORCE-}"
 JWT_ISSUER="${JWT_ISSUER-}"
 ALERT_EMAIL="${ALERT_EMAIL-}"
+# The display name of a Cloud Monitoring Slack channel the owner made once in the console (Slack
+# needs Google's app authorised there). Blank: the Cloud Monitoring alerts go to email only.
+ALERT_SLACK_CHANNEL="${ALERT_SLACK_CHANNEL-}"
 # ADR-0025: the interim edge. Blank or armor: the ADR-0022 load balancer path, unchanged.
 # cloudflare: a Cloudflare Worker in front of run.app (docs/runbooks/EDGE-CLOUDFLARE.md); the api
 # gets the Worker's origin secret, and ORIGIN_AUTH=enforce makes it refuse every other caller.
@@ -164,6 +172,12 @@ MAINT_TIME_ZONE="${MAINT_TIME_ZONE:-Asia/Kolkata}"
 # DPP 2.7.4: where Cloud SQL keeps its automated backups; an env file without the key keeps them in
 # the instance's region, as before.
 SQL_BACKUP_LOCATION="${SQL_BACKUP_LOCATION:-$REGION}"
+# Ops readiness (d): the backups stay in India. asia-south2 (Delhi) is the cross-region choice,
+# prepared and off until the client decides (DEPLOY-GCP.md "Cross-region backups").
+case "$SQL_BACKUP_LOCATION" in
+  asia-south1 | asia-south2) ;;
+  *) die "SQL_BACKUP_LOCATION must be asia-south1 or asia-south2, not '$SQL_BACKUP_LOCATION' (in $ENV_NAME.env)" ;;
+esac
 case "$MFA_ENFORCEMENT" in
   off | all) ;;
   *) die "MFA_ENFORCEMENT must be off or all (in $ENV_NAME.env)" ;;
@@ -293,6 +307,21 @@ if [ -n "$RATE_LIMIT_PER_TENANT_PER_MIN" ] &&
   ! printf '%s\n' "$RATE_LIMIT_PER_TENANT_PER_MIN" | grep -Eqx '[1-9][0-9]{0,5}'; then
   die "RATE_LIMIT_PER_TENANT_PER_MIN must be a whole number of requests a minute (in $ENV_NAME.env)"
 fi
+# V1 hardening #9: the image check children one worker runs at once (blank: the Settings default,
+# 1). Each child may map up to 1 GiB, so the worker needs that many GiB plus 1 for itself, and a
+# second child only runs in parallel with a second vCPU.
+IMAGE_CHECK_CONCURRENCY="${IMAGE_CHECK_CONCURRENCY-}"
+if [ -n "$IMAGE_CHECK_CONCURRENCY" ]; then
+  printf '%s\n' "$IMAGE_CHECK_CONCURRENCY" | grep -Eqx '[1-4]' ||
+    die "IMAGE_CHECK_CONCURRENCY must be 1 to 4 (in $ENV_NAME.env)"
+  if [ "$IMAGE_CHECK_CONCURRENCY" -gt 1 ]; then
+    worker_gib="$(printf '%s\n' "$WORKER_MEMORY" | sed -n 's/^\([0-9][0-9]*\)Gi$/\1/p')"
+    [ -n "$worker_gib" ] && [ "$worker_gib" -ge $((IMAGE_CHECK_CONCURRENCY + 1)) ] ||
+      die "IMAGE_CHECK_CONCURRENCY=$IMAGE_CHECK_CONCURRENCY needs WORKER_MEMORY of at least $((IMAGE_CHECK_CONCURRENCY + 1))Gi (in $ENV_NAME.env)"
+    printf '%s\n' "$WORKER_CPU" | grep -Eqx '[2-8]' ||
+      die "IMAGE_CHECK_CONCURRENCY=$IMAGE_CHECK_CONCURRENCY needs WORKER_CPU of at least 2 (in $ENV_NAME.env)"
+  fi
+fi
 if [ -n "$PIPELINE_REF" ] && ! printf '%s\n' "$PIPELINE_REF" | grep -Eqx '[0-9a-f]{40}'; then
   die "PIPELINE_REF must be a full 40-character lowercase commit sha (in $ENV_NAME.env)"
 fi
@@ -348,10 +377,13 @@ chmod 0700 "$WORK"
 # On every exit (success, die, error, Ctrl-C): a locked deploy's `candidate` tag is removed
 # (candidate_close, ADR-0022), then the work dir.
 CANDIDATE_ARMED=0
+# restore-drill: set once the throwaway instance may exist, so any exit deletes it (drill_cleanup).
+DRILL_ARMED=0
 on_exit() {
   local rc=$?
   set +e
   [ "$CANDIDATE_ARMED" -eq 0 ] || candidate_close
+  [ "$DRILL_ARMED" -eq 0 ] || drill_cleanup
   rm -rf "$WORK"
   exit "$rc"
 }
@@ -1066,6 +1098,9 @@ app_env() {
     [ -z "$LLM_MODEL_VISION" ] || printf 'LLM_MODEL_VISION\t%s\n' "$LLM_MODEL_VISION"
     [ -z "$LLM_MODEL_VISION_SIZE_CHART" ] ||
       printf 'LLM_MODEL_VISION_SIZE_CHART\t%s\n' "$LLM_MODEL_VISION_SIZE_CHART"
+    # V1 hardening #9: the parallel image check children (the worker runs every image job)
+    [ -z "$IMAGE_CHECK_CONCURRENCY" ] ||
+      printf 'IMAGE_CHECK_CONCURRENCY\t%s\n' "$IMAGE_CHECK_CONCURRENCY"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
@@ -1836,6 +1871,43 @@ cmd_images() {
   job_logs_hint "$IMGRECHECK_JOB"
 }
 
+# ---- Sentry alert rules (ops readiness) ----
+# The issue alert rules of sentry_rules.py, applied with the Sentry API (DEPLOY-GCP.md "Sentry
+# alert rules"). The token (scopes alerts:read, alerts:write) lives in the SENTRY_ALERTS_TOKEN
+# secret, which no deployed process reads: it goes from `gcloud secrets versions access` straight
+# into the helper's stdin, never argv, a file or the output. --dry-run prints the rules and
+# contacts neither Google Cloud nor Sentry.
+SENTRY_TOKEN_SECRET="SENTRY_ALERTS_TOKEN"
+cmd_sentry_alerts() {
+  [ ${#REST[@]} -eq 0 ] || usage
+  local name missing="" value
+  for name in SENTRY_ORG SENTRY_PROJECT SENTRY_API_URL; do
+    eval "value=\"\${$name-}\""
+    [ -n "$value" ] || missing="$missing $name"
+  done
+  [ -z "$missing" ] ||
+    die "sentry-alerts: set$missing in scripts/deploy/gcp/$ENV_NAME.env (DEPLOY-GCP.md \"Sentry alert rules\")"
+  local args=(--org "$SENTRY_ORG" --project "$SENTRY_PROJECT" --api-url "$SENTRY_API_URL" --environment "$APP_ENV")
+  if [ -n "${SENTRY_SLACK_WORKSPACE-}" ] || [ -n "${SENTRY_SLACK_CHANNEL-}" ]; then
+    args+=(--slack-workspace "${SENTRY_SLACK_WORKSPACE-}" --slack-channel "${SENTRY_SLACK_CHANNEL-}")
+  fi
+  # The helper checks every value and prints the rules; it contacts nothing in this mode.
+  py "$HERE/sentry_rules.py" "${args[@]}" --dry-run || die "sentry-alerts: bad Sentry settings in scripts/deploy/gcp/$ENV_NAME.env"
+  ensure_secret "$SENTRY_TOKEN_SECRET"
+  pipe_note "gcloud secrets versions access latest --secret=$SENTRY_TOKEN_SECRET --project=$PROJECT | sentry_rules.py ${args[*]} --token-stdin"
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  if ! secret_has_version "$SENTRY_TOKEN_SECRET"; then
+    say "secret $SENTRY_TOKEN_SECRET has no value. Make a Sentry token with alerts:read and alerts:write, then add it in your own terminal (the value is never echoed):"
+    printf "  bash -c 'read -rsp \"%s: \" v; echo; printf %%s \"\$v\" | gcloud secrets versions add %s --data-file=- --project=%s'\n" \
+      "$SENTRY_TOKEN_SECRET" "$SENTRY_TOKEN_SECRET" "$PROJECT"
+    die "sentry-alerts: stopped until $SENTRY_TOKEN_SECRET has a value"
+  fi
+  gcloud secrets versions access latest --secret="$SENTRY_TOKEN_SECRET" --project="$PROJECT" --quiet |
+    py "$HERE/sentry_rules.py" "${args[@]}" --token-stdin ||
+    die "sentry-alerts: stopped (the reading of $SENTRY_TOKEN_SECRET or the Sentry API failed, above); no rule after the failed one was changed"
+  say "sentry-alerts: the kuinn rules are in place"
+}
+
 # ---- edge (DPP-2) ----
 # The API edge (ADR-0022; docs/runbooks/EDGE-CUTOVER.md): a global external Application Load
 # Balancer for EDGE_DOMAIN with a Google-managed certificate and an SSL policy MODERN / TLS 1.2,
@@ -2243,24 +2315,107 @@ policy_name() {
   gq monitoring policies list --filter="displayName=\"$1\"" --format='value(name)' || true
 }
 
-# V1 hardening #1: the alerts that do not depend on the edge provider, to ALERT_EMAIL by a Cloud
-# Monitoring email channel: the uptime check of https://$EDGE_DOMAIN/readyz, the worker heartbeat
-# (no `periodic.alerts_checked` line for 15 min: the worker is down or hung, and with it every
-# app alert), worker restarts (more than 2 `worker.started` lines in 30 min: a crash loop) and
-# any ERROR line of the daily maintenance job (a failed step or an incomplete DPP purge). Runs
-# for EDGE_PROVIDER=cloudflare too (`edge alerts`); the load balancer path adds its own after.
-# Sets CHANNEL and UPTIME for the caller.
+# Process env, not env-file keys: the ops alert thresholds (fractions, a percent, a count).
+SQL_CPU_ALERT="${SQL_CPU_ALERT:-0.8}"
+SQL_DISK_ALERT="${SQL_DISK_ALERT:-0.85}"
+SQL_CONN_ALERT_PCT="${SQL_CONN_ALERT_PCT:-80}"
+API_5XX_ALERT="${API_5XX_ALERT:-10}"
+
+# FILE: the policy's display name.
+policy_display_name() {
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$1"
+}
+
+# FILE: describe before create. The file is first stamped with userLabels.kuinn_spec, a short hash
+# of everything else in it (conditions, thresholds, channels). No policy of that display name:
+# create it. One already there: update it in place when its stamp differs from FILE's (a threshold,
+# a filter or a channel changed, or a policy made before the stamp), else leave it.
+apply_policy() {
+  local file="$1" existing have want
+  want="$(python3 - "$file" <<'EOF'
+import hashlib, json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    doc = json.load(handle)
+doc.pop("userLabels", None)
+key = dict(doc, notificationChannels=sorted(doc["notificationChannels"]))
+stamp = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
+doc["userLabels"] = {"kuinn_spec": stamp}
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(doc, handle, indent=2)
+    handle.write("\n")
+print(stamp)
+EOF
+)"
+  say "policy $file:"
+  sed 's/^/    /' "$file"
+  existing="$(policy_name "$(policy_display_name "$file")" | head -n 1)"
+  if [ -z "$existing" ]; then
+    gc monitoring policies create --policy-from-file="$file"
+    return 0
+  fi
+  have="$(gq monitoring policies describe "$existing" --format='value(userLabels.kuinn_spec)' || true)"
+  [ "$have" = "$want" ] || gc monitoring policies update "$existing" --policy-from-file="$file"
+}
+
+# monitoring.googleapis.com, enabled once when absent (`setup` enables it only on the load
+# balancer path, so the Cloudflare edge never pulls in compute and its default VPC).
+ensure_monitoring_api() {
+  local on
+  on="$(gq services list --enabled --filter='config.name=monitoring.googleapis.com' --format='value(config.name)' || true)"
+  [ -n "$on" ] || gc services enable monitoring.googleapis.com
+}
+
+# The Slack channel named ALERT_SLACK_CHANNEL, found (never created: Slack needs Google's app
+# authorised in the console). Prints its resource name, or nothing when ALERT_SLACK_CHANNEL is
+# blank. Dies when it is set but no single Slack channel has that name.
+slack_channel() {
+  local found count
+  [ -n "$ALERT_SLACK_CHANNEL" ] || return 0
+  found="$(gq beta monitoring channels list --filter="displayName=\"$ALERT_SLACK_CHANNEL\" AND type=\"slack\"" --format='value(name)' || true)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf 'projects/%s/notificationChannels/<slack-channel-id>' "$PROJECT"
+    return 0
+  fi
+  count="$(printf '%s' "$found" | grep -c . || true)"
+  [ "$count" -ne 0 ] || die "alerts: no Slack channel named '$ALERT_SLACK_CHANNEL' in $PROJECT; make it once in the console (docs/runbooks/DEPLOY-GCP.md \"Alerts and Slack\"), or blank ALERT_SLACK_CHANNEL for email only"
+  [ "$count" -eq 1 ] || die "alerts: want exactly one Slack channel named '$ALERT_SLACK_CHANNEL', found $count"
+  printf '%s' "$found"
+}
+
+# V1 hardening #1 and ops readiness: the alerts that do not depend on the edge provider, to
+# ALERT_EMAIL by a Cloud Monitoring email channel (plus the Slack channel ALERT_SLACK_CHANNEL
+# names, when set): the uptime check of https://$EDGE_DOMAIN/readyz, the worker heartbeat (no
+# `periodic.alerts_checked` line for 15 min: the worker is down or hung, and with it every app
+# alert), worker restarts (more than 2 `worker.started` lines in 30 min: a crash loop), job lag
+# (the worker's own `alert.queue_latency` line, so it reaches email even with no Slack), any
+# ERROR line of the daily maintenance job (a failed step or an incomplete DPP purge), Cloud SQL
+# CPU, disk and connections, and the api's 5xx count. Runs for EDGE_PROVIDER=cloudflare too
+# (`edge alerts`); the load balancer path adds its own after. Sets CHANNELS (comma separated) for
+# the caller.
 ops_alerts() {
-  local channel uptime count file name existing current metric
+  local channel slack uptime count file name existing current metric
   case "$ALERT_EMAIL" in
     "") die "alerts: set ALERT_EMAIL in scripts/deploy/gcp/$ENV_NAME.env (one address)" ;;
     *[,\ ]* | *@*@*) die "alerts: ALERT_EMAIL must be one address, not '$ALERT_EMAIL'" ;;
     ?*@?*.?*) ;;
     *) die "alerts: ALERT_EMAIL must be an address (x@y.z), not '$ALERT_EMAIL'" ;;
   esac
+  case "$ALERT_SLACK_CHANNEL" in
+    *[!A-Za-z0-9._\ -]*) die "alerts: ALERT_SLACK_CHANNEL must be a channel display name (letters, digits, space . _ -), not '$ALERT_SLACK_CHANNEL'" ;;
+  esac
+  case "$SQL_CPU_ALERT$SQL_DISK_ALERT" in
+    *[!0-9.]*) die "alerts: SQL_CPU_ALERT and SQL_DISK_ALERT must be fractions like 0.8" ;;
+  esac
+  case "$SQL_CONN_ALERT_PCT$API_5XX_ALERT" in
+    *[!0-9]*) die "alerts: SQL_CONN_ALERT_PCT and API_5XX_ALERT must be whole numbers" ;;
+  esac
   if [ "$DRY_RUN" -eq 0 ] && ! gcloud beta monitoring channels create --help >/dev/null 2>&1; then
     die "alerts: this gcloud has no beta monitoring commands; run: gcloud components install beta"
   fi
+  # Found before anything is created, so a missing Slack channel changes nothing.
+  slack="$(slack_channel)" || exit 1
+  ensure_monitoring_api
   # The email channel (no GA create command).
   channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
   if [ -z "$channel" ]; then
@@ -2278,6 +2433,7 @@ ops_alerts() {
   [ -n "$channel" ] || [ "$DRY_RUN" -eq 0 ] || channel="projects/$PROJECT/notificationChannels/<channel-id>"
   [ -n "$channel" ] || die "alerts: cannot find the $EDGE_CHANNEL channel after creating it"
   channel="$(printf '%s\n' "$channel" | head -n 1)"
+  CHANNELS="$channel${slack:+,$slack}"
   # The uptime check first: its alert policy filters on the id Google assigns, not the name.
   uptime="$(gq monitoring uptime list-configs --filter="displayName=$EDGE_UPTIME" --format='value(name.basename())' || true)"
   if [ -z "$uptime" ]; then
@@ -2291,8 +2447,6 @@ ops_alerts() {
     count="$(printf '%s' "$uptime" | grep -c . || true)"
     [ "$count" -eq 1 ] || die "alerts: want exactly one uptime check named $EDGE_UPTIME, found $count"
   fi
-  CHANNEL="$channel"
-  UPTIME="$uptime"
   # Logs-based metrics on the worker's own JSON lines (app/core/logging.py: `message`).
   local pool="resource.type=\"cloud_run_worker_pool\" AND resource.labels.worker_pool_name=\"$WORKER_POOL\""
   for metric in \
@@ -2301,11 +2455,21 @@ ops_alerts() {
     gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
       gc logging metrics create "${metric%%|*}" --description="worker health (V1 hardening #1)" --log-filter="${metric#*|}"
   done
-  CHANNEL="$channel" UPTIME="$uptime" JOB="$MAINT_JOB" OUT="$WORK" python3 -c '
+  CHANNELS="$CHANNELS" UPTIME="$uptime" JOB="$MAINT_JOB" POOL="$pool" OUT="$WORK" \
+    DB="$PROJECT:$SQL_INSTANCE" API="$API_SERVICE" MAXCONN="${SQL_MAX_CONNECTIONS:-100}" \
+    CPU="$SQL_CPU_ALERT" DISK="$SQL_DISK_ALERT" CONNPCT="$SQL_CONN_ALERT_PCT" R5XX="$API_5XX_ALERT" python3 -c '
 import json, os
 e = os.environ
 def user_metric(name):
     return "metric.type=\"logging.googleapis.com/user/%s\"" % name
+sql = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"%s\"" % e["DB"]
+def sql_threshold(name, metric, value, duration, reducer="REDUCE_MEAN"):
+    return {"displayName": name, "conditionThreshold": {
+        "filter": "metric.type=\"cloudsql.googleapis.com/database/%s\" AND %s" % (metric, sql),
+        "comparison": "COMPARISON_GT", "thresholdValue": value, "duration": duration,
+        "aggregations": [{"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MEAN",
+                          "crossSeriesReducer": reducer}]}}
+connections = round(int(e["MAXCONN"]) * int(e["CONNPCT"]) / 100)
 policies = {
   "uptime": ("aimos-edge uptime failing", {"displayName": "/readyz failing from 2+ regions for 5 min",
     "conditionThreshold": {
@@ -2322,28 +2486,40 @@ policies = {
       "thresholdValue": 2, "duration": "0s",
       "aggregations": [{"alignmentPeriod": "1800s", "perSeriesAligner": "ALIGN_SUM",
                         "crossSeriesReducer": "REDUCE_SUM"}]}}),
+  "joblag": ("aimos-worker job lag", {"displayName": "the worker raised alert.queue_latency (a queue is behind)",
+    "conditionMatchedLog": {"filter": "%s AND jsonPayload.message=\"alert.queue_latency\"" % e["POOL"]}}),
   "maintenance": ("aimos-maintenance errors", {"displayName": "an ERROR line in the daily maintenance job",
     "conditionMatchedLog": {"filter": "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"%s\" AND severity>=ERROR" % e["JOB"]}}),
+  "sqlcpu": ("aimos-db cpu high", sql_threshold("Cloud SQL CPU over %s for 10 min" % e["CPU"],
+             "cpu/utilization", float(e["CPU"]), "600s")),
+  "sqldisk": ("aimos-db disk filling", sql_threshold("Cloud SQL disk over %s for 10 min" % e["DISK"],
+              "disk/utilization", float(e["DISK"]), "600s")),
+  "sqlconn": ("aimos-db connections high", sql_threshold(
+              "over %d Postgres connections (%s%% of %s) for 5 min" % (connections, e["CONNPCT"], e["MAXCONN"]),
+              "postgresql/num_backends", connections, "300s", "REDUCE_SUM")),
+  "api5xx": ("aimos-api 5xx", {"displayName": "api 5xx over %s in 5 min" % e["R5XX"],
+    "conditionThreshold": {
+      "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"%s\" AND metric.labels.response_code_class=\"5xx\"" % e["API"],
+      "comparison": "COMPARISON_GT", "thresholdValue": float(e["R5XX"]), "duration": "0s",
+      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM",
+                        "crossSeriesReducer": "REDUCE_SUM"}]}}),
 }
 for key, (name, condition) in policies.items():
     doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
-           "notificationChannels": [e["CHANNEL"]]}
+           "notificationChannels": e["CHANNELS"].split(",")}
     if "conditionMatchedLog" in condition:
         doc["alertStrategy"] = {"notificationRateLimit": {"period": "3600s"}}
     with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
         json.dump(doc, handle, indent=2)
         handle.write("\n")'
-  for name in uptime heartbeat restarts maintenance; do
-    file="$WORK/policy-$name.json"
-    say "policy $file:"
-    sed 's/^/    /' "$file"
-    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
-    [ -n "$existing" ] || gc monitoring policies create --policy-from-file="$file"
+  for name in $OPS_POLICIES; do
+    apply_policy "$WORK/policy-$name.json"
   done
 }
+OPS_POLICIES="uptime heartbeat restarts joblag maintenance sqlcpu sqldisk sqlconn api5xx"
 
 edge_alerts() {
-  local file name existing threshold metric
+  local file name existing metric
   ops_alerts
   # Logs-based metrics.
   for metric in \
@@ -2352,7 +2528,7 @@ edge_alerts() {
     gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
       gc logging metrics create "${metric%%|*}" --description="API edge (DPP-2)" --log-filter="${metric#*|}"
   done
-  CHANNEL="$CHANNEL" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
+  CHANNELS="$CHANNELS" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
     RATIO="$EDGE_5XX_RATIO" RULE="$EDGE_RULE" OUT="$WORK" python3 -c '
 import json, os
 e = os.environ
@@ -2377,7 +2553,7 @@ policies = {
 }
 for key, (name, condition) in policies.items():
     doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
-           "notificationChannels": [e["CHANNEL"]]}
+           "notificationChannels": e["CHANNELS"].split(",")}
     if "conditionMatchedLog" in condition:
         doc["alertStrategy"] = {"notificationRateLimit": {"period": "300s"}}
     with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
@@ -2385,18 +2561,7 @@ for key, (name, condition) in policies.items():
         handle.write("\n")'
   for name in deny 429 5xx ddos; do
     file="$WORK/policy-$name.json"
-    say "policy $file:"
-    sed 's/^/    /' "$file"
-    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
-    if [ -z "$existing" ]; then
-      gc monitoring policies create --policy-from-file="$file"
-    elif [ "$name" = "deny" ]; then
-      threshold="$(gq monitoring policies describe "$existing" \
-        --format='value(conditions[0].conditionThreshold.thresholdValue)' || true)"
-      if [ "${threshold%.0}" != "$EDGE_DENY_ALERT" ]; then
-        gc monitoring policies update "$existing" --policy-from-file="$file"
-      fi
-    fi
+    apply_policy "$file"
   done
   # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
   ensure_security_bucket
@@ -2414,7 +2579,7 @@ for key, (name, condition) in policies.items():
     *) gc logging sinks update _Default \
       --add-exclusion='name=edge-callback-urls,filter=resource.type="http_load_balancer" AND httpRequest.requestUrl:"/callback"' ;;
   esac
-  say "alerts: metrics, channel, uptime check, 8 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
+  say "alerts: metrics, channels, uptime check, 13 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
 }
 
 edge_status() {
@@ -2488,7 +2653,7 @@ cmd_edge() {
       setup | rules | enforce | lock-ingress | unlock-ingress)
         die "edge $sub: EDGE_PROVIDER=cloudflare: see docs/runbooks/EDGE-CLOUDFLARE.md" ;;
       # V1 hardening #1: the provider-independent alerts (uptime, worker, maintenance)
-      alerts) ops_alerts; say "alerts: channel, uptime check and 4 policies are in place" ;;
+      alerts) ops_alerts; say "alerts: channels, uptime check and 9 policies are in place" ;;
       cors) check_filled; bucket_cors ;;
       status) edge_status_cloudflare ;;
       *) usage ;;
@@ -2506,6 +2671,225 @@ cmd_edge() {
     status) edge_status ;;
     *) usage ;;
   esac
+}
+
+# ---- restore drill (launch gate 6; INCIDENTS.md "Restore the database") ----
+# The latest successful backup of SQL_INSTANCE (or, with --pitr, a point in time) goes into a new
+# throwaway instance <SQL_INSTANCE>-drill-<UTC ddHHMMSS>, labelled purpose=restore-drill. Then,
+# through cloud-sql-proxy on 127.0.0.1, read only: the alembic revision is one this repo knows (as
+# migrator in a read-only session), row counts of the core tables as app_ro (at least one tenant),
+# and a smoke (row level security still on, sealed Amazon tokens still carry their key version,
+# the newest job run). Every phase is timed against the 15-minute gate. The drill instance is
+# deleted at the end and on any failure (--keep leaves it and prints the delete command). Nothing
+# here creates, patches, restores into or deletes SQL_INSTANCE: every mutating command names the
+# drill instance, and drill_guard refuses any other name. The passwords go from Secret Manager
+# into a 0600 pgpass file in the work dir, never argv or the output.
+DRILL_PORT="${DRILL_PORT:-6544}"
+DRILL_WAIT_TRIES="${DRILL_WAIT_TRIES:-30}"
+DRILL_WAIT_SLEEP="${DRILL_WAIT_SLEEP:-2}"
+DRILL_GATE_S=900
+DRILL=""
+DRILL_KEEP=0
+DRILL_PROXY_PID=""
+# The tables counted (all readable by app_ro across tenants, migrations 0001 onwards).
+DRILL_TABLES="tenants users tenant_memberships products listings listing_versions job_runs agent_runs marketplace_accounts images audit_log"
+
+# NAME: dies unless NAME is this drill's own instance (never SQL_INSTANCE).
+drill_guard() {
+  [ -n "$1" ] && [ "$1" = "$DRILL" ] && [ "$1" != "$SQL_INSTANCE" ] ||
+    die "restore-drill: refusing to touch instance '$1' (only the drill instance '$DRILL')"
+  case "$1" in
+    "$SQL_INSTANCE"-drill-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) ;;
+    *) die "restore-drill: refusing to touch instance '$1' (not a drill name)" ;;
+  esac
+}
+
+drill_cleanup() {
+  [ -z "$DRILL_PROXY_PID" ] || kill "$DRILL_PROXY_PID" 2>/dev/null
+  DRILL_PROXY_PID=""
+  if [ "$DRILL_KEEP" -eq 1 ]; then
+    say "restore-drill: kept $DRILL (--keep). Delete it when done:"
+    printf '  gcloud sql instances delete %s --project=%s\n' "$DRILL" "$PROJECT"
+  else
+    drill_guard "$DRILL"
+    gc sql instances delete "$DRILL" || say "restore-drill: could not delete $DRILL; delete it by hand: gcloud sql instances delete $DRILL --project=$PROJECT"
+  fi
+  DRILL_ARMED=0
+}
+
+# SECONDS_SINCE START LABEL
+drill_mark() {
+  local now
+  now="$(date +%s)"
+  say "restore-drill: $2 at $((now - $1)) s"
+}
+
+# SQL: one query through the proxy, as app_ro (or migrator with DRILL_AS=migrator), tuples only.
+drill_sql() {
+  local user="${DRILL_AS:-app_ro}"
+  show psql "host=127.0.0.1 port=$DRILL_PORT dbname=$DB_NAME user=$user sslmode=disable" -At -c "$1" >&2
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  PGPASSFILE="$WORK/drill.pgpass" PGOPTIONS="-c default_transaction_read_only=on" PGCONNECT_TIMEOUT=10 \
+    psql "host=127.0.0.1 port=$DRILL_PORT dbname=$DB_NAME user=$user sslmode=disable" -At -X -v ON_ERROR_STOP=1 -c "$1"
+}
+
+# The revisions under apps/api/alembic/versions, one per line.
+repo_revisions() {
+  python3 - "$ROOT/apps/api/alembic/versions" <<'EOF'
+import pathlib, re, sys
+for path in sorted(pathlib.Path(sys.argv[1]).glob("*.py")):
+    m = re.search(r'^revision(?:: str)? = "([^"]+)"', path.read_text(encoding="utf-8"), re.M)
+    if m:
+        print(m.group(1))
+EOF
+}
+
+cmd_restore_drill() {
+  local pitr="" i=0 arg info="" version="" tier="" disk="" backup="" started restored checked now total
+  while [ "$i" -lt "${#REST[@]}" ]; do
+    arg="${REST[$i]}"
+    case "$arg" in
+      --pitr) i=$((i + 1)); [ "$i" -lt "${#REST[@]}" ] || usage; pitr="${REST[$i]}" ;;
+      --keep) DRILL_KEEP=1 ;;
+      *) usage ;;
+    esac
+    i=$((i + 1))
+  done
+  if [ -n "$pitr" ]; then
+    printf '%s' "$pitr" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$' ||
+      die "restore-drill: --pitr must be a UTC time like 2026-11-09T10:00:00Z, not '$pitr'"
+  fi
+  [ -d "$ROOT/apps/api/alembic/versions" ] || die "restore-drill: run it from a full checkout (no apps/api/alembic/versions)"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    for arg in cloud-sql-proxy psql; do
+      command -v "$arg" >/dev/null 2>&1 ||
+        die "restore-drill: needs $arg on PATH (cloud-sql-proxy v2: https://cloud.google.com/sql/docs/postgres/sql-proxy; psql: brew install libpq)"
+    done
+  fi
+  DRILL="$SQL_INSTANCE-drill-$(date -u +%d%H%M%S)"
+  drill_guard "$DRILL"
+  say "restore-drill: source $SQL_INSTANCE (read only), throwaway $DRILL"
+  # The source, read only: its version, tier and disk, so the restore target is at least as big.
+  if info="$(gq sql instances describe "$SQL_INSTANCE" --format='value(databaseVersion,settings.tier,settings.dataDiskSizeGb)')"; then
+    read -r version tier disk <<EOF
+$info
+EOF
+  elif [ "$DRY_RUN" -eq 1 ]; then
+    version="POSTGRES_17" tier="$SQL_TIER" disk="$SQL_STORAGE_GB"
+  else
+    die "restore-drill: cannot read the source instance $SQL_INSTANCE"
+  fi
+  [ -n "$version" ] && [ -n "$tier" ] && [ -n "$disk" ] || die "restore-drill: incomplete answer for $SQL_INSTANCE ('$info')"
+  if [ -z "$pitr" ]; then
+    backup="$(gq sql backups list --instance="$SQL_INSTANCE" --filter='status=SUCCESSFUL' \
+      --sort-by=~windowStartTime --limit=1 --format='value(id)' || true)"
+    [ -n "$backup" ] || [ "$DRY_RUN" -eq 0 ] || backup="<latest-backup-id>"
+    [ -n "$backup" ] || die "restore-drill: $SQL_INSTANCE has no successful backup"
+    say "restore-drill: backup $backup"
+  fi
+  # A name in use is never adopted: the cleanup would delete someone else's instance.
+  ! gq sql instances describe "$DRILL" --format='value(name)' >/dev/null ||
+    die "restore-drill: an instance named $DRILL already exists; run again in a second"
+  started="$(date +%s)"
+  DRILL_ARMED=1
+  if [ -z "$pitr" ]; then
+    gc sql instances create "$DRILL" --database-version="$version" --edition=ENTERPRISE \
+      --tier="$tier" --region="$REGION" --availability-type=zonal --storage-type=SSD \
+      --storage-size="${disk}GB" --no-backup --no-deletion-protection --assign-ip \
+      --connector-enforcement=REQUIRED --ssl-mode=ENCRYPTED_ONLY \
+      --labels="$LABELS,purpose=restore-drill"
+    drill_mark "$started" "drill instance ready"
+  else
+    # A clone copies the source's settings. Deletion protection comes off first, on its own, so the
+    # cleanup can always delete the clone. Then backups and point-in-time recovery (Cloud SQL refuses
+    # backups off while PITR is on); a refusal there only costs a backup, so it does not stop the drill.
+    gc sql instances clone "$SQL_INSTANCE" "$DRILL" --point-in-time="$pitr"
+    drill_guard "$DRILL"
+    gc sql instances patch "$DRILL" --no-deletion-protection --update-labels="purpose=restore-drill"
+    drill_guard "$DRILL"
+    gc sql instances patch "$DRILL" --no-enable-point-in-time-recovery --no-backup ||
+      say "restore-drill: could not turn off backups on $DRILL; it is deleted at the end anyway"
+  fi
+  # Belt and braces before the restore overwrites an instance: it must carry the drill label.
+  if [ "$DRY_RUN" -eq 0 ]; then
+    [ "$(gq sql instances describe "$DRILL" --format='value(settings.userLabels.purpose)' || true)" = "restore-drill" ] ||
+      die "restore-drill: $DRILL has no purpose=restore-drill label; stopped before any restore"
+  fi
+  if [ -z "$pitr" ]; then
+    drill_guard "$DRILL"
+    gc sql backups restore "$backup" --restore-instance="$DRILL" --backup-instance="$SQL_INSTANCE"
+  fi
+  restored="$(date +%s)"
+  drill_mark "$started" "restored"
+  # The checks, through the proxy, with the role passwords in a 0600 pgpass file.
+  pipe_note "gcloud secrets versions access latest --secret=APP_RO_PASSWORD (and MIGRATOR_PASSWORD) --project=$PROJECT | <0600 pgpass file for 127.0.0.1:$DRILL_PORT>"
+  show cloud-sql-proxy --gcloud-auth --port "$DRILL_PORT" "$PROJECT:$REGION:$DRILL"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    : >"$WORK/drill.pgpass"
+    chmod 0600 "$WORK/drill.pgpass"
+    for arg in app_ro:APP_RO_PASSWORD migrator:MIGRATOR_PASSWORD; do
+      gcloud secrets versions access latest --secret="${arg#*:}" --project="$PROJECT" --quiet |
+        python3 -c 'import sys
+v = sys.stdin.read().replace("\\", "\\\\").replace(":", "\\:")
+sys.stdout.write("127.0.0.1:%s:%s:%s:%s\n" % (sys.argv[1], sys.argv[2], sys.argv[3], v))' \
+          "$DRILL_PORT" "$DB_NAME" "${arg%%:*}" >>"$WORK/drill.pgpass" ||
+        die "restore-drill: cannot read ${arg#*:}"
+    done
+    cloud-sql-proxy --gcloud-auth --port "$DRILL_PORT" "$PROJECT:$REGION:$DRILL" >"$WORK/drill-proxy.log" 2>&1 &
+    DRILL_PROXY_PID=$!
+    i=0
+    until drill_sql "SELECT 1" >/dev/null 2>&1; do
+      i=$((i + 1))
+      if [ "$i" -ge "$DRILL_WAIT_TRIES" ]; then
+        tail -n 5 "$WORK/drill-proxy.log" | sed 's/^/    /' >&2
+        die "restore-drill: no connection to $DRILL through cloud-sql-proxy (its log is above)"
+      fi
+      sleep "$DRILL_WAIT_SLEEP"
+    done
+  fi
+  drill_checks
+  checked="$(date +%s)"
+  drill_mark "$started" "checked"
+  drill_cleanup
+  now="$(date +%s)"
+  total=$((checked - started))
+  say "restore-drill: restore $((restored - started)) s, checks $((checked - restored)) s, delete $((now - checked)) s"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "restore-drill: dry run; a real run times every phase against the ${DRILL_GATE_S} s gate"
+  elif [ "$total" -le "$DRILL_GATE_S" ]; then
+    say "restore-drill: launch gate 6 met: restored and checked in $total s (gate ${DRILL_GATE_S} s)"
+  else
+    say "restore-drill: launch gate 6 NOT met: restored and checked in $total s (gate ${DRILL_GATE_S} s)"
+  fi
+}
+
+# The read-only checks of the restored database; dies on the first failed one.
+drill_checks() {
+  local revision table count rls tokens newest
+  revision="$(DRILL_AS=migrator drill_sql "SELECT version_num FROM alembic_version")" ||
+    die "restore-drill: cannot read alembic_version on $DRILL"
+  if [ "$DRY_RUN" -eq 0 ]; then
+    repo_revisions | grep -qx -- "$revision" ||
+      die "restore-drill: the restored revision '$revision' is not in apps/api/alembic/versions"
+    say "restore-drill: alembic revision $revision (known to this checkout)"
+  fi
+  for table in $DRILL_TABLES; do
+    count="$(drill_sql "SELECT count(*) FROM $table")" || die "restore-drill: cannot count $table"
+    [ "$DRY_RUN" -eq 1 ] || say "restore-drill: rows $table=$count"
+    if [ "$table" = "tenants" ] && [ "$DRY_RUN" -eq 0 ] && [ "${count:-0}" -lt 1 ]; then
+      die "restore-drill: the restored database has no tenant"
+    fi
+  done
+  rls="$(drill_sql "SELECT count(*) FROM pg_class WHERE relnamespace = 'public'::regnamespace AND relrowsecurity AND relforcerowsecurity")" ||
+    die "restore-drill: cannot read the row level security flags"
+  tokens="$(drill_sql "SELECT count(*) FILTER (WHERE kms_key_version IS NULL) FROM marketplace_accounts WHERE status = 'active'")" ||
+    die "restore-drill: cannot read marketplace_accounts"
+  newest="$(drill_sql "SELECT coalesce(max(created_at)::text, 'none') FROM job_runs")" ||
+    die "restore-drill: cannot read job_runs"
+  [ "$DRY_RUN" -eq 0 ] || return 0
+  [ "${rls:-0}" -ge 1 ] || die "restore-drill: no table has forced row level security after the restore"
+  [ "${tokens:-1}" -eq 0 ] || die "restore-drill: $tokens active Amazon accounts lost their KMS key version"
+  say "restore-drill: smoke ok (forced RLS on $rls tables, every active account sealed, newest job run $newest)"
 }
 
 # ---- status ----
@@ -2535,10 +2919,12 @@ case "$CMD" in
   deploy) cmd_deploy ;;
   release) cmd_preflight; cmd_release ;;
   smoke) cmd_smoke ;;
+  restore-drill) cmd_restore_drill ;;
   tenant) cmd_tenant ;;
   templates) cmd_templates ;;
   amazon-check) cmd_amazon_check ;;
   images) cmd_images ;;
+  sentry-alerts) cmd_sentry_alerts ;;
   status) cmd_status ;;
   edge) cmd_edge ;;
   *) usage ;;

@@ -103,6 +103,7 @@ from app.api.v1.schemas.marketplaces import (
     MarketplaceAccountOut,
     MarketplaceAccountPage,
 )
+from app.api.v1.schemas.product_delete import ProductBulkDeleteResult
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.resolution import ResolutionOut
 from app.api.v1.schemas.rules import RulePage
@@ -504,6 +505,9 @@ _GOOGLE_COMPLETE: Final = MappingProxyType({**_GOOGLE_PUBLIC, 403: (E.TENANT_SUS
 _404: Final = MappingProxyType({404: (E.NOT_FOUND,)})
 _INVITE_ACCEPT: Final = MappingProxyType({**_GOOGLE_PUBLIC, **_404})
 
+# PD1: a product delete refused while a listing is generating or being sent
+_DELETE_BUSY: Final = MappingProxyType({409: (E.LISTING_BUSY, E.SUBMISSION_IN_FLIGHT)})
+
 _ROWS: Final[tuple[Operation, ...]] = (
     # ---- auth (S10) ----
     Operation("auth_login", "POST", "/auth/login", 200, LoginResult, "auth",
@@ -670,6 +674,16 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("products_bulk", "POST", "/products/bulk", 202, ImportAccepted, "products",
               "Import products from a CSV file", "S13", has_body=True, idempotency=True,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)}), action=A.PRODUCT_IMPORT),
+    # ---- product delete (PD1) ----
+    Operation("products_delete", "DELETE", "/products/{product_id}", 204, None, "products",
+              "Delete a product and its sizes: open questions close, queued work stops, its "
+              "listings are archived (409 when a listing was sent to a marketplace)", "PD1",
+              path_id="product_id", conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=_DELETE_BUSY, action=A.SETTINGS_MANAGE),
+    Operation("products_bulk_delete", "POST", "/products/bulk-delete", 200,
+              ProductBulkDeleteResult, "products",
+              "Delete up to 100 products, each answered on its own", "PD1", has_body=True,
+              body_ids=("product_ids[]",), idempotency=True, action=A.SETTINGS_MANAGE),
     # ---- imports (S13) ----
     Operation("imports_get", "GET", "/imports/{import_id}", 200, ImportReport, "imports",
               "The import report (counts; rows via /rows)", "S13", path_id="import_id", action=A.TENANT_READ),

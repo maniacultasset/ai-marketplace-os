@@ -25,6 +25,7 @@ from app.api.v1.routers import (
     listings,
     marketplaces,
     members,
+    product_delete,
     products,
     rules,
     signup,
@@ -59,6 +60,7 @@ for module in (
     catalog,
     category_suggestion,
     column_maps,
+    product_delete,
     size_run,
 ):
     router.include_router(module.router)

@@ -27,6 +27,7 @@ from mkos_schemas.size_chart_read import (
 )
 
 from app.core.errors import InputError
+from app.services.iso_countries import ISO_3166_ALPHA2
 
 __all__ = [
     "COUNTRY_PATTERN",
@@ -204,10 +205,13 @@ def check_hsn(value: str) -> str:
 
 
 def normalize_country(value: str) -> str:
-    """An ISO 3166 alpha-2 country code, upper-cased."""
+    """An assigned ISO 3166-1 alpha-2 country code, upper-cased."""
     if not value.isascii() or not COUNTRY_PATTERN.fullmatch(value):
         raise ValueError("country of origin must be a two-letter ISO code")
-    return value.upper()
+    code = value.upper()
+    if code not in ISO_3166_ALPHA2:
+        raise ValueError("country of origin must be an ISO 3166 country code")
+    return code
 
 
 def check_dimension(value: Decimal) -> Decimal:
