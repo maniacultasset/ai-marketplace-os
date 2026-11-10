@@ -208,11 +208,19 @@ async def test_sizes_must_come_from_the_saved_chart(
 async def test_a_style_holds_at_most_40_sizes(
     api: httpx.AsyncClient, products_world: World
 ) -> None:
-    first = {"unit": "cm", "basis": "garment", "rows": [{"size": f"A{i}"} for i in range(30)]}
+    first = {
+        "unit": "cm",
+        "basis": "garment",
+        "rows": [{"size": f"A{i}", "chest": 80 + i} for i in range(30)],
+    }
     pid = await _product(api, products_world, "KORA-CAP", chart=first)
     made = await _post(api, products_world, pid, [f"A{i}" for i in range(30)])
     assert made.status_code == 201, made.text
-    second = {"unit": "cm", "basis": "garment", "rows": [{"size": f"B{i}"} for i in range(11)]}
+    second = {
+        "unit": "cm",
+        "basis": "garment",
+        "rows": [{"size": f"B{i}", "chest": 80 + i} for i in range(11)],
+    }
     got = await api.get(f"{PRODUCTS}/{pid}", headers=_op(products_world))
     saved = await api.patch(
         f"{PRODUCTS}/{pid}",
