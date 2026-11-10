@@ -16,10 +16,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, or_, select, tuple_, update
+from sqlalchemy import case, cast, func, literal, literal_column, or_, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import aliased
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.catalog import Product
@@ -349,13 +348,19 @@ class ProductRepository(TenantScopedRepository[Product]):
         merged in, key by key. A style's `size_run` keeps its stored sizes, new ones appended."""
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("products upsert for another tenant's unit of work")
+        # the stored row, if any: its size run (merged below) and whether a product delete
+        # soft-deleted it, so the caller can bring its archived listings back
+        found_row = (
+            await self.db.execute(
+                self._select()
+                .where(Product.sku == row.sku)
+                .with_only_columns(Product.size_run, Product.deleted_at)
+            )
+        ).first()
+        was_deleted = found_row is not None and found_row[1] is not None
         size_run: list[str] | None = None
         if row.size_run is not None:
-            stored = (
-                await self.db.execute(
-                    self._select().where(Product.sku == row.sku).with_only_columns(Product.size_run)
-                )
-            ).scalar_one_or_none()
+            stored = None if found_row is None else found_row[0]
             size_run = list(stored or [])
             size_run += [size for size in row.size_run if size not in size_run]
         values: dict[str, Any] = {
@@ -406,19 +411,10 @@ class ProductRepository(TenantScopedRepository[Product]):
                 "provenance": table.c.provenance.op("||")(stmt.excluded.provenance),
             },
             where=changed,
-        )
-        # read in the statement's snapshot: whether the stored row was soft-deleted before this
-        # write (a product delete), so the caller can bring its archived listings back
-        before = aliased(Product, name="before")
-        prior = (
-            select(before.deleted_at.is_not(None))
-            .where(before.tenant_id == self.tenant_id, before.sku == row.sku)
-            .scalar_subquery()
-        )
-        returning = upsert.returning(table.c.id, literal_column("(xmax = 0)"), prior)
-        written = (await self.db.execute(returning)).first()
+        ).returning(table.c.id, literal_column("(xmax = 0)"))
+        written = (await self.db.execute(upsert)).first()
         if written is not None:
-            return Upserted(written[0], bool(written[1]), bool(written[2]))
+            return Upserted(written[0], bool(written[1]), was_deleted)
         found = (
             await self.db.execute(
                 self._select().where(Product.sku == row.sku).with_only_columns(Product.id)
