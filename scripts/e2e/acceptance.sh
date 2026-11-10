@@ -8,7 +8,7 @@
 #                          reset (`user set-password`), `platform load` (S20)
 #   login_*                owner, operator, reviewer (passwords from files, never an argv)
 #   connect_amazon         connect -> the fake's consent -> callback -> confirm; account active
-#   import_csv             FSH-TEE-001 tshirts, "Jet Black", S/M/L/XL (4 rows imported)
+#   import_csv             FSH-TEE-001 tshirts style row + "Jet Black" S/M/L/XL (5 rows imported)
 #   brand_document_md      a .md brand guide -> its job succeeded, document ready
 #   images_upload          a front (main) image per child -> each report passed
 #   generate_stub          the owner generates (stub pipeline) -> succeeded; its version kept
@@ -334,6 +334,9 @@ json 'any(a["id"] == "'"$account"'" and a["status"] == "active" and a["marketpla
 leg import_csv
 {
   echo "seller_sku,parent_style_id,product_name,brand_name,category,gender,color_name,normalized_color,size_name,fabric_type,mrp,selling_price,tax_rate,hsn_code,country_of_origin,package_weight,main_image,identifier_exemption"
+  # the style row: a family's own facts (fabric_type) live on the style, which the listing is
+  # generated for; SI2 (#97) lists only the seller's factual values
+  echo "$style,,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,,,,Cotton,,,,,,,,yes"
   for size in $sizes; do
     echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg,yes"
   done
@@ -346,15 +349,15 @@ wait_job "$operator" "$(json 'b["job_id"]')" succeeded
 on_fail=""
 call GET "$api/imports/$import_id" "$operator"
 expect 200
-json 'b["imported"] == 4 and b["failed"] == 0 and b["total_rows"] == 4' >/dev/null || fail "want 4 rows imported, 0 failed"
+json 'b["imported"] == 5 and b["failed"] == 0 and b["total_rows"] == 5' >/dev/null || fail "want 5 rows imported, 0 failed"
 call GET "$api/imports/$import_id/rows?status=imported&limit=10" "$operator"
 expect 200
-python3 - "$body" "$work/children" <<'PY' || fail "the imported rows are not the four children"
+python3 - "$body" "$work/children" <<'PY' || fail "the imported rows are not the style and its four children"
 import json, sys
 rows = json.load(open(sys.argv[1], encoding="utf-8"))["data"]
 skus = {r["sku"]: r["product_id"] for r in rows}
 want = [f"FSH-TEE-001-{s}" for s in ("S", "M", "L", "XL")]
-assert sorted(skus) == sorted(want) and all(skus.values())
+assert sorted(skus) == sorted(["FSH-TEE-001", *want]) and all(skus.values())
 with open(sys.argv[2], "w", encoding="utf-8") as fh:
     for sku in want:
         fh.write(f"{sku} {skus[sku]}\n")
