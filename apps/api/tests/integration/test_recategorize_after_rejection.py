@@ -16,7 +16,7 @@ from mkos_schemas.codes import ErrorCode
 from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .generation_support import set_status
-from .publish_support import PubWorld, approved, pub, publish_and_run
+from .publish_support import PubWorld, approved, post_publish, pub, publish_and_run, retry
 from .review_support import OPERATOR, OWNER, REVIEWER, item, post_approve, run_job
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
@@ -169,3 +169,48 @@ async def test_another_tenants_product_is_404(api: httpx.AsyncClient, pub: PubWo
         _url(product), headers=pub.world.headers("owner@bharat.test"), json={"category": NEW}
     )
     assert response.status_code == 404, response.text
+
+
+# ---- KNOWN-ISSUES (SI13 open): no resend of the old version before the regenerate ----
+
+
+async def test_send_again_before_the_regenerate_is_refused(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    """After the recategorise the listing keeps `failed` and its approved version was written for
+    the old category: a publish or a field retry of that version is 409 at `facts.category`, the
+    marketplace is never called and nothing moves, until the regenerate makes a new version."""
+    made, product, _ = await _rejected(api, pub)
+    assert (await _post(api, pub, product)).status_code == 200
+    calls = len(pub.fake.calls)
+    response = await post_publish(api, pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    assert response.status_code == 202, response.text
+    (answer,) = response.json()["items"]
+    assert answer["http_status"] == 409, answer
+    (error,) = answer["error"]["errors"]
+    assert error["error_code"] == ErrorCode.INVALID_STATUS_TRANSITION.value
+    assert error["field"] == "facts.category"
+    assert "Regenerate" in error["message"]
+    fields = await retry(api, pub, made)
+    assert fields.status_code == 409, fields.text
+    assert len(pub.fake.calls) == calls
+    row = pub.listing(made.listing_id)
+    assert row["status"] == "failed" and row["approved_version_id"] == made.version_id
+    jobs = pub.scalar(
+        "SELECT count(*) FROM job_runs WHERE listing_id = %s AND kind = 'listing_publish' "
+        "AND status = 'queued'",
+        [made.listing_id],
+    )
+    assert jobs == 0
+
+
+async def test_send_again_without_a_recategorise_is_unchanged(
+    api: httpx.AsyncClient, pub: PubWorld
+) -> None:
+    """The guard only bites on a category change: the same rejected listing, not recategorised,
+    gets the usual publish checks (here no new justification, so the duplicate refusal)."""
+    made, _product, _ = await _rejected(api, pub)
+    response = await post_publish(api, pub, OPERATOR, [{"listing_id": str(made.listing_id)}])
+    (answer,) = response.json()["items"]
+    if answer["http_status"] != 202:
+        assert answer["error"]["errors"][0]["field"] != "facts.category", answer
