@@ -137,6 +137,8 @@ def test_fuzz_script_google_on_against_the_stack_fake(repo_root: Path) -> None:
     assert "MFA_ENFORCEMENT" not in text.split("<<'LIMITS'")[1].split("LIMITS")[0]
     stack = (repo_root / "scripts/e2e/lib/fresh_stack.sh").read_text(encoding="utf-8")
     assert '-e "s#@FAKE_URL@#$fake#g" -e "s#@BASE_URL@#$base#g"' in stack
+    # the fake gets the same lines, so its Google client and redirect URI match the API's
+    assert 'start fake "${proc_env[@]}" uv run --frozen python' in stack
     assert "\nGOOGLE_OAUTH_ENABLED=false\n" in (repo_root / ".env.example").read_text(
         encoding="utf-8"
     )

@@ -236,17 +236,19 @@ up() {
   stack_make bootstrap-db >&2
   (load_env "$STACK_DIR" && uv run --frozen alembic -c apps/api/alembic.ini upgrade head) >&2
   (load_env "$STACK_DIR" && APP_ROLE=migrate uv run --frozen python -m app.cli dictionary sync) >&2
+  # FRESH_ENV_FILE's lines reach the API, the worker and the fake (whose Google client and
+  # redirect URI must match what the API sends: config_from_env reads the environment first)
+  local proc_env=(env)
+  while IFS= read -r line; do proc_env+=("$line"); done < <(grep -v '^$' "$STACK_DIR/process.env" || true)
   if [ "$profile" = acceptance ]; then
     (load_env "$STACK_DIR" && APP_ROLE=migrate uv run --frozen python -m app.cli platform load) >&2
-    start fake uv run --frozen python apps/api/tests/support/fake_marketplace.py \
+    start fake "${proc_env[@]}" uv run --frozen python apps/api/tests/support/fake_marketplace.py \
       --port "$FAKE_MARKETPLACE_HOST_PORT"
     wait_http "$fake/healthz"
   else
     (load_env "$STACK_DIR" && stack_make seed) >&2
   fi
   # the API (127.0.0.1, uvicorn's default host) and, for acceptance only, one worker
-  local proc_env=(env)
-  while IFS= read -r line; do proc_env+=("$line"); done < <(grep -v '^$' "$STACK_DIR/process.env" || true)
   # shellcheck disable=SC1091
   (load_env "$STACK_DIR" && start api "${proc_env[@]}" uv run --frozen uvicorn app.main:app \
     --port "$API_HOST_PORT" --app-dir apps/api)
