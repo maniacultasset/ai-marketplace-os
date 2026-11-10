@@ -3,12 +3,12 @@
 Four settings turn the V1.1 assist features on. Each ships `false` in `scripts/deploy/gcp/prod.env`
 and `staging.env`, and `deploy.sh` forwards each one to the api and the worker. A switch goes on
 only after its gate passes, and the user approves the change (V1.1 plan: "goes live only when the
-gate passes"). The daily AI caps (USD 3 platform, USD 1 per tenant) cover every call.
+gate passes"). The daily AI caps (prod since 2026-11-10: USD 20 platform, USD 3 per tenant) cover every call.
 
 | Switch | What it turns on | Go-live gate |
 |---|---|---|
 | `CATEGORY_SUGGEST_ENABLED` | The category classifier: `POST /products/{id}/category-suggestion`, a classification queued for a product created without a category, a `category_review` task when the top confidence is below 0.80. The seller always sets the category. | G-classify, 200 products: top-1 at least 90 %, top-3 at least 98 %, at least 95 % correct when confidence is at least 0.80 |
-| `CATEGORY_SUGGEST_MODEL` (`vision` or `text`, not a gate) | The classifier's model route. `vision` sends up to 6 photos to `LLM_MODEL_VISION` (gpt-4o in prod, about USD 0.008 per classification). `text` sends the product text only to `LLM_MODEL_DEFAULT` (about USD 0.0002). The 2026-11-09 live G-classify record and calibration `classify/v2` are text only on deepseek-v4-flash, so `text` is the measured configuration; `vision` has no live record (G-classify has no photo cases). | Flip to `text` on that record, or record G-classify with photos on gpt-4o and refit the calibration before keeping `vision` |
+| `CATEGORY_SUGGEST_MODEL` (`vision` or `text`, not a gate) | The classifier's model route. `vision` sends up to 6 photos to `LLM_MODEL_VISION` (gpt-4o in prod, about USD 0.008 per classification). `text` sends the product text only to `LLM_MODEL_DEFAULT` (about USD 0.0002). The 2026-11-09 live G-classify record and calibration `classify/v2` are text only on deepseek-v4-flash, so `text` is the measured configuration; `vision` has no live record (G-classify has no photo cases). | Prod runs `text` since 2026-11-10 on that record. Before `vision`, record G-classify with photos on gpt-4o and refit the calibration |
 | `COLUMN_MAP_AI_ENABLED` | The AI step of `POST /imports/column-maps`: the headers the exact, alias and fuzzy rungs leave unmapped go to the pipeline's `map_columns` (never a sample cell). Off, those headers wait for the seller. | 30 real seller sheets: at least 95 % correct at confidence 0.80 or more |
 | `CATEGORY_LAMPS_ENABLED` | New lamps listings (`home_decor_lamps`), lamps in the classifier's offer, and the lamps template in the requirements read. Off, an existing lamps listing still regenerates, corrects and publishes. | The read-only count below; then the 20 G-gen lamp cases pass |
 | `PHOTO_QA_ENABLED` | The deterministic photo checks: fill ratio, text on the image, watermark. Always warnings, never blocking. | 100 labelled images: precision at least 90 % |
