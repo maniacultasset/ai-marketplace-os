@@ -55,6 +55,8 @@ Q7: dict[str, str] = {
     "products_update": "product:import",
     "products_recategorize": "product:import",  # SI9
     "products_bulk": "product:import",
+    "products_delete": "settings:manage",  # PD1
+    "products_bulk_delete": "settings:manage",  # PD1
     "imports_get": "tenant:read",
     "imports_rows": "tenant:read",
     "imports_rows_retry": "product:import",

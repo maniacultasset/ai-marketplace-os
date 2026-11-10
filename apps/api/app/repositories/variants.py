@@ -16,7 +16,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import cast, func, literal, literal_column, text, tuple_
+from sqlalchemy import cast, func, literal, literal_column, text, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -200,6 +200,26 @@ class MatrixCellRepository(TenantScopedRepository[VariantMatrixCell]):
             .returning(literal_column("1"))
         )
         return (await self.db.execute(stmt)).first() is not None
+
+    async def discontinue_for_style(self, style_id: uuid.UUID) -> int:
+        """Product delete: every available cell of the style becomes `unavailable/discontinued`
+        with no variant, before its children are soft-deleted (the deferred matrix check wants
+        no available cell on a deleted child). The count."""
+        _own(self)
+        stmt = self._scoped_write(
+            update(VariantMatrixCell)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                VariantMatrixCell.style_product_id == style_id,
+                VariantMatrixCell.availability == "available",
+            )
+            .values(
+                availability="unavailable",
+                variant_product_id=None,
+                unavailable_reason="discontinued",
+            )
+        ).returning(VariantMatrixCell.id)
+        return len((await self.db.execute(stmt)).all())
 
     async def check_now(self) -> None:
         """Run the deferred matrix check (VAR02) now, inside the caller's savepoint, then defer it
