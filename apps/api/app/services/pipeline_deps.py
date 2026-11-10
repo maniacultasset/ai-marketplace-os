@@ -61,6 +61,7 @@ from app.core.config import (
     OPENROUTER_BASE_URL,
     LlmGateway,
     Settings,
+    classify_on_vision,
     effective_gateway,
     gateway_openai_model,
 )
@@ -224,10 +225,12 @@ def credentials_for(models: _ModelConfig, purpose: Purpose) -> ModelCredentials:
 
 def classify_credentials(settings: Settings) -> ModelCredentials:
     """SI14: the classifier sees photos, so it takes the vision route (provider, model, key)
-    under `LLM_GATEWAY_CLASSIFY`, else `LLM_GATEWAY`."""
+    under `LLM_GATEWAY_CLASSIFY`, else `LLM_GATEWAY`. With `CATEGORY_SUGGEST_MODEL=text` it takes
+    the generation route instead (the worker then sends no photos)."""
     models = _ModelConfig.from_settings(settings)
-    route = _route(settings, "vision", effective_gateway(settings, "classify"))
-    return _credentials(models, route, "vision")
+    kind: Purpose = "vision" if classify_on_vision(settings) else "generation"
+    route = _route(settings, kind, effective_gateway(settings, "classify"))
+    return _credentials(models, route, kind)
 
 
 def column_map_credentials(settings: Settings) -> ModelCredentials:

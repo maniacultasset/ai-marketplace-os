@@ -44,7 +44,7 @@ import httpx
 
 from app.adapters.openrouter.key import KeyRefused, KeyUnavailable, fetch_key
 from app.core.alerts import floor_window
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, classify_on_vision, get_settings
 from app.core.logging import get_logger
 from app.core.model_prices import is_usable_openai_key
 from app.db.session import platform_scope, unit_of_work
@@ -79,8 +79,11 @@ IMAGE_EDIT_RESERVATION_USD: Final = Decimal("0.10")
 # (one call costs well under it). It counts toward the brand and platform daily caps.
 SIZE_CHART_READ_RESERVATION_USD: Final = Decimal("0.02")
 # SI14 (PLAN D7): one classification (text, up to 6 photos) and one column map (the leftover
-# headers, text only). Both count toward the brand and platform daily caps.
+# headers, text only). Both count toward the brand and platform daily caps. A classification on
+# the vision route is 2 or 3 gpt-4o samples with up to 6 low-detail photos (about USD 0.008, up
+# to 0.013); on the text route (`CATEGORY_SUGGEST_MODEL=text`) about USD 0.0002.
 CLASSIFY_RESERVATION_USD: Final = Decimal("0.005")
+CLASSIFY_VISION_RESERVATION_USD: Final = Decimal("0.02")
 COLUMN_MAP_RESERVATION_USD: Final = Decimal("0.002")
 ImageScope = Literal["image_tenant", "image_global"]
 Scope = Literal["tenant", "global", "credit", "image_tenant", "image_global"]
@@ -346,3 +349,12 @@ async def confirm_key_refusal(
         log.info("ai_credit.key_confirmed", refused=answer)
         _key_answer = (at, answer)
         return answer
+
+
+def classify_reservation_usd(settings: Settings) -> Decimal:
+    """The reservation of one classification on its route (`CATEGORY_SUGGEST_MODEL`)."""
+    return (
+        CLASSIFY_VISION_RESERVATION_USD
+        if classify_on_vision(settings)
+        else CLASSIFY_RESERVATION_USD
+    )
