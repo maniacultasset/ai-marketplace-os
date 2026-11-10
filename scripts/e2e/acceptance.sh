@@ -94,6 +94,19 @@ fail() {
   exit 1
 }
 
+# validation_blockers: the blocking items of the validate answer in $body, as stage, field and
+# error code only (a rule message can quote the listing's text).
+validation_blockers() {
+  python3 - "$body" <<'PY'
+import json, sys
+b = json.load(open(sys.argv[1], encoding="utf-8"))
+seen = sorted({(st["source"], e["field"], e["error_code"]) for st in b.get("stages", [])
+               for e in st["report"]["errors"] if e.get("severity", "error") == "error"})
+for source, field, code in seen:
+    print(f"acceptance: blocking {source} {field} {code}")
+PY
+}
+
 # import_row_errors: a failed import's row error codes and messages, one line each. The messages
 # are the row model's own text and never quote a cell (Q7), so no seller value reaches the log.
 import_row_errors() {
@@ -387,8 +400,10 @@ before_status="$(json 'b["status"]')"
 leg validate_passed
 call POST "$api/listings/validate" "$operator" "" "{\"listing_id\": \"$listing_id\", \"listing_version_id\": \"$version\"}"
 expect 200
+on_fail=validation_blockers
 json 'b["passed"] is True and b["blocking_count"] == 0 and b["listing_version_id"] == "'"$version"'"' >/dev/null \
   || fail "the Rules Engine did not pass the listing"
+on_fail=""
 
 decision="{\"listing_id\": \"$listing_id\", \"listing_version_id\": \"$version\", \"decision\": \"approve\"}"
 
