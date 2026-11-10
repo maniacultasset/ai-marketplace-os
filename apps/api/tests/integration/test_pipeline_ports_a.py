@@ -166,7 +166,7 @@ async def test_port_get_model_credentials_purposes(
     deps = await build(products_world, auth_db, settings(openai_api_key="sk-openai"))
     creds = await deps.get_model_credentials(purpose)
     assert (creds.provider, creds.model, creds.api_key.get_secret_value()) == (provider, model, key)
-    assert creds.api_base is None and creds.timeout_seconds == 60
+    assert creds.api_base is None and creds.timeout_seconds == 40
 
 
 async def test_port_get_model_credentials_through_the_openrouter_gateway(
