@@ -21,7 +21,7 @@
 #               again for photos the old photo rules judged (worker identity, one-off job; rerun to remaining=0)
 #   status      service URL, revisions, job runs, secret names
 #   edge        setup | rules | enforce | lock-ingress | unlock-ingress | alerts | cors | status (prod; needs EDGE_DOMAIN;
-#               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, maintenance), cors and status, ADR-0025)
+#               EDGE_PROVIDER=cloudflare keeps alerts (uptime, worker, SQL, 5xx), cors and status, ADR-0025)
 #
 # Every subcommand describes before it creates, so a rerun is safe. Each gcloud command is printed
 # before it runs; --dry-run prints them and runs none (its only gcloud call is a local `--help`
@@ -88,6 +88,9 @@ INGRESS="${INGRESS-all}"
 EDGE_ENFORCE="${EDGE_ENFORCE-}"
 JWT_ISSUER="${JWT_ISSUER-}"
 ALERT_EMAIL="${ALERT_EMAIL-}"
+# The display name of a Cloud Monitoring Slack channel the owner made once in the console (Slack
+# needs Google's app authorised there). Blank: the Cloud Monitoring alerts go to email only.
+ALERT_SLACK_CHANNEL="${ALERT_SLACK_CHANNEL-}"
 # ADR-0025: the interim edge. Blank or armor: the ADR-0022 load balancer path, unchanged.
 # cloudflare: a Cloudflare Worker in front of run.app (docs/runbooks/EDGE-CLOUDFLARE.md); the api
 # gets the Worker's origin secret, and ORIGIN_AUTH=enforce makes it refuse every other caller.
@@ -2243,24 +2246,107 @@ policy_name() {
   gq monitoring policies list --filter="displayName=\"$1\"" --format='value(name)' || true
 }
 
-# V1 hardening #1: the alerts that do not depend on the edge provider, to ALERT_EMAIL by a Cloud
-# Monitoring email channel: the uptime check of https://$EDGE_DOMAIN/readyz, the worker heartbeat
-# (no `periodic.alerts_checked` line for 15 min: the worker is down or hung, and with it every
-# app alert), worker restarts (more than 2 `worker.started` lines in 30 min: a crash loop) and
-# any ERROR line of the daily maintenance job (a failed step or an incomplete DPP purge). Runs
-# for EDGE_PROVIDER=cloudflare too (`edge alerts`); the load balancer path adds its own after.
-# Sets CHANNEL and UPTIME for the caller.
+# Process env, not env-file keys: the ops alert thresholds (fractions, a percent, a count).
+SQL_CPU_ALERT="${SQL_CPU_ALERT:-0.8}"
+SQL_DISK_ALERT="${SQL_DISK_ALERT:-0.85}"
+SQL_CONN_ALERT_PCT="${SQL_CONN_ALERT_PCT:-80}"
+API_5XX_ALERT="${API_5XX_ALERT:-10}"
+
+# FILE: the policy's display name.
+policy_display_name() {
+  python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$1"
+}
+
+# FILE: describe before create. The file is first stamped with userLabels.kuinn_spec, a short hash
+# of everything else in it (conditions, thresholds, channels). No policy of that display name:
+# create it. One already there: update it in place when its stamp differs from FILE's (a threshold,
+# a filter or a channel changed, or a policy made before the stamp), else leave it.
+apply_policy() {
+  local file="$1" existing have want
+  want="$(python3 - "$file" <<'EOF'
+import hashlib, json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    doc = json.load(handle)
+doc.pop("userLabels", None)
+key = dict(doc, notificationChannels=sorted(doc["notificationChannels"]))
+stamp = hashlib.sha256(json.dumps(key, sort_keys=True).encode()).hexdigest()[:16]
+doc["userLabels"] = {"kuinn_spec": stamp}
+with open(path, "w", encoding="utf-8") as handle:
+    json.dump(doc, handle, indent=2)
+    handle.write("\n")
+print(stamp)
+EOF
+)"
+  say "policy $file:"
+  sed 's/^/    /' "$file"
+  existing="$(policy_name "$(policy_display_name "$file")" | head -n 1)"
+  if [ -z "$existing" ]; then
+    gc monitoring policies create --policy-from-file="$file"
+    return 0
+  fi
+  have="$(gq monitoring policies describe "$existing" --format='value(userLabels.kuinn_spec)' || true)"
+  [ "$have" = "$want" ] || gc monitoring policies update "$existing" --policy-from-file="$file"
+}
+
+# monitoring.googleapis.com, enabled once when absent (`setup` enables it only on the load
+# balancer path, so the Cloudflare edge never pulls in compute and its default VPC).
+ensure_monitoring_api() {
+  local on
+  on="$(gq services list --enabled --filter='config.name=monitoring.googleapis.com' --format='value(config.name)' || true)"
+  [ -n "$on" ] || gc services enable monitoring.googleapis.com
+}
+
+# The Slack channel named ALERT_SLACK_CHANNEL, found (never created: Slack needs Google's app
+# authorised in the console). Prints its resource name, or nothing when ALERT_SLACK_CHANNEL is
+# blank. Dies when it is set but no single Slack channel has that name.
+slack_channel() {
+  local found count
+  [ -n "$ALERT_SLACK_CHANNEL" ] || return 0
+  found="$(gq beta monitoring channels list --filter="displayName=\"$ALERT_SLACK_CHANNEL\" AND type=\"slack\"" --format='value(name)' || true)"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    printf 'projects/%s/notificationChannels/<slack-channel-id>' "$PROJECT"
+    return 0
+  fi
+  count="$(printf '%s' "$found" | grep -c . || true)"
+  [ "$count" -ne 0 ] || die "alerts: no Slack channel named '$ALERT_SLACK_CHANNEL' in $PROJECT; make it once in the console (docs/runbooks/DEPLOY-GCP.md \"Alerts and Slack\"), or blank ALERT_SLACK_CHANNEL for email only"
+  [ "$count" -eq 1 ] || die "alerts: want exactly one Slack channel named '$ALERT_SLACK_CHANNEL', found $count"
+  printf '%s' "$found"
+}
+
+# V1 hardening #1 and ops readiness: the alerts that do not depend on the edge provider, to
+# ALERT_EMAIL by a Cloud Monitoring email channel (plus the Slack channel ALERT_SLACK_CHANNEL
+# names, when set): the uptime check of https://$EDGE_DOMAIN/readyz, the worker heartbeat (no
+# `periodic.alerts_checked` line for 15 min: the worker is down or hung, and with it every app
+# alert), worker restarts (more than 2 `worker.started` lines in 30 min: a crash loop), job lag
+# (the worker's own `alert.queue_latency` line, so it reaches email even with no Slack), any
+# ERROR line of the daily maintenance job (a failed step or an incomplete DPP purge), Cloud SQL
+# CPU, disk and connections, and the api's 5xx count. Runs for EDGE_PROVIDER=cloudflare too
+# (`edge alerts`); the load balancer path adds its own after. Sets CHANNELS (comma separated) for
+# the caller.
 ops_alerts() {
-  local channel uptime count file name existing current metric
+  local channel slack uptime count file name existing current metric
   case "$ALERT_EMAIL" in
     "") die "alerts: set ALERT_EMAIL in scripts/deploy/gcp/$ENV_NAME.env (one address)" ;;
     *[,\ ]* | *@*@*) die "alerts: ALERT_EMAIL must be one address, not '$ALERT_EMAIL'" ;;
     ?*@?*.?*) ;;
     *) die "alerts: ALERT_EMAIL must be an address (x@y.z), not '$ALERT_EMAIL'" ;;
   esac
+  case "$ALERT_SLACK_CHANNEL" in
+    *[!A-Za-z0-9._\ -]*) die "alerts: ALERT_SLACK_CHANNEL must be a channel display name (letters, digits, space . _ -), not '$ALERT_SLACK_CHANNEL'" ;;
+  esac
+  case "$SQL_CPU_ALERT$SQL_DISK_ALERT" in
+    *[!0-9.]*) die "alerts: SQL_CPU_ALERT and SQL_DISK_ALERT must be fractions like 0.8" ;;
+  esac
+  case "$SQL_CONN_ALERT_PCT$API_5XX_ALERT" in
+    *[!0-9]*) die "alerts: SQL_CONN_ALERT_PCT and API_5XX_ALERT must be whole numbers" ;;
+  esac
   if [ "$DRY_RUN" -eq 0 ] && ! gcloud beta monitoring channels create --help >/dev/null 2>&1; then
     die "alerts: this gcloud has no beta monitoring commands; run: gcloud components install beta"
   fi
+  # Found before anything is created, so a missing Slack channel changes nothing.
+  slack="$(slack_channel)" || exit 1
+  ensure_monitoring_api
   # The email channel (no GA create command).
   channel="$(gq beta monitoring channels list --filter="displayName=\"$EDGE_CHANNEL\"" --format='value(name)' || true)"
   if [ -z "$channel" ]; then
@@ -2278,6 +2364,7 @@ ops_alerts() {
   [ -n "$channel" ] || [ "$DRY_RUN" -eq 0 ] || channel="projects/$PROJECT/notificationChannels/<channel-id>"
   [ -n "$channel" ] || die "alerts: cannot find the $EDGE_CHANNEL channel after creating it"
   channel="$(printf '%s\n' "$channel" | head -n 1)"
+  CHANNELS="$channel${slack:+,$slack}"
   # The uptime check first: its alert policy filters on the id Google assigns, not the name.
   uptime="$(gq monitoring uptime list-configs --filter="displayName=$EDGE_UPTIME" --format='value(name.basename())' || true)"
   if [ -z "$uptime" ]; then
@@ -2291,8 +2378,6 @@ ops_alerts() {
     count="$(printf '%s' "$uptime" | grep -c . || true)"
     [ "$count" -eq 1 ] || die "alerts: want exactly one uptime check named $EDGE_UPTIME, found $count"
   fi
-  CHANNEL="$channel"
-  UPTIME="$uptime"
   # Logs-based metrics on the worker's own JSON lines (app/core/logging.py: `message`).
   local pool="resource.type=\"cloud_run_worker_pool\" AND resource.labels.worker_pool_name=\"$WORKER_POOL\""
   for metric in \
@@ -2301,11 +2386,21 @@ ops_alerts() {
     gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
       gc logging metrics create "${metric%%|*}" --description="worker health (V1 hardening #1)" --log-filter="${metric#*|}"
   done
-  CHANNEL="$channel" UPTIME="$uptime" JOB="$MAINT_JOB" OUT="$WORK" python3 -c '
+  CHANNELS="$CHANNELS" UPTIME="$uptime" JOB="$MAINT_JOB" POOL="$pool" OUT="$WORK" \
+    DB="$PROJECT:$SQL_INSTANCE" API="$API_SERVICE" MAXCONN="${SQL_MAX_CONNECTIONS:-100}" \
+    CPU="$SQL_CPU_ALERT" DISK="$SQL_DISK_ALERT" CONNPCT="$SQL_CONN_ALERT_PCT" R5XX="$API_5XX_ALERT" python3 -c '
 import json, os
 e = os.environ
 def user_metric(name):
     return "metric.type=\"logging.googleapis.com/user/%s\"" % name
+sql = "resource.type=\"cloudsql_database\" AND resource.labels.database_id=\"%s\"" % e["DB"]
+def sql_threshold(name, metric, value, duration, reducer="REDUCE_MEAN"):
+    return {"displayName": name, "conditionThreshold": {
+        "filter": "metric.type=\"cloudsql.googleapis.com/database/%s\" AND %s" % (metric, sql),
+        "comparison": "COMPARISON_GT", "thresholdValue": value, "duration": duration,
+        "aggregations": [{"alignmentPeriod": "60s", "perSeriesAligner": "ALIGN_MEAN",
+                          "crossSeriesReducer": reducer}]}}
+connections = round(int(e["MAXCONN"]) * int(e["CONNPCT"]) / 100)
 policies = {
   "uptime": ("aimos-edge uptime failing", {"displayName": "/readyz failing from 2+ regions for 5 min",
     "conditionThreshold": {
@@ -2322,28 +2417,40 @@ policies = {
       "thresholdValue": 2, "duration": "0s",
       "aggregations": [{"alignmentPeriod": "1800s", "perSeriesAligner": "ALIGN_SUM",
                         "crossSeriesReducer": "REDUCE_SUM"}]}}),
+  "joblag": ("aimos-worker job lag", {"displayName": "the worker raised alert.queue_latency (a queue is behind)",
+    "conditionMatchedLog": {"filter": "%s AND jsonPayload.message=\"alert.queue_latency\"" % e["POOL"]}}),
   "maintenance": ("aimos-maintenance errors", {"displayName": "an ERROR line in the daily maintenance job",
     "conditionMatchedLog": {"filter": "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"%s\" AND severity>=ERROR" % e["JOB"]}}),
+  "sqlcpu": ("aimos-db cpu high", sql_threshold("Cloud SQL CPU over %s for 10 min" % e["CPU"],
+             "cpu/utilization", float(e["CPU"]), "600s")),
+  "sqldisk": ("aimos-db disk filling", sql_threshold("Cloud SQL disk over %s for 10 min" % e["DISK"],
+              "disk/utilization", float(e["DISK"]), "600s")),
+  "sqlconn": ("aimos-db connections high", sql_threshold(
+              "over %d Postgres connections (%s%% of %s) for 5 min" % (connections, e["CONNPCT"], e["MAXCONN"]),
+              "postgresql/num_backends", connections, "300s", "REDUCE_SUM")),
+  "api5xx": ("aimos-api 5xx", {"displayName": "api 5xx over %s in 5 min" % e["R5XX"],
+    "conditionThreshold": {
+      "filter": "metric.type=\"run.googleapis.com/request_count\" AND resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"%s\" AND metric.labels.response_code_class=\"5xx\"" % e["API"],
+      "comparison": "COMPARISON_GT", "thresholdValue": float(e["R5XX"]), "duration": "0s",
+      "aggregations": [{"alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM",
+                        "crossSeriesReducer": "REDUCE_SUM"}]}}),
 }
 for key, (name, condition) in policies.items():
     doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
-           "notificationChannels": [e["CHANNEL"]]}
+           "notificationChannels": e["CHANNELS"].split(",")}
     if "conditionMatchedLog" in condition:
         doc["alertStrategy"] = {"notificationRateLimit": {"period": "3600s"}}
     with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
         json.dump(doc, handle, indent=2)
         handle.write("\n")'
-  for name in uptime heartbeat restarts maintenance; do
-    file="$WORK/policy-$name.json"
-    say "policy $file:"
-    sed 's/^/    /' "$file"
-    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
-    [ -n "$existing" ] || gc monitoring policies create --policy-from-file="$file"
+  for name in $OPS_POLICIES; do
+    apply_policy "$WORK/policy-$name.json"
   done
 }
+OPS_POLICIES="uptime heartbeat restarts joblag maintenance sqlcpu sqldisk sqlconn api5xx"
 
 edge_alerts() {
-  local file name existing threshold metric
+  local file name existing metric
   ops_alerts
   # Logs-based metrics.
   for metric in \
@@ -2352,7 +2459,7 @@ edge_alerts() {
     gq logging metrics describe "${metric%%|*}" --format='value(name)' >/dev/null ||
       gc logging metrics create "${metric%%|*}" --description="API edge (DPP-2)" --log-filter="${metric#*|}"
   done
-  CHANNEL="$CHANNEL" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
+  CHANNELS="$CHANNELS" DENY="$EDGE_DENY_ALERT" R429="$EDGE_429_ALERT" \
     RATIO="$EDGE_5XX_RATIO" RULE="$EDGE_RULE" OUT="$WORK" python3 -c '
 import json, os
 e = os.environ
@@ -2377,7 +2484,7 @@ policies = {
 }
 for key, (name, condition) in policies.items():
     doc = {"displayName": name, "combiner": "OR", "enabled": True, "conditions": [condition],
-           "notificationChannels": [e["CHANNEL"]]}
+           "notificationChannels": e["CHANNELS"].split(",")}
     if "conditionMatchedLog" in condition:
         doc["alertStrategy"] = {"notificationRateLimit": {"period": "300s"}}
     with open(os.path.join(e["OUT"], "policy-%s.json" % key), "w") as handle:
@@ -2385,18 +2492,7 @@ for key, (name, condition) in policies.items():
         handle.write("\n")'
   for name in deny 429 5xx ddos; do
     file="$WORK/policy-$name.json"
-    say "policy $file:"
-    sed 's/^/    /' "$file"
-    existing="$(policy_name "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["displayName"])' "$file")")"
-    if [ -z "$existing" ]; then
-      gc monitoring policies create --policy-from-file="$file"
-    elif [ "$name" = "deny" ]; then
-      threshold="$(gq monitoring policies describe "$existing" \
-        --format='value(conditions[0].conditionThreshold.thresholdValue)' || true)"
-      if [ "${threshold%.0}" != "$EDGE_DENY_ALERT" ]; then
-        gc monitoring policies update "$existing" --policy-from-file="$file"
-      fi
-    fi
+    apply_policy "$file"
   done
   # The 400-day security bucket and its sink. OAuth callback URLs carry code/state: never sunk.
   ensure_security_bucket
@@ -2414,7 +2510,7 @@ for key, (name, condition) in policies.items():
     *) gc logging sinks update _Default \
       --add-exclusion='name=edge-callback-urls,filter=resource.type="http_load_balancer" AND httpRequest.requestUrl:"/callback"' ;;
   esac
-  say "alerts: metrics, channel, uptime check, 8 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
+  say "alerts: metrics, channels, uptime check, 13 policies, $EDGE_LOG_BUCKET (400 days) and its sink are in place"
 }
 
 edge_status() {
@@ -2488,7 +2584,7 @@ cmd_edge() {
       setup | rules | enforce | lock-ingress | unlock-ingress)
         die "edge $sub: EDGE_PROVIDER=cloudflare: see docs/runbooks/EDGE-CLOUDFLARE.md" ;;
       # V1 hardening #1: the provider-independent alerts (uptime, worker, maintenance)
-      alerts) ops_alerts; say "alerts: channel, uptime check and 4 policies are in place" ;;
+      alerts) ops_alerts; say "alerts: channels, uptime check and 9 policies are in place" ;;
       cors) check_filled; bucket_cors ;;
       status) edge_status_cloudflare ;;
       *) usage ;;

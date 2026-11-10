@@ -157,8 +157,12 @@ covers that, with an email channel that does not depend on the edge provider or 
 
 **Email alerts.** `ALERT_EMAIL` in `prod.env` is blank: the owner fills in one address (x@y.z),
 commits, then runs `scripts/deploy/gcp/deploy.sh prod edge alerts`. With
-`EDGE_PROVIDER=cloudflare` it creates, once each (a rerun changes nothing, except the channel's
-address when `ALERT_EMAIL` changed):
+`EDGE_PROVIDER=cloudflare` it enables `monitoring.googleapis.com` when it is off and creates, once
+each. Every policy file carries the label `kuinn_spec`, a hash of its conditions, thresholds and
+channels: a rerun changes nothing, except the channel's address when `ALERT_EMAIL` changed and, in
+place, each policy whose `kuinn_spec` differs (a threshold, a filter or a channel changed; a policy
+made before the label is updated once). `--dry-run` prints every command and every policy file and
+runs none:
 
 | What | Fires when |
 |---|---|
@@ -167,11 +171,33 @@ address when `ALERT_EMAIL` changed):
 | log metric `worker_alerts_checked`; policy `aimos-worker heartbeat missing` | no `periodic.alerts_checked` line from the worker pool for 15 minutes (worker down, hung or never started) |
 | log metric `worker_started`; policy `aimos-worker restarting` | more than 2 `worker.started` lines in 30 minutes (a crash loop) |
 | policy `aimos-maintenance errors` | any ERROR line of the `aimos-maintenance` job (a failed step or an incomplete DPP purge; at most one mail an hour) |
+| policy `aimos-worker job lag` | the worker logged `alert.queue_latency` (a queue's oldest job waited past its limit; at most one mail an hour), so job lag reaches email even with no Slack |
+| policy `aimos-db cpu high` | Cloud SQL `aimos-db` CPU over 0.8 for 10 minutes (`SQL_CPU_ALERT`) |
+| policy `aimos-db disk filling` | Cloud SQL disk over 0.85 for 10 minutes (`SQL_DISK_ALERT`; storage auto-increase is on, so this means it is growing fast or hit its cap) |
+| policy `aimos-db connections high` | more than 80 % of `SQL_MAX_CONNECTIONS` Postgres connections for 5 minutes (`SQL_CONN_ALERT_PCT`) |
+| policy `aimos-api 5xx` | more than 10 api 5xx answers in 5 minutes, from Cloud Run's own request count (`API_5XX_ALERT`; a count, not a ratio, so low traffic does not page on one error) |
+
+The thresholds in brackets are process env, not env-file keys (like `EDGE_DENY_ALERT`): for
+example `SQL_CONN_ALERT_PCT=70 scripts/deploy/gcp/deploy.sh prod edge alerts`. A value that is not
+a number is refused before any gcloud call.
 
 On the load balancer path (`EDGE_PROVIDER` blank) the same command adds the deny, 429, 5xx and
 Adaptive Protection policies and the security log bucket. The two worker metrics filter on
 `resource.type="cloud_run_worker_pool"`; at the first run, check in Logs Explorer that the
 worker's lines carry that resource type, and fix the filter if Google names it otherwise.
+
+**Slack for these policies (optional).** Cloud Monitoring cannot post to the worker's incoming
+webhook (`ALERT_SLACK_WEBHOOK` below): Slack refuses its message format. It has its own Slack
+channel type, which needs Google's Slack app authorised once in the console, so the toolkit finds
+that channel and never creates it:
+1. Console, project `aimos-prod`: Monitoring > Alerting > Edit notification channels.
+2. Slack > Add new. Sign in to the team's Slack workspace and allow the Google Cloud Monitoring app.
+3. Pick the alerts channel (for example `#kuinn-alerts`), set the display name `aimos-ops-slack`,
+   Save. In Slack, invite the app to that channel.
+4. Set `ALERT_SLACK_CHANNEL=aimos-ops-slack` in `prod.env`, commit, run
+   `scripts/deploy/gcp/deploy.sh prod edge alerts`. Every policy gets both channels; policies made
+   earlier are updated in place. A name that matches no Slack channel (or more than one) is refused
+   before anything changes. Blank it to go back to email only.
 
 **Slack.** `ALERT_SLACK_WEBHOOK` is an optional secret: `setup` creates it with no value and grants
 it to the worker, prints how to add a value, and never stops for it. `deploy` binds it to the
@@ -232,7 +258,8 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
   `EDGE-CLOUDFLARE.md`) at `https://api.kuinn.in`, with `ORIGIN_AUTH=enforce`. The load balancer
   and Cloud Armor path (`EDGE-CUTOVER.md`) waits for quota.
 - **Alerts need `ALERT_EMAIL`.** It is blank in `prod.env` until the owner fills it in and runs
-  `edge alerts` ("Alerts and Slack" above); until then only Sentry sees failures.
+  `edge alerts` ("Alerts and Slack" above); until then only Sentry sees failures. A Slack copy of
+  the Cloud Monitoring alerts also needs `ALERT_SLACK_CHANNEL` and the one-time console step.
 - **Worker pool on gcloud 587.** Its bundled Python cannot load `run worker-pools deploy` (no
   `grpc`), so `deploy` detects that and applies the same settings with
   `run worker-pools replace <yaml>`. A Cloud Run service is not a fallback: the worker binds no
