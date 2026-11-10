@@ -1425,7 +1425,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
         "false",
     )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "56a1507c39d5f10665d51b52484a6ed576dd45bd"
+    assert prod["PIPELINE_REF"] == "2d8bb2efe6898a8284ee5bb76d4cc45414a3d01c"
     assert staging["WORKER_ENABLED"] == "true"
 
 
