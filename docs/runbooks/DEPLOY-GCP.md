@@ -334,14 +334,39 @@ To switch back, set `asia-south1` and rerun `setup`.
   instance) and an api that scales to zero. Stop the DB off-hours with
   `gcloud sql instances patch aimos-db --activation-policy=NEVER --project=aimos-staging` (and
   `ALWAYS` in the morning).
-- **Prod:** about $170 a month with the worker (ADR-0001). Until the worker runs, it is Cloud SQL
-  `db-custom-1-3840` plus one always-on api instance.
+- **Prod:** about $170 a month with the worker at 1 vCPU / 2 GiB (ADR-0001). Since V1 hardening #9
+  the worker is 2 vCPU / 4 GiB (one always-on instance), which doubles the worker pool's line
+  ("Worker capacity" below).
 - **Prod edge (DPP-2):** about $40 a month for the load balancer, Cloud Armor Standard and the
   security log bucket (`docs/runbooks/EDGE-CUTOVER.md`).
 - Cloud Build bills per build minute. Artifact Registry keeps 20 versions and drops old `sha-` tags
   after 30 days. The build-source bucket deletes after 7 days, and CSVs after 30.
 - Budgets are not in this toolkit, because they need billing-account access: EXECUTION-PLAN §5.2
   step 4.
+
+## Worker capacity (V1 hardening #9)
+
+One worker instance runs every queue in one process: `default` 4 jobs at once (generation, bulk
+import, image checks, brand embeds), `publish` 2, `periodic` 2 (`app/workers/settings.py`; code
+constants, sized to the app pool of 10 connections per process). Image checks and derives run in
+child processes under a per-process limit, `IMAGE_CHECK_CONCURRENCY`.
+
+| Setting (`prod.env`) | Value | Why |
+|---|---|---|
+| `WORKER_CPU` | `2` | A second child only runs in parallel with a second vCPU. |
+| `WORKER_MEMORY` | `4Gi` | Each child may map up to 1 GiB; the worker itself needs about 1 GiB. |
+| `IMAGE_CHECK_CONCURRENCY` | `2` | About twice the photo throughput of one child: the per-brand photo cap of 20 live jobs drains about twice as fast when several brands upload at once. |
+| `WORKER_INSTANCES` | `1` | Kept at one: a second instance doubles the bill again and also doubles the connection budget. |
+
+`deploy.sh` refuses `IMAGE_CHECK_CONCURRENCY` outside 1-4, and above 1 it refuses a worker with
+less than `IMAGE_CHECK_CONCURRENCY + 1` GiB (written as `<n>Gi`) or fewer than 2 vCPU. Staging keeps
+1 vCPU / 2 GiB and one child.
+
+When to raise it further: photo jobs stay `queued` for minutes while the worker's CPU is low (the
+models are slow), or uploads keep hitting 429 at the per-brand cap. Then go to 3 children with
+`WORKER_MEMORY=4Gi` and watch memory, or a second instance. When to lower it: the worker restarts
+with an out-of-memory exit (`aimos-worker restarting` alert). Rollback: `WORKER_CPU=1`,
+`WORKER_MEMORY=2Gi`, `IMAGE_CHECK_CONCURRENCY` blank, then `deploy`.
 
 ## Known limitations
 
