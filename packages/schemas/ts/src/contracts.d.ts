@@ -2415,6 +2415,322 @@ export interface ModelCredentials {
   [k: string]: unknown;
 }
 /**
+ * One read of a product's photos for the given keys.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoFactsReadRequest".
+ */
+export interface PhotoFactsReadRequest {
+  attempt?: number;
+  category: string;
+  /**
+   * @minItems 1
+   * @maxItems 4
+   */
+  images:
+    | [ContextImage]
+    | [ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage]
+    | [ContextImage, ContextImage, ContextImage, ContextImage];
+  job_id: string;
+  product_id: string;
+  request_id: string;
+  schema_version?: string;
+  /**
+   * @minItems 1
+   * @maxItems 16
+   */
+  targets:
+    | [PhotoTarget]
+    | [PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget, PhotoTarget]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ]
+    | [
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget,
+        PhotoTarget
+      ];
+  tenant_id: string;
+  [k: string]: unknown;
+}
+/**
+ * The pipeline's answer: the observations it kept, plus the records of its calls. A failed
+ * call is a result with `error`, no observations and its failed record; it never raises.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoFactsReadResult".
+ */
+export interface PhotoFactsReadResult {
+  /**
+   * @maxItems 2
+   */
+  agent_runs?: [] | [AgentRunRecord] | [AgentRunRecord, AgentRunRecord];
+  error?: ErrorReport | null;
+  /**
+   * @maxItems 16
+   */
+  observations?:
+    | []
+    | [PhotoObservation]
+    | [PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation, PhotoObservation]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ]
+    | [
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation,
+        PhotoObservation
+      ];
+  schema_version?: string;
+  [k: string]: unknown;
+}
+/**
  * The chart as read: one row per size, keyed by measure name (for example `chest`).
  *
  * `unit` is `unknown` when no unit is printed or the read unit is not backed by a printed line;

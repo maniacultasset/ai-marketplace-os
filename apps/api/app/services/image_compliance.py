@@ -17,6 +17,8 @@
    `pending`). A derive failure leaves the report as it is and stores no derivative.
 6. Another short unit of work: one UPDATE writes the reports, the worst-of status, the meta
    columns, `content_hash` = sha256 of the bytes read and the clean copy's hash and type.
+7. V1.1: when the clean copy was stored, `queue_photo_read` (its own short unit of work) may
+   queue the product's photo read on upload (a front, back or close-up photo, switch on).
 
 No model client and no `agent_runs` row (invariant 7). Logs carry ids and the status only.
 """
@@ -25,7 +27,7 @@ from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
-from typing import Final
+from typing import Any, Final
 from uuid import UUID
 
 from mkos_schemas.codes import ErrorCode
@@ -46,6 +48,7 @@ from app.repositories.uow import tenant_uow
 from app.services import image_runner
 from app.services.category_gate import rules_category
 from app.services.image_keys import CLEAN_NAMES, derived_key, parse_image_key
+from app.services.photo_read_upload import queue_photo_read
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers.errors import JobFailed, RetryableJobError, system_report
 from app.workers.policy import POLICIES
@@ -151,4 +154,18 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
     if status is None:
         return Outcome("succeeded", {"skipped": "image_gone", "image_id": str(image_id)})
     log.info("image.checked", image_id=str(image_id), compliance_status=status)
-    return Outcome("succeeded", {"image_id": str(image_id), "compliance_status": status})
+    result: dict[str, Any] = {"image_id": str(image_id), "compliance_status": status}
+    if clean is not None:  # V1.1: a front, back or close-up photo queues its product's read
+        try:
+            async with tenant_uow(ctx.tenant_id) as uow:
+                read_job = await queue_photo_read(uow, image_id)
+        except Exception as error:
+            # The photo check is stored; a failed queue never fails it. Generation still reads
+            # the photos, so nothing is lost but the early read.
+            log.warning(
+                "photo_read.queue_failed", image_id=str(image_id), error=type(error).__name__
+            )
+            read_job = None
+        if read_job is not None:
+            result["photo_read_job_id"] = str(read_job)
+    return Outcome("succeeded", result)
