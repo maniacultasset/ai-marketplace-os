@@ -32,7 +32,9 @@ listing before the product):
 8. one `product.deleted` audit row (the counts and the archived listing ids under `reason`) and
    one `listing.archived` row per archived listing.
 
-A CSV import of the same SKU later revives the row (`upsert_by_sku`); the app has no undo.
+A CSV import of the same SKU later revives the row (`upsert_by_sku`) and lifts the archive on
+its listings (event `unarchive`, a `listing.unarchived` audit row), so it can be drafted again;
+its photos and closed tasks stay gone. The app has no other undo.
 """
 
 from __future__ import annotations

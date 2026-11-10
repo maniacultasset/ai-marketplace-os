@@ -310,6 +310,29 @@ class ListingRepository(TenantScopedRepository[Listing]):
             raise to_conflict(exc) from exc
         return sorted(found)
 
+    async def unarchive_for_revived_product(self, product_id: uuid.UUID) -> list[uuid.UUID]:
+        """A CSV import revived a deleted product: lift the archive its delete set on the
+        product's listings (event `unarchive`), so the product can be drafted again instead of
+        every generate answering 409 `LISTING_ARCHIVED`. The status is untouched (the guard only
+        checks a status change) and no sync slot is set: a deleted product's listing was never
+        with a marketplace. Returns the ids unarchived."""
+        self._own_session()
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                Listing.product_id == product_id,
+                Listing.archived_at.is_not(None),
+            )
+            .values(
+                archived_at=None,
+                archived_by_user_id=None,
+                last_event="unarchive",
+                last_event_at=func.now(),
+            )
+        ).returning(Listing.id)
+        return sorted((await self.db.execute(stmt)).scalars())
+
     async def reviewable_for_product(self, product_id: uuid.UUID) -> list[Listing]:
         """SI9 B5 (CP-D15): the product's listings a reject re-validates (`validated`,
         `needs_review`, `approved`; not paused or archived), locked `FOR UPDATE SKIP LOCKED`, so

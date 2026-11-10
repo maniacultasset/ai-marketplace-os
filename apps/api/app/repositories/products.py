@@ -16,9 +16,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, or_, tuple_, update
+from sqlalchemy import case, cast, func, literal, literal_column, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import aliased
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.catalog import Product
@@ -78,6 +79,7 @@ class ProductUpsert:
 class Upserted:
     id: uuid.UUID
     inserted: bool
+    revived: bool = False  # the row was soft-deleted (a product delete) before this write
 
 
 class ProductRepository(TenantScopedRepository[Product]):
@@ -404,10 +406,19 @@ class ProductRepository(TenantScopedRepository[Product]):
                 "provenance": table.c.provenance.op("||")(stmt.excluded.provenance),
             },
             where=changed,
-        ).returning(table.c.id, literal_column("(xmax = 0)"))
-        written = (await self.db.execute(upsert)).first()
+        )
+        # read in the statement's snapshot: whether the stored row was soft-deleted before this
+        # write (a product delete), so the caller can bring its archived listings back
+        before = aliased(Product, name="before")
+        prior = (
+            select(before.deleted_at.is_not(None))
+            .where(before.tenant_id == self.tenant_id, before.sku == row.sku)
+            .scalar_subquery()
+        )
+        returning = upsert.returning(table.c.id, literal_column("(xmax = 0)"), prior)
+        written = (await self.db.execute(returning)).first()
         if written is not None:
-            return Upserted(written[0], bool(written[1]))
+            return Upserted(written[0], bool(written[1]), bool(written[2]))
         found = (
             await self.db.execute(
                 self._select().where(Product.sku == row.sku).with_only_columns(Product.id)
