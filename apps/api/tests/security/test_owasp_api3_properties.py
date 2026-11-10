@@ -160,6 +160,18 @@ def allowed_in(op_id: str, key: str, *, top_level: bool) -> bool:
     return key in PERSONAL_KEYS and op_id in PERSONAL_OPS
 
 
+async def _save_chart(api: httpx.AsyncClient, product_id: str, headers: dict[str, str]) -> None:
+    auth = {k: v for k, v in headers.items() if k.lower() != "idempotency-key"}
+    url = f"/api/v1/products/{product_id}"
+    got = await api.get(url, headers=auth)
+    assert got.status_code == 200, got.text[:300]
+    chart = {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+    saved = await api.patch(
+        url, json={"size_chart": chart}, headers={**auth, "If-Match": got.headers["ETag"]}
+    )
+    assert saved.status_code == 200, saved.text[:300]
+
+
 @pytest.mark.parametrize("op", JSON_OPS, ids=ids_of(JSON_OPS))
 async def test_api3_unknown_fields_422(
     api: httpx.AsyncClient, world2: World2, op: Operation
@@ -173,6 +185,8 @@ async def test_api3_unknown_fields_422(
         # DPP-1 (ADR-0021): the one-change-a-day minimum age is a 422 by design; the seeded
         # passwords are older than that here, so the valid call passes
         conn.execute("UPDATE users SET password_changed_at = now() - interval '2 days'")
+    if op.op_id == "products_size_run_create":  # V1.1: the run needs a saved size chart
+        await _save_chart(api, str(world2.side("acme").ids["product_id"]), headers)
     # the body without the extra key passes validation, so the 422 below is the extra key's
     base = await send(api, call_for(op, world2, "acme"), headers)
     assert base.status_code != 422, (op.op_id, base.text[:300])
