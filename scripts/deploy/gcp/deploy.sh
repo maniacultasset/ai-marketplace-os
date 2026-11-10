@@ -266,6 +266,13 @@ for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENAB
   esac
   printf -v "$switch" '%s' "$value"
 done
+# The classifier's model route: vision (LLM_MODEL_VISION with photos) or text (LLM_MODEL_DEFAULT,
+# product text only). One value on the api (the reservation) and the worker (the call).
+CATEGORY_SUGGEST_MODEL="${CATEGORY_SUGGEST_MODEL:-vision}"
+case "$CATEGORY_SUGGEST_MODEL" in
+  vision | text) ;;
+  *) die "CATEGORY_SUGGEST_MODEL must be vision or text (in $ENV_NAME.env)" ;;
+esac
 LLM_DAILY_BUDGET_USD="${LLM_DAILY_BUDGET_USD-}"
 LLM_TENANT_DAILY_BUDGET_USD="${LLM_TENANT_DAILY_BUDGET_USD-}"
 # SI7 (ADR-0030): the AI white-background edit. Off by default; the api answers 422 and hides the
@@ -1081,6 +1088,7 @@ app_env() {
         "$CATEGORY_SUGGEST_ENABLED" "$COLUMN_MAP_AI_ENABLED"
       printf 'CATEGORY_LAMPS_ENABLED\t%s\nPHOTO_QA_ENABLED\t%s\n' \
         "$CATEGORY_LAMPS_ENABLED" "$PHOTO_QA_ENABLED"
+      printf 'CATEGORY_SUGGEST_MODEL\t%s\n' "$CATEGORY_SUGGEST_MODEL"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
         printf 'IMAGE_EDIT_TENANT_DAILY_LIMIT\t%s\n' "$IMAGE_EDIT_TENANT_DAILY_LIMIT"

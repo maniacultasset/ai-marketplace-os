@@ -130,3 +130,30 @@ def test_key_never_in_repr() -> None:
     models = _ModelConfig.from_settings(s)
     for text in (repr(models), repr(column_map_credentials(s)), repr(classify_credentials(s))):
         assert "or-k" not in text and "sk-openai-k" not in text
+
+
+@pytest.mark.parametrize("values", GRID)
+def test_text_classify_rides_the_generation_route(values: dict[str, Any]) -> None:
+    """`CATEGORY_SUGGEST_MODEL=text`: the classifier gets exactly the generation credentials; the
+    other purposes do not move."""
+    base = _settings(**values)
+    s = _settings(**values, category_suggest_model="text")
+    assert _same(classify_credentials(s), _pre_si14(s, "generation"))
+    assert _same(classify_credentials(s), column_map_credentials(s))
+    for purpose in ("generation", "vision", "embedding"):
+        assert _same(
+            credentials_for(_ModelConfig.from_settings(s), purpose),
+            credentials_for(_ModelConfig.from_settings(base), purpose),
+        )
+
+
+def test_text_classify_keeps_its_own_gateway() -> None:
+    s = _settings(
+        llm_gateway="direct",
+        llm_gateway_classify="openrouter",
+        category_suggest_model="text",
+        llm_model_default="deepseek/deepseek-v4-flash",
+    )
+    creds = classify_credentials(s)
+    assert creds.api_base == OPENROUTER_BASE_URL and creds.model == "deepseek/deepseek-v4-flash"
+    assert creds.api_key.get_secret_value() == "or-k"

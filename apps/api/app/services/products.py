@@ -62,7 +62,7 @@ from app.services.product_facts import (
     seller_provenance,
     size_chart_fact,
 )
-from app.workers.budget import CLASSIFY_RESERVATION_USD
+from app.workers.budget import classify_reservation_usd
 
 __all__ = [
     "NewProduct",
@@ -887,9 +887,10 @@ async def _admit_classification(principal: Principal, cmd: NewProduct, now: date
     """SI14: whether a create without a category queues a classification. Only while the switch
     is on, and only when the SI10 admission lets it through, checked before the unit of work
     (it opens its own session). A refusal never fails the create: the seller can ask later."""
-    if cmd.category is not None or not get_settings().category_suggest_enabled:
+    settings = get_settings()
+    if cmd.category is not None or not settings.category_suggest_enabled:
         return False
-    refusal = await admit(principal.tenant_id, now, amount=CLASSIFY_RESERVATION_USD)
+    refusal = await admit(principal.tenant_id, now, amount=classify_reservation_usd(settings))
     if refusal is not None:
         log.info(
             "category_suggest.create_not_admitted",
