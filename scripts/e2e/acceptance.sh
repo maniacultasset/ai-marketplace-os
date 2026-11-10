@@ -107,6 +107,19 @@ for source, field, code in seen:
 PY
 }
 
+# batch_item_errors: each item's HTTP status and error codes and fields from the batch answer in
+# $body (codes and fields only, never a message).
+batch_item_errors() {
+  python3 - "$body" <<'PY'
+import json, sys
+b = json.load(open(sys.argv[1], encoding="utf-8"))
+for item in b.get("items", []):
+    errors = ((item.get("error") or {}).get("errors")) or []
+    shown = sorted({f'{e["field"]} {e["error_code"]}' for e in errors})
+    print(f'acceptance: item {item.get("http_status")}: {"; ".join(shown) or "-"}')
+PY
+}
+
 # import_row_errors: a failed import's row error codes and messages, one line each. The messages
 # are the row model's own text and never quote a cell (Q7), so no seller value reaches the log.
 import_row_errors() {
@@ -332,11 +345,26 @@ json 'any(a["id"] == "'"$account"'" and a["status"] == "active" and a["marketpla
   || fail "the Amazon account is not active"
 
 leg import_csv
+# SI1: the brand's default manufacturer, set once by the owner; every product inherits it (an
+# Amazon item without a manufacturer is MISSING_ATTRIBUTE)
+status="$(curl -s -o "$body" -D "$work/headers" -w '%{http_code}' --max-time "$bound" \
+  -H 'Accept: application/json' -H "Authorization: Bearer $owner" "$api/brand-profile")" || status="000"
+expect 200
+etag="$(tr -d '\r' <"$work/headers" | sed -n 's/^[Ee][Tt][Aa][Gg]: //p' | head -n 1)"
+[ -n "$etag" ] || fail "no brand profile ETag"
+status="$(curl -s -o "$body" -w '%{http_code}' --max-time "$bound" -X PATCH \
+  -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $owner" -H "If-Match: $etag" \
+  --data-binary '{"default_manufacturer": {"legal_name": "Fashionista Apparel Pvt Ltd", "address_line1": "1 Residency Road", "city": "Bengaluru", "state_code": "KA", "postal_code": "560025"}}' \
+  "$api/brand-profile")" || status="000"
+expect 200
+json 'b["default_manufacturer"]["legal_name"] == "Fashionista Apparel Pvt Ltd"' >/dev/null \
+  || fail "the brand's default manufacturer is not set"
 {
   echo "seller_sku,parent_style_id,product_name,brand_name,category,gender,color_name,normalized_color,size_name,fabric_type,mrp,selling_price,tax_rate,hsn_code,country_of_origin,package_weight,main_image,identifier_exemption"
   # the style row: a family's own facts (fabric_type) live on the style, which the listing is
   # generated for; SI2 (#97) lists only the seller's factual values
-  echo "$style,,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,,,,Cotton,,,,,,,,yes"
+  echo "$style,,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,,,,Cotton,,,,,IN,,,yes"
   for size in $sizes; do
     echo "$style-$size,$style,Women's Relaxed Fit Cotton T-Shirt,$brand,tshirts,women,Jet Black,black,$size,Cotton,999,799,5,61091000,IN,180 g,https://cdn.example.com/acc/$style-$size.jpg,yes"
   done
@@ -413,8 +441,10 @@ decision="{\"listing_id\": \"$listing_id\", \"listing_version_id\": \"$version\"
 leg owner_self_approve_item_403
 call POST "$api/listings/approve" "$owner" "acc-approve-owner-$run" "{\"items\": [$decision]}"
 expect 200
+on_fail=batch_item_errors
 json 'b["items"][0]["http_status"] == 403 and b["items"][0]["error"]["errors"][0]["error_code"] == "MAKER_CHECKER_VIOLATION"' >/dev/null \
   || fail "want item 403 MAKER_CHECKER_VIOLATION"
+on_fail=""
 call GET "$api/listings/$listing_id" "$owner"
 expect 200
 json 'b["status"] == "'"$before_status"'" and b["current_version_id"] == "'"$version"'"' >/dev/null \
@@ -434,8 +464,10 @@ json 'b["status"] == "'"$before_status"'"' >/dev/null || fail "the operator's re
 leg reviewer_approve_200
 call POST "$api/listings/approve" "$reviewer" "acc-approve-$run" "{\"items\": [$decision]}"
 expect 200
+on_fail=batch_item_errors
 json 'b["items"][0]["http_status"] == 200 and b["items"][0]["listing_status"] == "approved"' >/dev/null \
   || fail "the reviewer's approve was refused"
+on_fail=""
 call GET "$api/listings/$listing_id" "$reviewer"
 expect 200
 json 'b["status"] == "approved" and b["approved_version_id"] == "'"$version"'"' >/dev/null || fail "not approved at the version"
