@@ -157,3 +157,32 @@ def test_text_classify_keeps_its_own_gateway() -> None:
     creds = classify_credentials(s)
     assert creds.api_base == OPENROUTER_BASE_URL and creds.model == "deepseek/deepseek-v4-flash"
     assert creds.api_key.get_secret_value() == "or-k"
+
+
+def test_per_call_timeout_is_the_spec_40_s() -> None:
+    """LEFTOVERS 4.10: every text, vision and embedding call gets 40 s by default (the AI spec's
+    30-40 s per call); the image edit keeps its own 60 s budget."""
+    s = _settings(llm_gateway="openrouter")
+    assert s.llm_timeout_seconds == 40
+    models = _ModelConfig.from_settings(s)
+    for purpose in ("generation", "vision", "embedding"):
+        assert credentials_for(models, purpose).timeout_seconds == 40.0
+    for creds in (
+        classify_credentials(s),
+        column_map_credentials(s),
+        size_chart_read_credentials(s),
+    ):
+        assert creds.timeout_seconds == 40.0
+    assert image_edit_credentials(s).timeout_seconds == 60.0
+    tuned = _settings(llm_gateway="openrouter", image_edit_timeout_seconds=90)
+    assert image_edit_credentials(tuned).timeout_seconds == 90.0
+    assert credentials_for(_ModelConfig.from_settings(tuned), "vision").timeout_seconds == 40.0
+
+
+@pytest.mark.parametrize("field", ["llm_timeout_seconds", "image_edit_timeout_seconds"])
+@pytest.mark.parametrize("value", [0, 121])
+def test_timeouts_are_bounded(field: str, value: int) -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        _settings(**{field: value})

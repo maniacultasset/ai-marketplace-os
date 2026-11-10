@@ -234,6 +234,9 @@ class Settings(BaseSettings):
     deepseek_api_key: str | None = Field(default=None, repr=False)
     openrouter_api_key: str | None = Field(default=None, repr=False)
     llm_model_default: str = "gpt-4o-mini"
+    # Not read by any model call yet: the pipeline port has no `escalation` purpose (a new member
+    # of the closed `get_model_credentials` Literal is a MAJOR contract change), and the pipeline
+    # has no escalation step. Kept so the value is ready when both land (KNOWN-ISSUES).
     llm_model_escalation: str = "gpt-4o"
     llm_provider_vision: VisionProvider = "openai"
     llm_model_vision: str = Field(default="gpt-4o-mini", min_length=1, max_length=128)
@@ -266,7 +269,13 @@ class Settings(BaseSettings):
     llm_gateway_columns: LlmGateway | None = None
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = EMBEDDING_DIMENSIONS  # pinned: the vector(1536) column type
-    llm_timeout_seconds: int = 60
+    # The per-call model timeout the AI spec sets (30-40 s, so 3 correction rounds fit in the
+    # 300 s generation job); the pipeline also caps each call at 40 s. Embeddings use it too.
+    llm_timeout_seconds: int = Field(default=40, ge=1, le=120)
+    # SI7: the white-background edit's own call budget (an image-output call is slower than a text
+    # one; the pipeline caps it at 120 s and the worker adds its seam grace). 60 s is the budget the
+    # edit had before LLM_TIMEOUT_SECONDS moved to 40.
+    image_edit_timeout_seconds: int = Field(default=60, ge=1, le=120)
     llm_max_correction_attempts: int = 3
     llm_daily_budget_usd: float = Field(default=12.0, allow_inf_nan=False)
     llm_tenant_daily_budget_usd: float = Field(default=2.5, allow_inf_nan=False)
