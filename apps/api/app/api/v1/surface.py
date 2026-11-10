@@ -113,6 +113,7 @@ from app.api.v1.schemas.signup import (
     SignupStatusOut,
 )
 from app.api.v1.schemas.size_chart_read import SizeChartReadOut
+from app.api.v1.schemas.size_run import SizeRunOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
@@ -888,6 +889,15 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Suggest a category for the seller to confirm", "SI14",
               path_id="product_id", idempotency=True, action=A.PRODUCT_IMPORT,
               extra_codes=_SIZE_CHART_READ, also_status=200),
+    # ---- V1.1: the size run from the saved size chart ----
+    Operation("products_size_run_create", "POST", "/products/{product_id}/size-run", 201,
+              SizeRunOut, "products", "Make the size variants from the saved size chart",
+              "SI14", path_id="product_id", has_body=True, idempotency=True,
+              conflict_code=E.SKU_CONFLICT, action=A.PRODUCT_IMPORT, also_status=200,
+              extra_codes=MappingProxyType({
+                  409: (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),
+                  422: (E.FACT_LEVEL_INVALID, E.VARIATION_INVALID),
+              })),
     # ---- SI14: the spreadsheet column maps ----
     Operation("imports_column_map_create", "POST", "/imports/column-maps", 202, ColumnMapOut,
               "imports", "Map a spreadsheet header row onto the import columns", "SI14",

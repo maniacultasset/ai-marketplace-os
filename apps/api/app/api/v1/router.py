@@ -29,6 +29,7 @@ from app.api.v1.routers import (
     rules,
     signup,
     size_chart_read,
+    size_run,
     tasks,
     tenants,
 )
@@ -58,5 +59,6 @@ for module in (
     catalog,
     category_suggestion,
     column_maps,
+    size_run,
 ):
     router.include_router(module.router)

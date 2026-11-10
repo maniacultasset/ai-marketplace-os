@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
+  - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
+  - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.
+  - **FE notice.** The product page offers "Make size variants" once a size chart is saved.
+
 - Tenant capabilities (prod QA 9 Nov; additive optional response field under the open 2.1.0 heading; no new error code or operation). The connect-success screen said "Approved listings can now be published to Amazon" while production publishing is off, because the dashboard read a switch the tenant read never sent.
   - **Read model.** `TenantOut.capabilities?` (`TenantCapabilitiesOut`) on `tenants_me` and `tenants_me_update`: `amazon_publishing_enabled` (default true; the same `AMAZON_PUBLISH_ENABLED` switch as `MarketplaceAccountOut.publishing_enabled`, which stays as it is), `category_suggest_enabled`, `column_map_ai_enabled`, `photo_qa_enabled`, `category_lamps_enabled`, `size_chart_read_enabled` and `image_edit_enabled` (each default false), read from this deployment's settings. They describe the deployment and never grant access; the ETag is unchanged by them.
   - **FE:** read `capabilities.amazon_publishing_enabled` on the connect-success screen, the listing review page and the approve bar. While it is false, say "Publishing to Amazon is paused for now. Approving keeps the listing ready." and never promise a publish.

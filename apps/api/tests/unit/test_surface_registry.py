@@ -143,6 +143,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
+    # V1.1 (client input 8 Nov): the size run from the saved size chart
+    ("products_size_run_create", "POST", "/products/{product_id}/size-run"),
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
@@ -287,6 +289,7 @@ D9_IDEMPOTENT = {
     "products_category_suggest",  # SI14
     "imports_column_map_create",  # SI14
     "imports_column_map_confirm",  # SI14
+    "products_size_run_create",  # V1.1
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -452,8 +455,8 @@ def test_login_response_is_login_result() -> None:
 
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
-    # quality reads
-    assert len(OPS) == 108
+    # quality reads; V1.1 adds the size run
+    assert len(OPS) == 109
 
 
 def test_error_codes_per_d2() -> None:
@@ -482,6 +485,13 @@ def test_error_codes_per_d2() -> None:
             E.INVALID_STATUS_TRANSITION,
         ),
         "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
+        # V1.1: a taken SKU, a listing the marketplace has seen, a generating listing
+        "products_size_run_create": (
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.SKU_CONFLICT,
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+        ),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -579,6 +589,8 @@ def test_error_codes_per_d2() -> None:
                 "size_chart_read_create": (E.FACT_LEVEL_INVALID,),  # SI12: a variant
                 "products_category_suggest": (E.FACT_LEVEL_INVALID,),  # SI14: a variant
                 "imports_column_map_confirm": (E.IMPORT_FAILED,),  # SI14: required columns
+                # V1.1: a variant; a colour style or a standalone holding a barcode
+                "products_size_run_create": (E.FACT_LEVEL_INVALID, E.VARIATION_INVALID),
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
