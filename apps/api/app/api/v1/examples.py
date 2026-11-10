@@ -15,6 +15,7 @@ USER: Final = "0b1c2d3e-0000-4000-8000-000000000002"
 USER_2: Final = "0b1c2d3e-0000-4000-8000-000000000003"
 PRODUCT_1: Final = "0b1c2d3e-0000-4000-8000-000000000101"
 PRODUCT_2: Final = "0b1c2d3e-0000-4000-8000-000000000102"
+PRODUCT_3: Final = "0b1c2d3e-0000-4000-8000-000000000103"
 LISTING: Final = "0b1c2d3e-0000-4000-8000-000000000201"
 VERSION: Final = "0b1c2d3e-0000-4000-8000-000000000202"
 JOB: Final = "0b1c2d3e-0000-4000-8000-000000000301"
@@ -769,6 +770,33 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
             "category": "ethnic_wear_kurta_sets",
         },
+        "products_delete": None,
+        "products_bulk_delete": {
+            "items": [
+                {"product_id": PRODUCT_1, "http_status": 204, "error": None},
+                {
+                    "product_id": PRODUCT_2,
+                    "http_status": 409,
+                    "error": {
+                        "status": "failed",
+                        "error_code": "INVALID_STATUS_TRANSITION",
+                        "retryable": False,
+                        "errors": [
+                            {
+                                "field": "request",
+                                "error_code": "INVALID_STATUS_TRANSITION",
+                                "message": (
+                                    "A listing of this product was sent to a marketplace, so "
+                                    "it cannot be deleted here."
+                                ),
+                                "source": "system",
+                                "retryable": False,
+                            }
+                        ],
+                    },
+                },
+            ]
+        },
         "products_bulk": {
             "import_id": IMPORT,
             "job_id": JOB,
@@ -1079,6 +1107,15 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 for entry in _COLUMN_MAP["mappings"]
             ],
             "needs_review_count": 0,
+        },
+        "products_size_run_create": {
+            "product_id": PRODUCT_1,
+            "variation_theme": "size",
+            "size_run": ["s", "m"],
+            "created": [
+                {"id": PRODUCT_2, "sku": "KURTA-001-S", "size": "S"},
+                {"id": PRODUCT_3, "sku": "KURTA-001-M", "size": "M"},
+            ],
         },
         "size_chart_read_create": {
             "image_id": IMAGE,

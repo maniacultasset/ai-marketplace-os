@@ -26,10 +26,12 @@ passed on a command line or written to a committed file.
 | `deploy` | The api service: public, the app does its own auth, Cloud SQL attached, secrets as env vars. A new revision gets 0% traffic until its tagged URL passes `smoke`, then takes all traffic; then every `sha-*` revision tag is removed, its own included, because a tag URL reaches that revision directly and would bypass settings a later revision changed (MFA, lockout). Roll back by revision name (`update-traffic --to-revisions`). On the first deploy, `JWT_ISSUER` and the OAuth redirect URIs are re-pointed to the URL the service got (a pinned `JWT_ISSUER` in the env file stays as set). Ingress comes from `INGRESS` (`all`, or `internal-and-cloud-load-balancing` once the edge is locked; the locked value needs `API_PUBLIC_URL=https://$EDGE_DOMAIN`). With ingress locked, the new revision is tagged `candidate` and smoked through the load balancer with the header `x-aimos-candidate` set to the random value `edge setup` wrote into the URL map (never printed); the tag is removed on every exit, and a failed smoke keeps traffic. A KMS guard (after the live-state guard below) checks that `oauth-token-key` and `mfa-secret-key` exist and stops with "run setup first" when one is missing (a release that added a key must run `setup` before `deploy`). A live-state guard first reads the running service (any describe error but NOT_FOUND stops the deploy) and refuses to unlock a locked service (`DEPLOY_ALLOW_UNLOCK=1` overrides), to lock an open one, which is `edge lock-ingress`'s job (`DEPLOY_ALLOW_LOCK=1` overrides), or to change its `JWT_ISSUER`, which signs every user out (`DEPLOY_ALLOW_ISSUER_CHANGE=1` overrides). Then the worker pool (`WORKER_ENABLED=true` only), then the daily maintenance job `aimos-maintenance` on the same image (`python -m app.workers.maintenance`: OAuth state and idempotency-key prunes, `retention_daily`, the marketplace account purge; `aimos-sched` may run it via `roles/run.invoker` on the job) and its Cloud Scheduler trigger `aimos-maintenance-daily` (`MAINT_SCHEDULE`, `MAINT_TIME_ZONE`; created once, updated after), then `smoke`. |
 | `release` | The KMS guard and the setup guard, then `build`, `migrate`, `deploy`: the normal update. The setup guard stops with "run setup first" before any build when `aimos-maint` or `aimos-sched` is missing or `cloudscheduler.googleapis.com` is off (a project whose `setup` predates the maintenance job); `deploy` runs both guards too. The model key guard (ADR-0024) stops the same way when the worker is on and one of its model keys (the gateway's) has no value. The google and amazon guards stop the same way when their switch is on and `GOOGLE_OAUTH_CLIENT_SECRET` or `AMAZON_CLIENT_SECRET` has no value. After pulling a release that adds a key, an account or an API, run `setup` before `release`. |
 | `smoke` | `GET /healthz` must answer 200 (on a `*.run.app` URL, whose front end answers `/healthz` itself with a 404, and on the edge domain, whose Cloud Armor path rule denies it, `GET /api/v1/auth/me` must answer 401 instead); `GET /readyz` must answer 200 with `"postgres":"ok"`. Retried for cold starts. |
+| `restore-drill` | Launch gate 6, run and timed ("Restore drill" below): `restore-drill [--pitr YYYY-MM-DDTHH:MM:SSZ] [--keep]` restores the latest successful backup (or a point in time) of `SQL_INSTANCE` into a new throwaway `<SQL_INSTANCE>-drill-<ddHHMMSS>`, checks it read only through `cloud-sql-proxy`, times every phase against 15 minutes, then deletes it (also on any failure). Never creates, patches, restores into or deletes `SQL_INSTANCE`. `--dry-run` prints every command and runs none. |
 | `tenant` | `tenant create --name N --slug S --owner-email E --staff-email F [--trial-days D]`, `tenant add-member --slug S --email E --role owner\|operator\|reviewer\|admin --staff-email F`, `tenant set-password --email E --staff-email F`, `tenant make-admin --email E --staff-email F`, and (DPP-1, after the identity check in `MFA-STAFF.md`) `tenant unlock --email E --staff-email F` (no password) and `tenant reset-mfa --email E --staff-email F`. Runs the staff CLI (`python -m app.cli`) in a one-off job. A new user's password is generated into `INITIAL_PASSWORD_<email>_<hash>` (8 groups of an upper-case letter, a lower-case letter and a digit, so it meets the DPP rules; must-change at the next sign-in), and the job reads it on stdin from a mounted file. The script prints the `gcloud secrets versions access` command that shows it, never the value. A rerun of `create` with a taken slug fails and changes nothing. |
 | `templates` | `templates refresh --product-type T --staff-email E --reason R` and `templates promote-definition --product-type T --version V [--digest D] --staff-email E --reason R` (DW2, `PTD-REFRESH.md`). Runs `python -m app.cli templates ...` in the one-off job `aimos-ptd` under its own identity `aimos-ptd` (secret access is per identity, so the shared ops identity never gets the token), with the Amazon app's public settings, `AMAZON_CLIENT_SECRET`, `AMAZON_PLATFORM_REFRESH_TOKEN` and the migrator URL. Only while `AMAZON_APP_ID` is set. The platform token is a self-authorization of the Kuinn app on the company's own seller account; the owner adds it with the printed `read -s` command. Only this job mounts it. |
 | `amazon-check` | `amazon-check (--slug S \| --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]`. The read-only Amazon connection check of one tenant's live account: runs `python -m app.cli ops amazon-check` in the one-off job `aimos-amazon-check` (it resolves the slug, or by `--seller-id` the one tenant whose connected Amazon account has that seller id, refusing when none or several match; it prints the tenant slug with the seller id masked, then hands the process to the worker entrypoint `python -m app.workers.amazon_check`) as the worker identity (it already opens tenant tokens with the token key, and reads `DATABASE_URL` and `AMAZON_CLIENT_SECRET`), under the shell role. Steps: the account and its KMS-sealed token, a fresh LWA token (kept in memory, the row is unchanged), getMarketplaceParticipations (Amazon.in), getDefinitionsProductType for KURTA and SHIRT against the stored versions, a Listings probe (404 expected), searchCatalogItems by the EAN, getListingsRestrictions for the first ASIN, and the rate-limit headers. Every SP-API request goes through a transport that refuses anything but GET; the LWA refresh is the one POST. One audit row names the staff email. The job log holds a PASS / WARN / FAIL table with no token, payload or full seller id; a FAIL row fails the job. Only while `AMAZON_APP_ID` is set. |
 | `images` | `images recheck (--tenant ID \| --slug S \| --seller-id ID) --staff-email E`. Photo rules 2.1.0: queues the photo checks again for one tenant's live photos whose stored report the old photo rules wrote. Runs `python -m app.cli images recheck` in the one-off job `aimos-images-recheck` as the worker identity, under the shell role, with `DATABASE_URL` only (app_rw, tenant scope); no model key, no Amazon secret. `--slug` and `--seller-id` resolve the tenant as `amazon-check` does (the one tenant whose connected Amazon account has that seller id; refused when none or several match; the seller id is masked in the log). Each run queues at most the free per-brand photo job cap and writes one `images.recheck` audit row naming the staff email; the job log ends `images recheck: ok (queued=N remaining=M)`. Rerun it, after the worker drains the queued checks, until `remaining=0`. A listing's photo issues follow on its next check (a read of a reviewable listing, "Check again" or a regenerate). Nothing is approved, sent or published. |
+| `sentry-alerts` | The Sentry issue alert rules as code (`sentry_rules.py`; "Sentry alert rules" below), with the API token from the `SENTRY_ALERTS_TOKEN` secret piped to the helper's stdin. Needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_API_URL` in the env file; refused when any is blank or malformed. `--dry-run` prints the four rules and contacts neither Google Cloud nor Sentry. |
 | `status` | The service URL, latest revisions, worker pool, recent job runs and secret names (never values). |
 | `edge` | Prod only (needs `EDGE_DOMAIN`; staging is refused). `edge setup` builds the global external load balancer for `api.kuinn.in` (managed certificate, SSL policy MODERN / TLS 1.2, serverless NEGs for the service and its `candidate` tag, logged backends with the Cloud Armor policy `kuinn-api-waf`); `edge rules` converges the policy to `armor-rules.yaml` rule by rule, every group in preview unless listed in `EDGE_ENFORCE`; `edge enforce` does the same after printing what leaves preview; `edge lock-ingress` / `edge unlock-ingress` close and reopen the `run.app` URLs; `edge alerts` sets up the uptime, worker and maintenance alerts (see "Alerts and Slack") plus the deny/429/5xx/Adaptive Protection alerts to `ALERT_EMAIL` and the 400-day `security-logs` bucket; `edge cors` resets the bucket CORS from `ALLOWED_ORIGINS`; `edge status` prints the read-only state and evidence. Order, gates and rollbacks: `docs/runbooks/EDGE-CUTOVER.md`. Interim (ADR-0025): with `EDGE_PROVIDER=cloudflare` only `edge alerts` (the provider-independent part, below), `edge cors` and `edge status` run, and the api gets the Worker's `EDGE_ORIGIN_SECRET`; see `docs/runbooks/EDGE-CLOUDFLARE.md`. |
 
@@ -157,8 +159,12 @@ covers that, with an email channel that does not depend on the edge provider or 
 
 **Email alerts.** `ALERT_EMAIL` in `prod.env` is blank: the owner fills in one address (x@y.z),
 commits, then runs `scripts/deploy/gcp/deploy.sh prod edge alerts`. With
-`EDGE_PROVIDER=cloudflare` it creates, once each (a rerun changes nothing, except the channel's
-address when `ALERT_EMAIL` changed):
+`EDGE_PROVIDER=cloudflare` it enables `monitoring.googleapis.com` when it is off and creates, once
+each. Every policy file carries the label `kuinn_spec`, a hash of its conditions, thresholds and
+channels: a rerun changes nothing, except the channel's address when `ALERT_EMAIL` changed and, in
+place, each policy whose `kuinn_spec` differs (a threshold, a filter or a channel changed; a policy
+made before the label is updated once). `--dry-run` prints every command and every policy file and
+runs none:
 
 | What | Fires when |
 |---|---|
@@ -167,11 +173,33 @@ address when `ALERT_EMAIL` changed):
 | log metric `worker_alerts_checked`; policy `aimos-worker heartbeat missing` | no `periodic.alerts_checked` line from the worker pool for 15 minutes (worker down, hung or never started) |
 | log metric `worker_started`; policy `aimos-worker restarting` | more than 2 `worker.started` lines in 30 minutes (a crash loop) |
 | policy `aimos-maintenance errors` | any ERROR line of the `aimos-maintenance` job (a failed step or an incomplete DPP purge; at most one mail an hour) |
+| policy `aimos-worker job lag` | the worker logged `alert.queue_latency` (a queue's oldest job waited past its limit; at most one mail an hour), so job lag reaches email even with no Slack |
+| policy `aimos-db cpu high` | Cloud SQL `aimos-db` CPU over 0.8 for 10 minutes (`SQL_CPU_ALERT`) |
+| policy `aimos-db disk filling` | Cloud SQL disk over 0.85 for 10 minutes (`SQL_DISK_ALERT`; storage auto-increase is on, so this means it is growing fast or hit its cap) |
+| policy `aimos-db connections high` | more than 80 % of `SQL_MAX_CONNECTIONS` Postgres connections for 5 minutes (`SQL_CONN_ALERT_PCT`) |
+| policy `aimos-api 5xx` | more than 10 api 5xx answers in 5 minutes, from Cloud Run's own request count (`API_5XX_ALERT`; a count, not a ratio, so low traffic does not page on one error) |
+
+The thresholds in brackets are process env, not env-file keys (like `EDGE_DENY_ALERT`): for
+example `SQL_CONN_ALERT_PCT=70 scripts/deploy/gcp/deploy.sh prod edge alerts`. A value that is not
+a number is refused before any gcloud call.
 
 On the load balancer path (`EDGE_PROVIDER` blank) the same command adds the deny, 429, 5xx and
 Adaptive Protection policies and the security log bucket. The two worker metrics filter on
 `resource.type="cloud_run_worker_pool"`; at the first run, check in Logs Explorer that the
 worker's lines carry that resource type, and fix the filter if Google names it otherwise.
+
+**Slack for these policies (optional).** Cloud Monitoring cannot post to the worker's incoming
+webhook (`ALERT_SLACK_WEBHOOK` below): Slack refuses its message format. It has its own Slack
+channel type, which needs Google's Slack app authorised once in the console, so the toolkit finds
+that channel and never creates it:
+1. Console, project `aimos-prod`: Monitoring > Alerting > Edit notification channels.
+2. Slack > Add new. Sign in to the team's Slack workspace and allow the Google Cloud Monitoring app.
+3. Pick the alerts channel (for example `#kuinn-alerts`), set the display name `aimos-ops-slack`,
+   Save. In Slack, invite the app to that channel.
+4. Set `ALERT_SLACK_CHANNEL=aimos-ops-slack` in `prod.env`, commit, run
+   `scripts/deploy/gcp/deploy.sh prod edge alerts`. Every policy gets both channels; policies made
+   earlier are updated in place. A name that matches no Slack channel (or more than one) is refused
+   before anything changes. Blank it to go back to email only.
 
 **Slack.** `ALERT_SLACK_WEBHOOK` is an optional secret: `setup` creates it with no value and grants
 it to the worker, prints how to add a value, and never stops for it. `deploy` binds it to the
@@ -183,9 +211,60 @@ job per day, at most 20 per job kind per 15 minutes, then one summary). To turn 
 incoming webhook in the team's Slack, add it with the `read -rsp` command `setup` prints, then
 `deploy.sh prod deploy` (or the next `release`). Every alert kind also reaches Sentry.
 
-**Who owns what.** The owner of `ALERT_EMAIL` owns the Cloud Monitoring policies above. Sentry
-alert rules (new issue, regression) are set in Sentry's UI by the on-call engineer named in
-`docs/runbooks/INCIDENTS.md`; nothing in this toolkit creates them.
+**Who owns what.** The owner of `ALERT_EMAIL` owns the Cloud Monitoring policies above. The
+Sentry alert rules are code (`sentry-alerts`, next section); the on-call engineer named in
+`docs/runbooks/INCIDENTS.md` owns them and the issues they raise.
+
+## Sentry alert rules
+
+`scripts/deploy/gcp/deploy.sh prod sentry-alerts` makes Sentry mail people. It owns four issue
+alert rules, all on the `production` environment (`APP_ENV`), each mailing the issue owners and,
+when there are none, every active member of the project:
+
+| Rule | Fires when |
+|---|---|
+| `kuinn: new issue` | an issue is seen for the first time (at most one mail per issue per 30 min) |
+| `kuinn: regression` | a resolved issue comes back |
+| `kuinn: issue spike` | one issue is seen more than 100 times in an hour |
+| `kuinn: ops alert repeats` | an app alert (`alert_kind` tag) `llm_provider_refused`, `llm_credit`, `token_refresh_failed` or `job_dead_lettered` is new, regressed or seen again within the hour (at most one mail per issue per hour) |
+
+Each rule is described before it changes: absent, it is created; present but different in a
+field the helper sets, it is updated in place; the same, it is kept. Rules with any other name
+are never changed or deleted, so a rule made by hand in Sentry stays. Two rules with the same
+`kuinn: ` name stop the run before any change.
+
+**One-time setup (the owner).**
+1. In Sentry, note the organisation and project slugs from the project's URL
+   (`https://<org>.sentry.io/projects/<project>/`) and the region from the `SENTRY_DSN` host
+   (`o<n>.ingest.de.sentry.io` means `https://de.sentry.io`; `.us.` or none means
+   `https://sentry.io`). Set `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_API_URL` in `prod.env` and
+   commit.
+2. Make a token with the scopes `alerts:read` and `alerts:write` only: Settings > Developer
+   Settings > Custom Integrations > Create New Integration > Internal Integration, name
+   `kuinn-alert-rules`, Permissions: Alerts Read & Write, everything else No Access, Save, then
+   copy the token. (A personal token under User Settings > Personal Tokens with the same two
+   scopes works too.)
+3. `scripts/deploy/gcp/deploy.sh prod sentry-alerts --dry-run` prints the rules. The first live
+   run creates the secret `SENTRY_ALERTS_TOKEN` (no value) and stops, printing the `read -rsp`
+   command that adds the token without echoing it. Add it, then run
+   `scripts/deploy/gcp/deploy.sh prod sentry-alerts` again.
+
+No deployed process reads `SENTRY_ALERTS_TOKEN`: no service account is granted it, and only a
+person with Secret Manager access in `aimos-prod` can run this. The token goes from
+`gcloud secrets versions access` into the helper's stdin, never argv, a file or the output. To
+rotate it: delete the integration's token in Sentry, make a new one, add it as a new version.
+
+**Slack (optional).** With Sentry's Slack integration installed (Settings > Integrations > Slack),
+set `SENTRY_SLACK_WORKSPACE` (the integration's numeric id, in its settings URL) and
+`SENTRY_SLACK_CHANNEL` (for example `#kuinn-alerts`) together, then rerun: every rule also posts
+there. Blank, the rules only mail.
+
+**If the API is not an option** (no token can be issued), make the same four rules by hand:
+Alerts > Create Alert > Issues, environment `production`, the "when" and "if" lines from the
+table above (for the ops rule: "The event's tags match `alert_kind` equals ..." once per kind,
+"any"), action "Send a notification to Suggested Assignees, falling back to All project
+members", the action interval from the table, and the rule name exactly as in the table, so a
+later `sentry-alerts` run adopts them instead of adding copies.
 
 ## Restore the database (point-in-time recovery)
 
@@ -206,6 +285,48 @@ clone. To switch over:
 A daily backup can also be restored with `gcloud sql backups restore`. The live instance has
 deletion protection, and its backups are kept after deletion (`--retain-backups-on-delete`).
 
+### Restore drill
+
+`scripts/deploy/gcp/deploy.sh prod restore-drill` proves the backups restore, and times it (launch
+gate 6: restored and checked in under 15 minutes). It needs `cloud-sql-proxy` v2 and `psql` on
+`PATH` (`brew install cloud-sql-proxy libpq`), and the runner's own gcloud login with Cloud SQL
+Admin and Secret Manager access in the project. In order:
+1. Reads the source (`databaseVersion`, tier, disk size) and its latest successful backup. With
+   `--pitr <UTC time>` it clones to that time instead (inside the 7-day PITR window), then takes
+   deletion protection off the clone first, then its backups and point-in-time recovery (a refusal
+   there is reported and the drill goes on; the clone is deleted at the end anyway).
+2. Creates `<SQL_INSTANCE>-drill-<ddHHMMSS>` (same version and tier, at least the same disk, no
+   backups, no deletion protection, label `purpose=restore-drill`) and restores the backup into it.
+   A name already in use, or a target without the label, stops the drill before any restore.
+3. Through `cloud-sql-proxy --gcloud-auth` on `127.0.0.1:6544` (`DRILL_PORT`), every session read
+   only, the passwords from `APP_RO_PASSWORD` and `MIGRATOR_PASSWORD` in a 0600 pgpass file of the
+   work dir (removed on exit): the `alembic_version` revision (as `migrator`, the only role that
+   may read it) must be one this checkout knows; row counts of the core tables as `app_ro`, with at
+   least one tenant; a smoke: forced row level security still on, every `active` Amazon account
+   still has its `kms_key_version`, and the newest `job_runs.created_at` (how fresh the backup is).
+4. Deletes the drill instance, and prints the time of each phase and whether gate 6 was met.
+
+Any failure deletes the drill instance on the way out; `--keep` leaves it for a look and prints the
+delete command. Drill instance cost: the tier's hourly price for the run (well under a dollar).
+Run it from the repo root of a full checkout, so the revision check sees `apps/api/alembic`. The
+first prod run needs the owner's go-ahead (it reads prod passwords and makes a prod-sized
+instance for about 15 minutes).
+
+## Cross-region backups
+
+Prepared and OFF until the client decides (V1 hardening #4). Today `SQL_BACKUP_LOCATION=asia-south1`,
+the same region as the zonal primary, so a regional outage takes both. The other accepted value is
+`asia-south2` (Delhi), which keeps the data in India; any other value is refused before any gcloud
+call. To switch on:
+1. Set `SQL_BACKUP_LOCATION=asia-south2` in `prod.env` and commit.
+2. `scripts/deploy/gcp/deploy.sh prod setup --dry-run`: on the live instance it prints one
+   `gcloud sql instances patch aimos-db --backup-location=asia-south2` and changes nothing else.
+3. `scripts/deploy/gcp/deploy.sh prod setup`. New backups go to asia-south2; backups already
+   taken stay in asia-south1 until they age out (7 kept).
+4. After the next nightly backup (20:30 UTC), run `restore-drill`: it restores from the new
+   location into asia-south1.
+To switch back, set `asia-south1` and rerun `setup`.
+
 ## Cost notes (list prices before GST; ADR-0001, EXECUTION-PLAN §5.4)
 
 - **Staging:** Cloud SQL `db-custom-1-3840` (EXECUTION-PLAN decision 6: prod-like, not ADR-0001's
@@ -213,14 +334,39 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
   instance) and an api that scales to zero. Stop the DB off-hours with
   `gcloud sql instances patch aimos-db --activation-policy=NEVER --project=aimos-staging` (and
   `ALWAYS` in the morning).
-- **Prod:** about $170 a month with the worker (ADR-0001). Until the worker runs, it is Cloud SQL
-  `db-custom-1-3840` plus one always-on api instance.
+- **Prod:** about $170 a month with the worker at 1 vCPU / 2 GiB (ADR-0001). Since V1 hardening #9
+  the worker is 2 vCPU / 4 GiB (one always-on instance), which doubles the worker pool's line
+  ("Worker capacity" below).
 - **Prod edge (DPP-2):** about $40 a month for the load balancer, Cloud Armor Standard and the
   security log bucket (`docs/runbooks/EDGE-CUTOVER.md`).
 - Cloud Build bills per build minute. Artifact Registry keeps 20 versions and drops old `sha-` tags
   after 30 days. The build-source bucket deletes after 7 days, and CSVs after 30.
 - Budgets are not in this toolkit, because they need billing-account access: EXECUTION-PLAN §5.2
   step 4.
+
+## Worker capacity (V1 hardening #9)
+
+One worker instance runs every queue in one process: `default` 4 jobs at once (generation, bulk
+import, image checks, brand embeds), `publish` 2, `periodic` 2 (`app/workers/settings.py`; code
+constants, sized to the app pool of 10 connections per process). Image checks and derives run in
+child processes under a per-process limit, `IMAGE_CHECK_CONCURRENCY`.
+
+| Setting (`prod.env`) | Value | Why |
+|---|---|---|
+| `WORKER_CPU` | `2` | A second child only runs in parallel with a second vCPU. |
+| `WORKER_MEMORY` | `4Gi` | Each child may map up to 1 GiB; the worker itself needs about 1 GiB. |
+| `IMAGE_CHECK_CONCURRENCY` | `2` | About twice the photo throughput of one child: the per-brand photo cap of 20 live jobs drains about twice as fast when several brands upload at once. |
+| `WORKER_INSTANCES` | `1` | Kept at one: a second instance doubles the bill again and also doubles the connection budget. |
+
+`deploy.sh` refuses `IMAGE_CHECK_CONCURRENCY` outside 1-4, and above 1 it refuses a worker with
+less than `IMAGE_CHECK_CONCURRENCY + 1` GiB (written as `<n>Gi`) or fewer than 2 vCPU. Staging keeps
+1 vCPU / 2 GiB and one child.
+
+When to raise it further: photo jobs stay `queued` for minutes while the worker's CPU is low (the
+models are slow), or uploads keep hitting 429 at the per-brand cap. Then go to 3 children with
+`WORKER_MEMORY=4Gi` and watch memory, or a second instance. When to lower it: the worker restarts
+with an out-of-memory exit (`aimos-worker restarting` alert). Rollback: `WORKER_CPU=1`,
+`WORKER_MEMORY=2Gi`, `IMAGE_CHECK_CONCURRENCY` blank, then `deploy`.
 
 ## Known limitations
 
@@ -232,7 +378,8 @@ deletion protection, and its backups are kept after deletion (`--retain-backups-
   `EDGE-CLOUDFLARE.md`) at `https://api.kuinn.in`, with `ORIGIN_AUTH=enforce`. The load balancer
   and Cloud Armor path (`EDGE-CUTOVER.md`) waits for quota.
 - **Alerts need `ALERT_EMAIL`.** It is blank in `prod.env` until the owner fills it in and runs
-  `edge alerts` ("Alerts and Slack" above); until then only Sentry sees failures.
+  `edge alerts` ("Alerts and Slack" above); until then only Sentry sees failures. A Slack copy of
+  the Cloud Monitoring alerts also needs `ALERT_SLACK_CHANNEL` and the one-time console step.
 - **Worker pool on gcloud 587.** Its bundled Python cannot load `run worker-pools deploy` (no
   `grpc`), so `deploy` detects that and applies the same settings with
   `run worker-pools replace <yaml>`. A Cloud Run service is not a fallback: the worker binds no

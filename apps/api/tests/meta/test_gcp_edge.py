@@ -1454,7 +1454,8 @@ def test_alerts_dry_run_prints_all(toolkit: Path, tmp_path: Path) -> None:
     assert len(channels) == 1 and "--type=email" in channels[0]
     assert "email_address=ops@kuinn.in" in channels[0]
     policies = [x for x in lines if "monitoring policies create" in x]
-    assert len(policies) == 8
+    # 9 provider-independent (ops readiness) plus deny, 429, lb 5xx and Adaptive Protection
+    assert len(policies) == 13
     assert not [x for x in policies if " beta " in x or " alpha " in x]
     docs = "\n".join(blocks(out, "policy"))
     assert "uptime_check/check_passed" in docs and 'check_id=\\"<uptime-check-id>\\"' in docs
@@ -1477,7 +1478,7 @@ def test_alerts_dry_run_prints_all(toolkit: Path, tmp_path: Path) -> None:
 def test_alerts_policy_files_valid(toolkit: Path, tmp_path: Path) -> None:
     out = alerts_dry(toolkit, tmp_path)
     docs = [json.loads(block) for block in blocks(out, "policy")]
-    assert len(docs) == 8
+    assert len(docs) == 13
     for doc in docs:
         assert doc["displayName"] and len(doc["conditions"]) == 1
         assert doc["notificationChannels"] == [
@@ -1485,10 +1486,11 @@ def test_alerts_policy_files_valid(toolkit: Path, tmp_path: Path) -> None:
         ]
         if "conditionMatchedLog" in doc["conditions"][0]:
             assert doc["alertStrategy"]["notificationRateLimit"]["period"] in ("300s", "3600s")
-    # Adaptive Protection and (V1 hardening #1) the maintenance job's ERROR lines
-    assert sum("conditionMatchedLog" in d["conditions"][0] for d in docs) == 2
+    # Adaptive Protection, (V1 hardening #1) the maintenance job's ERROR lines and the job lag line
+    assert sum("conditionMatchedLog" in d["conditions"][0] for d in docs) == 3
 
 
+CHANNEL_9 = "projects/aimos-prod/notificationChannels/9\n"
 ALERT_BASE: list[dict[str, Any]] = [
     {
         "match": "beta monitoring channels list",
@@ -1534,28 +1536,64 @@ def test_alerts_uptime_id_must_be_one(toolkit: Path, tmp_path: Path, answer: str
     assert live.index("policies create") == -1
 
 
+EXISTING_POLICIES: list[dict[str, Any]] = [
+    {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
+    {"match": "monitoring policies list", "stdout": "projects/aimos-prod/alertPolicies/1\n"},
+]
+
+
+def policy_stamps(output: str) -> list[str]:
+    """The kuinn_spec stamp of each policy file the run printed, in the order applied."""
+    return [json.loads(b)["userLabels"]["kuinn_spec"] for b in blocks(output, "policy")]
+
+
+def subdir(tmp_path: Path, name: str) -> Path:
+    path = tmp_path / name
+    path.mkdir()
+    return path
+
+
+def stamp_rules(stamps: list[str]) -> list[dict[str, Any]]:
+    """gcloud answers each policy's stamp in turn, as a rerun of the same policies would see."""
+    return [{"match": "userLabels.kuinn_spec", "stdout": f"{s}\n", "max": 1} for s in stamps]
+
+
 def test_alerts_rerun_creates_nothing(toolkit: Path, tmp_path: Path) -> None:
+    rules = [
+        *ALERT_BASE,
+        *EXISTING_POLICIES,
+        {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
+    ]
+    first = alerts_live(toolkit, subdir(tmp_path, "first"), rules)
+    assert first.result.returncode == 0, first.out
+    stamps = policy_stamps(first.result.stdout)
+    assert len(stamps) == 13 and all(re.fullmatch(r"[0-9a-f]{16}", x) for x in stamps)
     live = alerts_live(
         toolkit,
-        tmp_path,
+        subdir(tmp_path, "rerun"),
         [
-            *ALERT_BASE,
-            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
-            {
-                "match": "monitoring policies list",
-                "stdout": "projects/aimos-prod/alertPolicies/1\n",
-            },
-            {"match": "thresholdValue", "stdout": "50.0\n"},
+            *stamp_rules(stamps),
+            *rules,
             {"match": "sinks describe _Default", "stdout": "edge-callback-urls\n"},
-            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
+            {"match": "services list", "stdout": "monitoring.googleapis.com\n"},
             {"match": "describe", "stdout": "present\n"},
         ],
     )
     assert live.result.returncode == 0, live.out
+    assert policy_stamps(live.result.stdout) == stamps
     assert not [c for c in live.calls if " create " in c and "--help" not in c]
     assert live.index("policies update") == -1
+    assert live.index("services enable") == -1
     assert live.index("sinks update _Default") == -1
     assert live.index("channels update") == -1
+
+
+def test_alerts_policy_made_before_the_stamp_is_updated_once(toolkit: Path, tmp_path: Path) -> None:
+    """A policy with no kuinn_spec label (made by an older toolkit) is updated in place."""
+    live = alerts_live(toolkit, tmp_path, [*ALERT_BASE, *EXISTING_POLICIES])
+    assert live.result.returncode == 0, live.out
+    assert live.index("policies create") == -1
+    assert len([c for c in live.calls if "monitoring policies update" in c]) == 13
 
 
 def test_alerts_rerun_applies_new_email(toolkit: Path, tmp_path: Path) -> None:
@@ -1580,29 +1618,37 @@ def test_alerts_rerun_applies_new_email(toolkit: Path, tmp_path: Path) -> None:
     assert not [c for c in live.calls if "channels create" in c and "--help" not in c]
 
 
-def test_alerts_deny_threshold_updated_in_place(toolkit: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("extra", "changed"),
+    [
+        ({"EDGE_DENY_ALERT": "10"}, "policy-deny.json"),
+        ({"SQL_CPU_ALERT": "0.9"}, "policy-sqlcpu.json"),
+        ({"API_5XX_ALERT": "3"}, "policy-api5xx.json"),
+    ],
+    ids=["deny", "sql-cpu", "api-5xx"],
+)
+def test_alerts_changed_threshold_updated_in_place(
+    toolkit: Path, tmp_path: Path, extra: dict[str, str], changed: str
+) -> None:
+    """A rerun with one threshold changed updates exactly that policy, in place."""
     set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in")
+    rules = [*ALERT_BASE, *EXISTING_POLICIES]
+    first = run_live(toolkit, subdir(tmp_path, "first"), "prod", "edge", "alerts", responses=rules)
+    assert first.result.returncode == 0, first.out
     live = run_live(
         toolkit,
-        tmp_path,
+        subdir(tmp_path, "rerun"),
         "prod",
         "edge",
         "alerts",
-        responses=[
-            *ALERT_BASE,
-            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
-            {
-                "match": "monitoring policies list",
-                "stdout": "projects/aimos-prod/alertPolicies/1\n",
-            },
-            {"match": "thresholdValue", "stdout": "50.0\n"},
-        ],
-        extra={"EDGE_DENY_ALERT": "10"},
+        responses=[*stamp_rules(policy_stamps(first.result.stdout)), *rules],
+        extra=extra,
     )
     assert live.result.returncode == 0, live.out
-    update = live.calls[live.index("monitoring policies update")]
-    assert "policy-deny.json" in update
-    assert len([c for c in live.calls if "policies update" in c]) == 1
+    updates = [c for c in live.calls if "monitoring policies update" in c]
+    assert len(updates) == 1 and changed in updates[0]
+    assert "projects/aimos-prod/alertPolicies/1" in updates[0]
+    assert live.index("policies create") == -1
 
 
 # ---- T9: edge cors / edge status ----
@@ -2056,15 +2102,205 @@ def test_cloudflare_alerts_set_up_uptime_worker_and_maintenance(
     assert all("cloud_run_worker_pool" in m and "aimos-worker" in m for m in metrics)
     docs = {d["displayName"]: d for d in (json.loads(b) for b in blocks(result.stdout, "policy"))}
     assert sorted(docs) == [
+        "aimos-api 5xx",
+        "aimos-db connections high",
+        "aimos-db cpu high",
+        "aimos-db disk filling",
         "aimos-edge uptime failing",
         "aimos-maintenance errors",
         "aimos-worker heartbeat missing",
+        "aimos-worker job lag",
         "aimos-worker restarting",
     ]
     absent = docs["aimos-worker heartbeat missing"]["conditions"][0]["conditionAbsent"]
     assert absent["duration"] == "900s" and "worker_alerts_checked" in absent["filter"]
     log = docs["aimos-maintenance errors"]["conditions"][0]["conditionMatchedLog"]["filter"]
     assert 'job_name="aimos-maintenance"' in log and "severity>=ERROR" in log
-    assert len([x for x in lines if "monitoring policies create" in x]) == 4
+    assert len([x for x in lines if "monitoring policies create" in x]) == 9
     # nothing of the load balancer path
     assert "edge_armor_deny" not in result.stdout and "security-logs" not in result.stdout
+
+
+# ---- ops readiness: Cloud SQL, api 5xx, job lag and the optional Slack channel ----
+
+SLACK_9 = "projects/aimos-prod/notificationChannels/77\n"
+EMAIL_9 = "projects/aimos-prod/notificationChannels/9"
+
+
+def ops_docs(output: str) -> dict[str, dict[str, Any]]:
+    return {d["displayName"]: d for d in (json.loads(b) for b in blocks(output, "policy"))}
+
+
+def cf_alerts_dry(toolkit: Path, tmp_path: Path, **keys: str) -> str:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in", **keys)
+    result = run_dry(toolkit, tmp_path, "prod", "edge", "alerts")
+    assert result.returncode == 0, result.stderr
+    # the read-only lookups print on stderr
+    return result.stdout + result.stderr
+
+
+def test_ops_alerts_watch_cloud_sql_the_api_and_job_lag(toolkit: Path, tmp_path: Path) -> None:
+    out = cf_alerts_dry(toolkit, tmp_path)
+    docs = ops_docs(out)
+    sql = 'resource.type="cloudsql_database" AND resource.labels.database_id="aimos-prod:aimos-db"'
+    cpu = docs["aimos-db cpu high"]["conditions"][0]["conditionThreshold"]
+    assert "database/cpu/utilization" in cpu["filter"] and sql in cpu["filter"]
+    assert cpu["thresholdValue"] == 0.8 and cpu["duration"] == "600s"
+    disk = docs["aimos-db disk filling"]["conditions"][0]["conditionThreshold"]
+    assert "database/disk/utilization" in disk["filter"] and disk["thresholdValue"] == 0.85
+    conn = docs["aimos-db connections high"]["conditions"][0]["conditionThreshold"]
+    # 80 % of prod.env SQL_MAX_CONNECTIONS=100, summed over the databases
+    assert "postgresql/num_backends" in conn["filter"] and conn["thresholdValue"] == 80
+    assert conn["aggregations"][0]["crossSeriesReducer"] == "REDUCE_SUM"
+    api = docs["aimos-api 5xx"]["conditions"][0]["conditionThreshold"]
+    assert 'resource.labels.service_name="aimos-api"' in api["filter"]
+    assert 'response_code_class="5xx"' in api["filter"] and api["thresholdValue"] == 10
+    lag = docs["aimos-worker job lag"]
+    flt = lag["conditions"][0]["conditionMatchedLog"]["filter"]
+    assert 'worker_pool_name="aimos-worker"' in flt and 'message="alert.queue_latency"' in flt
+    assert lag["alertStrategy"]["notificationRateLimit"]["period"] == "3600s"
+    for doc in docs.values():
+        assert doc["notificationChannels"] == [
+            "projects/aimos-prod/notificationChannels/<channel-id>"
+        ]
+    # the Cloudflare path never enables compute, but Cloud Monitoring is enabled when absent
+    enable = [x for x in gcloud_lines(out) if "services enable" in x]
+    assert enable == [
+        "+ gcloud services enable monitoring.googleapis.com --project=aimos-prod --quiet"
+    ]
+
+
+def test_ops_alert_thresholds_follow_the_process_env(toolkit: Path, tmp_path: Path) -> None:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in")
+    result = run_dry(
+        toolkit,
+        tmp_path,
+        "prod",
+        "edge",
+        "alerts",
+        extra={"SQL_CONN_ALERT_PCT": "50", "API_5XX_ALERT": "3", "SQL_CPU_ALERT": "0.9"},
+    )
+    assert result.returncode == 0, result.stderr
+    docs = ops_docs(result.stdout)
+    assert (
+        docs["aimos-db connections high"]["conditions"][0]["conditionThreshold"]["thresholdValue"]
+        == 50
+    )
+    assert docs["aimos-api 5xx"]["conditions"][0]["conditionThreshold"]["thresholdValue"] == 3
+    assert docs["aimos-db cpu high"]["conditions"][0]["conditionThreshold"]["thresholdValue"] == 0.9
+
+
+@pytest.mark.parametrize(
+    ("extra", "keys"),
+    [
+        ({"SQL_CPU_ALERT": "high"}, {}),
+        ({"API_5XX_ALERT": "1.5"}, {}),
+        ({}, {"ALERT_SLACK_CHANNEL": '"ops\\"; rm"'}),
+    ],
+    ids=["cpu", "5xx", "slack-name"],
+)
+def test_ops_alerts_refuse_bad_values_before_gcloud(
+    toolkit: Path, tmp_path: Path, extra: dict[str, str], keys: dict[str, str]
+) -> None:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in", **keys)
+    live = run_live(toolkit, tmp_path, "prod", "edge", "alerts", extra=extra)
+    assert live.result.returncode != 0 and "alerts:" in live.out
+    assert live.calls == []
+
+
+def test_slack_channel_dry_run_joins_every_policy(toolkit: Path, tmp_path: Path) -> None:
+    out = cf_alerts_dry(toolkit, tmp_path, ALERT_SLACK_CHANNEL='"aimos ops slack"')
+    lookup = [x for x in gcloud_lines(out) if "channels list" in x and "slack" in x]
+    assert len(lookup) == 1 and 'type=\\"slack\\"' in lookup[0]
+    assert 'displayName=\\"aimos\\ ops\\ slack\\"' in lookup[0]
+    # found, never created: only the email channel is created
+    creates = [x for x in gcloud_lines(out) if "channels create" in x]
+    assert len(creates) == 1 and "--type=email" in creates[0]
+    docs = ops_docs(out)
+    assert len(docs) == 9
+    for doc in docs.values():
+        assert doc["notificationChannels"] == [
+            "projects/aimos-prod/notificationChannels/<channel-id>",
+            "projects/aimos-prod/notificationChannels/<slack-channel-id>",
+        ]
+
+
+def slack_live(toolkit: Path, tmp_path: Path, rules: list[dict[str, Any]]) -> Live:
+    cloudflare(toolkit)
+    set_env(toolkit, "prod", ALERT_EMAIL="ops@kuinn.in", ALERT_SLACK_CHANNEL="aimos-ops-slack")
+    return run_live(toolkit, tmp_path, "prod", "edge", "alerts", responses=rules)
+
+
+@pytest.mark.parametrize("answer", ["", SLACK_9 + SLACK_9], ids=["missing", "two"])
+def test_slack_channel_missing_or_ambiguous_refused_before_any_change(
+    toolkit: Path, tmp_path: Path, answer: str
+) -> None:
+    live = slack_live(
+        toolkit, tmp_path, [{"match": ["channels list", 'type="slack"'], "stdout": answer}]
+    )
+    assert live.result.returncode != 0
+    assert "Slack channel named 'aimos-ops-slack'" in live.out
+    mutating = [
+        c
+        for c in live.calls
+        if "--help" not in c and any(w in c for w in (" create ", " enable ", " update "))
+    ]
+    assert mutating == []
+
+
+def test_slack_channel_found_joins_new_policies(toolkit: Path, tmp_path: Path) -> None:
+    live = slack_live(
+        toolkit,
+        tmp_path,
+        [
+            {"match": ["channels list", 'type="slack"'], "stdout": SLACK_9},
+            *ALERT_BASE,
+            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
+        ],
+    )
+    assert live.result.returncode == 0, live.out
+    docs = ops_docs(live.result.stdout)
+    for doc in docs.values():
+        assert doc["notificationChannels"] == [EMAIL_9, SLACK_9.strip()]
+    assert len([c for c in live.calls if "policies create" in c]) == 9
+
+
+def test_slack_added_later_updates_existing_policies_in_place(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    """The policies exist with the email channel only: each is updated, none recreated."""
+    live = slack_live(
+        toolkit,
+        tmp_path,
+        [
+            {"match": ["channels list", 'type="slack"'], "stdout": SLACK_9},
+            *ALERT_BASE,
+            {"match": "uptime list-configs", "stdout": "aimos-edge-readyz-a1b2c3\n"},
+            {
+                "match": "monitoring policies list",
+                "stdout": "projects/aimos-prod/alertPolicies/1\n",
+            },
+            {"match": "channels describe", "stdout": "ops@kuinn.in\n"},
+        ],
+    )
+    assert live.result.returncode == 0, live.out
+    assert live.index("policies create") == -1
+    updates = [c for c in live.calls if "monitoring policies update" in c]
+    assert len(updates) == 9
+    assert all("projects/aimos-prod/alertPolicies/1" in c for c in updates)
+
+
+def test_runbook_lists_the_ops_alerts(repo_root: Path) -> None:
+    text = (repo_root / "docs/runbooks/DEPLOY-GCP.md").read_text(encoding="utf-8")
+    for name in (
+        "aimos-db cpu high",
+        "aimos-db disk filling",
+        "aimos-db connections high",
+        "aimos-api 5xx",
+        "aimos-worker job lag",
+        "ALERT_SLACK_CHANNEL",
+    ):
+        assert f"`{name}`" in text, name

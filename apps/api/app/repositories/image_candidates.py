@@ -13,7 +13,7 @@ Writes go through the tenant's own unit of work (RLS and the repository criterio
 from __future__ import annotations
 
 import builtins
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -337,6 +337,30 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
         return await self._retire(
             ImageCandidate.source_image_id == _uuid("source_image_id", source_image_id)
         )
+
+    async def ids_for_products(self, product_ids: Sequence[UUID]) -> builtins.list[UUID]:
+        """Every candidate id of these products that is not accepted (product delete: their
+        jobs are found by these ids)."""
+        if not product_ids:
+            return []
+        stmt = (
+            self._select()
+            .where(
+                ImageCandidate.product_id.in_(list(product_ids)),
+                ImageCandidate.status != "accepted",
+            )
+            .with_only_columns(ImageCandidate.id)
+            .order_by(ImageCandidate.id)
+        )
+        return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def retire_for_products(self, product_ids: Sequence[UUID]) -> builtins.list[str]:
+        """Product delete: the products' open candidates become `failed/source_changed`, as
+        `fail_for_source` does. Returns the object keys they held; the caller leaves them to the
+        30-day candidate sweep, which deletes by the candidate key."""
+        if not product_ids:
+            return []
+        return await self._retire(ImageCandidate.product_id.in_(list(product_ids)))
 
     async def retire(self, candidate_id: UUID) -> builtins.list[str]:
         """One open candidate whose source is no longer its live main: `failed/source_changed`,

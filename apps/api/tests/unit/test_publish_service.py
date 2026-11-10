@@ -50,6 +50,7 @@ def _listing(**over: Any) -> SimpleNamespace:
         "approved_version_id": VERSION,
         "marketplace_state_changed_at": None,
         "product_id": PRODUCT,
+        "category": "kurta",
     }
     base.update(over)
     return SimpleNamespace(**base)
@@ -64,6 +65,13 @@ def _facts(level: str = "standalone", mrp: str | None = "1499.00", sku: str = "S
 
 def _job(job_id: uuid.UUID = JOB, status: str = "queued") -> SimpleNamespace:
     return SimpleNamespace(id=job_id, status=status)
+
+
+TEMPLATE = uuid.UUID(int=30)
+
+
+def _pinned(category: str) -> Any:
+    return SimpleNamespace(template=SimpleNamespace(category=category))
 
 
 def _uow(**over: Any) -> Any:
@@ -94,6 +102,11 @@ def _uow(**over: Any) -> Any:
         # SI1 T20: every unit has an MRP unless a test says otherwise
         product_facts=SimpleNamespace(resolve=AsyncMock(return_value=_facts())),
         products=SimpleNamespace(live_child_ids=AsyncMock(return_value=[])),
+        # the approved version pinned the listing's own category unless a test says otherwise
+        listing_versions=SimpleNamespace(
+            get=AsyncMock(return_value=SimpleNamespace(category_template_id=TEMPLATE))
+        ),
+        templates=SimpleNamespace(pinned=AsyncMock(return_value=_pinned("kurta"))),
     )
     for path, value in over.items():
         repo, attr = path.split("__")
@@ -281,6 +294,33 @@ async def test_plan_first_publish() -> None:
     assert plan == svc.Plan(event="publish", mode="publish", parent_job_id=None)
     uow.listings.latest_job_id.assert_not_awaited()
     uow.submissions.count_for_version.assert_awaited_once_with(uuid.UUID(int=10), VERSION)
+
+
+@pytest.mark.parametrize("only", [False, True])
+async def test_plan_refuses_a_version_of_the_old_category(only: bool) -> None:
+    """KNOWN-ISSUES (SI13): after a recategorise the failed listing's approved version still
+    pins the old category; a publish or field retry is 409 at `facts.category`, before any
+    account, MRP or submission read."""
+    uow = _uow(templates__pinned=AsyncMock(return_value=_pinned("tshirts")))
+    listing = _listing(status="failed", status_reason="publish_partial")
+    with pytest.raises(svc.Refused) as refused:
+        await svc.plan_publish(uow, listing, retry_fields_only=only)
+    assert refused.value.code is ErrorCode.INVALID_STATUS_TRANSITION
+    assert refused.value.field == "facts.category"
+    assert refused.value.message is not None and "Regenerate" in refused.value.message
+    uow.listing_versions.get.assert_awaited_once_with(listing.id, VERSION)
+    uow.templates.pinned.assert_awaited_once_with(TEMPLATE)
+    uow.marketplace_accounts.active_for_publish.assert_not_awaited()
+    uow.submissions.count_for_version.assert_not_awaited()
+
+
+async def test_plan_skips_the_category_check_without_a_pin() -> None:
+    uow = _uow(
+        listing_versions__get=AsyncMock(return_value=SimpleNamespace(category_template_id=None))
+    )
+    plan = await svc.plan_publish(uow, _listing())
+    assert plan.event == "publish"
+    uow.templates.pinned.assert_not_awaited()
 
 
 async def test_plan_retry_names_the_parent_job() -> None:

@@ -157,4 +157,7 @@ async def test_page_queue_excludes_paused_archived(gen_world: GenWorld) -> None:
     assert made[2].listing_id in ids
     assert made[0].listing_id not in ids and made[1].listing_id not in ids
     ids, _, _ = await _page(gen_world, ListingFilter())
-    assert {m.listing_id for m in made} <= set(ids)  # the all-status view keeps them
+    # the all-status view keeps a paused listing; an archived one (PD1: its product was deleted)
+    # is in no list
+    assert {made[0].listing_id, made[2].listing_id} <= set(ids)
+    assert made[1].listing_id not in ids

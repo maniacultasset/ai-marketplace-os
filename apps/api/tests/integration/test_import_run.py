@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -18,6 +19,7 @@ from app.services.imports import row_model, runner
 from mkos_schemas.enums import JobKind
 from mkos_schemas.errors import ErrorReport
 
+from . import factories as f
 from .conftest import LOCAL_HOSTS
 from .imports_support import (
     csv_bytes,
@@ -96,11 +98,34 @@ async def test_import_reupload_no_duplicate_sku(
             "SELECT sku, updated_at FROM products WHERE tenant_id = %s", [tenant]
         ).fetchall()
     )
+    deleted = one(
+        imports_db.conn, "SELECT id FROM products WHERE tenant_id = %s AND sku = 'FX-002'", [tenant]
+    )
+    kept = one(
+        imports_db.conn, "SELECT id FROM products WHERE tenant_id = %s AND sku = 'FX-003'", [tenant]
+    )
+    # PD1: a product delete archives the listings; another archived listing is left alone
+    listing = f.listing(imports_db.conn, tenant, deleted, archived_at=datetime.now(UTC))
+    other = f.listing(imports_db.conn, tenant, kept, archived_at=datetime.now(UTC))
     imports_db.conn.execute(
         "UPDATE products SET deleted_at = now() WHERE tenant_id = %s AND sku = 'FX-002'", [tenant]
     )
     second_import, second = await import_fixture(imports_db, api, fixture_bytes(FIXTURE))
     await run_job(second)
+    # the revived product can be drafted again: its listing is unarchived, and audited
+    assert imports_db.conn.execute(
+        "SELECT archived_at, last_event FROM listings WHERE id = %s", [listing]
+    ).fetchone() == (None, "unarchive")
+    assert one(imports_db.conn, "SELECT archived_at FROM listings WHERE id = %s", [other])
+    assert (
+        count(
+            imports_db.conn,
+            "SELECT count(*) FROM audit_log WHERE entity_id = %s AND action = 'listing.unarchived' "
+            "AND reason = %s",
+            [listing, f"product_reimported;import:{second_import}"],
+        )
+        == 1
+    )
     assert job_row(imports_db.conn, second)["status"] == "partial"
     assert (
         count(imports_db.conn, "SELECT count(*) FROM products WHERE tenant_id = %s", [tenant]) == 45

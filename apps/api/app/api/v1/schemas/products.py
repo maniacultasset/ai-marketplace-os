@@ -622,6 +622,14 @@ class ProductOut(WireModel):
     )
     image_details: list[ProductImageOut] = Field(default_factory=list)
     colourways: list[ColourwayOut] = Field(default_factory=list)
+    variation_theme: Literal["size", "color", "size_color"] | None = Field(
+        default=None,
+        description="V1.1: a style's axes; null on a standalone product or a variant.",
+    )
+    size_run: list[str] = Field(
+        default_factory=list,
+        description="V1.1: a style's size keys in order (`POST .../size-run` adds to it).",
+    )
     photo_facts: list[PhotoFactOut] = Field(default_factory=list)
     photo_read: PhotoReadOut | None = Field(
         default=None, description="The newest photo read; product detail only, null on lists."

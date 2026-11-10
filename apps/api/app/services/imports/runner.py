@@ -34,6 +34,7 @@ taken only when exactly one trails it); consumer care equal to the brand default
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from collections.abc import Collection, Iterable, Sequence
@@ -65,7 +66,7 @@ from app.repositories.imports import (
 )
 from app.repositories.jobs import JobRunRepository
 from app.repositories.parties import BrandProfileRepository, BusinessPartyRepository, PartyFields
-from app.repositories.products import ProductRepository, ProductUpsert
+from app.repositories.products import ProductRepository, ProductUpsert, Upserted
 from app.repositories.transactions import RowDbError, row_savepoint, unit_of_work
 from app.repositories.uow import repositories_on
 from app.repositories.variants import ColourwayRepository, MatrixCellRepository
@@ -529,7 +530,7 @@ class _Writer:
 
         async def write() -> uuid.UUID:
             before = await self.products.category_of_sku(row.sku)
-            done = await self.products.upsert_by_sku(self._upsert(row))
+            done = await self._upsert_product(self._upsert(row))
             await self._settle_category(done.id, before, row.category)
             await self._row_facts(done.id, row, level="standalone")
             return done.id
@@ -552,6 +553,28 @@ class _Writer:
             product,
             category,
         )
+
+    async def _upsert_product(
+        self, upsert: ProductUpsert, *, parent_product_id: uuid.UUID | None = None
+    ) -> Upserted:
+        """`upsert_by_sku`; a revived row (its product was deleted) gets its archived listings
+        back, audited, so it can be drafted again (PD1)."""
+        done = await self.products.upsert_by_sku(upsert, parent_product_id=parent_product_id)
+        if done.revived:
+            uow = repositories_on(self.session, self.run.tenant)
+            for listing_id in await uow.listings.unarchive_for_revived_product(done.id):
+                await uow.audit.write(
+                    tenant_id=self.run.tenant,
+                    actor_type="user",
+                    actor_user_id=self.run.imp.created_by,
+                    action="listing.unarchived",
+                    entity_type="listing",
+                    entity_id=listing_id,
+                    before=json.dumps({"archived": True}),
+                    after=json.dumps({"archived": False}),
+                    reason=f"product_reimported;{self.run.evidence}",
+                )
+        return done
 
     def _upsert(self, row: ProductImportRow, **family: Any) -> ProductUpsert:
         return ProductUpsert(
@@ -759,7 +782,7 @@ class _Writer:
         async def write_style() -> uuid.UUID:
             if identity is not None:
                 before = await self.products.category_of_sku(key)
-                done = await self.products.upsert_by_sku(
+                done = await self._upsert_product(
                     self._upsert(
                         identity,
                         sku=key,
@@ -958,7 +981,7 @@ class _Writer:
                 variant_attributes=variant,
                 source_image_urls=row.image_urls,
             )
-            done = await self.products.upsert_by_sku(upsert, parent_product_id=style_id)
+            done = await self._upsert_product(upsert, parent_product_id=style_id)
             if "size" in variant:
                 await self.facts.set_attribute(
                     done.id, "size", self.run.facts.fact(row.size_name, row.size_key)

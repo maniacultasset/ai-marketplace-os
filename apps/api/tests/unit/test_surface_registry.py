@@ -77,6 +77,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("products_update", "PATCH", "/products/{product_id}"),
     ("products_recategorize", "POST", "/products/{product_id}/recategorize"),  # SI9
     ("products_bulk", "POST", "/products/bulk"),
+    ("products_delete", "DELETE", "/products/{product_id}"),  # PD1
+    ("products_bulk_delete", "POST", "/products/bulk-delete"),  # PD1
     ("imports_get", "GET", "/imports/{import_id}"),
     ("imports_rows", "GET", "/imports/{import_id}/rows"),
     ("imports_rows_retry", "POST", "/imports/{import_id}/rows/retry"),
@@ -143,6 +145,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
+    # V1.1 (client input 8 Nov): the size run from the saved size chart
+    ("products_size_run_create", "POST", "/products/{product_id}/size-run"),
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
@@ -287,9 +291,11 @@ D9_IDEMPOTENT = {
     "products_category_suggest",  # SI14
     "imports_column_map_create",  # SI14
     "imports_column_map_confirm",  # SI14
+    "products_size_run_create",  # V1.1
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
+    "products_bulk_delete",  # PD1
 }
 
 
@@ -452,8 +458,8 @@ def test_login_response_is_login_result() -> None:
 
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
-    # quality reads
-    assert len(OPS) == 108
+    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run
+    assert len(OPS) == 111
 
 
 def test_error_codes_per_d2() -> None:
@@ -482,6 +488,19 @@ def test_error_codes_per_d2() -> None:
             E.INVALID_STATUS_TRANSITION,
         ),
         "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
+        # PD1: a listing sent to a marketplace, one generating, one being sent
+        "products_delete": (
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+            E.SUBMISSION_IN_FLIGHT,
+        ),
+        # V1.1: a taken SKU, a listing the marketplace has seen, a generating listing
+        "products_size_run_create": (
+            E.IDEMPOTENCY_KEY_REUSED,
+            E.SKU_CONFLICT,
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+        ),
         # S21: the request-level refusals of a single-listing publish op (no job is enqueued)
         "listings_retry_fields": (
             E.IDEMPOTENCY_KEY_REUSED,
@@ -579,6 +598,8 @@ def test_error_codes_per_d2() -> None:
                 "size_chart_read_create": (E.FACT_LEVEL_INVALID,),  # SI12: a variant
                 "products_category_suggest": (E.FACT_LEVEL_INVALID,),  # SI14: a variant
                 "imports_column_map_confirm": (E.IMPORT_FAILED,),  # SI14: required columns
+                # V1.1: a variant; a colour style or a standalone holding a barcode
+                "products_size_run_create": (E.FACT_LEVEL_INVALID, E.VARIATION_INVALID),
             }
             expected_422 = (E.VALIDATION_FAILED, *extra_422.get(op.op_id, ()))
             assert codes[422] == expected_422, op.op_id
@@ -590,7 +611,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14",
+        "SI12", "SI14", "PD1",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

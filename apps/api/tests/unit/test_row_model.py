@@ -505,3 +505,9 @@ def test_si5_exemption_maybe_is_not_allowed() -> None:
 def test_si5_exemption_false_with_a_barcode_is_fine() -> None:
     row = ok(ean="4006381333931", identifier_exemption="no")
     assert (row.identifier_value, row.identifier_exemption) == ("4006381333931", False)
+
+
+def test_row_model_country_must_be_an_assigned_iso_code() -> None:
+    assert ok(country_of_origin="bd").country_of_origin == "BD"
+    for unassigned in ("XX", "UK", "EU"):
+        assert codes(run(country_of_origin=unassigned)) == [ErrorCode.PATTERN_MISMATCH]

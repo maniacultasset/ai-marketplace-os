@@ -114,7 +114,7 @@ Key numbers for one job:
 | Job retries | none: a generation job runs once (`max_attempts` 1, no transport retry) | `app/workers/policy.py` |
 | Self-correction attempts | `ctx.max_attempts`, 1 to 3 (`LLM_MAX_CORRECTION_ATTEMPTS`, default 3) | `generation_context.py` |
 | `validate_rules` calls | at most 3; a 4th returns an `INTERNAL_ERROR` report without evaluating | `pipeline_deps.py` |
-| Model call timeout | `ModelCredentials.timeout_seconds` (`LLM_TIMEOUT_SECONDS`, default 60) | `config.py` |
+| Model call timeout | `ModelCredentials.timeout_seconds` (`LLM_TIMEOUT_SECONDS`, default 40; the white-background edit `IMAGE_EDIT_TIMEOUT_SECONDS`, default 60) | `config.py` |
 | Agent run records | at most 100 per result | `generation_result.py` |
 | Budget reservation | 0.10 USD per run, replaced by the real `cost_usd` of your records | `app/workers/budget.py` |
 

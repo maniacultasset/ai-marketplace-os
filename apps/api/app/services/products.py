@@ -232,6 +232,9 @@ class ProductView:
     # the main photo's signed view (lists and single reads; `image_views`)
     thumbnail_url: str | None = None
     thumbnail_expires_at: datetime | None = None
+    # V1.1: a style's axes and its size keys (None and [] on a standalone or variant)
+    variation_theme: Literal["size", "color", "size_color"] | None = None
+    size_run: list[str] = field(default_factory=list)
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
@@ -521,6 +524,8 @@ def _view(
         etag=product_etag(row.id, row.updated_at),
         photo_facts=photo_facts_of(facts),
         photo_read=photo_read,
+        variation_theme=getattr(row, "variation_theme", None),
+        size_run=list(getattr(row, "size_run", None) or []),
         **_identifier_view(row, style_exempt),
         **_seller_view(row if seller is None else None, seller),
     )

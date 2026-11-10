@@ -193,8 +193,7 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   pages need a login). 8542 has a row since the prod-codes fix below; 8541 and 8572 stay out on purpose. Added:
   4000003, 101158, 100980, 4005015, 4005007, 4005008, 4005006, 4005038, 4005013, 101168, 4005033.
 - **SI13 open:** child-level value-map pairs (a child refusal has no live counterpart: counted unpaired); a
-  category change from `blocked` or for a family with live variants (staff); the rejected listing keeps `failed`
-  after a recategorise, so a `retry_publish` before the regenerate resends the old version; the child-axis repair
+  category change from `blocked` or for a family with live variants (staff); the child-axis repair
   has no integration or e2e test (unit-proved).
 - **Amazon `VALIDATION_PREVIEW` before approval is deferred (SI9 D10, LOW).** The pre-approval check is the local
   mapping plus the stored Product Type Definition (`services/adapter_check.py`); Amazon's own preview call needs the
@@ -277,3 +276,9 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
 | BE-13 trace export | The quality dashboard ships; the trace export of the same plan row does not. | A later step, with the AI lane's trace format |
 | Photo QA (AI-43) | Fill ratio, text overlay and watermark are deterministic heuristics tuned on generated fixtures; `PHOTO_QA_ENABLED` stays off until the 100-labelled-image precision gate (at least 90 %) passes. | Label the images, measure, then tune the constants in `app/services/image_qa.py` |
 | Quality blocked count | The blocked rate reads `job_runs.result_json.status` (kept 90 days) and `audit_log`; a range starting more than 90 days back undercounts the worker's blocks. | Keep ranges inside 90 days, or record the block in `audit_log` too |
+
+## Model call limits (LEFTOVERS 4.10)
+
+| Where | Gap | Next |
+|---|---|---|
+| `LLM_MODEL_ESCALATION` | The AI spec's Pro tier (one retry on a stronger model after two invalid JSON replies, only with more than 90 s left) is not reachable. `get_model_credentials` takes a closed `Literal["generation", "vision", "embedding"]` (`mkos_schemas.pipeline`), and adding `escalation` is a MAJOR contract change (RULES §11). mkos-pipeline v0.7.0 also has no escalation step. Today the retry after invalid JSON uses the generation model, and the setting is never read. | Contracts 3.0.0: add the `escalation` purpose (the backend returns the generation route with `LLM_MODEL_ESCALATION`), then the pipeline's escalation step and its eval. Set `LLM_MODEL_ESCALATION` to an OpenRouter id of the same vendor as `LLM_MODEL_DEFAULT` before switching it on |

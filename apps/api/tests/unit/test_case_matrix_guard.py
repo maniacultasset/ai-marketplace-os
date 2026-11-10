@@ -91,6 +91,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "size_chart_read_create",  # SI12
         "catalog_requirements_get",  # SI12
         "products_category_suggest",  # SI14
+        "products_size_run_create",  # V1.1
         "imports_column_map_create",  # SI14
         "imports_column_map_get",  # SI14
         "imports_column_map_confirm",  # SI14
@@ -102,6 +103,9 @@ IMPLEMENTED: frozenset[str] = frozenset(
         # SI9
         "tasks_close",
         "products_recategorize",
+        # PD1
+        "products_delete",
+        "products_bulk_delete",
         # S21
         "listings_publish",
         "listings_retry_fields",
