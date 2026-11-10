@@ -83,6 +83,9 @@ def test_pipeline_reexports() -> None:
         "ColumnMapRequest",
         "ColumnMapResult",
         "MapColumnsFn",
+        "PhotoFactsReadRequest",  # V1.1: the photo read on upload
+        "PhotoFactsReadResult",
+        "ReadPhotoFacts",
     }
     assert len(pipeline_mod.__all__) == len(expected_all)
     assert set(pipeline_mod.__all__) == expected_all
@@ -104,6 +107,7 @@ def test_pipeline_defines_only_protocol_and_signature() -> None:
         "read_size_chart",
         "ClassifyProductFn",
         "MapColumnsFn",
+        "ReadPhotoFacts",
     }
 
 

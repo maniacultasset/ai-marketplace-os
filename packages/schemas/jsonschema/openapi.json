@@ -7159,6 +7159,12 @@
             ],
             "description": "The newest photo read; product detail only, null on lists."
           },
+          "photo_reading": {
+            "default": false,
+            "description": "V1.1: a photo read on upload is queued or running (product detail only); poll the product until it is false, then `photo_read` and `photo_facts` show the result.",
+            "title": "Photo Reading",
+            "type": "boolean"
+          },
           "product_identifier": {
             "anyOf": [
               {

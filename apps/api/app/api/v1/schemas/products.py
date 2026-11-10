@@ -626,6 +626,13 @@ class ProductOut(WireModel):
     photo_read: PhotoReadOut | None = Field(
         default=None, description="The newest photo read; product detail only, null on lists."
     )
+    photo_reading: bool = Field(
+        default=False,
+        description=(
+            "V1.1: a photo read on upload is queued or running (product detail only); poll the "
+            "product until it is false, then `photo_read` and `photo_facts` show the result."
+        ),
+    )
     product_identifier: ProductIdentifierOut | None = Field(
         default=None, description="SI5: the barcode (always null on a style)."
     )

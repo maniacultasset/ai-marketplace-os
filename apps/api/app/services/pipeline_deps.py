@@ -247,6 +247,12 @@ def diagnosis_credentials(settings: Settings) -> ModelCredentials:
     return credentials_for(_ModelConfig.from_settings(settings), "generation")
 
 
+def photo_facts_read_credentials(settings: Settings) -> ModelCredentials:
+    """V1.1: the photo read on upload is the generation's photo call on its own, so it takes the
+    same vision route (provider, model, key, base and timeout)."""
+    return credentials_for(_ModelConfig.from_settings(settings), "vision")
+
+
 def size_chart_read_credentials(settings: Settings) -> ModelCredentials:
     """SI12: the size-chart read is one vision call with the vision key, base and timeout. Its model
     is `LLM_MODEL_VISION_SIZE_CHART` when set (sent as `openai/<model>` under OpenRouter, as the

@@ -175,6 +175,7 @@ def _out(view: products.ProductView) -> ProductOut:
                 asked=view.photo_read.asked,
             )
         ),
+        photo_reading=view.photo_reading,
         product_identifier=(
             None
             if view.product_identifier is None

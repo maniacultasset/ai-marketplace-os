@@ -4854,6 +4854,12 @@ export interface components {
             photo_facts?: components["schemas"]["PhotoFactOut"][];
             /** @description The newest photo read; product detail only, null on lists. */
             photo_read?: components["schemas"]["PhotoReadOut"] | null;
+            /**
+             * Photo Reading
+             * @description V1.1: a photo read on upload is queued or running (product detail only); poll the product until it is false, then `photo_read` and `photo_facts` show the result.
+             * @default false
+             */
+            photo_reading: boolean;
             /** @description SI5: the barcode (always null on a style). */
             product_identifier?: components["schemas"]["ProductIdentifierOut"] | null;
             /**

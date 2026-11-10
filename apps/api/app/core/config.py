@@ -258,6 +258,10 @@ class Settings(BaseSettings):
     column_map_ai_enabled: bool = False
     category_lamps_enabled: bool = False
     photo_qa_enabled: bool = False
+    # V1.1: read the product photos as soon as a front, back or close-up photo is checked, not
+    # only at the next generation. Off: no read is queued on upload, a read already queued ends
+    # `skipped` with no call, and photos are read at generation as before.
+    photo_read_on_upload_enabled: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None

@@ -87,8 +87,17 @@ SIZE_CHART_READ_ENTITY: Final = "size_chart_read"
 # `category_suggestion` and a `column_map`; they take the same per-tenant AI lock.
 CATEGORY_SUGGESTION_ENTITY: Final = "category_suggestion"
 COLUMN_MAP_ENTITY: Final = "column_map"
+# V1.1: a photo read on upload is an `image_compliance` job about a `photo_facts_read` (entity =
+# the product); it takes the same per-tenant AI lock, so one AI image call runs per brand.
+PHOTO_FACTS_READ_ENTITY: Final = "photo_facts_read"
 TENANT_LOCKED_ENTITIES: Final = frozenset(
-    {CANDIDATE_ENTITY, SIZE_CHART_READ_ENTITY, CATEGORY_SUGGESTION_ENTITY, COLUMN_MAP_ENTITY}
+    {
+        CANDIDATE_ENTITY,
+        SIZE_CHART_READ_ENTITY,
+        CATEGORY_SUGGESTION_ENTITY,
+        COLUMN_MAP_ENTITY,
+        PHOTO_FACTS_READ_ENTITY,
+    }
 )
 
 
