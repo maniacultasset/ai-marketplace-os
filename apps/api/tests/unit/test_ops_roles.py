@@ -90,6 +90,7 @@ Q7: dict[str, str] = {
     "image_candidates_create": "product:import",
     "size_chart_read_create": "product:import",  # SI12
     "products_category_suggest": "product:import",  # SI14
+    "products_size_run_create": "product:import",  # V1.1
     "imports_column_map_create": "product:import",  # SI14
     "imports_column_map_get": "tenant:read",  # SI14
     "imports_column_map_confirm": "product:import",  # SI14
