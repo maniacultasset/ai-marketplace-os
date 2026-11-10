@@ -156,8 +156,16 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
     log.info("image.checked", image_id=str(image_id), compliance_status=status)
     result: dict[str, Any] = {"image_id": str(image_id), "compliance_status": status}
     if clean is not None:  # V1.1: a front, back or close-up photo queues its product's read
-        async with tenant_uow(ctx.tenant_id) as uow:
-            read_job = await queue_photo_read(uow, image_id)
+        try:
+            async with tenant_uow(ctx.tenant_id) as uow:
+                read_job = await queue_photo_read(uow, image_id)
+        except Exception as error:
+            # The photo check is stored; a failed queue never fails it. Generation still reads
+            # the photos, so nothing is lost but the early read.
+            log.warning(
+                "photo_read.queue_failed", image_id=str(image_id), error=type(error).__name__
+            )
+            read_job = None
         if read_job is not None:
             result["photo_read_job_id"] = str(read_job)
     return Outcome("succeeded", result)
