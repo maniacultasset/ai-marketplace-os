@@ -175,6 +175,7 @@ def _out(view: products.ProductView) -> ProductOut:
                 asked=view.photo_read.asked,
             )
         ),
+        photo_reading=view.photo_reading,
         product_identifier=(
             None
             if view.product_identifier is None
@@ -198,6 +199,8 @@ def _out(view: products.ProductView) -> ProductOut:
         category_suggest_enabled=view.category_suggest_enabled,
         thumbnail_url=view.thumbnail_url,
         thumbnail_expires_at=view.thumbnail_expires_at,
+        variation_theme=view.variation_theme,
+        size_run=view.size_run,
         suggestions=SuggestionsOut.model_construct(
             category=(
                 None

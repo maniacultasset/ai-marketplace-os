@@ -23,6 +23,7 @@ from .jobs import (
     ModelCredentials,
 )
 from .listing import CanonicalListing
+from .photo_facts_read import PhotoFactsReadRequest, PhotoFactsReadResult
 from .rules import Rule, RuleSet
 from .size_chart_read import SizeChartReadRequest, SizeChartReadResult
 
@@ -43,7 +44,10 @@ __all__ = [
     "ImageEditResult",
     "MapColumnsFn",
     "ModelCredentials",
+    "PhotoFactsReadRequest",
+    "PhotoFactsReadResult",
     "PipelineDeps",
+    "ReadPhotoFacts",
     "ReadSizeChart",
     "Rule",
     "RuleSet",
@@ -111,6 +115,16 @@ async def read_size_chart(
 ) -> SizeChartReadResult:
     """Implemented in mkos_pipeline; this module declares the contract only."""
     raise NotImplementedError("read_size_chart is implemented in mkos_pipeline")
+
+
+class ReadPhotoFacts(Protocol):
+    """V1.1 (read the photos on upload): one photo-facts read outside a listing generation, called
+    only by the backend worker. Optional in a pipeline pin: the backend looks it up lazily, and a
+    pin without it reads the photos at generation only, as before."""
+
+    async def __call__(
+        self, request: PhotoFactsReadRequest, credentials: ModelCredentials
+    ) -> PhotoFactsReadResult: ...
 
 
 class ClassifyProductFn(Protocol):

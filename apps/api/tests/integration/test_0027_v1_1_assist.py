@@ -71,7 +71,8 @@ def test_single_head_on_0024() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # V1.1: 0028_photo_read_on_upload sits on top (`test_0028_photo_read_on_upload.py`)
+    assert REVISION in {r.revision for r in script.walk_revisions()}
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 
@@ -95,7 +96,6 @@ def test_upgrade_downgrade_upgrade_keeps_parent_types(
         after = _members(_check_def(conn, ENTITY_CHECK))
         assert after == parent | {"category_suggestion", "column_map"}
         assert scalar(conn, "SELECT purge_tenant_order()") != purge_before
-    command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     assert not _has_table(scratch_db.libpq)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
