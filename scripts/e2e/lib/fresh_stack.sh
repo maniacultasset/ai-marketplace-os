@@ -223,7 +223,9 @@ up() {
     fi
   } >"$STACK_DIR/env"
   if [ -n "${FRESH_ENV_FILE:-}" ]; then
-    grep -E '^[A-Z][A-Z0-9_]*=' "$FRESH_ENV_FILE" >"$STACK_DIR/process.env" || true
+    # @FAKE_URL@ and @BASE_URL@ name this stack's own fake and API (their ports are picked here)
+    grep -E '^[A-Z][A-Z0-9_]*=' "$FRESH_ENV_FILE" |
+      sed -e "s#@FAKE_URL@#$fake#g" -e "s#@BASE_URL@#$base#g" >"$STACK_DIR/process.env" || true
   else
     : >"$STACK_DIR/process.env"
   fi
