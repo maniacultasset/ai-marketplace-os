@@ -16,6 +16,7 @@ from app.api.v1.routers import (
     category_suggestion,
     column_maps,
     google,
+    home,
     image_candidates,
     images,
     imports,
@@ -62,5 +63,6 @@ for module in (
     column_maps,
     product_delete,
     size_run,
+    home,
 ):
     router.include_router(module.router)

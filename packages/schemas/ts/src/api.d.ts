@@ -912,6 +912,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/home/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Exact listing counts, what needs you, recent agent work and marketplace status
+         * @description Exact counts of the tenant's listings in one bucket each, the caller's work (blocked
+         *     listings, blocking questions, listings to approve and to publish), the top 5 things to do,
+         *     the 8 newest agent actions, and each marketplace's account and next step. A read past its 5 s
+         *     budget answers 500 `INTERNAL_ERROR` with no driver text, as the analytics reads do.
+         */
+        get: operations["home_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/image-candidates/{candidate_id}/accept": {
         parameters: {
             query?: never;
@@ -2391,6 +2414,39 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * ActivityItem
+         * @description One recent agent action, newest first.
+         */
+        ActivityItem: {
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "write" | "send" | "photo_check" | "import" | "brand" | "fix";
+            /** Listing Id */
+            listing_id?: string | null;
+            marketplace?: components["schemas"]["Marketplace"] | null;
+            /** Product Id */
+            product_id?: string | null;
+            /** Product Title */
+            product_title?: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "completed" | "failed" | "pending";
+            /**
+             * Text
+             * @description What happened, in plain words.
+             */
+            text: string;
+        };
         /** AiCreditOut */
         AiCreditOut: {
             /** Checked At */
@@ -3379,6 +3435,29 @@ export interface components {
             /** Website */
             website?: string | null;
         };
+        /** HomeSummaryOut */
+        HomeSummaryOut: {
+            /** Activity */
+            activity: components["schemas"]["ActivityItem"][];
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** By Marketplace */
+            by_marketplace: components["schemas"]["MarketplaceCounts"][];
+            listings: components["schemas"]["ListingCounts"];
+            /** Marketplaces */
+            marketplaces: components["schemas"]["MarketplaceStatus"][];
+            needs_you: components["schemas"]["NeedsYouCounts"];
+            /** Needs You Items */
+            needs_you_items: components["schemas"]["NeedsYouItem"][];
+            /**
+             * Products
+             * @description Products that are not deleted (styles and standalones).
+             */
+            products: number;
+        };
         /**
          * HsnSuggestionOut
          * @description SI12: a suggested HSN heading from the category; never stored until the seller saves it.
@@ -4014,6 +4093,59 @@ export interface components {
             content: components["schemas"]["ListingContent"];
             keywords?: components["schemas"]["ListingKeywords"] | null;
         };
+        /**
+         * ListingCounts
+         * @description Each listing that is not archived, in exactly one bucket (module docstring).
+         */
+        ListingCounts: {
+            /**
+             * Draft
+             * @description Created, not written yet.
+             */
+            draft: number;
+            /**
+             * In Progress
+             * @description Kuinn or the marketplace is working: writing, sending, or sent and waiting for the marketplace to confirm. Nothing to do.
+             */
+            in_progress: number;
+            /**
+             * Inactive
+             * @description Published once, now inactive or removed.
+             */
+            inactive: number;
+            /**
+             * Live
+             * @description The marketplace confirmed the listing live.
+             */
+            live: number;
+            /**
+             * Live Products
+             * @description Distinct products with at least one live or partly live listing.
+             */
+            live_products: number;
+            /**
+             * Partly Live
+             * @description The marketplace has some of its variants live.
+             */
+            partly_live: number;
+            /**
+             * Problem
+             * @description Stopped: the marketplace rejected it, the last step failed, a check blocked it, or an open blocking issue sits on its current version.
+             */
+            problem: number;
+            /**
+             * Ready To Approve
+             * @description Written and checked, with no open blocking issue: a person approves next.
+             */
+            ready_to_approve: number;
+            /**
+             * Ready To Publish
+             * @description Approved: a person publishes next.
+             */
+            ready_to_publish: number;
+            /** Total */
+            total: number;
+        };
         /** ListingDetail */
         ListingDetail: {
             /**
@@ -4392,6 +4524,24 @@ export interface components {
             /** Validation Pass Rate */
             validation_pass_rate?: number | null;
         };
+        /** MarketplaceCounts */
+        MarketplaceCounts: {
+            /** In Progress */
+            in_progress: number;
+            /** Listings */
+            listings: number;
+            /** Live */
+            live: number;
+            marketplace: components["schemas"]["Marketplace"];
+            /** Partly Live */
+            partly_live: number;
+            /** Problem */
+            problem: number;
+            /** Ready To Approve */
+            ready_to_approve: number;
+            /** Ready To Publish */
+            ready_to_publish: number;
+        };
         /**
          * MarketplacePreview
          * @description `GET /api/v1/listings/{listing_id}/preview`: the per-SKU payloads for the listing's current
@@ -4423,6 +4573,28 @@ export interface components {
          * @enum {string}
          */
         MarketplaceState: "not_submitted" | "processing" | "pending_review" | "live" | "partially_live" | "inactive" | "rejected" | "removed";
+        /** MarketplaceStatus */
+        MarketplaceStatus: {
+            /**
+             * Account
+             * @enum {string}
+             */
+            account: "connected" | "needs_reconnect" | "not_connected";
+            /**
+             * Enabled
+             * @description Listing on this marketplace is open on this deployment.
+             */
+            enabled: boolean;
+            marketplace: components["schemas"]["Marketplace"];
+            /**
+             * Next Step
+             * @description `connect` (no account), `reconnect` (access expired), `fix` (a listing here is stopped), `add_listing` (connected, nothing listed yet), else `none`.
+             * @enum {string}
+             */
+            next_step: "connect" | "reconnect" | "add_listing" | "fix" | "none";
+            /** Publishing Enabled */
+            publishing_enabled: boolean;
+        };
         /** MeOut */
         MeOut: {
             /**
@@ -4513,6 +4685,105 @@ export interface components {
             tenant_id: string;
             /** Tenant Name */
             tenant_name: string;
+        };
+        /**
+         * NeedsYouCounts
+         * @description The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.
+         *     Every count is 0 for a role that cannot act on it.
+         */
+        NeedsYouCounts: {
+            /**
+             * Blocked
+             * @description Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`. For a role that edits or rewrites listings.
+             */
+            blocked: number;
+            /**
+             * Blocked Without Issue
+             * @description Of `blocked`, listings with no open blocking issue (a failed step or a marketplace rejection): the Inbox has no row for them, the Products list does.
+             */
+            blocked_without_issue: number;
+            /**
+             * Improve
+             * @description Open questions that hold no listing back (answering improves a listing), for a role that answers them.
+             */
+            improve: number;
+            /**
+             * Own Work
+             * @description Listings ready to approve that the caller made or edited: another approver must approve them. Said, never counted in `total`.
+             */
+            own_work: number;
+            /**
+             * Publishing Paused
+             * @description Approved listings waiting while publishing to their marketplace is paused, for a role that approves or publishes. Said, never counted in `total`.
+             */
+            publishing_paused: number;
+            /**
+             * Questions
+             * @description Open questions an open blocking issue waits on (`TaskOut.blocking`), for a role that answers them.
+             */
+            questions: number;
+            /**
+             * Ready To Approve
+             * @description Listings ready to approve that the caller may approve: 0 for a role that cannot approve, and without the caller's own work (maker-checker).
+             */
+            ready_to_approve: number;
+            /**
+             * Ready To Publish
+             * @description Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused, or whose account is not connected, is not counted.
+             */
+            ready_to_publish: number;
+            /** Total */
+            total: number;
+            /**
+             * Waiting On Account
+             * @description Approved listings on a marketplace whose account is not connected or needs reconnecting, for a role that approves or publishes. Said, never counted in `total`.
+             */
+            waiting_on_account: number;
+        };
+        /**
+         * NeedsYouItem
+         * @description One thing to do: the product, the issue in plain words and the action.
+         */
+        NeedsYouItem: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "fix" | "answer" | "approve" | "publish";
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Issue
+             * @description What is wrong, in the seller's words.
+             */
+            issue: string;
+            /**
+             * Issue Count
+             * @description Open blocking issues on the listing (`blocked` only).
+             * @default 0
+             */
+            issue_count: number;
+            /** Issue Id */
+            issue_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "blocked" | "question" | "approve" | "publish";
+            /** Listing Id */
+            listing_id?: string | null;
+            marketplace?: components["schemas"]["Marketplace"] | null;
+            /** Product Id */
+            product_id?: string | null;
+            /** Product Sku */
+            product_sku?: string | null;
+            /** Product Title */
+            product_title?: string | null;
+            /** Task Id */
+            task_id?: string | null;
         };
         /** NextStepOut */
         NextStepOut: {
@@ -19498,6 +19769,331 @@ export interface operations {
                      *         "message": "Request validation failed.",
                      *         "status": 422,
                      *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    home_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "activity": [
+                     *         {
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "kind": "write",
+                     *           "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                     *           "marketplace": "amazon",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                     *           "product_title": "Hand Block Print Kurta Set",
+                     *           "state": "completed",
+                     *           "text": "Wrote the Amazon listing for Hand Block Print Kurta Set"
+                     *         }
+                     *       ],
+                     *       "as_of": "2026-10-05T09:31:00Z",
+                     *       "by_marketplace": [
+                     *         {
+                     *           "in_progress": 1,
+                     *           "listings": 6,
+                     *           "live": 2,
+                     *           "marketplace": "amazon",
+                     *           "partly_live": 0,
+                     *           "problem": 1,
+                     *           "ready_to_approve": 1,
+                     *           "ready_to_publish": 1
+                     *         },
+                     *         {
+                     *           "in_progress": 0,
+                     *           "listings": 3,
+                     *           "live": 1,
+                     *           "marketplace": "flipkart",
+                     *           "partly_live": 0,
+                     *           "problem": 1,
+                     *           "ready_to_approve": 0,
+                     *           "ready_to_publish": 0
+                     *         }
+                     *       ],
+                     *       "listings": {
+                     *         "draft": 1,
+                     *         "in_progress": 1,
+                     *         "inactive": 0,
+                     *         "live": 3,
+                     *         "live_products": 2,
+                     *         "partly_live": 0,
+                     *         "problem": 2,
+                     *         "ready_to_approve": 1,
+                     *         "ready_to_publish": 1,
+                     *         "total": 9
+                     *       },
+                     *       "marketplaces": [
+                     *         {
+                     *           "account": "connected",
+                     *           "enabled": true,
+                     *           "marketplace": "amazon",
+                     *           "next_step": "fix",
+                     *           "publishing_enabled": false
+                     *         },
+                     *         {
+                     *           "account": "not_connected",
+                     *           "enabled": false,
+                     *           "marketplace": "flipkart",
+                     *           "next_step": "connect",
+                     *           "publishing_enabled": true
+                     *         }
+                     *       ],
+                     *       "needs_you": {
+                     *         "blocked": 1,
+                     *         "blocked_without_issue": 0,
+                     *         "improve": 2,
+                     *         "own_work": 0,
+                     *         "publishing_paused": 1,
+                     *         "questions": 1,
+                     *         "ready_to_approve": 1,
+                     *         "ready_to_publish": 0,
+                     *         "total": 3,
+                     *         "waiting_on_account": 0
+                     *       },
+                     *       "needs_you_items": [
+                     *         {
+                     *           "action": "fix",
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "issue": "The title is longer than Amazon allows.",
+                     *           "issue_count": 1,
+                     *           "issue_id": "0b1c2d3e-0000-4000-8000-000000001001",
+                     *           "kind": "blocked",
+                     *           "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                     *           "marketplace": "amazon",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                     *           "product_sku": "KURTA-001",
+                     *           "product_title": "Hand Block Print Kurta Set"
+                     *         },
+                     *         {
+                     *           "action": "answer",
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "issue": "What is the fabric?",
+                     *           "kind": "question",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                     *           "product_sku": "KURTA-001",
+                     *           "product_title": "Hand Block Print Kurta Set",
+                     *           "task_id": "0b1c2d3e-0000-4000-8000-000000001101"
+                     *         }
+                     *       ],
+                     *       "products": 7
+                     *     }
+                     */
+                    "application/json": components["schemas"]["HomeSummaryOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
                      *       }
                      *     }
                      */

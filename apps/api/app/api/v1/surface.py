@@ -75,6 +75,7 @@ from app.api.v1.schemas.catalog import RequirementsOut
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
+from app.api.v1.schemas.home import HomeSummaryOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
     ImageCandidateOut,
@@ -936,6 +937,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("admin_quality", "GET", "/admin/quality", 200, QualitySummary, "admin",
               "The quality dashboard across tenants", "SI14",
               query=("from", "to", "target_tenant_id"), platform_admin=True),
+    # ---- client feedback 11 Nov 2026, item 6: the Home summary ----
+    Operation("home_summary", "GET", "/home/summary", 200, HomeSummaryOut, "home",
+              "Exact listing counts, what needs you, recent agent work and marketplace status",
+              "FB6", action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

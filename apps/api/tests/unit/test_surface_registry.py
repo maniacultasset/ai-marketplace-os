@@ -153,6 +153,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
     ("analytics_quality", "GET", "/analytics/quality"),
     ("admin_quality", "GET", "/admin/quality"),
+    # client feedback 11 Nov 2026, item 6: the Home summary
+    ("home_summary", "GET", "/home/summary"),
 )
 
 E = ErrorCode
@@ -469,7 +471,8 @@ def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
     # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
     # the ADR-0019 amendment adds the sign-up status poll
-    assert len(OPS) == 112
+    # FB6 (client feedback item 6) adds the Home summary
+    assert len(OPS) == 113
 
 
 def test_error_codes_per_d2() -> None:
@@ -628,7 +631,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1",
+        "SI12", "SI14", "PD1", "FB6",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id
