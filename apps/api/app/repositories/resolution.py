@@ -16,6 +16,8 @@ criterion for every table it names (`_criterion_for` + `_scoped_read`, as the an
 - `recurrence_resolutions(ids)`: the resolution of each closed row a recurrence points at.
 - The resolution read (T20): `read_jobs`, `issues_for`, `repairs_for`, `linked_tasks`,
   `versions_of`, `repaired_issue_ids`, `task_kinds`, `fix_jobs` (newest first, bounded).
+- `fix_versions(listing_id)` (feedback item 20): the newest automatic fix versions (`regeneration`
+  with `changed_paths`), their content, for the issue history's after values.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ BREAKER_KIND: Final = "marketplace_error_review"
 READ_JOB_KINDS: Final = ("listing_status_sync", "listing_generate", "listing_publish")
 BREAKER_TARGET: Final = "account.preview_applied"
 FIX_JOB_STATUSES: Final = ("queued", "running", "succeeded")
+MAX_FIX_VERSIONS: Final = 20
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +61,14 @@ class VersionRow:
     origin: str
     job_id: uuid.UUID | None
     approved_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class FixVersion:
+    id: uuid.UUID
+    created_at: datetime
+    changed_paths: tuple[str, ...]
+    content: dict[str, Any]
 
 
 class ResolutionRepository(TenantScopedRepository[ListingRepair]):
@@ -259,6 +270,24 @@ class ResolutionRepository(TenantScopedRepository[ListingRepair]):
         )
         rows = (await self.db.execute(self._scoped_read(stmt))).all()
         return {row[0]: VersionRow(*row) for row in rows}
+
+    async def fix_versions(self, listing_id: uuid.UUID) -> list[FixVersion]:
+        """The newest automatic fix versions of the listing (a content fix or a one-field AI
+        rewrite: `regeneration` with `changed_paths`), newest first, bounded."""
+        v = ListingVersion
+        stmt = (
+            select(v.id, v.created_at, v.changed_paths, v.content_json)
+            .where(
+                self._criterion_for(ListingVersion),
+                v.listing_id == listing_id,
+                v.origin == "regeneration",
+                v.changed_paths.is_not(None),
+            )
+            .order_by(v.created_at.desc(), v.id.desc())
+            .limit(MAX_FIX_VERSIONS)
+        )
+        rows = (await self.db.execute(self._scoped_read(stmt))).all()
+        return [FixVersion(row[0], row[1], tuple(row[2] or ()), dict(row[3] or {})) for row in rows]
 
     async def repaired_issue_ids(self, issue_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
         """The issue rows a repair (live or retired) was written for."""

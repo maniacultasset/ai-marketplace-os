@@ -7,6 +7,7 @@ load clean, map to the client's taxonomy, and reach the field they name.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any, Final
 
 import pytest
@@ -17,8 +18,9 @@ from app.adapters.flipkart.client import error_rows
 from app.cli import ERROR_MAP_AMAZON_PATH, ERROR_MAP_FLIPKART_PATH
 from app.db.platform_loads import ErrorMapIn, load_error_map_file
 from app.services.resolution.history import GROUPS, group_of
+from app.services.resolution.plan import PlanContext, lane_for
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import Marketplace
+from mkos_schemas.enums import Marketplace, RetryClass
 
 # the client's taxonomy (feedback item 20); `unknown` is only for an unmapped issue
 TAXONOMY: Final = frozenset(
@@ -114,12 +116,13 @@ def test_every_class_has_a_group() -> None:
 
 
 @pytest.mark.parametrize("path", [ERROR_MAP_AMAZON_PATH, ERROR_MAP_FLIPKART_PATH])
-def test_no_row_turns_on_an_automatic_fix(path: Any) -> None:
-    """A map row reports; only the adapter's repairer fixes (ADR-0028). No row sets a fix action
-    or a retry class that resends on its own."""
+def test_no_row_sets_its_own_fix(path: Any) -> None:
+    """A map row sets no fix action of its own: the lane comes from the code (the fix policy and
+    the planner, checked below). Its retry class is its code's, or `user_action`."""
     for row in load_error_map_file(path):
         assert row.auto_fixable is False and row.fix_action is None, row.raw_value
-        assert row.retry_class.value == "user_action", row.raw_value
+        own = ERROR_CODE_META[row.error_code].retry_class
+        assert row.retry_class in (own, RetryClass.USER_ACTION), row.raw_value
         assert row.severity.value == "error", row.raw_value
         assert row.seller_action, row.raw_value
         assert "{" not in row.plain_text, row.raw_value
@@ -177,6 +180,7 @@ def test_kuinn_repair_names_only_safe_repair_kinds(amazon: list[ErrorMapIn]) -> 
         ("4000002", "attributes.fabric_type", "missing_attribute", ErrorCode.MISSING_ATTRIBUTE),
         ("90188", None, "identifier_exemption", ErrorCode.IDENTIFIER_INVALID),
         ("4005018", None, "category_mismatch", ErrorCode.CATEGORY_MISMATCH),
+        ("90194", "attributes.fabric_type", "content_data", ErrorCode.VALUE_NOT_ALLOWED),
         ("5886", None, "account_permission", ErrorCode.ACCOUNT_PERMISSION_DENIED),
         ("4000000", None, "marketplace_system", ErrorCode.MARKETPLACE_UNAVAILABLE),
         ("90225", "content.title", "content_data", ErrorCode.FIELD_TOO_LONG),
@@ -310,3 +314,84 @@ def test_flipkart_unknown_path_stays_unknown(flipkart: list[ErrorMapIn]) -> None
         categories=[],
     )
     assert item.error_code is ErrorCode.MARKETPLACE_UNKNOWN_ERROR
+
+
+# ---- the lane each row takes (the planner routes on the code, not on the row) ----
+
+_ID: Final = uuid.UUID(int=0)
+# the widest context: AI allowed, the content fix able to change it, recategorising possible
+WIDE: Final = PlanContext(ai_allowed=True, content_fixable=frozenset({_ID}), recategorizable=True)
+PROBES: Final = (
+    "listing", "content.title", "content.bullets[0]", "attributes.material", "facts.selling_price",
+)  # fmt: skip
+# the classes whose rows may take the AI rewrite or the resend
+AI_CLASSES: Final = frozenset({"content_error"})  # a text rule (HTML, links, length)
+RETRY_CLASSES: Final = frozenset({"marketplace_technical"})  # the marketplace's own error
+_CONTENT: Final = ("content.", "keywords.")
+
+
+def _lanes(row: ErrorMapIn) -> dict[str, str]:
+    source = f"{row.marketplace.value}_adapter"
+    paths = {row.field_hint or "listing", *PROBES}
+    return {
+        p: lane_for(row.error_code.value, row.error_class.value, source, field_path=p, ctx=WIDE)
+        for p in paths
+    }
+
+
+@pytest.mark.parametrize("path", [ERROR_MAP_AMAZON_PATH, ERROR_MAP_FLIPKART_PATH])
+def test_automatic_lanes_only_where_intended(path: Any) -> None:
+    """The planner routes on the code, so each row's lane is checked here. A fact value (fabric,
+    price, a count) never reaches the AI rewrite: the seller or Kuinn's team decides it. Only a
+    text rule may be rewritten, only a marketplace system error is resent, and the deterministic
+    content fix touches only text Kuinn wrote (never a fact)."""
+    for row in load_error_map_file(path):
+        klass = row.error_class.value
+        for probe, lane in _lanes(row).items():
+            where = (row.raw_value, probe, lane)
+            assert lane != "ai_field" or klass in AI_CLASSES, where
+            assert lane != "retry" or klass in RETRY_CLASSES, where
+            assert lane != "auto_content" or probe.startswith(_CONTENT), where
+
+
+@pytest.mark.parametrize(
+    ("code", "field", "lane"),
+    [
+        # fabric make-up is a fact: the seller states it, the AI never rewrites it
+        ("90194", "attributes.fabric_type", "seller"),
+        ("18280", "attributes.material", "seller"),
+        ("90003907", "listing", "staff"),
+        # text rules on the text Kuinn wrote
+        ("90199", "content.description", "ai_field"),
+        ("90196", "content.bullets[1]", "ai_field"),
+        ("90226", "content.title", "ai_field"),
+        ("90225", "content.title", "auto_content"),
+        # values, counts and numbers
+        ("90244", "attributes.color", "seller"),
+        ("90114", "facts.selling_price", "staff"),
+        ("19037", "facts.selling_price", "staff"),
+        ("90193", "listing", "staff"),
+        # missing values
+        ("4000002", "attributes.fabric_type", "seller"),
+        # identifiers: the seller edits the barcode
+        ("101165", "facts.identifier", "seller"),
+        ("90188", "listing", "staff"),
+        # brand eligibility and category
+        ("4005018", "facts.category", "seller"),
+        ("5995", "listing", "marketplace"),
+        ("5886", "listing", "marketplace"),
+        ("5887", "listing", "marketplace"),
+        # Amazon's internal error: Kuinn resends
+        ("4000000", "listing", "retry"),
+    ],
+)
+def test_amazon_code_lane(amazon: list[ErrorMapIn], code: str, field: str, lane: str) -> None:
+    row = next(r for r in amazon if r.raw_value == code)
+    got = lane_for(row.error_code.value, row.error_class.value, field_path=field, ctx=WIDE)
+    assert got == lane
+
+
+def test_ai_rewrite_needs_the_ai_allowed(amazon: list[ErrorMapIn]) -> None:
+    row = next(r for r in amazon if r.raw_value == "90199")
+    got = lane_for(row.error_code.value, row.error_class.value, field_path="content.description")
+    assert got == "staff"  # no credit, no AI: Kuinn's team reviews the text

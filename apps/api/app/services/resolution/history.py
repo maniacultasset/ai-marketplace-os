@@ -5,15 +5,18 @@ with its before and after values, its reason and its outcome.
 - `group_of(error_class)` (pure): the client's taxonomy (content and data, missing attribute,
   image, identifier or exemption, category mismatch, account permission, marketplace system).
 - `handler_of(...)` (pure): `kuinn` for an automatic lane (an adapter repair, a content fix, an
-  AI rewrite of one field, a plain retry), `marketplace` for the marketplace's lane, a marketplace
-  system error, or a map row marked `handled_outside` (a Flipkart setting Kuinn does not send:
-  tax, delivery charges, stock, packages); `you` for the seller's lane; else `staff`.
+  AI rewrite of one field, a plain retry, also of a marketplace system error), `marketplace` for
+  the marketplace's lane, a map row marked `handled_outside` (a Flipkart setting Kuinn does not
+  send: tax, delivery charges, stock, packages) or a marketplace system error Kuinn does not
+  resend; `you` for the seller's lane; else `staff`.
 - `split_message(message)` (pure): the stored message is the map row's plain text, then
   " Marketplace message: ", then the scrubbed raw text (`ErrorMapper.to_item`); an unmapped
   issue keeps only the raw text, so its cause says Kuinn's team is checking it.
 - `fixes(...)` (pure): one per adapter repair (before = the refused value the issue holds, after
   = the repair's marketplace value, rendered) and one per issue Kuinn's content fix or AI rewrite
-  closed. The outcome comes from the first send after the fix (`outcome_after`).
+  closed (after = the value at the issue's path in the fix version that closed it: the newest
+  fix version changing that path saved by the close, `after_value`). The outcome comes from the
+  first send after the fix (`outcome_after`).
 - `history_for(principal, listing_id)`: the read; another tenant's listing (or none) is 404.
 
 The labels are the resolution read's (`read.labels`), so the two reads never disagree. The read
@@ -23,6 +26,7 @@ never runs the engine and never writes.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime
@@ -105,7 +109,11 @@ def group_of(error_class: str | None) -> str:
 
 
 def handler_of(lane: Lane | None, *, error_class: str | None, outside: bool) -> str:
-    if outside or lane == "marketplace" or error_class == "marketplace_technical":
+    if outside or lane == "marketplace":
+        return "marketplace"
+    if lane == "retry":
+        return "kuinn"  # Kuinn resends on its own, also after a marketplace system error
+    if error_class == "marketplace_technical":
         return "marketplace"
     if lane is None:
         return "staff"
@@ -170,6 +178,45 @@ def render_value(value_json: Any) -> str | None:
     return _cut(json.dumps(value_json, ensure_ascii=False, separators=(",", ":")), VALUE_MAX)
 
 
+_STEP: Final = re.compile(r"([a-z0-9_]+)(?:\[(\d{1,3})\])?")
+
+
+def value_at(content: Mapping[str, Any], path: str) -> Any:
+    """The value at a canonical path (`content.title`, `content.bullets[2]`,
+    `attributes.<key>`) of a version's content, else None."""
+    node: Any = content
+    for part in path.split("."):
+        step = _STEP.fullmatch(part)
+        if step is None or not isinstance(node, Mapping):
+            return None
+        node = node.get(step.group(1))
+        if step.group(2) is not None:
+            index = int(step.group(2))
+            if not isinstance(node, list) or index >= len(node):
+                return None
+            node = node[index]
+    return node
+
+
+def _covers(changed: str, path: str) -> bool:
+    return changed == path or path.startswith((f"{changed}[", f"{changed}."))
+
+
+def after_value(path: str, resolved_at: datetime, versions: Sequence[Any]) -> str | None:
+    """The value at `path` in the fix version that closed the issue: the newest fix version
+    changing `path` saved no later than the close (the close and the version share one
+    transaction), rendered. None when no such version is kept."""
+    found = [
+        v
+        for v in versions
+        if v.created_at <= resolved_at and any(_covers(c, path) for c in v.changed_paths)
+    ]
+    if not found:
+        return None
+    newest = max(found, key=lambda v: v.created_at)
+    return render_value(value_at(newest.content, path))
+
+
 def outcome_after(at: datetime, submissions: Sequence[Any], *, retired: bool = False) -> str:
     """What became of a change made at `at`: the first send after it decides."""
     if retired:
@@ -225,9 +272,14 @@ def issue_rows(
 
 
 def fixes(
-    *, repairs: Sequence[Any], issues: Sequence[Any], submissions: Sequence[Any]
+    *,
+    repairs: Sequence[Any],
+    issues: Sequence[Any],
+    submissions: Sequence[Any],
+    versions: Sequence[Any] = (),
 ) -> list[dict[str, Any]]:
-    """Every fix Kuinn made, newest first."""
+    """Every fix Kuinn made, newest first. `versions` are the fix versions
+    (`ResolutionRepository.fix_versions`) the content fixes' after values come from."""
     by_issue = {i.id: i for i in issues}
     out: list[dict[str, Any]] = []
     for repair in repairs:
@@ -268,7 +320,7 @@ def fixes(
                 "field": (row.field_path or "listing")[:192],
                 "rule": None,
                 "before": _cut(row.value_submitted, VALUE_MAX),
-                "after": None,
+                "after": after_value(row.field_path or "listing", row.resolved_at, versions),
                 "reason": _cut(row.action_taken, 300)
                 or (AI_FIX_REASON if ai else CONTENT_FIX_REASON),
                 "outcome": outcome_after(row.resolved_at, submissions),
@@ -361,7 +413,12 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
     )
     outside = await uow.error_map.outside_texts(listing.marketplace)
     rows = issue_rows(issues, lanes, outside)
-    made = fixes(repairs=repairs, issues=issues, submissions=submissions)
+    made = fixes(
+        repairs=repairs,
+        issues=issues,
+        submissions=submissions,
+        versions=await uow.resolution.fix_versions(listing.id),
+    )
     channels = {
         i.id: (
             "preview" if i.dedupe_key.endswith(PREVIEW_SUFFIX) else "live",

@@ -3,6 +3,7 @@ handles it and each fix with its before and after values, with the route's case 
 
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -126,6 +127,38 @@ async def test_an_unknown_code_reads_staff(api: httpx.AsyncClient, prev: PubWorl
     assert issue["handler"] == "staff" and issue["group"] == "unknown"
     assert issue["cause"].startswith("Kuinn does not know this marketplace message yet")
     assert issue["marketplace_message"] == "Something unusual went wrong."
+
+
+OUTSIDE_TEXT = "Amazon needs a setting this listing does not carry."
+OUTSIDE_ACTION = "Set it in Seller Central, then send the listing again."
+
+
+async def test_a_handled_outside_row_reads_the_marketplace_side(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    """A map row marked `handled_outside` (a setting Kuinn never sends, as Flipkart's tax) puts
+    its issue on the marketplace side: the JSONB filter of `outside_texts`, end to end."""
+    prev.conn.execute(
+        "INSERT INTO marketplace_error_map (marketplace, match_on, raw_value, version, "
+        "error_code, error_class, retry_class, severity, auto_fixable, plain_text, "
+        "seller_action, policy_ref, enabled) VALUES ('amazon', 'code', 'OUT-1', 1, "
+        "'MISSING_ATTRIBUTE', 'missing_data', 'user_action', 'error', false, %s, %s, "
+        "%s::jsonb, true)",
+        [OUTSIDE_TEXT, OUTSIDE_ACTION, json.dumps({"handled_outside": True})],
+    )
+    outside = _error(
+        "listing",
+        ErrorCode.MISSING_ATTRIBUTE,
+        "OUT-1",
+        f"{OUTSIDE_TEXT} Marketplace message: tax is required.",
+        suggestion=OUTSIDE_ACTION,
+    )
+    made = await _previewed(prev, [outside, UNKNOWN])
+    body = await _read(api, prev, made.listing_id)
+    by = {i["marketplace_code"]: i for i in body["issues"]}
+    assert (by["OUT-1"]["handler"], by["OUT-1"]["group"]) == ("marketplace", "missing_attribute")
+    assert by["77777"]["handler"] == "staff"  # a row not marked stays with its lane
+    assert body["counts"]["marketplace"] == 1
 
 
 @pytest.mark.endpoint("listings_issue_history", case="validation")

@@ -101,7 +101,8 @@ is `FAILURE` and stores nothing. Answers `{request_id, results: [{sku, status, e
 update of an unknown SKU is `FAILURE` with `LISTING_NOT_FOUND`. GET lists the stored SKUs only.
 - `/__control` also takes: `fk_errors {sku: {attribute: code}}` (once per SKU),
   `fk_warnings {sku: {attribute: code}}` (once), `fk_reject_attribute {attribute: [code, text]}`
-  (every SKU), `fk_reject [sku]`, `fk_429 n`, `fk_after_write status` (apply, then answer that
+  (every SKU), `fk_attribute_errors {sku: [issue]}` (the reply's `attribute_errors`, once per
+  SKU, stored for the read too), `fk_reject [sku]`, `fk_429 n`, `fk_after_write status` (apply, then answer that
   status, once), `fk_auth {mode: expired|denied, times}`, `fk_state {sku: ACTIVE|INACTIVE}`,
   `fk_body redirect|oversize|html` (once), `reset_calls`.
 - `GET /__calls?marketplace=flipkart|amazon`: `{count, calls}` of that marketplace only.
@@ -251,6 +252,7 @@ class FakeState:
     fk_errors: dict[str, dict[str, str]] = field(default_factory=dict)
     fk_warnings: dict[str, dict[str, str]] = field(default_factory=dict)
     fk_reject_attribute: dict[str, tuple[str, str]] = field(default_factory=dict)
+    fk_attribute_errors: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
     fk_reject: set[str] = field(default_factory=set)
     fk_429: int = 0
     fk_after_write: int | None = None
@@ -1234,6 +1236,10 @@ def _flipkart_control(state: FakeState, body: dict[str, Any]) -> None:
         state.fk_reject_attribute.update(
             {k: (v[0], v[1]) for k, v in body["fk_reject_attribute"].items()}
         )
+    if isinstance(body.get("fk_attribute_errors"), dict):
+        state.fk_attribute_errors.update(
+            {k: [dict(i) for i in v] for k, v in body["fk_attribute_errors"].items()}
+        )
     if isinstance(body.get("fk_reject"), list):
         state.fk_reject |= set(body["fk_reject"])
     if isinstance(body.get("fk_429"), int):
@@ -1373,12 +1379,16 @@ def _fk_write(state: FakeState, seller: str, entry: Any, *, update: bool) -> dic
             "fsn": "FSN" + hashlib.sha256(sku.encode()).hexdigest()[:13].upper(),
         }
     stored = state.fk_items[key]
-    return {
+    reply: dict[str, Any] = {
         "sku": sku,
         "status": "SUCCESS",
         "listing_id": stored["listing_id"],
         "errors": issues,
     }
+    extra = state.fk_attribute_errors.pop(sku, None)
+    if extra:
+        reply["attribute_errors"] = stored["attribute_errors"] = extra
+    return reply
 
 
 async def _flipkart(state: FakeState, request: Request) -> Response:

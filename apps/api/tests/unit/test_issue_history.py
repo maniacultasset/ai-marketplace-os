@@ -9,6 +9,7 @@ from typing import Any
 
 import pytest
 from app.api.v1.schemas.issue_history import IssueHistoryOut
+from app.repositories.resolution import FixVersion
 from app.services.resolution.history import (
     AI_FIX_REASON,
     LEFT_OUT,
@@ -16,6 +17,7 @@ from app.services.resolution.history import (
     REPAIR_FALLBACK,
     REPAIR_REASONS,
     UNMAPPED_CAUSE,
+    after_value,
     attempt_rows,
     counts,
     fixes,
@@ -24,6 +26,7 @@ from app.services.resolution.history import (
     outcome_after,
     render_value,
     split_message,
+    value_at,
 )
 
 T0 = datetime(2026, 11, 11, 10, 0, tzinfo=UTC)
@@ -94,7 +97,10 @@ def test_split_message_unmapped_keeps_the_raw_text() -> None:
         ("auto_repair", "invalid_value", False, "kuinn"),
         ("auto_content", "content_error", False, "kuinn"),
         ("ai_field", "content_error", False, "kuinn"),
-        ("retry", "marketplace_technical", False, "marketplace"),
+        ("retry", "marketplace_technical", False, "kuinn"),
+        ("staff", "marketplace_technical", False, "marketplace"),
+        (None, "marketplace_technical", False, "marketplace"),
+        ("marketplace", "invalid_value", False, "marketplace"),
         ("seller", "invalid_value", False, "you"),
         ("seller", "missing_data", True, "marketplace"),
         ("staff", "missing_data", True, "marketplace"),
@@ -236,12 +242,64 @@ def test_content_and_ai_fixes_come_from_closed_issues() -> None:
     ai = Issue(resolution="ai_correction", status="resolved", resolved_at=at(3))
     repaired = Issue(resolution="deterministic_fix", resolved_at=at(4), action_taken="repair:x")
     still_open = Issue(resolution="ai_correction", resolved_at=None)
-    got = fixes(repairs=[], issues=[content, ai, repaired, still_open], submissions=[])
+    versions = [
+        _version(at(2), ("content.title",), {"content": {"title": "Short title"}}),
+        _version(at(3), ("attributes.color",), {"attributes": {"color": "Navy"}}),
+        _version(at(9), ("content.title",), {"content": {"title": "A later edit"}}),
+    ]
+    got = fixes(
+        repairs=[], issues=[content, ai, repaired, still_open], submissions=[], versions=versions
+    )
     assert [f["id"] for f in got] == [ai.id, content.id]  # newest first
     assert got[0]["kind"] == "ai_correction" and got[0]["reason"] == AI_FIX_REASON
+    assert got[0]["after"] == "Navy"
     assert got[1]["kind"] == "content_fix"
     assert got[1]["reason"] == "Kuinn cut the title to 200 characters."
-    assert got[1]["before"] == "Navy blue" and got[1]["after"] is None
+    assert got[1]["before"] == "Navy blue" and got[1]["after"] == "Short title"
+
+
+def test_content_fix_without_its_version_has_no_after() -> None:
+    row = Issue(resolution="deterministic_fix", resolved_at=at(2), field_path="content.title")
+    (fix,) = fixes(repairs=[], issues=[row], submissions=[])
+    assert fix["after"] is None
+
+
+def _version(when: datetime, paths: tuple[str, ...], content: dict[str, Any]) -> FixVersion:
+    return FixVersion(uuid.uuid4(), when, paths, content)
+
+
+@pytest.mark.parametrize(
+    ("path", "want"),
+    [
+        ("content.title", "T"),
+        ("content.bullets[1]", "b2"),
+        ("content.bullets[7]", None),
+        ("content.bullets", ["b1", "b2"]),
+        ("attributes.weight", {"value": 3, "unit": "kg"}),
+        ("attributes.missing", None),
+        ("content.title.deeper", None),
+        ("Bad Path", None),
+    ],
+)
+def test_value_at(path: str, want: Any) -> None:
+    content = {
+        "content": {"title": "T", "bullets": ["b1", "b2"]},
+        "attributes": {"weight": {"value": 3, "unit": "kg"}},
+    }
+    assert value_at(content, path) == want
+
+
+def test_after_value_picks_the_closing_version() -> None:
+    old = _version(at(1), ("content.bullets",), {"content": {"bullets": ["old"]}})
+    new = _version(at(2), ("content.bullets",), {"content": {"bullets": ["new"]}})
+    other = _version(at(2), ("content.title",), {"content": {"title": "x", "bullets": ["no"]}})
+    later = _version(at(5), ("content.bullets",), {"content": {"bullets": ["later"]}})
+    assert after_value("content.bullets[0]", at(2), [old, new, other, later]) == "new"
+    assert after_value("content.bullets[0]", at(0), [old, new]) is None
+    weight = _version(
+        at(1), ("attributes.weight",), {"attributes": {"weight": {"value": 3, "unit": "kg"}}}
+    )
+    assert after_value("attributes.weight", at(1), [weight]) == "3 kg"
 
 
 # ---- counts and attempts ----
