@@ -69,6 +69,7 @@ Q7: dict[str, str] = {
     "listings_preview": "tenant:read",
     "listings_status": "tenant:read",
     "listings_history": "tenant:read",
+    "listings_versions": "tenant:read",  # item 17
     "issues_list": "tenant:read",
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",

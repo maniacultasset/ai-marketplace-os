@@ -43,6 +43,8 @@ from app.api.v1.schemas.listings import (
     ListingOut,
     ListingPage,
     ListingStatusOut,
+    ListingVersionOut,
+    ListingVersionPage,
     RegenerateRequest,
     ValidateRequest,
 )
@@ -240,6 +242,23 @@ async def listings_history(
     key = found.next_key
     return ListingHistoryPage(
         data=[AuditEventOut.model_validate(item) for item in found.items],
+        page=PageInfo(
+            next_cursor=None if key is None else encode_cursor(*key),
+            has_more=found.has_more,
+            limit=page.limit,
+        ),
+    )
+
+
+@route(router, OPS["listings_versions"])
+async def listings_versions(
+    listing_id: ListingId, page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+) -> ListingVersionPage:
+    """The listing's versions, newest first: who made, edited and approved each one."""
+    found = await listing_reads.versions(principal, listing_id, after=page.after, limit=page.limit)
+    key = found.next_key
+    return ListingVersionPage(
+        data=[ListingVersionOut.model_validate(item) for item in found.items],
         page=PageInfo(
             next_cursor=None if key is None else encode_cursor(*key),
             has_more=found.has_more,

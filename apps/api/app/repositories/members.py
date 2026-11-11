@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import builtins
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
@@ -28,6 +29,14 @@ class MemberRow:
     role: str
     is_active: bool
     created_at: datetime
+
+
+def member_name(display_name: str | None, email: str | None, erased_at: object) -> str | None:
+    """The name a teammate sees: the display name, else the email; None once erased."""
+    if erased_at is not None:
+        return None
+    name = (display_name or "").strip()
+    return name or (email or "").strip() or None
 
 
 def _row(row: Any) -> MemberRow:
@@ -122,6 +131,27 @@ class MembersRepository(TenantScopedRepository[TenantMembership]):
             .with_only_columns(TenantMembership.user_id)
         )
         return frozenset((await self.db.execute(stmt)).scalars().all())
+
+    async def names(self, user_ids: Iterable[uuid.UUID]) -> dict[uuid.UUID, str | None]:
+        """Item 17 (client feedback, 11 Nov 2026): how a listing's history names each person, for
+        the members of this tenant among `user_ids` only (the scoped select joins memberships
+        first, so a user of another tenant never comes back). The display name, else the email;
+        None for an erased account (its row keeps only a placeholder)."""
+        wanted = sorted(set(user_ids))
+        if not wanted:
+            return {}
+        stmt = (
+            self._select()
+            .join(User, User.id == TenantMembership.user_id)
+            .where(TenantMembership.user_id.in_(wanted))
+            .with_only_columns(
+                TenantMembership.user_id, User.display_name, User.email, User.erased_at
+            )
+        )
+        return {
+            user_id: member_name(display_name, email, erased_at)
+            for user_id, display_name, email, erased_at in (await self.db.execute(stmt)).all()
+        }
 
     async def check_owners_at_each_statement(self) -> None:
         """Run the deferred last-owner trigger at the statement (OWN01 there, not at COMMIT)."""
