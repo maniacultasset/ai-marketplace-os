@@ -1,0 +1,123 @@
+"""Revision 0030_signup_status_handle (ADR-0019 amendment): the single head, the round trip of
+the two handle columns, their CHECK, the hash index, the read policy and the definer."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import psycopg
+import pytest
+from alembic import command
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+
+from . import factories as f
+from .conftest import ScratchDb, expect_sqlstate
+from .integrity_support import scalar
+
+pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
+
+Conn = psycopg.Connection[tuple[Any, ...]]
+MakeConfig = Callable[[Path | None], Config]
+
+PREVIOUS = "0028_photo_read_on_upload"
+REVISION = "0030_signup_status_handle"
+
+
+def _shape(conn: Conn) -> tuple[Any, ...]:
+    columns = scalar(
+        conn,
+        "SELECT count(*) FROM information_schema.columns WHERE table_name = 'signup_requests' "
+        "AND column_name IN ('status_handle_hash', 'status_handle_expires_at')",
+    )
+    check = scalar(
+        conn,
+        "SELECT count(*) FROM pg_constraint WHERE conname = 'ck_signup_requests_status_handle' "
+        "AND convalidated",
+    )
+    index = scalar(
+        conn,
+        "SELECT count(*) FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+        "WHERE c.relname = 'uq_signup_requests_status_handle_hash' AND i.indisunique "
+        "AND i.indisvalid",
+    )
+    policy = scalar(
+        conn,
+        "SELECT count(*) FROM pg_policies WHERE tablename = 'signup_requests' "
+        "AND policyname = 'sr_handle_select'",
+    )
+    definer = scalar(
+        conn,
+        "SELECT count(*) FROM pg_proc WHERE proname = 'app_set_signup_status_handle' AND prosecdef",
+    )
+    return (columns, check, index, policy, definer)
+
+
+def test_single_head_on_0028() -> None:
+    from app.db.migrations import alembic_config
+
+    script = ScriptDirectory.from_config(alembic_config())
+    assert script.get_heads() == [REVISION]
+    rev = script.get_revision(REVISION)
+    assert rev is not None and rev.down_revision == PREVIOUS
+
+
+def test_upgrade_downgrade_upgrade(alembic_env: MakeConfig, scratch_db: ScratchDb) -> None:
+    cfg = alembic_env(None)
+    command.upgrade(cfg, PREVIOUS)
+    with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
+        assert _shape(conn) == (0, 0, 0, 0, 0)
+    command.upgrade(cfg, REVISION)
+    with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
+        assert _shape(conn) == (2, 1, 1, 1, 1)
+        # the read-only roles never read the hash; app_rw cannot write it
+        for role in ("app_ro", "app_platform_ro"):
+            assert (
+                scalar(
+                    conn,
+                    "SELECT has_column_privilege(%s, 'public.signup_requests', "
+                    "'status_handle_hash', 'SELECT')",
+                    (role,),
+                )
+                is False
+            )
+        assert (
+            scalar(
+                conn,
+                "SELECT has_column_privilege('app_rw', 'public.signup_requests', "
+                "'status_handle_hash', 'UPDATE')",
+            )
+            is False
+        )
+        assert (
+            scalar(
+                conn,
+                "SELECT has_function_privilege('app_rw', "
+                "'public.app_set_signup_status_handle(uuid, bytea)', 'EXECUTE')",
+            )
+            is True
+        )
+    command.check(cfg)
+    command.downgrade(cfg, PREVIOUS)
+    with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
+        assert _shape(conn) == (0, 0, 0, 0, 0)
+    command.upgrade(cfg, "head")
+    command.check(cfg)
+
+
+def test_check_refuses_a_half_set_or_short_handle(db: Conn) -> None:
+    user = f.user(db)
+    request = f.insert(db, "signup_requests", user_id=user, brand_name="B", owner_name="O")
+    for sets in (
+        "status_handle_hash = decode(repeat('ab', 32), 'hex')",
+        "status_handle_expires_at = now()",
+        "status_handle_hash = decode('ab', 'hex'), status_handle_expires_at = now()",
+    ):
+        expect_sqlstate(
+            db,
+            "23514",
+            f"UPDATE signup_requests SET {sets} WHERE id = %s",  # noqa: S608 - fixed literals
+            (request,),
+        )

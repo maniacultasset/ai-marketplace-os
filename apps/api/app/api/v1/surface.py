@@ -109,6 +109,7 @@ from app.api.v1.schemas.resolution import ResolutionOut
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.signup import (
     SignupAccepted,
+    SignupPollOut,
     SignupRequestOut,
     SignupRequestPage,
     SignupStatusOut,
@@ -850,6 +851,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("signup_status", "POST", "/signup/status", 200, SignupStatusOut, "signup",
               "The caller's latest sign-up request (email and password)", "ADR-0019",
               public=True, has_body=True, extra_codes=_401),
+    Operation("signup_status_poll", "POST", "/signup/status/poll", 200, SignupPollOut, "signup",
+              "A sign-up request's status by its status handle (no password; read only)",
+              "ADR-0019", public=True, has_body=True, extra_codes=_404),
     Operation("signup_google", "POST", "/signup/google", 202, SignupStatusOut, "signup",
               "Sign up with the Google identity: a pending request a platform admin approves",
               "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),

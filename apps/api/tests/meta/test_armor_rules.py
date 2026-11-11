@@ -220,6 +220,8 @@ AUTH_NO_MATCH = [
     "/auth/login/a/b/c",
     "/auth/password/x",
     "/signupx",
+    # ADR-0019 amendment: the waiting page polls every 15 s; the API limits it per handle
+    "/signup/status/poll",
     "/admin/signup-requests",
     "/auth/google/start",
     "/auth/google/callback",

@@ -2171,7 +2171,8 @@ export interface paths {
          *     characters with an upper-case letter, a lower-case letter, a digit and a symbol, and must
          *     not contain the owner name or the first part of the email: otherwise 422 with each broken
          *     rule in `details`. The `request_id` is not stable for an email that already has an account:
-         *     do not store or compare it.
+         *     do not store or compare it. `status_handle` reads the request's status with
+         *     `POST /signup/status/poll` (keep it in the browser's storage, never in a URL).
          */
         post: operations["signup_create"];
         delete?: never;
@@ -2218,8 +2219,33 @@ export interface paths {
          * @description The caller's newest sign-up request: `pending` (show "waiting for approval"),
          *     `rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in).
          *     Every refusal (unknown email, wrong password, no request) is the same 401 as the login.
+         *     A pending answer carries a new `status_handle` for `POST /signup/status/poll`.
          */
         post: operations["signup_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signup/status/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A sign-up request's status by its status handle (no password; read only)
+         * @description The status of the one sign-up request a `status_handle` names (the waiting page polls it
+         *     every 15 s while visible): `pending`, `approved` (continue to sign in) or `rejected` (with
+         *     the admin's `reason`). Read only, with no password: it answers only the status, the brand
+         *     name, when it was requested and decided, and the reason. An unknown, replaced or expired
+         *     handle is the same 404. The handle travels only in this body, never in a URL.
+         */
+        post: operations["signup_status_poll"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5355,6 +5381,11 @@ export interface components {
              * @constant
              */
             status: "pending";
+            /**
+             * Status Handle
+             * @description ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Always set; like `request_id`, a handle for an email that already had an account may name nothing (the poll then answers 404).
+             */
+            status_handle?: string | null;
         };
         /** SignupApprove */
         SignupApprove: {
@@ -5381,6 +5412,39 @@ export interface components {
             phone?: string | null;
             /** Website */
             website?: string | null;
+        };
+        /**
+         * SignupPollOut
+         * @description The one request a status handle names, and nothing else: no ids, email or tenant.
+         */
+        SignupPollOut: {
+            /** Brand Name */
+            brand_name: string;
+            /** Decided At */
+            decided_at?: string | null;
+            /**
+             * Reason
+             * @description The admin's reason, when `rejected`.
+             */
+            reason?: string | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+        };
+        /** SignupPollRequest */
+        SignupPollRequest: {
+            /**
+             * Status Handle
+             * @description The `status_handle` a sign-up answer returned (43 base64url characters). Never log it or put it in a URL.
+             */
+            status_handle: string;
         };
         /** SignupReject */
         SignupReject: {
@@ -5463,6 +5527,11 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
+            /**
+             * Status Handle
+             * @description ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Set only while the request is `pending`.
+             */
+            status_handle?: string | null;
             /** Tenant Id */
             tenant_id?: string | null;
         };
@@ -42243,7 +42312,8 @@ export interface operations {
                     /**
                      * @example {
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupAccepted"];
@@ -42484,7 +42554,8 @@ export interface operations {
                      *       "brand_name": "Acme Naturals",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupStatusOut"];
@@ -42803,7 +42874,8 @@ export interface operations {
                      *       "brand_name": "Kalakar Weaves",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupStatusOut"];
@@ -42881,6 +42953,285 @@ export interface operations {
                      *         "message": "Authentication required.",
                      *         "status": 401,
                      *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    signup_status_poll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupPollRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "brand_name": "Kalakar Weaves",
+                     *       "requested_at": "2026-10-05T09:30:00Z",
+                     *       "status": "pending"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SignupPollOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
                      *       }
                      *     }
                      */

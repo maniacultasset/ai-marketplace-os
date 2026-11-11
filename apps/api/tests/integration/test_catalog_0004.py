@@ -102,6 +102,7 @@ def test_catalog_definer_search_path(db: Conn) -> None:
         "app_note_auth_failure(uuid)",  # 0011 (DPP-1)
         "app_prune_login_flows()",  # 0012
         "app_prune_trusted_devices()",  # 0013 (ADR-0023)
+        "app_set_signup_status_handle(uuid,bytea)",  # 0030 (ADR-0019 amendment)
         "app_unlink_google_sub(uuid)",  # 0012
         "expire_trials()",
         "extend_tenant_trial(uuid,integer,text,text)",  # 0017 (ADR-0029)

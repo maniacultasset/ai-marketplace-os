@@ -40,7 +40,8 @@ def test_single_head_on_0027() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # 0030_signup_status_handle sits on top (`test_0030_signup_status_handle.py`)
+    assert REVISION in {r.revision for r in script.walk_revisions()}
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 
@@ -56,7 +57,6 @@ def test_upgrade_downgrade_upgrade_widens_the_entity_list(
     command.upgrade(cfg, REVISION)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
         assert _members(conn) == parent | {"photo_facts_read"}
-    command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
         assert _members(conn) == parent

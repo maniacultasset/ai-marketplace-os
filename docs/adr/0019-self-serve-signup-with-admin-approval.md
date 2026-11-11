@@ -99,3 +99,34 @@ email provider exists yet (ADR-0006 decision 6 is still open), so nothing may de
   brand's email first holds it: the real owner's form gets the silent 202 and the status read a
   401, and staff recover it only by rejecting the squatter's request and resetting the password
   with `user set-password` before the owner signs up again with that password.
+
+## Amendment (11 Nov 2026): a read-only status handle
+
+A client tester found that a pending applicant had to sign in again (Google) or retype the
+password to learn whether the brand was approved. Decision 3 stays: a pending applicant still has
+no token, membership or tenant. Instead:
+
+- **The handle.** Every answer that observes a pending request (the `POST /signup` 202, a pending
+  `POST /signup/status`, `POST /signup/google` and the `pending` outcome of
+  `POST /auth/google/complete`) carries `status_handle`: 32 random bytes in base64url (43
+  characters). Only its sha256 is stored, on the request (`signup_requests.status_handle_hash`,
+  with `status_handle_expires_at` 30 days on; revision `0030_signup_status_handle`). A newer
+  handle for the same request replaces the older one. The 202 of the form keeps its single shape:
+  a blank answer (an existing email with a wrong password, a race) carries a random handle that
+  names nothing, like its random `request_id`.
+- **The read.** `POST /api/v1/signup/status/poll` takes the handle in the JSON body (never in a
+  URL; `status_handle` is a denied log key) and answers only `status`, `brand_name`,
+  `requested_at`, `decided_at` and, when rejected, `reason`: no id, email, phone or tenant. An
+  unknown, replaced or expired handle is the same 404 `NOT_FOUND`. It is read only: it neither
+  signs anyone in nor changes the request. Rate limit: twice the login rate per
+  `sha256(ip|handle)`, and 20 times that per `sha256(ip)`, on top of the public per-IP limit.
+- **The database.** The hash is written only by the SECURITY DEFINER
+  `app_set_signup_status_handle(uuid, bytea)`, for the caller's own (`app.user_id`) pending
+  request; app_rw has no UPDATE on the two columns and the read-only roles do not read them. The
+  poll reads through `sr_handle_select` (the row whose live hash is `app.token_hash`).
+- **What it does not change.** The oracle of decision 2 is unchanged: a live handle needs the
+  account's password (the form or the status read, both under the lockout and their limits) or
+  a Google sign-in. Whoever holds the handle (the applicant's browser keeps it in its storage)
+  can read the decision for 30 days; the browser drops it once it acts on the decision. No email
+  on a decision yet (still waits for ADR-0006 decision 6).
+

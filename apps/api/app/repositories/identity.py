@@ -66,6 +66,7 @@ __all__ = [
     "RefreshRow",
     "RefreshTokenRepository",
     "ResetLinkLookup",
+    "SignupPollRow",
     "SignupRepository",
     "SignupRow",
     "SlugTakenError",
@@ -831,6 +832,17 @@ class SignupRow:
     verified_via: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class SignupPollRow:
+    """What a status handle may read (ADR-0019 amendment): no ids, email, phone or tenant."""
+
+    status: str
+    brand_name: str
+    requested_at: datetime
+    decided_at: datetime | None
+    reason: str | None
+
+
 def _signup_select() -> Any:
     return select(
         SignupRequest.id,
@@ -933,6 +945,32 @@ class SignupRepository:
         )
         row = (await self.db.execute(stmt)).one_or_none()
         return None if row is None else SignupRow(*row)
+
+    async def set_status_handle(self, request_id: uuid.UUID, handle_hash: bytes) -> bool:
+        """0030 `app_set_signup_status_handle`: store a new handle's sha256 (30 days) on the
+        caller's own (`app.user_id`) pending request, replacing an older one; False otherwise."""
+        stmt = text("SELECT public.app_set_signup_status_handle(:r, :h)")
+        found = (await self.db.execute(stmt, {"r": request_id, "h": handle_hash})).scalar_one()
+        return bool(found)
+
+    async def by_status_handle(self, handle_hash: bytes) -> SignupPollRow | None:
+        """Sets `app.token_hash` (the `sr_handle_select` branch, 0030) and reads the one request
+        whose live handle has this hash; None for an unknown or expired one."""
+        await set_gucs(self.db, token_hash=handle_hash)
+        stmt = identity_scope(
+            select(
+                SignupRequest.status,
+                SignupRequest.brand_name,
+                SignupRequest.created_at,
+                SignupRequest.decided_at,
+                SignupRequest.reason,
+            ).where(
+                SignupRequest.status_handle_hash == handle_hash,
+                SignupRequest.status_handle_expires_at > func.now(),
+            )
+        )
+        row = (await self.db.execute(stmt)).one_or_none()
+        return None if row is None else SignupPollRow(*row)
 
     async def page(
         self,

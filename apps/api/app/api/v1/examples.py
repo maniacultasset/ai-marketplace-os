@@ -518,6 +518,8 @@ _MFA_REQUIRED: Final = {
     "challenge_expires_in": 300,
     "mfa_grace_until": None,
 }
+# ADR-0019 amendment (11 Nov 2026): an example status handle (43 base64url characters)
+SIGNUP_STATUS_HANDLE: Final = "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
 _GOOGLE_SIGNUP_STATUS: Final = {
     "request_id": SIGNUP,
     "brand_name": "Acme Naturals",
@@ -526,6 +528,7 @@ _GOOGLE_SIGNUP_STATUS: Final = {
     "tenant_id": None,
     "created_at": T0,
     "decided_at": None,
+    "status_handle": SIGNUP_STATUS_HANDLE,
 }
 
 # SI10: the platform admin's AI credit card
@@ -1050,7 +1053,11 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         },
         "analytics_get": _SUMMARY,
         "analytics_summary": _SUMMARY,
-        "signup_create": {"request_id": SIGNUP, "status": "pending"},
+        "signup_create": {
+            "request_id": SIGNUP,
+            "status": "pending",
+            "status_handle": SIGNUP_STATUS_HANDLE,
+        },
         "signup_status": {
             "request_id": SIGNUP,
             "brand_name": "Kalakar Weaves",
@@ -1059,6 +1066,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "tenant_id": None,
             "created_at": T0,
             "decided_at": None,
+            "status_handle": SIGNUP_STATUS_HANDLE,
+        },
+        "signup_status_poll": {
+            "status": "pending",
+            "brand_name": "Kalakar Weaves",
+            "requested_at": T0,
+            "decided_at": None,
+            "reason": None,
         },
         "signup_google": _GOOGLE_SIGNUP_STATUS,
         "admin_signup_requests_list": _page([_SIGNUP_REQUEST]),

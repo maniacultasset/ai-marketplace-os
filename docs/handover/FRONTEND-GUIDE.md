@@ -750,6 +750,7 @@ Three screens. The flow is in FLOWS.md section 2.1b.
 | Sign-up form | Brand name, owner name, email, password (12+ characters); phone and website optional | `POST /signup` (always 202 `{request_id, status: "pending"}`) |
 | Waiting for approval | Show "waiting for approval", or the rejection reason with a "sign up again" button | `POST /signup/status` with email and password: `pending`, `rejected` (+ `reason`) or `approved` |
 | Waiting for approval | After a login 401, check whether the person has a sign-up pending | `POST /signup/status` (a 401 here means a real wrong email or password) |
+| Waiting for approval | Update the page by itself (ADR-0019 amendment): keep the newest `status_handle` from any sign-up answer in local storage, poll every 15 s while the tab is visible, stop once decided | `POST /signup/status/poll` `{status_handle}` (body only): `status`, `brand_name`, `requested_at`, `decided_at`, `reason`; a 404 means the handle is gone (fall back to the checks above) |
 | Admin: sign-up requests | Only when `GET /auth/me` has `is_platform_admin: true` | `GET /admin/signup-requests?status=pending` (keyset pages) |
 | Admin: sign-up requests | Approve (optional `trial_days`, default 14) or reject (a `reason` the brand reads) | `POST /admin/signup-requests/{request_id}/approve`, `POST /admin/signup-requests/{request_id}/reject` |
 

@@ -8428,6 +8428,18 @@
             "const": "pending",
             "title": "Status",
             "type": "string"
+          },
+          "status_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Always set; like `request_id`, a handle for an email that already had an account may name nothing (the poll then answers 404).",
+            "title": "Status Handle"
           }
         },
         "required": [
@@ -8522,6 +8534,77 @@
           "password"
         ],
         "title": "SignupCreate",
+        "type": "object"
+      },
+      "SignupPollOut": {
+        "description": "The one request a status handle names, and nothing else: no ids, email or tenant.",
+        "properties": {
+          "brand_name": {
+            "minLength": 1,
+            "title": "Brand Name",
+            "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The admin's reason, when `rejected`.",
+            "title": "Reason"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "brand_name",
+          "requested_at"
+        ],
+        "title": "SignupPollOut",
+        "type": "object"
+      },
+      "SignupPollRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "status_handle": {
+            "description": "The `status_handle` a sign-up answer returned (43 base64url characters). Never log it or put it in a URL.",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Status Handle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_handle"
+        ],
+        "title": "SignupPollRequest",
         "type": "object"
       },
       "SignupReject": {
@@ -8735,6 +8818,18 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "status_handle": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Set only while the request is `pending`.",
+            "title": "Status Handle"
           },
           "tenant_id": {
             "anyOf": [
@@ -48729,7 +48824,7 @@
     },
     "/api/v1/signup": {
       "post": {
-        "description": "Brand name, owner name, email and password (phone and website optional) in; a pending\nrequest out. Always 202 with this shape: the answer never says whether the email already\nhad an account. Re-submitting while a request is pending answers that request. The brand\nlogs in only after a platform admin approves (until then the login is 401; read the\nstatus with `POST /signup/status`). The rest of the brand profile is filled in after\napproval with `PATCH /tenants/me` and `/brand/documents`. The password must be 12+\ncharacters with an upper-case letter, a lower-case letter, a digit and a symbol, and must\nnot contain the owner name or the first part of the email: otherwise 422 with each broken\nrule in `details`. The `request_id` is not stable for an email that already has an account:\ndo not store or compare it.",
+        "description": "Brand name, owner name, email and password (phone and website optional) in; a pending\nrequest out. Always 202 with this shape: the answer never says whether the email already\nhad an account. Re-submitting while a request is pending answers that request. The brand\nlogs in only after a platform admin approves (until then the login is 401; read the\nstatus with `POST /signup/status`). The rest of the brand profile is filled in after\napproval with `PATCH /tenants/me` and `/brand/documents`. The password must be 12+\ncharacters with an upper-case letter, a lower-case letter, a digit and a symbol, and must\nnot contain the owner name or the first part of the email: otherwise 422 with each broken\nrule in `details`. The `request_id` is not stable for an email that already has an account:\ndo not store or compare it. `status_handle` reads the request's status with\n`POST /signup/status/poll` (keep it in the browser's storage, never in a URL).",
         "operationId": "signup_create",
         "requestBody": {
           "content": {
@@ -48747,7 +48842,8 @@
               "application/json": {
                 "example": {
                   "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                  "status": "pending"
+                  "status": "pending",
+                  "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/SignupAccepted"
@@ -48995,7 +49091,8 @@
                   "brand_name": "Acme Naturals",
                   "created_at": "2026-10-05T09:30:00Z",
                   "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                  "status": "pending"
+                  "status": "pending",
+                  "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/SignupStatusOut"
@@ -49299,7 +49396,7 @@
     },
     "/api/v1/signup/status": {
       "post": {
-        "description": "The caller's newest sign-up request: `pending` (show \"waiting for approval\"),\n`rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in).\nEvery refusal (unknown email, wrong password, no request) is the same 401 as the login.",
+        "description": "The caller's newest sign-up request: `pending` (show \"waiting for approval\"),\n`rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in).\nEvery refusal (unknown email, wrong password, no request) is the same 401 as the login.\nA pending answer carries a new `status_handle` for `POST /signup/status/poll`.",
         "operationId": "signup_status",
         "requestBody": {
           "content": {
@@ -49319,7 +49416,8 @@
                   "brand_name": "Kalakar Weaves",
                   "created_at": "2026-10-05T09:30:00Z",
                   "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                  "status": "pending"
+                  "status": "pending",
+                  "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/SignupStatusOut"
@@ -49577,6 +49675,291 @@
           }
         },
         "summary": "The caller's latest sign-up request (email and password)",
+        "tags": [
+          "signup"
+        ],
+        "x-mkos-action": "public"
+      }
+    },
+    "/api/v1/signup/status/poll": {
+      "post": {
+        "description": "The status of the one sign-up request a `status_handle` names (the waiting page polls it\nevery 15 s while visible): `pending`, `approved` (continue to sign in) or `rejected` (with\nthe admin's `reason`). Read only, with no password: it answers only the status, the brand\nname, when it was requested and decided, and the reason. An unknown, replaced or expired\nhandle is the same 404. The handle travels only in this body, never in a URL.",
+        "operationId": "signup_status_poll",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupPollRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "brand_name": "Kalakar Weaves",
+                  "requested_at": "2026-10-05T09:30:00Z",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SignupPollOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "summary": "A sign-up request's status by its status handle (no password; read only)",
         "tags": [
           "signup"
         ],

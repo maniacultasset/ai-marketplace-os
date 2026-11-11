@@ -112,6 +112,9 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "device_token",
         "device_tokens",
         "prev_token_hash",
+        # ADR-0019 amendment (11 Nov 2026): the sign-up status handle and its stored hash
+        "status_handle",
+        "status_handle_hash",
         # SI7: image bytes (base64) and signed preview URLs (bearer credentials) never reach a log
         "image_b64",
         "data_b64",

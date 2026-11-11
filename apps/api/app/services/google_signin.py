@@ -57,6 +57,7 @@ from app.repositories.identity import (
 from app.repositories.login_flows import FlowIdentity, LoginFlowRepository
 from app.repositories.transactions import identity_session, set_gucs
 from app.services import auth, auth_events
+from app.services.signup import StatusRead, issue_status_handle
 
 log = get_logger(__name__)
 
@@ -262,6 +263,8 @@ class Completed:
     signup: SignupRow | None = None
     details: Details | None = None
     link: Link | None = None
+    # ADR-0019 amendment: a new status handle when `signup` is still pending
+    status_handle: str | None = field(default=None, repr=False)
 
 
 # ---- the JWKS cache (one per process) ----
@@ -508,7 +511,12 @@ async def complete(
             raise FlowInvalid
         if decision.outcome == "pending":
             latest = await SignupRepository(session).latest_for(user.id)
-            return Completed("pending", identity.email, signup=latest)
+            status_handle = (
+                await issue_status_handle(session, latest.id)
+                if latest is not None and latest.status == "pending"
+                else None
+            )
+            return Completed("pending", identity.email, signup=latest, status_handle=status_handle)
         if decision.outcome == "link_required":
             link_handle = google_oidc.new_token()
             await flows.insert(
@@ -641,8 +649,9 @@ async def signup_details(
     phone: str | None,
     website: str | None,
     ip: str | None,
-) -> SignupRow | Failure:
-    """A new Google user and their pending sign-up request (ADR-0019 approval still applies).
+) -> StatusRead | Failure:
+    """A new Google user and their pending sign-up request (ADR-0019 approval still applies),
+    with a status handle for it (ADR-0019 amendment).
     The email and the Google account are checked again (a password sign-up of the same email may
     have landed meanwhile): taken is the generic failure. Raises `GoogleDisabled` or
     `FlowInvalid`."""
@@ -676,9 +685,10 @@ async def signup_details(
             ip=auth.inet(ip),
         )
         created = await requests.latest_for(user.id)
-    if created is None:  # pragma: no cover - the request was just written
-        raise RuntimeError("a new Google sign-up request is not readable")
-    return created
+        if created is None:  # pragma: no cover - the request was just written
+            raise RuntimeError("a new Google sign-up request is not readable")
+        handle = await issue_status_handle(session, created.id)
+    return StatusRead(created, handle)
 
 
 __all__ = [
