@@ -317,3 +317,31 @@ async def test_paused_ai_sends_the_refusal_to_a_staff_review(prev: PubWorld) -> 
         [made.listing_id],
     )
     assert task == [("account.review.content_review",)]
+
+
+async def test_a_refusal_on_a_locked_title_is_the_sellers_edit_never_a_fix(
+    prev: PubWorld,
+) -> None:
+    """Client feedback 14: the seller's locked edit is never rewritten by a resolution fix (no
+    content fix, no AI rewrite); the refusal stays open as the seller's `edit_content`."""
+    prev.fake.preview_errors = []
+    made = await generated(prev.world, OWNER)
+    prev.conn.execute(
+        "UPDATE listings SET locked_paths = '{content.title}' WHERE id = %s", [made.listing_id]
+    )
+    title = _content(prev, made.version_id)["content"]["title"]
+    prev.fake.preview_errors = [_too_long(len(title) - 3)]
+    await _run_previews(prev, made.listing_id)
+    assert _jobs(prev, made.listing_id) == []
+    assert _jobs(prev, made.listing_id, "ai_field") == []
+    row = prev.listing(made.listing_id)
+    assert row["status"] not in ("generating", "failed"), row["status"]
+    assert row["current_version_id"] == made.version_id
+    assert (
+        prev.scalar(
+            "SELECT count(*) FROM listing_issues WHERE listing_id = %s AND status = 'open' "
+            "AND field_path = 'content.title' AND source = 'amazon_adapter'",
+            [made.listing_id],
+        )
+        == 1
+    )

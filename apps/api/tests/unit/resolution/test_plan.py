@@ -308,6 +308,41 @@ def test_content_fixable_never_moves_a_fact_or_an_unfixable_row() -> None:
     assert [s.lane for s in steps] == ["seller", "staff"]
 
 
+# ---- client feedback 14: a seller's locked edit is never an automatic lane ----
+
+_LOCKED = frozenset({"content.title", "content.bullets", "keywords.search_terms", "attributes.fit"})
+
+
+@pytest.mark.parametrize(
+    "path", ["content.title", "content.bullets[1]", "keywords.search_terms", "attributes.fit"]
+)
+@pytest.mark.parametrize("code", sorted(ErrorCode, key=str))
+def test_a_locked_path_never_takes_an_automatic_content_lane(code: ErrorCode, path: str) -> None:
+    issue = _issue(field_path=path, error_code=code.value, error_class="invalid_value")
+    fixable = frozenset({issue.id})
+    free = plan([issue], PlanContext(ai_allowed=True, content_fixable=fixable))
+    held = plan(
+        [issue], PlanContext(ai_allowed=True, content_fixable=fixable, locked_paths=_LOCKED)
+    )
+    assert all(s.lane not in ("auto_content", "ai_field") for s in held), held
+    if free and free[0].lane in ("auto_content", "ai_field"):
+        assert [(s.lane, s.action) for s in held] == [("seller", "edit_content")]
+
+
+def test_a_locked_title_refusal_is_the_sellers_edit_not_a_fix() -> None:
+    issue = _issue(field_path="content.title", error_code="FIELD_TOO_LONG",
+                   error_class="invalid_value")  # fmt: skip
+    ctx = PlanContext(content_fixable=frozenset({issue.id}), locked_paths=_LOCKED)
+    (step,) = plan([issue], ctx)
+    assert (step.lane, step.action) == ("seller", "edit_content")
+    other = _issue(field_path="content.description", error_code="FIELD_TOO_LONG",
+                   error_class="invalid_value")  # fmt: skip
+    (step,) = plan(
+        [other], PlanContext(content_fixable=frozenset({other.id}), locked_paths=_LOCKED)
+    )
+    assert step.lane == "auto_content"  # an unlocked path is fixed as before
+
+
 # ---- SI13 T7: category, burst hold, SKU and identifier rules ----
 
 

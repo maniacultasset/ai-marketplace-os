@@ -24,7 +24,7 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
    the open error rows only the seller can fix open or reuse one task each (the move becomes
    `blocked/human_task_open`);
 5. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
-   one was saved;
+   one was saved, with the job's `run_reason` and `run_scope` (0033, client feedback 14);
 6. the move, with the job as actor.
 
 SI3: when the plan carries a photo decision, `apply_photo_decision` runs first, right after the
@@ -121,6 +121,9 @@ class PersistPlan:
     changed_paths: tuple[str, ...] | None = None
     closes: tuple[tuple[uuid.UUID, str], ...] = ()
     close_resolution: Literal["deterministic_fix", "ai_correction"] = "deterministic_fix"
+    # client feedback 14 (0033): why the job ran and the paths it could change (None: whole)
+    run_reason: str | None = None
+    run_scope: tuple[str, ...] | None = None
 
 
 def _run(
@@ -178,7 +181,11 @@ async def _insert_records(
     uow: TenantUnitOfWork, plan: PersistPlan, version_id: uuid.UUID | None
 ) -> None:
     for record in plan.records:
-        await uow.agent_runs.insert(record.model_copy(update={"listing_version_id": version_id}))
+        await uow.agent_runs.insert(
+            record.model_copy(update={"listing_version_id": version_id}),
+            reason=plan.run_reason,
+            scope=plan.run_scope,
+        )
 
 
 async def _owned(uow: TenantUnitOfWork, plan: PersistPlan) -> Any:

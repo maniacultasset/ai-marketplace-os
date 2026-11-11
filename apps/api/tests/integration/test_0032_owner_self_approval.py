@@ -318,7 +318,8 @@ def test_single_head_on_0031() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # client feedback 14: 0033_section_locks sits on top (`test_0033_section_locks.py`)
+    assert REVISION in {r.revision for r in script.walk_revisions()}
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 

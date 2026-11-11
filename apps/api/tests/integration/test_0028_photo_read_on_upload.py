@@ -57,6 +57,7 @@ def test_upgrade_downgrade_upgrade_widens_the_entity_list(
     command.upgrade(cfg, REVISION)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
         assert _members(conn) == parent | {"photo_facts_read"}
+    # the models match the head only (0030 adds columns), so `check` runs at head below
     command.downgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
         assert _members(conn) == parent

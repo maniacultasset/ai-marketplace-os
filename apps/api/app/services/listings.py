@@ -47,7 +47,13 @@ def to_detail(
     needs_you: int = 0,
 ) -> dict[str, Any]:
     """The `ListingDetail` fields (the router validates them into the response model)."""
-    return {**listing_fields(listing, needs_you), "content": content, "validation": summary}
+    return {
+        **listing_fields(listing, needs_you),
+        "content": content,
+        "validation": summary,
+        # client feedback 14: the seller's edits no regenerate changes
+        "locked_paths": sorted(getattr(listing, "locked_paths", None) or ()),
+    }
 
 
 def listing_fields(listing: Any, needs_you: int = 0) -> dict[str, Any]:

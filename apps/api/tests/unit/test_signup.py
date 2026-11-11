@@ -830,7 +830,8 @@ def test_0021_is_the_single_head() -> None:
     # proposals (SI13) on top of that (re-chained from 0023 at the 2026-11-09 merge), and the
     # V1.1 assist tables (SI14) on top of them, the photo read on upload (V1.1) on top, and the
     # sign-up status handle (0031) and the owner self-approval setting (ADR-0031) on top of that
-    assert revisions - parents == {"0032_owner_self_approval"}
+    # section locks and run reasons (client feedback 14) on top of that
+    assert revisions - parents == {"0033_section_locks"}
 
 
 @pytest.mark.parametrize(

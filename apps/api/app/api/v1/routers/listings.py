@@ -269,6 +269,7 @@ async def listings_content_patch(
         content=body.content,
         keywords=body.keywords,
         attributes=body.attributes,
+        unlock=body.unlock,
     )
     etag = listing_reads.etag_of(detail.get("current_version_id"))
     if etag is not None:
@@ -284,11 +285,19 @@ async def listings_regenerate(
     request: Request,
     body: Annotated[RegenerateRequest | None, Body()] = None,
 ) -> JobAccepted:
-    """Regenerate an existing listing; a reviewer may do this, but may not generate fresh."""
+    """Regenerate an existing listing, or only some `sections` of it; a reviewer may do this,
+    but may not generate fresh. The seller's locked edits are never rewritten."""
     instructions = None if body is None else body.instructions
+    sections = () if body is None or body.sections is None else tuple(body.sections)
     try:
         stored = await generation.accept_regenerate(
-            principal, idempotency_key, request.url.path, listing_id, instructions
+            principal,
+            idempotency_key,
+            request.url.path,
+            listing_id,
+            instructions,
+            sections,
+            for_answers=body is not None and body.for_answers,
         )
     except BudgetExceededError as exc:
         raise _budget(exc) from None
