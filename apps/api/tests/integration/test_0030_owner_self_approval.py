@@ -5,7 +5,7 @@ Raw SQL as `app_rw`, as in `test_0004_lv_guard.py`."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -240,6 +240,75 @@ def test_turning_the_setting_off_restores_the_rule(db: Conn) -> None:
     _setting(db, tenant, True)
     _setting(db, tenant, False)
     _refused(db, version, owner)
+
+
+# ---- the setting and an approval serialize (lv_guard reads it FOR SHARE) ----
+
+
+@pytest.fixture
+def committed_owner(head_db: ScratchDb) -> Iterator[tuple[UUID, UUID, UUID]]:
+    """A committed tenant, its owner and the owner's current version, setting on; purged after
+    (`head_db` is shared by the whole session)."""
+    with psycopg.connect(head_db.libpq, autocommit=True, connect_timeout=5) as conn:
+        tenant, owner, version = _own(conn)
+        _setting(conn, tenant, True)
+    yield tenant, owner, version
+    with psycopg.connect(head_db.libpq, autocommit=True, connect_timeout=5) as conn:
+        conn.execute("SET SESSION AUTHORIZATION migrator")
+        for mode in ("data", "final"):
+            conn.execute("SELECT purge_tenant(%s, %s, force => true)", (tenant, mode))
+
+
+def _short_wait(conn: Conn) -> None:
+    conn.execute("SET lock_timeout = '300ms'")
+
+
+def test_uncommitted_toggle_off_holds_the_approval(
+    head_db: ScratchDb, committed_owner: tuple[UUID, UUID, UUID]
+) -> None:
+    """A toggle-off still open: the self-approval waits for it (lock timeout here) rather than
+    reading the old "on"; once the toggle commits, the approval sees "off" and is MKC01."""
+    tenant, owner, version = committed_owner
+    with (
+        psycopg.connect(head_db.libpq, connect_timeout=5) as toggle,
+        psycopg.connect(head_db.libpq, connect_timeout=5) as approver,
+    ):
+        _setting(toggle, tenant, False)  # uncommitted
+        _short_wait(approver)
+        with as_app_rw(approver, tenant):
+            expect_sqlstate(approver, "55P03", APPROVE_SQL, (owner, version))
+            toggle.commit()
+            expect_sqlstate(approver, "MKC01", APPROVE_SQL, (owner, version))
+        approver.rollback()
+
+
+def test_approval_in_flight_holds_the_toggle(
+    head_db: ScratchDb, committed_owner: tuple[UUID, UUID, UUID]
+) -> None:
+    """A self-approval still open holds the setting: a toggle waits (lock timeout here) until
+    the approval commits, so the owner never sees "off" and then a new self-approval land."""
+    tenant, owner, version = committed_owner
+    with (
+        psycopg.connect(head_db.libpq, connect_timeout=5) as toggle,
+        psycopg.connect(head_db.libpq, connect_timeout=5) as approver,
+    ):
+        with as_app_rw(approver, tenant):
+            approve(approver, version, owner)  # uncommitted
+        _short_wait(toggle)
+        expect_sqlstate(
+            toggle,
+            "55P03",
+            "UPDATE tenants SET owner_self_approval = false WHERE id = %s",
+            (tenant,),
+        )
+        approver.commit()
+        _setting(toggle, tenant, False)
+        toggle.commit()
+        row = toggle.execute(
+            "SELECT approved_by_user_id, self_approved FROM listing_versions WHERE id = %s",
+            (version,),
+        ).fetchone()
+        assert row == (owner, True)
 
 
 # ---- the chain and the round trip ----

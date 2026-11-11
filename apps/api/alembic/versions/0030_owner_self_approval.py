@@ -6,12 +6,16 @@ the single head on `main`, and is re-chained if #155 merges first). Expand only,
 one transaction with `lock_timeout = '5s'`:
 
 1. `sql/0030/01_columns`: `tenants.owner_self_approval boolean NOT NULL DEFAULT false` (app_rw
-   UPDATE on that column; the service lets only an active owner change it, after a step-up) and
-   `review_decisions.self_approval boolean NOT NULL DEFAULT false` with
-   `ck_review_decisions_self_approval` (only an approve carries it). Catalog-only adds.
+   UPDATE on that column; the service lets only an active, verified owner change it, after a
+   step-up); `listing_versions.self_approved boolean NOT NULL DEFAULT false`, written only by
+   `lv_guard` (app_rw holds neither INSERT nor UPDATE on it), with
+   `ck_listing_versions_self_approved` (only an approved row carries it); and `ck_maker_checker`
+   rebuilt to admit a self-approved row. `review_decisions` is unchanged. Catalog-only adds.
 2. `sql/0030/02_lv_guard`: `lv_guard()` is 0026's body plus one exception to the maker and chain
    checks: an active `owner` approver while the tenant's setting is on (the API rule,
-   `app/services/maker_checker.py`). Role, active, email and current-version checks are unchanged.
+   `app/services/maker_checker.py`), the setting read `FOR SHARE` so a concurrent toggle and an
+   approval serialize. It sets `self_approved`. Role, active, email and current-version checks
+   are unchanged.
 3. `sql/0030/03_audit_allowlist`: 0024's `audit_allowlist` plus `owner_self_approval` on `tenant`.
 
 Downgrade (local and CI only, RULES.md "No prod downgrade") refuses while a self-approval is

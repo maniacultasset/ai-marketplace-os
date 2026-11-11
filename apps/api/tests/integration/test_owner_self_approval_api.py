@@ -189,6 +189,18 @@ async def test_demoted_after_the_probe_is_refused(
     assert not _setting(gen_world) and _setting_audits(gen_world) == []
 
 
+async def test_unverified_owner_is_refused(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    """An owner account made from a copied invite link (email unverified, V1 hardening #12) can
+    never approve, so it never turns self-approval on either: 403 and no audit row."""
+    gen_world.conn.execute(
+        "UPDATE users SET email_unverified = true WHERE id = %s", [gen_world.user(OWNER)]
+    )
+    response = await _patch(api, gen_world, {"owner_self_approval": True})
+    assert response.status_code == 403, response.text
+    assert response.json()["error"]["type"] == "PERMISSION_DENIED"
+    assert not _setting(gen_world) and _setting_audits(gen_world) == []
+
+
 def _fresh(world: GenWorld, email: str, *, at: int) -> dict[str, str]:
     from .auth_support import bearer, tokens_for
 

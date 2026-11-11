@@ -24,9 +24,10 @@
 1. **The setting.** `tenants.owner_self_approval boolean NOT NULL DEFAULT false` (migration
    `0030_owner_self_approval`), read on `GET /api/v1/tenants/me` as `owner_self_approval` and
    changed on `PATCH /api/v1/tenants/me`.
-   - Only an active `owner` changes it. The route refuses any other role with 403
+   - Only an active owner with a verified email changes it. The route refuses any other role with 403
      `PERMISSION_DENIED` (an admin holds `settings:manage` but not this field), and the service reads
-     the membership again `FOR SHARE` inside its transaction.
+     the membership again `FOR SHARE` inside its transaction (`approver_state`: an unverified
+     email counts as inactive, as for an approval).
    - The change needs a step-up like a team change (ADR-0021/0023 "any": a TOTP or recovery code in
      the last 30 minutes under `MFA_ENFORCEMENT=all`; 403 `MFA_STEP_UP_REQUIRED` or
      `MFA_ENROLLMENT_REQUIRED`). The check runs for this field only, so a profile edit never asks
@@ -41,14 +42,16 @@
    `maker_checker.approve_block(..., owner_self_approval=)` is the one predicate for the approve
    path and the review read; its default is off.
 3. **The backstop.** `lv_guard` (redefined in 0030 from 0026's body) permits the same case and
-   nothing more: it reads the tenant's setting itself, lets an active owner in the chain through
+   nothing more: it reads the tenant's setting itself, `FOR SHARE` (an uncommitted toggle makes
+   the approval wait and see its value; an approval in flight makes the toggle wait), lets an active owner in the chain through
    only while it is on, and sets `listing_versions.self_approved` to whether the approver was in
    the chain. Only the trigger writes that column: `app_rw` holds no INSERT or UPDATE on it, an
    INSERT with it true is GRD01, and it is part of the set-once approval. `ck_maker_checker` admits
    an approver equal to the maker only on a row marked `self_approved`.
 4. **The record.** A self-approval is visible in three places, none of them rewritable:
    `listing_versions.self_approved` (immutable after the approval), a `listing.self_approved`
-   audit row (reason `owner_self_approval`) beside `listing.approved`, and the history read
+   audit row (reason `owner_self_approval`) beside `listing.approved`, written from the mark
+   `lv_guard` set (the approve UPDATE returns it), and the history read
    (`AuditEventOut.review.self_approval`). `review_decisions` stays as it is (append-only).
 5. **Hints.** The review read (`ListingDetail`) gains `self_approval` (true when the caller may
    approve and it would be a self-approval, so the screen can say "You're approving your own work.

@@ -17,8 +17,9 @@ predicate behind both the approve path and the review read's `can_approve`: `not
 active reviewer or owner; checked first, CP-D7), `own_work` (in the chain), else None.
 
 ADR-0031 (owner decision 2026-11-11): when the brand's `tenants.owner_self_approval` is on, an
-active `owner` in the chain is not blocked; `is_self_approval` then marks the approval, which the
-approve path records. A reviewer in the chain is always `own_work`, whatever the setting; operators
+active `owner` in the chain is not blocked. `lv_guard` marks the approval
+(`listing_versions.self_approved`) and the approve path records that mark; `is_self_approval` is
+the review read's preview of it. A reviewer in the chain is always `own_work`, whatever the setting; operators
 and admins never approve. `lv_guard` (MKC01) permits exactly the same case.
 """
 

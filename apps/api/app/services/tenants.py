@@ -136,7 +136,8 @@ async def update_profile(
     _check_voice(fields)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         if SETTING_FIELD in fields:
-            member = await uow.members.role_for_share(principal.user_id)
+            # approver_state: the membership FOR SHARE, inactive while the email is unverified
+            member = await uow.members.approver_state(principal.user_id)
             if member is None or member[0] not in SETTING_ROLES or not member[1]:
                 raise ForbiddenError("only an owner changes owner_self_approval")
         row = await uow.tenants.lock_profile()

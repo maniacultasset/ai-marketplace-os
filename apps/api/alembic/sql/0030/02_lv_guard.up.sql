@@ -56,9 +56,15 @@ BEGIN
     RAISE EXCEPTION 'approver email is unverified' USING ERRCODE = 'MKC01';
   END IF;
   -- 0030 (ADR-0031): an active owner may approve its own work while the tenant's
-  -- owner_self_approval is on; a reviewer never may, nor anyone while the setting is off
-  self_ok := m.role = 'owner' AND coalesce(
-    (SELECT t.owner_self_approval FROM public.tenants t WHERE t.id = NEW.tenant_id), false);
+  -- owner_self_approval is on; a reviewer never may, nor anyone while the setting is off. The
+  -- row is read FOR SHARE (app_rw holds UPDATE on the column): an uncommitted toggle makes this
+  -- approval wait and see its value, and an approval in flight makes the toggle wait.
+  self_ok := false;
+  IF m.role = 'owner' THEN
+    SELECT t.owner_self_approval INTO self_ok FROM public.tenants t
+     WHERE t.id = NEW.tenant_id FOR SHARE;
+    self_ok := coalesce(self_ok, false);
+  END IF;
   own := approver = NEW.generated_by_user_id OR coalesce(approver = NEW.edited_by_user_id, false);
   IF own AND NOT self_ok THEN
     RAISE EXCEPTION 'the maker or editor cannot approve' USING ERRCODE = 'MKC01';
