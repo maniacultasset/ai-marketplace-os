@@ -36,7 +36,7 @@ def _members(conn: Conn) -> set[str]:
     return set(re.findall(r"'([a-z_]+)'", str(definition)))
 
 
-def test_single_head_on_0027() -> None:
+def test_chained_on_0027() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

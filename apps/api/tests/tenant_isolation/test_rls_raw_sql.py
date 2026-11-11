@@ -58,6 +58,7 @@ TENANT_COLUMN: dict[str, str] = {
     "refresh_tokens": "tenant_id",
     "review_decisions": "tenant_id",
     "rules": "tenant_id",
+    "sku_counters": "tenant_id",  # 0029 (client feedback 11 Nov)
     "tenant_memberships": "tenant_id",
     "tenants": "id",
     "validation_runs": "tenant_id",

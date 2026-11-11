@@ -36,6 +36,7 @@ from app.repositories.jobs import NotEligibleError
 from app.repositories.products import ProductRepository
 from app.workers.policy import (
     CANDIDATE_ENTITY,
+    CATEGORY_DRAFT_PAYLOAD,
     CATEGORY_SUGGESTION_ENTITY,
     COLUMN_MAP_ENTITY,
     SIZE_CHART_READ_ENTITY,
@@ -69,6 +70,8 @@ async def _size_chart_read_failed(session: Any, job: JobRun) -> None:
 
 
 async def _category_suggestion_failed(session: Any, job: JobRun) -> None:
+    if CATEGORY_DRAFT_PAYLOAD in (job.payload_json or {}):  # a draft: the job row is the answer
+        return
     products = ProductRepository(session, job.tenant_id)
     product = await products.get_by_id(job.entity_id)
     if product is None:

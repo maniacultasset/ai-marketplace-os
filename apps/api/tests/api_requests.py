@@ -53,6 +53,9 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "products_recategorize": {"category": "ethnic_wear_kurta_sets"},  # SI9
     "products_bulk_delete": {"product_ids": [ID]},  # PD1
     "products_size_run_create": {"sizes": ["M"]},  # V1.1
+    # client feedback 11 Nov
+    "catalog_category_suggest": {"title": "Cotton kurta set with dupatta"},
+    "skus_suggest": {"brand_name": "Acme"},  # a category needs a current template
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},
@@ -106,6 +109,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
 _INVALID_JSON: dict[str, dict[str, Any]] = {
     "auth_mfa_totp_enroll": {"current_password": ""},
     "brand_profile_update": {"default_manufacturer": {"legal_name": ""}},
+    "skus_suggest": {"category": "Bad-Slug"},  # client feedback 11 Nov
 }
 _FORM_OPS = {"brand_documents_upload", "products_bulk", "images_upload"}
 _QUERY: dict[str, dict[str, str]] = {
@@ -119,6 +123,7 @@ _QUERY: dict[str, dict[str, str]] = {
     "auth_google_callback": {"code": "g-code", "state": "st_0123456789"},
     # SI12
     "catalog_requirements_get": {"category": "tshirts"},
+    "skus_availability": {"sku": "ACME-KUR-0001"},  # client feedback 11 Nov
 }
 
 
@@ -186,6 +191,8 @@ def invalid_request(op: Operation) -> Call:
         call.params = {"state": "s" * 2049}
     elif op.op_id == "catalog_requirements_get":
         call.params = {"category": "Bad-Slug"}
+    elif op.op_id == "skus_availability":
+        call.params = {"sku": "has space"}
     elif op.op_id in _QUERY:
         call.params = {**call.params, "from": "not-a-date"}
     elif op.op_id in _INVALID_JSON:

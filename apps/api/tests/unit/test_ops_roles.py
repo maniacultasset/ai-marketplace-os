@@ -97,6 +97,12 @@ Q7: dict[str, str] = {
     "imports_column_map_get": "tenant:read",  # SI14
     "imports_column_map_confirm": "product:import",  # SI14
     "catalog_requirements_get": "tenant:read",  # SI12
+    # client feedback 11 Nov
+    "catalog_categories_list": "tenant:read",
+    "catalog_category_suggest": "product:import",
+    "catalog_category_suggestion_get": "tenant:read",
+    "skus_availability": "tenant:read",
+    "skus_suggest": "product:import",
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
     "image_candidates_reject": "product:import",

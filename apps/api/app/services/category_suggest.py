@@ -56,6 +56,7 @@ __all__ = [
     "classify_text",
     "compute_digest",
     "enqueue_suggestion",
+    "peek_replay",
     "request_suggestion",
     "stored_suggestion",
     "suggest_inputs",
@@ -218,9 +219,11 @@ async def enqueue_suggestion(
     return enqueued.job.id
 
 
-async def _peek(
+async def peek_replay(
     principal: Principal, key: str, path: str, payload: bytes
 ) -> tuple[int, dict[str, Any]] | None:
+    """A completed replay of the key (its stored status and body), else None; another body
+    under the key is 409 `IDEMPOTENCY_KEY_REUSED`. Read before the budget admission."""
     digest = request_hash(METHOD, path, payload)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         seen = await IdempotencyKeyRepository(uow.session, principal.tenant_id).peek(
@@ -239,7 +242,7 @@ async def request_suggestion(
     tenant = principal.tenant_id
     settings = get_settings()
     payload = json.dumps({"product_id": str(product_id)}, sort_keys=True).encode()
-    replay = await _peek(principal, idem_key, path, payload)
+    replay = await peek_replay(principal, idem_key, path, payload)
     if replay is not None:
         return replay
     async with tenant_uow(tenant, user_id=principal.user_id) as uow:

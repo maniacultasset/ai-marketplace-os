@@ -144,6 +144,16 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI12: the size-chart read and the marketplace needs (100 + 2)
     ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
+    # client feedback 11 Nov: the category picker, the suggestion before save, the SKU help
+    ("catalog_categories_list", "GET", "/catalog/categories"),
+    ("catalog_category_suggest", "POST", "/catalog/category-suggestions"),
+    (
+        "catalog_category_suggestion_get",
+        "GET",
+        "/catalog/category-suggestions/{suggestion_id}",
+    ),
+    ("skus_availability", "GET", "/skus/availability"),
+    ("skus_suggest", "POST", "/skus/suggestion"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
     # V1.1 (client input 8 Nov): the size run from the saved size chart
@@ -295,6 +305,8 @@ D9_IDEMPOTENT = {
     "imports_column_map_create",  # SI14
     "imports_column_map_confirm",  # SI14
     "products_size_run_create",  # V1.1
+    "catalog_category_suggest",  # client feedback 11 Nov
+    "skus_suggest",  # client feedback 11 Nov
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -471,8 +483,9 @@ def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
     # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
     # the ADR-0019 amendment adds the sign-up status poll
-    # FB6 (client feedback item 6) adds the Home summary
-    assert len(OPS) == 113
+    # FB6 (client feedback item 6) adds the Home summary; the client feedback of 11 Nov adds the
+    # category list, the draft suggestion and its read, and the SKU check and suggestion
+    assert len(OPS) == 118
 
 
 def test_error_codes_per_d2() -> None:
@@ -544,6 +557,7 @@ def test_error_codes_per_d2() -> None:
         "listings_regenerate",
         "size_chart_read_create",
         "products_category_suggest",  # SI14
+        "catalog_category_suggest",  # client feedback 11 Nov
     }
     for op in OPS.values():
         codes = op.error_codes

@@ -71,7 +71,11 @@ from app.api.v1.schemas.auth import (
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
-from app.api.v1.schemas.catalog import RequirementsOut
+from app.api.v1.schemas.catalog import (
+    CategoryCatalogOut,
+    CategoryDraftSuggestionOut,
+    RequirementsOut,
+)
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
@@ -117,6 +121,7 @@ from app.api.v1.schemas.signup import (
 )
 from app.api.v1.schemas.size_chart_read import SizeChartReadOut
 from app.api.v1.schemas.size_run import SizeRunOut
+from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
@@ -904,6 +909,25 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("catalog_requirements_get", "GET", "/catalog/requirements", 200, RequirementsOut,
               "catalog", "What each marketplace needs for a category", "SI12",
               query=("category",), action=A.TENANT_READ),
+    # ---- client feedback 11 Nov: the category picker, the suggestion before save, the SKU ----
+    Operation("catalog_categories_list", "GET", "/catalog/categories", 200, CategoryCatalogOut,
+              "catalog", "The categories you can pick, and what each marketplace is sent",
+              "SI14", action=A.TENANT_READ),
+    Operation("catalog_category_suggest", "POST", "/catalog/category-suggestions", 202,
+              CategoryDraftSuggestionOut, "catalog",
+              "Suggest a category for a product before it is saved", "SI14", has_body=True,
+              idempotency=True, action=A.PRODUCT_IMPORT, extra_codes=_AI_ADMISSION,
+              also_status=200),
+    Operation("catalog_category_suggestion_get", "GET",
+              "/catalog/category-suggestions/{suggestion_id}", 200, CategoryDraftSuggestionOut,
+              "catalog", "Read a category suggestion", "SI14", path_id="suggestion_id",
+              action=A.TENANT_READ),
+    Operation("skus_availability", "GET", "/skus/availability", 200, SkuAvailabilityOut,
+              "products", "Whether a SKU is free in this brand", "SI14", query=("sku",),
+              action=A.TENANT_READ),
+    Operation("skus_suggest", "POST", "/skus/suggestion", 200, SkuSuggestionOut, "products",
+              "Make a new SKU for this brand", "SI14", has_body=True, idempotency=True,
+              action=A.PRODUCT_IMPORT),
     # ---- SI14: the V1.1 assist (category suggestion) ----
     Operation("products_category_suggest", "POST", "/products/{product_id}/category-suggestion",
               202, CategorySuggestionAccepted, "products",
