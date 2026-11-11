@@ -7,7 +7,8 @@ sent):
 
 1. each `ErrorItem` keyed `source|field|error_code|COALESCE(rule_id, raw_code, 'template:'+key, '')`
    (`key` is the template attribute of a `rules_engine` item with no rule, `attributes.<key>`);
-   class, retry class and fix action from the item, else `ERROR_CODE_META` (else `unknown`);
+   class, retry class and fix action from the item, else `ERROR_CODE_META` (else `unknown`); a
+   missing recommended attribute (`is_recommendation`, feedback item 10) is never a row;
 2. upserted on the open-issue index (a repeat counts an occurrence; a fresh row links the
    latest closed row with the same key as its `recurrence_of_id`);
 3. the open rows of this listing and source whose key the report no longer has are closed, with
@@ -44,6 +45,7 @@ from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.auto_fix.fixers import FixRecord
 from app.services.auto_fix.policy import override_reason
+from app.services.rules_engine import is_recommendation
 
 log = get_logger(__name__)
 
@@ -203,6 +205,8 @@ async def sync_issues(
     items: dict[str, ErrorItem] = {}
     for item in report.errors:
         if scope_fields is not None and item.field not in scope_fields:
+            continue
+        if is_recommendation(item):  # feedback item 10: shown on review, never an inbox issue
             continue
         items.setdefault(dedupe_key(source, item, channel=channel), item)
     opened = repeated = closed_now = 0

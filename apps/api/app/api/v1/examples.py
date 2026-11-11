@@ -533,6 +533,22 @@ _GOOGLE_SIGNUP_STATUS: Final = {
 }
 
 # SI10: the platform admin's AI credit card
+# feedback item 10: the tshirts templates' requirement levels (`GET /catalog/requirements`)
+_TSHIRT_LEVELS_FLIPKART: Final = {
+    "color": "required",
+    "country_of_origin": "optional",
+    "fabric_type": "required",
+    "fiber_composition": "optional",
+    "fit": "recommended",
+    "manufacturer": "optional",
+    "neckline": "recommended",
+    "number_of_pieces": "optional",
+    "pattern": "recommended",
+    "size": "optional",
+    "sleeve_length": "recommended",
+}
+_TSHIRT_LEVELS_AMAZON: Final = {**_TSHIRT_LEVELS_FLIPKART, "product_weight": "optional"}
+
 _AI_CREDIT: Final[dict[str, Any]] = {
     "state": "paused",
     "paused_reason": "credit_exhausted",
@@ -1164,6 +1180,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "package_weight",
                 "selling_price",
             ],
+            "levels": {"amazon": _TSHIRT_LEVELS_AMAZON, "flipkart": _TSHIRT_LEVELS_FLIPKART},
         },
         "admin_ai_credit_resume": {
             **_AI_CREDIT,

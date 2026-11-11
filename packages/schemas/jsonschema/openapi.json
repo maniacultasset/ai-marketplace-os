@@ -8158,8 +8158,43 @@
         "title": "RemoteCheckOut",
         "type": "object"
       },
+      "RequirementLevelsOut": {
+        "description": "Feedback item 10: each marketplace's current category template, as the requirement level\nof every attribute it names (`required`, `conditional`, `recommended`, `optional`,\n`unsupported`). Empty when the category has no template (or is switched off).",
+        "properties": {
+          "amazon": {
+            "additionalProperties": {
+              "enum": [
+                "required",
+                "conditional",
+                "recommended",
+                "optional",
+                "unsupported"
+              ],
+              "type": "string"
+            },
+            "title": "Amazon",
+            "type": "object"
+          },
+          "flipkart": {
+            "additionalProperties": {
+              "enum": [
+                "required",
+                "conditional",
+                "recommended",
+                "optional",
+                "unsupported"
+              ],
+              "type": "string"
+            },
+            "title": "Flipkart",
+            "type": "object"
+          }
+        },
+        "title": "RequirementLevelsOut",
+        "type": "object"
+      },
       "RequirementsOut": {
-        "description": "Each list is the sorted dictionary keys the marketplace needs before it accepts a listing\nof this category: its required facts, the category template's required attributes and a\nreviewed extras table. Shown to the seller; the extras are never sent.",
+        "description": "Each list is the sorted dictionary keys the marketplace needs before it accepts a listing\nof this category: its required facts, the category template's required attributes and a\nreviewed extras table. Shown to the seller; the extras are never sent. `levels` is the\ntemplate's own requirement level per attribute.",
         "properties": {
           "amazon": {
             "items": {
@@ -8179,6 +8214,9 @@
             },
             "title": "Flipkart",
             "type": "array"
+          },
+          "levels": {
+            "$ref": "#/components/schemas/RequirementLevelsOut"
           }
         },
         "required": [
@@ -24395,7 +24433,7 @@
     },
     "/api/v1/catalog/requirements": {
       "get": {
-        "description": "The dictionary keys Amazon and Flipkart need for a listing of `category`: each\nmarketplace's required facts, the category template's required attributes and a reviewed\nextras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN\nexemption, and the audience for Kurta sets and T-shirts). Shown as \"Needed\"; the extras are\nnever sent. An unknown category answers the facts and extras only.",
+        "description": "The dictionary keys Amazon and Flipkart need for a listing of `category`: each\nmarketplace's required facts, the category template's required attributes and a reviewed\nextras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN\nexemption, and the audience for Kurta sets and T-shirts). Shown as \"Needed\"; the extras are\nnever sent. `levels` gives each marketplace template's requirement level per attribute\n(`required`, `conditional`, `recommended`, `optional`, `unsupported`); a missing\n`recommended` one is a non-blocking warning on review. An unknown category answers the facts\nand extras only, with empty levels.",
         "operationId": "catalog_requirements_get",
         "parameters": [
           {
@@ -24439,7 +24477,36 @@
                     "package_dimensions",
                     "package_weight",
                     "selling_price"
-                  ]
+                  ],
+                  "levels": {
+                    "amazon": {
+                      "color": "required",
+                      "country_of_origin": "optional",
+                      "fabric_type": "required",
+                      "fiber_composition": "optional",
+                      "fit": "recommended",
+                      "manufacturer": "optional",
+                      "neckline": "recommended",
+                      "number_of_pieces": "optional",
+                      "pattern": "recommended",
+                      "product_weight": "optional",
+                      "size": "optional",
+                      "sleeve_length": "recommended"
+                    },
+                    "flipkart": {
+                      "color": "required",
+                      "country_of_origin": "optional",
+                      "fabric_type": "required",
+                      "fiber_composition": "optional",
+                      "fit": "recommended",
+                      "manufacturer": "optional",
+                      "neckline": "recommended",
+                      "number_of_pieces": "optional",
+                      "pattern": "recommended",
+                      "size": "optional",
+                      "sleeve_length": "recommended"
+                    }
+                  }
                 },
                 "schema": {
                   "$ref": "#/components/schemas/RequirementsOut"

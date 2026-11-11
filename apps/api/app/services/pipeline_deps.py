@@ -81,7 +81,7 @@ from app.services.embeddings import (
     get_embedder,
 )
 from app.services.rejected_values import with_rejections
-from app.services.rules_engine import evaluate
+from app.services.rules_engine import evaluate, without_recommendations
 from app.services.rules_loader import LoadedRules
 from app.services.seller_facts import seller_overlay
 
@@ -527,6 +527,9 @@ class BackendPipelineDeps:
 
             def engine(candidate: CanonicalListing) -> ErrorReport:
                 report = evaluate(candidate, ruleset, template=template, product=product)
+                # feedback item 10: a missing recommended attribute is the seller's to add, never
+                # the model's to fill, so the pipeline never sees one
+                report = without_recommendations(report)
                 # SI9 B5 (CP-D13, CP-D26): only the ERROR flags reach the correction loop, so a
                 # warning can never loop it into corrections_exhausted
                 return with_rejections(report, candidate, rejections, errors_only=True)

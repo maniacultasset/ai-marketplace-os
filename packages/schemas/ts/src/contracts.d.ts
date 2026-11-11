@@ -591,6 +591,7 @@ export interface CategoryTemplate {
   external_category_id?: string | null;
   marketplace: Marketplace;
   optional_attributes?: string[];
+  recommended_attributes?: string[];
   required_attributes?: string[];
   specs?: {
     [k: string]: AttributeSpec;
