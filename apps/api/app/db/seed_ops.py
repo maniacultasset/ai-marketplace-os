@@ -57,6 +57,7 @@ from app.db.platform_loads import (
 )
 from app.db.seed_templates import flipkart_seed_templates, seed_templates
 from app.repositories.base import TenantScopedRepository
+from app.services.rules_engine import warning_count
 
 SEED_NAMESPACE: Final = uuid.UUID("5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00")
 # A§5; reachable only under APP_ENV=local (PLAN D9)
@@ -682,7 +683,7 @@ async def seed_demo_listing(
             template_version=template_version,
             facts_digest=hashlib.sha256(b"{}").digest(),
             blocking_count=len(report.blocking),
-            warning_count=len(report.errors) - len(report.blocking),
+            warning_count=warning_count(report),
         )
         .on_conflict_do_nothing()
     )

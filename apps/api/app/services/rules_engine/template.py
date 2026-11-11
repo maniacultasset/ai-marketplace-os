@@ -94,6 +94,16 @@ def is_recommendation(item: ErrorItem) -> bool:
     )
 
 
+def warning_count(report: ErrorReport) -> int:
+    """The warnings that need a look: the non-blocking items minus the recommendations, so a
+    validation run never counts a missing recommended attribute as a warning (item 10)."""
+    return sum(
+        1
+        for item in report.errors
+        if item.severity is not Severity.ERROR and not is_recommendation(item)
+    )
+
+
 def without_recommendations(report: ErrorReport) -> ErrorReport:
     """The report minus its recommendations; the status is unchanged (they never block)."""
     kept = [item for item in report.errors if not is_recommendation(item)]

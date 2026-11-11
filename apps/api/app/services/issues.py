@@ -179,6 +179,26 @@ def _issue(
 RECLASSIFIED_SOURCES: Final = frozenset({"vision_model"})
 
 
+def issue_items(
+    report: ErrorReport,
+    source: str,
+    *,
+    scope_fields: Sequence[str] | None = None,
+    channel: Channel = "live",
+) -> dict[str, ErrorItem]:
+    """The report's items that become issue rows, by dedupe key (the first item of a key wins):
+    the ones in `scope_fields` when given, never a recommendation (feedback item 10: shown on
+    review, never an Inbox issue, so never a question)."""
+    items: dict[str, ErrorItem] = {}
+    for item in report.errors:
+        if scope_fields is not None and item.field not in scope_fields:
+            continue
+        if is_recommendation(item):
+            continue
+        items.setdefault(dedupe_key(source, item, channel=channel), item)
+    return items
+
+
 async def sync_issues(
     uow: TenantUnitOfWork,
     listing: Any,
@@ -202,13 +222,7 @@ async def sync_issues(
     only preview rows, and a live sync never closes one."""
     if source not in ISSUE_SOURCES:
         raise ValueError(f"{source} is not an issue source")
-    items: dict[str, ErrorItem] = {}
-    for item in report.errors:
-        if scope_fields is not None and item.field not in scope_fields:
-            continue
-        if is_recommendation(item):  # feedback item 10: shown on review, never an inbox issue
-            continue
-        items.setdefault(dedupe_key(source, item, channel=channel), item)
+    items = issue_items(report, source, scope_fields=scope_fields, channel=channel)
     opened = repeated = closed_now = 0
     for key, item in items.items():
         new = _issue(
