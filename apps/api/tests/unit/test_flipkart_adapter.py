@@ -673,3 +673,76 @@ async def test_flipkart_style_code_issue_fails_facts_style_number() -> None:
 
 async def test_flipkart_style_number_retry_sends_style_code_only() -> None:
     assert await _update_names(["facts.style_number"]) == ["style_code"]
+
+
+# ---- feedback item 20: `attribute_errors` and the payload-path rows ----
+
+
+def _flipkart_rows() -> list[Any]:
+    from app.adapters.error_map import ErrorMapRow
+    from app.cli import ERROR_MAP_FLIPKART_PATH
+    from app.db.platform_loads import load_error_map_file
+
+    names = (
+        "match_on", "raw_value", "version", "error_code", "error_class", "retry_class",
+        "severity", "auto_fixable", "fix_action", "field_hint", "plain_text", "seller_action",
+        "enabled",
+    )  # fmt: skip
+    return [
+        ErrorMapRow(marketplace=r.marketplace.value, **{n: getattr(r, n) for n in names})
+        for r in load_error_map_file(ERROR_MAP_FLIPKART_PATH)
+    ]
+
+
+PRICE_ISSUE = {"code": "FK-MRP-1", "description": "mrp is invalid", "severity": "ERROR",
+               "path": "price.mrp"}  # fmt: skip
+TAX_ISSUE = {"code": "FK-TAX-1", "description": "hsn missing", "severity": "ERROR",
+             "path": "tax.hsn"}  # fmt: skip
+
+
+async def test_flipkart_write_reads_attribute_errors_on_the_price_paths() -> None:
+    from app.adapters.base import PRICE_PATHS
+
+    app = build_fake()
+    await _control(app, fk_attribute_errors={"FK-AE1": [PRICE_ISSUE]})
+    result = await flipkart_adapter(app, rows=_flipkart_rows()).create_listing(
+        fk_item(sku="FK-AE1")
+    )
+    assert result.status == "partially_published"
+    status = _status(result)
+    for path in PRICE_PATHS:
+        assert status[path] == "failed", path
+    errors = {f.field: f.error for f in result.fields if f.error is not None}
+    some = errors[next(iter(PRICE_PATHS))]
+    assert some is not None and some.raw_code == "FK-MRP-1"
+    assert some.error_code == "VALUE_NOT_ALLOWED" and some.message.startswith("Flipkart ")
+    assert status["content.title"] == "succeeded"
+
+
+async def test_flipkart_write_tax_path_is_an_item_level_seller_hub_row() -> None:
+    app = build_fake()
+    await _control(app, fk_attribute_errors={"FK-AE2": [TAX_ISSUE]})
+    result = await flipkart_adapter(app, rows=_flipkart_rows()).create_listing(
+        fk_item(sku="FK-AE2")
+    )
+    (item,) = result.items
+    (loose,) = [f for f in item.fields if f.field == "listing"]
+    assert loose.status == "failed" and loose.error is not None
+    assert loose.error.error_code == "MISSING_ATTRIBUTE" and loose.error.raw_code == "FK-TAX-1"
+    assert "Seller Hub" in (loose.error.suggestion or "")
+
+
+async def test_flipkart_read_attribute_errors_with_a_price_path() -> None:
+    from app.adapters.base import PRICE_PATHS
+
+    app = build_fake()
+    adapter = flipkart_adapter(app, rows=_flipkart_rows())
+    await adapter.create_listing(fk_item(sku="FK-AE3"))
+    [key] = [k for k in app.state.fake.fk_items if k[1] == "FK-AE3"]
+    app.state.fake.fk_items[key]["attribute_errors"] = [PRICE_ISSUE]
+    got = await adapter.get_listing("FK-AE3")
+    by = {f.field: f for f in got.fields}
+    for path in PRICE_PATHS:
+        assert by[path].status == "failed", path
+        assert by[path].error is not None and by[path].error.raw_code == "FK-MRP-1"
+    assert by["content.title"].status == "succeeded"

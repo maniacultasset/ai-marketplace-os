@@ -35,6 +35,7 @@ from app.api.v1.schemas.batches import (
     BatchResult,
     PublishRequest,
 )
+from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.listings import (
     AuditEventOut,
     ListingContentPatch,
@@ -340,6 +341,18 @@ async def listings_resolution(listing_id: ListingId, principal: CurrentPrincipal
     from app.services.resolution.read import resolution_for
 
     return ResolutionOut.model_validate(await resolution_for(principal, listing_id))
+
+
+@route(router, OPS["listings_issue_history"])
+async def listings_issue_history(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> IssueHistoryOut:
+    """Feedback item 20: every marketplace ERROR of the listing in plain words with who handles
+    it (Kuinn, you, the marketplace side or Kuinn's team), and each fix Kuinn made with its before
+    and after values, reason and outcome. A read: the engine never runs here."""
+    from app.services.resolution.history import history_for
+
+    return IssueHistoryOut.model_validate(await history_for(principal, listing_id))
 
 
 @route(router, OPS["listings_refresh_status"])

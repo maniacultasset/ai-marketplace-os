@@ -97,6 +97,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
     ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
+    ("listings_issue_history", "GET", "/listings/{listing_id}/issue-history"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -485,7 +486,8 @@ def test_operation_count() -> None:
     # the ADR-0019 amendment adds the sign-up status poll
     # FB6 (client feedback item 6) adds the Home summary; the client feedback of 11 Nov adds the
     # category list, the draft suggestion and its read, and the SKU check and suggestion
-    assert len(OPS) == 118
+    # FB20 (client feedback item 20) adds the listing issue history
+    assert len(OPS) == 119
 
 
 def test_error_codes_per_d2() -> None:
