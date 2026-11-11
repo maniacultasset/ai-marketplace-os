@@ -157,9 +157,14 @@ def stored_voice(voice: BrandVoice | None) -> dict[str, Any] | None:
 
 
 def changed_voice_fields(before: Any, after: dict[str, Any] | None) -> list[str]:
-    """The voice fields whose stored value moves (the audit row's `brand_voice`)."""
-    old = before if isinstance(before, dict) else {}
-    new = after or {}
+    """The voice fields whose stored value moves (the audit row's `brand_voice`).
+
+    Both sides are read over the empty shape, so a missing key, None and [] are one value:
+    the first save names only the answered fields, and clearing names only the ones it empties.
+    """
+    empty = BrandVoice().model_dump(mode="json")
+    old = {**empty, **before} if isinstance(before, dict) else empty
+    new = {**empty, **(after or {})}
     return [key for key in VOICE_FIELDS if old.get(key) != new.get(key)]
 
 

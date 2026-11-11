@@ -75,7 +75,8 @@ def test_upgrade_downgrade_upgrade(alembic_env: MakeConfig, scratch_db: ScratchD
         ("{}", True),
         ('["not", "an", "object"]', False),
         ('"text"', False),
-        ('{"example_copy": "' + "x" * 17000 + '"}', False),
+        ('{"example_copy": "' + "\u0915" * 21000 + '"}', True),
+        ('{"example_copy": "' + "x" * 66000 + '"}', False),
     ],
 )
 def test_check_refuses_a_non_object_or_oversized_voice(

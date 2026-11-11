@@ -120,6 +120,33 @@ def test_changed_voice_fields() -> None:
     assert changed_voice_fields("not a dict", None) == []
 
 
+def test_changed_voice_fields_names_only_answered_fields() -> None:
+    one = stored_voice(BrandVoice(price_segment="mid"))
+    assert changed_voice_fields(None, one) == ["price_segment"]
+    assert changed_voice_fields(one, None) == ["price_segment"]
+    assert changed_voice_fields({}, {"words_to_use": []}) == []
+
+
+def test_full_voice_in_devanagari_fits_the_column_check() -> None:
+    """Every cap at its limit with 3-byte characters stays under ck_brand_profiles_brand_voice."""
+    import json
+
+    word, phrase = "\u0915" * 60, "\u0916" * 200
+    voice = BrandVoice(
+        audience="\u0917" * 300,
+        price_segment="premium",
+        positioning="\u0918" * 500,
+        differentiators=[f"{i}{phrase[:-2]}" for i in range(8)],
+        words_to_use=[f"{i:02}{word[:-2]}" for i in range(30)],
+        words_to_avoid=[f"{i:02}{word[:-2]}" for i in range(30)],
+        claim_limits=[f"{i:02}{phrase[:-2]}" for i in range(15)],
+        example_copy="\u0919" * 1500,
+    )
+    stored = stored_voice(voice)
+    assert stored is not None
+    assert len(json.dumps(stored, ensure_ascii=False).encode()) <= 65536
+
+
 def test_voice_for_prompt() -> None:
     assert voice_for_prompt(None) is None
     assert voice_for_prompt(FULL) == FULL

@@ -4,7 +4,7 @@ Claimed in CANON.md under the V1.1 delegation (client feedback 11 Nov 2026, item
 as migrator, in one transaction with `lock_timeout = '5s'`.
 
 1. `sql/0030/01_brand_voice`: `brand_profiles.brand_voice jsonb` (nullable, no default: catalog
-   only) behind `ck_brand_profiles_brand_voice` (a JSON object of at most 16 KiB; the API's
+   only) behind `ck_brand_profiles_brand_voice` (a JSON object of at most 64 KiB; the API's
    `BrandVoice` model holds the shape and the per-field caps), NOT VALID, then validated.
 2. `sql/0030/02_audit_allowlist`: `audit_allowlist()` is 0024's body with `brand_voice` added to
    `brand_profile` (the audit row names the changed voice fields, never their text).
