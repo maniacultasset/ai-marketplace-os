@@ -6,7 +6,11 @@
 # Brings up a fresh stack (scripts/e2e/lib/fresh_stack.sh, profile acceptance) with raised rate
 # limits in the API's process env only (PLAN D6: the committed defaults never change) and Flipkart
 # on, as `make dev` runs it (S22 C2; with the flag off every Flipkart route is a by-design 501,
-# which `not_a_server_error` would count; the flag-off 501 is the acceptance run's leg), seeds the
+# which `not_a_server_error` would count; the flag-off 501 is the acceptance run's leg) and Google
+# sign-in on against the stack's fake Google, as `make dev` runs it (ADR-0020; DASHBOARD_BASE_URL
+# is the API itself, so the callback's 303 lands on a loopback 404 instead of a closed port). MFA
+# stays off, the committed default: scripts/fuzz/schemathesis.toml accepts only its documented 501
+# on the eight MFA routes (G4, 10 Nov nightly: those 501s were the run's 12 "server errors"), seeds the
 # local demo tenants, logs in one user per role over HTTP and runs `schemathesis run` once per
 # token: every check but the two below, every phase (stateful included), the given seed.
 # Excluded (S26 DEVIATIONS): `positive_data_acceptance` (the API's validators are stricter than
@@ -38,6 +42,15 @@ RATE_LIMIT_PER_TENANT_PER_MIN=100000
 RATE_LIMIT_PER_IP_PER_MIN=100000
 AUTH_LOGIN_RATE_LIMIT_PER_MIN=100000
 FLIPKART_ENABLED=true
+AUTH_GOOGLE_RATE_LIMIT_PER_MIN=100000
+DASHBOARD_BASE_URL=@BASE_URL@
+GOOGLE_OAUTH_ENABLED=true
+GOOGLE_OAUTH_CLIENT_ID=fake-google-client.apps.googleusercontent.com
+GOOGLE_OAUTH_CLIENT_SECRET=fake-google-client-secret-local-only
+GOOGLE_AUTHORIZE_URL=@FAKE_URL@/google/authorize
+GOOGLE_TOKEN_URL=@FAKE_URL@/google/token
+GOOGLE_JWKS_URL=@FAKE_URL@/google/certs
+GOOGLE_ISSUER=@FAKE_URL@/google
 LIMITS
 stack=""
 cleanup() {
@@ -71,7 +84,8 @@ for role in $ROLES; do
   code="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" "$base_url/api/v1/auth/me")"
   if [ "$code" = 401 ]; then token="$(login "$role")"; fi
   echo "fuzz: role=$role"
-  uv run --frozen schemathesis run "$base_url/openapi.json" \
+  uv run --frozen schemathesis --config-file scripts/fuzz/schemathesis.toml \
+    run "$base_url/openapi.json" \
     --checks all \
     --exclude-checks positive_data_acceptance,negative_data_rejection \
     --phases examples,coverage,fuzzing,stateful \
