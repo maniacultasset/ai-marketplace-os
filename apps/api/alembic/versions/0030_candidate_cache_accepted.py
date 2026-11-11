@@ -21,7 +21,7 @@ Downgrade (local and CI only, RULES.md "No prod downgrade") refuses while an acc
 its cache key with another covered row, then restores the 0018 predicate the same way.
 
 Revision ID: 0030_candidate_cache_accepted
-Revises: 0028_photo_read_on_upload
+Revises: 0029_admin_google_link
 Create Date: 2026-11-11
 
 """
@@ -33,7 +33,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0030_candidate_cache_accepted"
-# The single head on main at build (0029_admin_google_link, PR #155, is not merged yet).
+# The single head on main after #155 (0029_admin_google_link).
 down_revision: str | Sequence[str] | None = "0029_admin_google_link"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
