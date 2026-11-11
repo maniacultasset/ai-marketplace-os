@@ -894,17 +894,24 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
         after: tuple[datetime, uuid.UUID] | None,
         limit: int,
     ) -> tuple[builtins.list[ListingVersion], bool]:
-        """Item 17: one keyset page of the listing's versions over `(created_at, id)` DESC (the
-        newest first) and whether more rows follow."""
+        """Item 17: one page of the listing's versions, the highest version number first, and
+        whether more rows follow. The order is `version` (unique per listing), not `created_at`:
+        `now()` is the transaction start, so a slow generation can take the next number after a
+        quicker edit yet carry the earlier stamp. The cursor keeps the shared `(created_at, id)`
+        shape; its id anchors the page at that row's version (an unknown id gives no rows)."""
         if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
         v = ListingVersion
         stmt = self._select().where(v.listing_id == listing_id)
         if after is not None:
-            at, row_id = after
-            bound = tuple_(literal(at, v.created_at.type), literal(row_id, v.id.type))
-            stmt = stmt.where(tuple_(v.created_at, v.id) < bound)
-        stmt = stmt.order_by(v.created_at.desc(), v.id.desc()).limit(limit + 1)
+            _, row_id = after
+            anchor = (
+                select(v.version)
+                .where(v.listing_id == listing_id, v.id == literal(row_id, v.id.type))
+                .scalar_subquery()
+            )
+            stmt = stmt.where(v.version < anchor)
+        stmt = stmt.order_by(v.version.desc()).limit(limit + 1)
         rows = builtins.list((await self.db.execute(stmt)).scalars())
         return rows[:limit], len(rows) > limit
 

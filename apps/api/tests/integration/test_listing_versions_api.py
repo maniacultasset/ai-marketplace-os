@@ -97,6 +97,29 @@ async def test_versions_newest_first_keyset(api: httpx.AsyncClient, gen_world: G
     assert second["page"]["has_more"] is False
 
 
+async def test_versions_order_by_number_not_stamp(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """`now()` is the transaction start: a slow write can take the higher number with the earlier
+    stamp. The list still runs by version number, page after page."""
+    made = await generated(gen_world, OPERATOR)
+    made = await edited(api, gen_world, made, OWNER)
+    made = await edited(api, gen_world, made, OWNER)
+    with gen_world.conn.transaction():
+        gen_world.conn.execute("SET LOCAL session_replication_role = replica")  # past lv_guard
+        gen_world.conn.execute(
+            "UPDATE listing_versions SET created_at = now() - version * interval '1 hour' "
+            "WHERE listing_id = %s",
+            [made.listing_id],
+        )
+    first = (await _get(api, gen_world, made.listing_id, limit=2)).json()
+    assert [v["version"] for v in first["data"]] == [3, 2]
+    second = (
+        await _get(api, gen_world, made.listing_id, limit=2, cursor=first["page"]["next_cursor"])
+    ).json()
+    assert [v["version"] for v in second["data"]] == [1]
+
+
 async def test_member_names_never_cross_tenants(gen_world: GenWorld) -> None:
     """The names read is the tenant-scoped members select: another tenant's user is unnamed."""
     from app.repositories.uow import tenant_uow
