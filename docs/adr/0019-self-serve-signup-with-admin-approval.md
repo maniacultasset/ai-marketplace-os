@@ -122,11 +122,16 @@ no token, membership or tenant. Instead:
   `sha256(ip|handle)`, and 20 times that per `sha256(ip)`, on top of the public per-IP limit.
 - **The database.** The hash is written only by the SECURITY DEFINER
   `app_set_signup_status_handle(uuid, bytea)`, for the caller's own (`app.user_id`) pending
-  request; app_rw has no UPDATE on the two columns and the read-only roles do not read them. The
+  request; app_rw has no UPDATE on the two columns, an app_rw INSERT that sets either one is
+  refused (`signup_requests_status_handle_guard`, GRD01), and the read-only roles do not read
+  them. The
   poll reads through `sr_handle_select` (the row whose live hash is `app.token_hash`).
 - **What it does not change.** The oracle of decision 2 is unchanged: a live handle needs the
-  account's password (the form or the status read, both under the lockout and their limits) or
-  a Google sign-in. Whoever holds the handle (the applicant's browser keeps it in its storage)
+  account's password (the form or the status read) or a Google sign-in. The form's 202 plus one
+  poll tells a right password from a wrong one for an existing email, as the status read always
+  did, so `POST /signup` now takes the same per-email login limit as `POST /signup/status` (per
+  `sha256(ip|email)` and per email, on top of its per-IP limit), and both stay under the
+  account lockout. Whoever holds the handle (the applicant's browser keeps it in its storage)
   can read the decision for 30 days; the browser drops it once it acts on the decision. No email
   on a decision yet (still waits for ADR-0006 decision 6).
 

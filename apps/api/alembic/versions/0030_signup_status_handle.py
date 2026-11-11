@@ -18,9 +18,14 @@ index, the 0012 pattern):
    search_path, EXECUTE for app_rw only). Sets the hash and an expiry of now() + 30 days on the
    caller's own (`app.user_id`) pending request, replacing an older handle; false for any other
    row, a decided request or a hash that is not 32 bytes.
+5. `signup_requests_status_handle_guard` (BEFORE INSERT): GRD01 for an insert that sets either
+   handle column, unless the caller is migrator or a superuser. app_rw keeps its table-level
+   INSERT (sr_self_insert, sr_admin), so without it an insert could carry any hash with any
+   expiry; with it a handle is only ever set by the definer above (the 0012 verified_via
+   pattern).
 
-Downgrade (local and CI only, RULES.md "No prod downgrade") drops the index, the function, the
-policy, the CHECK and the two columns.
+Downgrade (local and CI only, RULES.md "No prod downgrade") drops the index, the trigger and
+both functions, the policy, the CHECK and the two columns.
 
 Revision ID: 0030_signup_status_handle
 Revises: 0029_admin_google_link
@@ -89,6 +94,30 @@ FUNCTION_UP: Final[tuple[str, ...]] = (
     f"REVOKE ALL ON FUNCTION {DEFINER} FROM PUBLIC",
     f"GRANT EXECUTE ON FUNCTION {DEFINER} TO app_rw",
 )
+GUARD_UP: Final[tuple[str, ...]] = (
+    """
+    CREATE FUNCTION public.signup_requests_status_handle_guard() RETURNS trigger
+      LANGUAGE plpgsql
+      SET search_path = pg_catalog, public, pg_temp
+    AS $$
+    BEGIN
+      IF (NEW.status_handle_hash IS NOT NULL OR NEW.status_handle_expires_at IS NOT NULL)
+         AND NOT (current_user = 'migrator' OR coalesce((SELECT r.rolsuper FROM pg_catalog.pg_roles r
+                  WHERE r.rolname = current_user), false)) THEN
+        RAISE EXCEPTION 'signup_requests.status_handle_* is set only by its function'
+          USING ERRCODE = 'GRD01';
+      END IF;
+      RETURN NEW;
+    END
+    $$
+    """,
+    "CREATE TRIGGER signup_requests_status_handle_guard BEFORE INSERT ON public.signup_requests "
+    "FOR EACH ROW EXECUTE FUNCTION public.signup_requests_status_handle_guard()",
+)
+GUARD_DOWN: Final[tuple[str, ...]] = (
+    "DROP TRIGGER signup_requests_status_handle_guard ON public.signup_requests",
+    "DROP FUNCTION public.signup_requests_status_handle_guard()",
+)
 FUNCTION_DOWN: Final[tuple[str, ...]] = (f"DROP FUNCTION {DEFINER}",)
 
 VALIDATE: Final = (
@@ -108,6 +137,8 @@ def upgrade() -> None:
     op.execute(POLICY)
     for statement in FUNCTION_UP:
         op.execute(statement)
+    for statement in GUARD_UP:
+        op.execute(statement)
     with op.get_context().autocommit_block():
         op.execute("SET lock_timeout = '5s'")
         op.execute(VALIDATE)
@@ -121,6 +152,8 @@ def downgrade() -> None:
         op.execute("SET lock_timeout = '5s'")
         op.execute(f"DROP INDEX CONCURRENTLY IF EXISTS public.{INDEX_NAME}")
     op.execute("SET lock_timeout = '5s'")
+    for statement in GUARD_DOWN:
+        op.execute(statement)
     for statement in FUNCTION_DOWN:
         op.execute(statement)
     op.execute(f"DROP POLICY {POLICY_NAME} ON public.signup_requests")

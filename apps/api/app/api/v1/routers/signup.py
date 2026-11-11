@@ -42,6 +42,9 @@ async def signup_create(body: SignupCreate, request: Request) -> SignupAccepted:
     do not store or compare it. `status_handle` reads the request's status with
     `POST /signup/status/poll` (keep it in the browser's storage, never in a URL)."""
     await enforce_signup_limit(request)
+    # An existing email's password is checked here too, and the answer's handle shows whether it
+    # was right, so the form also takes the status read's per-email limit (ADR-0019 amendment).
+    await enforce_login_limit(request, body.email)
     try:
         accepted = await signup.signup(
             email=body.email,

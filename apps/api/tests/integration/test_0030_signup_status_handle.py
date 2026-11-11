@@ -15,7 +15,7 @@ from alembic.script import ScriptDirectory
 
 from . import factories as f
 from .conftest import ScratchDb, expect_sqlstate
-from .integrity_support import scalar
+from .integrity_support import as_app_rw, scalar, set_gucs
 
 pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 
@@ -52,7 +52,11 @@ def _shape(conn: Conn) -> tuple[Any, ...]:
         conn,
         "SELECT count(*) FROM pg_proc WHERE proname = 'app_set_signup_status_handle' AND prosecdef",
     )
-    return (columns, check, index, policy, definer)
+    guard = scalar(
+        conn,
+        "SELECT count(*) FROM pg_trigger WHERE tgname = 'signup_requests_status_handle_guard'",
+    )
+    return (columns, check, index, policy, definer, guard)
 
 
 def test_single_head_on_0029() -> None:
@@ -68,10 +72,10 @@ def test_upgrade_downgrade_upgrade(alembic_env: MakeConfig, scratch_db: ScratchD
     cfg = alembic_env(None)
     command.upgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
-        assert _shape(conn) == (0, 0, 0, 0, 0)
+        assert _shape(conn) == (0, 0, 0, 0, 0, 0)
     command.upgrade(cfg, REVISION)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
-        assert _shape(conn) == (2, 1, 1, 1, 1)
+        assert _shape(conn) == (2, 1, 1, 1, 1, 1)
         # the read-only roles never read the hash; app_rw cannot write it
         for role in ("app_ro", "app_platform_ro"):
             assert (
@@ -102,7 +106,7 @@ def test_upgrade_downgrade_upgrade(alembic_env: MakeConfig, scratch_db: ScratchD
     command.check(cfg)
     command.downgrade(cfg, PREVIOUS)
     with psycopg.connect(scratch_db.libpq, autocommit=True) as conn:
-        assert _shape(conn) == (0, 0, 0, 0, 0)
+        assert _shape(conn) == (0, 0, 0, 0, 0, 0)
     command.upgrade(cfg, "head")
     command.check(cfg)
 
@@ -120,4 +124,30 @@ def test_check_refuses_a_half_set_or_short_handle(db: Conn) -> None:
             "23514",
             f"UPDATE signup_requests SET {sets} WHERE id = %s",  # noqa: S608 - fixed literals
             (request,),
+        )
+
+
+def test_app_rw_insert_with_a_handle_grd01(db: Conn) -> None:
+    """app_rw keeps table-level INSERT; the guard keeps the handle columns the definer's alone."""
+    user_id = f.user(db)
+    set_gucs(db, user_id=user_id)
+    with as_app_rw(db):
+        for columns, values in (
+            (
+                "status_handle_hash, status_handle_expires_at",
+                "decode(repeat('ab', 32), 'hex'), 'infinity'",
+            ),
+            ("status_handle_hash", "decode(repeat('ab', 32), 'hex')"),
+            ("status_handle_expires_at", "'infinity'"),
+        ):
+            expect_sqlstate(
+                db,
+                "GRD01",
+                "INSERT INTO signup_requests (user_id, brand_name, owner_name, "  # noqa: S608
+                f"{columns}) VALUES (%s, 'B', 'O', {values})",  # fixed literals
+                (user_id,),
+            )
+        db.execute(
+            "INSERT INTO signup_requests (user_id, brand_name, owner_name) VALUES (%s, 'B', 'O')",
+            (user_id,),
         )
