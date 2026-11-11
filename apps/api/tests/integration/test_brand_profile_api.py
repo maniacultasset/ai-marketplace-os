@@ -328,7 +328,10 @@ async def test_voice_same_again_is_a_no_op(
     # any key order, trimmed text and a repeated word store the same voice
     same = {**dict(reversed(list(VOICE.items()))), "words_to_avoid": [" cheap", "Cheap"]}
     again = await _put(
-        api, fresh, {"brand_voice": same, "brand_description": "Cotton."}, etag='"stale"'
+        api,
+        fresh,
+        {"brand_voice": same, "brand_description": "Cotton."},
+        etag='"' + "1" * 8 + "-1111-1111-1111-" + "1" * 12 + '"',  # well formed, stale
     )
     assert again.status_code == 200, again.text
     assert again.headers["ETag"] == first.headers["ETag"]
