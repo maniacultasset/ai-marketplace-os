@@ -35,6 +35,9 @@ DPP-1 rules every sign-in path here follows:
   entered, and never less than 30 minutes and 1 second ago, so a step-up always asks for a real
   code. Its 7-day renewal counts from that sign-in
   (`refresh_tokens.device_auth_at`) and only while the browser stays trusted.
+- **A platform admin's Google sign-in** (ADR-0020 amendment, owner decision 11 Nov 2026) always
+  enters the Kuinn code (or enrols first): no trusted browser is read, offered or created on it
+  (`sign_in_policy.admin_by_google`).
 """
 
 from __future__ import annotations
@@ -84,6 +87,7 @@ from app.services.sign_in_policy import (
     STEP_UP_MAX_AGE_SECONDS,
     SignInFacts,
     Step,
+    admin_by_google,
     first_factor_of,
     in_grace,
     is_locked,
@@ -381,11 +385,13 @@ async def _sign_in(
     use_device = live is not None and step == "mfa_required" and trust_usable(facts, proven=proven)
     if use_device:
         step = "signed_in"
-    trust = trust and _enforcing() and "otp" in proven and mfa_at is not None
+    # ADR-0020 amendment: an admin's Google sign-in never earns a trusted browser either
+    strict = admin_by_google(facts)
+    trust = trust and _enforcing() and "otp" in proven and mfa_at is not None and not strict
     invalid = True if device is not None and device.invalid else None
     grace = facts.grace_until if in_grace(facts) else None
     if step != "signed_in":
-        offer = step in ("mfa_required", "mfa_enrollment_required") and _enforcing()
+        offer = step in ("mfa_required", "mfa_enrollment_required") and _enforcing() and not strict
         raw, ttl = await mfa.new_challenge(
             session,
             user_id=user.id,
@@ -621,7 +627,8 @@ async def sign_in_with_google(
     locked or busy account is a `Refusal` (nothing counted: a Google sign-in is not a guess at a
     Kuinn secret); None for an inactive user or no live membership. `device_tokens` (ADR-0023)
     are every trusted-browser token the browser holds: only this user's can match, and a match
-    stands in for the code only (Google still never does)."""
+    stands in for the code only (Google still never does); never for a platform admin, who always
+    enters the code after Google (ADR-0020 amendment, 11 Nov 2026)."""
     state = await _gate(session, user.id, ip=ip)
     if isinstance(state, AuthBusy):
         return Refusal("busy")
@@ -634,7 +641,13 @@ async def sign_in_with_google(
     if not memberships and user.is_active and await members.has_suspended(user.id):
         return Refusal("tenant_suspended")
     device = None
-    if device_tokens and _enforcing() and user.is_active and memberships:
+    if (
+        device_tokens
+        and _enforcing()
+        and user.is_active
+        and memberships
+        and not user.is_platform_admin
+    ):
         device = await trusted.lookup(session, user.id, device_tokens, ip=inet(ip), now=_now())
     return await _sign_in(
         session,

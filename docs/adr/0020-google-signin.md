@@ -52,8 +52,9 @@ dashboard's `/api/*` proxy, sets no cookies and keeps tokens in memory.
    Google account), `pending` (an applicant's own sign-up request, for a linked or same-email
    applicant), `needs_details` (no account: a prefilled sign-up, owner name from Google, a brand
    name suggested from a company email's domain), `link_required` (an account with this email and
-   no Google account). Platform admins, inactive users, an email already linked to another Google
-   account and an applicant without a request get one generic failure, audited with its reason.
+   no Google account). Platform admins (until the 11 Nov 2026 amendment below), inactive users,
+   an email already linked to another Google account and an applicant without a request get one
+   generic failure, audited with its reason.
 7. **Linking needs the account's own password and code.** `link_required` hands out a link handle
    (15 minutes); the user enters the Kuinn password (`/auth/google/link`, counted toward the
    lockout), then the code or the enrolment, through the usual steps. The Google account waits on
@@ -76,6 +77,26 @@ dashboard's `/api/*` proxy, sets no cookies and keeps tokens in memory.
 11. **No new error code.** A bad handle or binding is 401 `OAUTH_STATE_INVALID`; every refusal is
     401 `UNAUTHENTICATED` with one generic message (no account oracle). Contract 2.1.0 is MINOR:
     new operations and models and two optional fields.
+
+## Amendment (11 Nov 2026): platform admins may sign in with Google, always with the code
+
+- **Status:** accepted (the owner, 11 Nov 2026, after the prod refusal of an admin's Google
+  sign-in with `google_admin`).
+- **Change to §6:** a platform admin is no longer refused. An admin goes through the same table
+  as anyone: a linked Google account signs in, an unlinked one gets `link_required` (§7: the Kuinn
+  password, counted toward the lockout, then the code; never by email alone), and inactive users,
+  an email linked to another Google account and no live membership keep their refusals (the last
+  is the same 401 the admin's password sign-in gives; an admin with no membership never sees a
+  sign-up request's status, `pending`, which the password path never shows either).
+- **The code is always asked.** A sign-in that began with Google for a platform admin
+  (`sign_in_policy.admin_by_google`) always needs the Kuinn code, or the enrolment when no factor
+  exists: a trusted browser (ADR-0023) never stands in for it, none is offered or created on that
+  sign-in, and with `MFA_ENFORCEMENT=off` (no code step) the sign-in is refused
+  (`google_admin_mfa_off`). This is at least as strict as the admin's password path.
+- **Migration:** `0029_admin_google_link` drops `AND NOT u.is_platform_admin` from
+  `app_link_google_sub`, which 0012 used as a second guard; every other condition stays.
+- **Audit:** unchanged (`auth.login` `google`, `auth.google_linked`, `auth.login_failed` with
+  its reason); `google_admin` is no longer written.
 
 ## Consequences
 

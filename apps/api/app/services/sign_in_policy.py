@@ -5,9 +5,11 @@ sign-in needs next. Google sign-in (ADR-0020) is a first factor only (`fed`): it
 grace period and never skips the code, and a user with no password never meets the password-change
 step. A trusted browser (ADR-0023) is the internal proof `dev`: it stands in for the code only
 when the code is the last thing the sign-in misses, and never for enrolment, a password change or a
-Google link; it is never stored and never reaches a token's `amr`. The counter itself is atomic SQL (`app_note_auth_failure` in migration
-`0011_mfa_lockout`), whose threshold and lock length are the literals below; a unit test keeps the
-two in step.
+Google link; it is never stored and never reaches a token's `amr`. A platform admin who began
+with Google (owner decision, 11 Nov 2026, ADR-0020 amendment) always enters the code: no trusted
+browser stands in for it, and with MFA off there is no sign-in at all. The counter itself is
+atomic SQL (`app_note_auth_failure` in migration `0011_mfa_lockout`), whose threshold and lock
+length are the literals below; a unit test keeps the two in step.
 """
 
 from __future__ import annotations
@@ -62,6 +64,12 @@ class SignInFacts:
     linking: bool = False
 
 
+def admin_by_google(f: SignInFacts) -> bool:
+    """A platform admin whose sign-in began with Google (ADR-0020 amendment, 11 Nov 2026): the
+    Kuinn code is always entered, never stood in for by a trusted browser."""
+    return f.is_platform_admin and f.first_factor == "fed"
+
+
 def _grace_running(grace_until: datetime | None, now: datetime) -> bool:
     return grace_until is not None and now < grace_until
 
@@ -91,12 +99,14 @@ def _password_change_due(f: SignInFacts) -> bool:
 
 
 def next_step(f: SignInFacts, *, proven: frozenset[str]) -> Step | None:
-    """What the sign-in needs next, or None for today's uncounted 401 (inactive user or no live
-    membership). Order: active and member, enforcement, factor, enrolment, password age, tokens."""
+    """What the sign-in needs next, or None for today's uncounted 401 (inactive user, no live
+    membership, or a platform admin's Google sign-in with MFA off). Order: active and member,
+    enforcement, factor, enrolment, password age, tokens."""
     if not f.is_active or not f.has_live_membership:
         return None
     if f.enforcement == "off":
-        return "signed_in"
+        # ADR-0020 amendment: an admin's Google sign-in needs the code, which `off` never asks
+        return None if admin_by_google(f) else "signed_in"
     if f.has_active_factor and not (proven & (SECOND_FACTORS | {DEVICE_PROOF})):
         return "mfa_required"
     if not f.has_active_factor and not in_grace(f):
@@ -108,12 +118,14 @@ def next_step(f: SignInFacts, *, proven: frozenset[str]) -> Step | None:
 
 def trust_usable(f: SignInFacts, *, proven: frozenset[str]) -> bool:
     """True when a trusted browser may stand in for the code (ADR-0023): MFA is enforced, the
-    user has an active factor, no Google account waits to be linked, and the code is the last
-    thing the sign-in misses (no enrolment, no password change)."""
+    user has an active factor, no Google account waits to be linked, the sign-in is not a
+    platform admin's Google sign-in (ADR-0020 amendment), and the code is the last thing the
+    sign-in misses (no enrolment, no password change)."""
     return (
         f.enforcement == "all"
         and f.has_active_factor
         and not f.linking
+        and not admin_by_google(f)
         and next_step(f, proven=proven | {DEVICE_PROOF}) == "signed_in"
     )
 

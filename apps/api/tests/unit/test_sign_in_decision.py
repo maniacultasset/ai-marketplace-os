@@ -356,6 +356,31 @@ def test_trust_usable_only_when_the_code_is_the_last_thing_missing() -> None:
     assert sp.trust_usable(facts(is_active=False), proven=DEV) is False
 
 
+def test_admin_by_google() -> None:
+    assert sp.admin_by_google(facts(is_platform_admin=True, first_factor="fed")) is True
+    assert sp.admin_by_google(facts(is_platform_admin=True)) is False  # the password path
+    assert sp.admin_by_google(facts(first_factor="fed")) is False
+
+
+def test_admin_google_always_needs_the_code() -> None:
+    """ADR-0020 amendment (11 Nov 2026): a platform admin who began with Google enters the code
+    every time; a trusted browser never stands in for it (it still does on the password path)."""
+    admin = facts(is_platform_admin=True, first_factor="fed")
+    assert sp.next_step(admin, proven=FED) == "mfa_required"
+    assert sp.next_step(admin, proven=FED | {"otp"}) == "signed_in"
+    assert sp.trust_usable(admin, proven=FED_DEV) is False
+    assert sp.trust_usable(facts(is_platform_admin=True), proven=DEV) is True
+    unenrolled = replace(admin, has_active_factor=False)
+    assert sp.next_step(unenrolled, proven=FED) == "mfa_enrollment_required"
+
+
+def test_admin_google_with_mfa_off_is_refused() -> None:
+    """With `off` no code step exists, so an admin's Google sign-in ends with no session."""
+    admin = facts(enforcement="off", is_platform_admin=True, first_factor="fed")
+    assert sp.next_step(admin, proven=FED) is None
+    assert sp.next_step(replace(admin, first_factor="pwd"), proven=PROVEN["pwd"]) == "signed_in"
+
+
 @pytest.mark.parametrize(("admin", "days"), [(False, 30), (True, 7)])
 def test_trust_days(admin: bool, days: int) -> None:
     assert sp.trust_days(is_platform_admin=admin) == days

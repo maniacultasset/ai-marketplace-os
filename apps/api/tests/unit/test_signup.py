@@ -805,8 +805,9 @@ def test_0021_is_the_single_head() -> None:
     # resolution (SI11) on top of the AI credit state, the photo role (SI12) on top of it, then
     # the budget indexes (V1 hardening #10), the invitee email flag (#12), and the brief-gap
     # proposals (SI13) on top of that (re-chained from 0023 at the 2026-11-09 merge), and the
-    # V1.1 assist tables (SI14) on top of them, and the photo read on upload (V1.1) on top
-    assert revisions - parents == {"0028_photo_read_on_upload"}
+    # V1.1 assist tables (SI14) on top of them, the photo read on upload (V1.1) on top, and the
+    # admin Google link (ADR-0020 amendment) on top of that
+    assert revisions - parents == {"0029_admin_google_link"}
 
 
 @pytest.mark.parametrize(
