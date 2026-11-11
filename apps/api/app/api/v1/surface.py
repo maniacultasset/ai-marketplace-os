@@ -642,7 +642,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="document_id", action=A.SETTINGS_MANAGE),
     # ---- brand (SI1) ----
     Operation("brand_profile_get", "GET", "/brand-profile", 200, BrandProfileOut, "brand",
-              "The brand profile: the default manufacturer every product inherits", "SI1",
+              "The brand profile: the default manufacturer and the website", "SI1",
               etag=True, action=A.TENANT_READ),
     Operation("brand_profile_update", "PATCH", "/brand-profile", 200, BrandProfileOut, "brand",
               "Update the brand profile (If-Match: the ETag from GET)", "SI1", has_body=True,

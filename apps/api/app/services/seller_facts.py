@@ -4,8 +4,8 @@ Pure: no I/O and no marketplace names (invariant 4). The Golden Rule (spec L763-
 attribute is never the AI's guess. Two paths carry the seller's facts to an adapter:
 
 - `seller_facts(facts)`: the facts that are not listing attributes (money, country, the
-  manufacturer, the fibre composition, and since SI5 the barcode or its exemption) as one
-  `SellerFacts` per item, reported at `facts.<key>`.
+  manufacturer, the fibre composition, since SI5 the barcode or its exemption, and the packed
+  box's sides and weight) as one `SellerFacts` per item, reported at `facts.<key>`.
 - `seller_overlay(listing, facts, template)`: the canonical listing with every factual attribute
   set from the seller's own value, or dropped when the seller gave none. The keys `SellerFacts`
   carries (`FACT_ONLY_KEYS`) leave `attributes`, so no marketplace field has two sources. The one
@@ -76,6 +76,17 @@ def _money(value: str | None) -> Decimal | None:
         return None  # unreachable from Numeric(12, 2); the adapter reports MISSING_ATTRIBUTE
 
 
+def _decimal(value: str | None) -> Decimal | None:
+    """A stored `Numeric(7, 2)` side as a Decimal; None when absent or not a finite number."""
+    if value is None:
+        return None
+    try:
+        found = Decimal(value)
+    except (ArithmeticError, ValueError):
+        return None
+    return found if found.is_finite() else None
+
+
 def _identifier(facts: ProductFacts) -> tuple[str | None, str | None, bool]:
     """SI5 B1: (type, value, exempt) of a sellable product (never a style). A barcode only with
     `provided` and a non-blank value; the exemption only with `exempt`."""
@@ -118,6 +129,10 @@ def seller_facts(facts: ProductFacts) -> SellerFacts:
         identifier_type=id_type,
         identifier_value=id_value,
         identifier_exempt=exempt,
+        package_length_cm=_decimal(facts.package.length_cm),
+        package_breadth_cm=_decimal(facts.package.breadth_cm),
+        package_height_cm=_decimal(facts.package.height_cm),
+        package_weight_g=facts.package.weight_g,
     )
 
 

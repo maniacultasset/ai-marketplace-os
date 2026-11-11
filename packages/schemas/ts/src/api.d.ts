@@ -824,9 +824,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The brand profile: the default manufacturer every product inherits
-         * @description The brand profile (the default manufacturer every product inherits), with its `ETag`. A
-         *     brand that never saved one reads as the empty profile.
+         * The brand profile: the default manufacturer and the website
+         * @description The brand profile (the default manufacturer every product inherits, and the brand's
+         *     website), with its `ETag`. A brand that never saved one reads as the empty profile.
          */
         get: operations["brand_profile_get"];
         put?: never;
@@ -836,8 +836,8 @@ export interface paths {
         head?: never;
         /**
          * Update the brand profile (If-Match: the ETag from GET)
-         * @description Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
-         *     (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
+         * @description Set or clear the default manufacturer or the website (owner, admin). `If-Match` is the
+         *     `ETag` from GET (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
          */
         patch: operations["brand_profile_update"];
         trace?: never;
@@ -2730,12 +2730,19 @@ export interface components {
         BrandProfileIn: {
             /** @description Absent leaves it unchanged; null clears it. */
             default_manufacturer?: components["schemas"]["PartyIn"] | null;
+            /**
+             * Website Url
+             * @description Optional. Absent leaves it unchanged; null clears it. Never sent to a model.
+             */
+            website_url?: string | null;
         };
         /** BrandProfileOut */
         BrandProfileOut: {
             default_manufacturer?: components["schemas"]["PartyOut"] | null;
             /** Updated At */
             updated_at?: string | null;
+            /** Website Url */
+            website_url?: string | null;
         };
         /** CanonicalListing */
         CanonicalListing: {
@@ -17608,7 +17615,8 @@ export interface operations {
                      *         "postal_code": "560001",
                      *         "state_code": "KA"
                      *       },
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "website_url": "https://fabindia.example"
                      *     }
                      */
                     "application/json": components["schemas"]["BrandProfileOut"];
@@ -17856,7 +17864,8 @@ export interface operations {
                      *         "postal_code": "560001",
                      *         "state_code": "KA"
                      *       },
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "website_url": "https://fabindia.example"
                      *     }
                      */
                     "application/json": components["schemas"]["BrandProfileOut"];

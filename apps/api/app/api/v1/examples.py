@@ -166,6 +166,7 @@ _BRAND_PROFILE: Final = {
         "gstin": "29ABCDE1234F1Z5",
         "inherited": False,
     },
+    "website_url": "https://fabindia.example",
     "updated_at": T0,
 }
 

@@ -9,7 +9,8 @@ SI1 T8 (decision 16): `PartyFields` carries the full address (line 2, city, stat
 dedupe match the role is appended; only with `update_on_match=True` (the brand profile route,
 `settings:manage`) are line 2, city, state and GSTIN updated, each as `COALESCE(new, stored)`.
 A match that changes nothing writes nothing (the row stays byte-identical). The brand profile
-repository gains `ensure`, `get_for_update` and `set_default_manufacturer`.
+repository gains `ensure`, `get_for_update`, `set_default_manufacturer` and (client item 1)
+`set_website`.
 """
 
 from __future__ import annotations
@@ -241,6 +242,20 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
             update(BrandProfile)
             .where(self._tenant_criterion(include_platform=False), changed)
             .values({column: party_id, BrandProfile.provenance: provenance})
+        ).returning(BrandProfile.tenant_id)
+        return (await self.db.execute(stmt)).first() is not None
+
+    async def set_website(self, url: str | None) -> bool:
+        """Write `website_url`, or clear it with `url=None`. True when a row was written (an
+        unchanged value writes nothing). Call `ensure` first. The column only: the brand's
+        `provenance` is a fact layer of every product (`repositories/product_facts.py`), so a
+        `provenance.website_url` key would move every product's `facts_digest` and break the
+        approval pins of listings not yet published. The website is no product fact."""
+        column = BrandProfile.website_url
+        stmt = self._scoped_write(
+            update(BrandProfile)
+            .where(self._tenant_criterion(include_platform=False), column.is_distinct_from(url))
+            .values({column: url})
         ).returning(BrandProfile.tenant_id)
         return (await self.db.execute(stmt)).first() is not None
 

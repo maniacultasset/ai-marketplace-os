@@ -1,20 +1,25 @@
 """The brand profile API (SI1 T13; PLAN D2, AC6, AC7; decision 15, 16).
 
-`GET /brand-profile` reads the tenant's default manufacturer with an `ETag`; a tenant without a
-`brand_profiles` row reads as the empty profile, whose tag hashes the literal `none`.
-`PATCH /brand-profile` (owner, admin) sets or clears it under `If-Match`:
+`GET /brand-profile` reads the tenant's default manufacturer and website with an `ETag`; a tenant
+without a `brand_profiles` row reads as the empty profile, whose tag hashes the literal `none`.
+`PATCH /brand-profile` (owner, admin) sets or clears either under `If-Match`:
 
 1. `ensure()` creates the row when missing and says whether this call inserted it; the row is
    then locked.
 2. The writes run first: the party is matched on its dedupe key (name, line 1, PIN, country) or
    created, and on a match line 2, city, state and GSTIN are updated (only this route may,
    decision 16); then the profile's party id and the value-less `provenance.manufacturer`.
+   Client item 1: `website_url`, the column only (no `provenance` key: the brand provenance is
+   a fact layer of every product, so a key there would move every product's facts digest). The
+   website is stored only: it is never model input (`repositories/brand_profile.py`).
 3. Nothing written → 200 with the current tag, whatever tag was sent (CP13, invariant 10).
    Something written → the tag is compared: against `brand_etag(tenant, None)` when this call
    inserted the row, else against the locked row's `updated_at`. A stale tag is 409
    `STALE_VERSION` and the transaction rolls back, party write included.
-4. One `brand_profile.updated` audit row; `after` holds only `provenance.manufacturer`, never
-   the party's name, address or contacts (DATABASE.md:328).
+4. One `brand_profile.updated` audit row; `after.provenance` holds the value-less Fact of each
+   changed field (null when cleared; the audit allowlist keeps only `provenance` for this
+   entity), never the party's name, address or contacts, nor the website (DATABASE.md:328).
+   The website's entry is in the audit only, never in the row's `provenance`.
 """
 
 from __future__ import annotations
@@ -44,6 +49,7 @@ __all__ = [
 
 BRAND_ETAG_NS: Final = uuid.UUID("579f7b2f-e7d6-4ba6-a109-dc17762550d2")
 MANUFACTURER: Final = "default_manufacturer"
+WEBSITE: Final = "website_url"
 
 
 def brand_etag(tenant_id: uuid.UUID, updated_at: datetime | None) -> str:
@@ -56,6 +62,7 @@ class BrandProfileView:
     default_manufacturer: PartyView | None
     updated_at: datetime | None
     etag: str
+    website_url: str | None = None
 
 
 async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView:
@@ -66,7 +73,9 @@ async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView
     if row.default_manufacturer_party_id is not None:
         found = await uow.parties.get(row.default_manufacturer_party_id)
         party = None if found is None else party_view(found, inherited=False)
-    return BrandProfileView(party, row.updated_at, brand_etag(tenant_id, row.updated_at))
+    return BrandProfileView(
+        party, row.updated_at, brand_etag(tenant_id, row.updated_at), row.website_url
+    )
 
 
 async def get_brand_profile(principal: Principal) -> BrandProfileView:
@@ -77,8 +86,8 @@ async def get_brand_profile(principal: Principal) -> BrandProfileView:
 async def update_brand_profile(
     principal: Principal, fields: Mapping[str, Any], if_match: str
 ) -> BrandProfileView:
-    if set(fields) - {MANUFACTURER}:
-        raise ValueError("update_brand_profile takes default_manufacturer only")
+    if set(fields) - {MANUFACTURER, WEBSITE}:
+        raise ValueError("update_brand_profile takes default_manufacturer and website_url only")
     now = datetime.now(UTC)
     fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -86,24 +95,32 @@ async def update_brand_profile(
         row = await uow.brand_profiles.get_for_update()
         locked_at = row.updated_at
         wrote = False
+        changed: dict[str, object] = {}
+        if WEBSITE in fields:
+            url: str | None = fields[WEBSITE]
+            if await uow.brand_profiles.set_website(url):
+                wrote = True
+                changed[WEBSITE] = None if url is None else fact
         if MANUFACTURER in fields:
             party: PartyInput | None = fields[MANUFACTURER]
             party_id = None
+            party_wrote = False
             if party is not None:
-                party_id, wrote = await uow.parties.match_or_create_wrote(
+                party_id, party_wrote = await uow.parties.match_or_create_wrote(
                     party_fields(party), update_on_match=True
                 )
             linked = await uow.brand_profiles.set_default_manufacturer(party_id, fact)
-            if wrote and not linked:
+            if party_wrote and not linked:
                 # the same party with a new address: move the profile's version too
                 await uow.brand_profiles.touch()
-            wrote = wrote or linked
+            if party_wrote or linked:
+                wrote = True
+                changed["manufacturer"] = None if party is None else fact
         if not wrote:
             return await _view(uow, principal.tenant_id)
         expected = brand_etag(principal.tenant_id, None if inserted else locked_at)
         if expected != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "brand_profile_etag")
-        stored = fields[MANUFACTURER]
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",
@@ -111,7 +128,7 @@ async def update_brand_profile(
             action="brand_profile.updated",
             entity_type="brand_profile",
             entity_id=principal.tenant_id,
-            after=json.dumps({"provenance": {"manufacturer": None if stored is None else fact}}),
+            after=json.dumps({"provenance": changed}),
         )
         await uow.session.refresh(row)
         return await _view(uow, principal.tenant_id)

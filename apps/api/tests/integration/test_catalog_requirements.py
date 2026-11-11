@@ -43,6 +43,8 @@ async def test_tshirts(images_db: JobWorld, api: httpx.AsyncClient) -> None:
         "identifier",
         "manufacturer",
         "mrp",
+        "package_dimensions",
+        "package_weight",
         "selling_price",
     ]
     assert body["flipkart"] == [
@@ -74,6 +76,8 @@ async def test_unknown_category_facts_and_extras_only(
         "identifier",
         "manufacturer",
         "mrp",
+        "package_dimensions",
+        "package_weight",
         "selling_price",
     ]
     assert "color" not in body["flipkart"] and "hsn_code" in body["flipkart"]
