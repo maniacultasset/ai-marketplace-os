@@ -2251,6 +2251,112 @@
         "title": "FixAction",
         "type": "string"
       },
+      "FixOut": {
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The value Kuinn sends now (null: not shown).",
+            "title": "After"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The value the marketplace refused.",
+            "title": "Before"
+          },
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "issue_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Id"
+          },
+          "kind": {
+            "enum": [
+              "repair",
+              "content_fix",
+              "ai_correction"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "waiting",
+              "sent",
+              "accepted",
+              "refused",
+              "replaced"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "field",
+          "reason",
+          "outcome",
+          "at"
+        ],
+        "title": "FixOut",
+        "type": "object"
+      },
       "Gate": {
         "description": "The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.",
         "enum": [
@@ -2706,6 +2812,294 @@
           "owner_name"
         ],
         "title": "GoogleSignupRequest",
+        "type": "object"
+      },
+      "HistoryAttemptOut": {
+        "properties": {
+          "actor": {
+            "enum": [
+              "user",
+              "system"
+            ],
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "fix_ids": {
+            "description": "The fixes Kuinn made after this attempt.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Fix Ids",
+            "type": "array"
+          },
+          "issue_ids": {
+            "description": "The issues first seen on this attempt.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Issue Ids",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "precheck",
+              "submission"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "number": {
+            "maximum": 99.0,
+            "minimum": 0.0,
+            "title": "Number",
+            "type": "integer"
+          },
+          "outcome": {
+            "enum": [
+              "clean",
+              "issues",
+              "failed",
+              "pending",
+              "accepted",
+              "partially_accepted",
+              "rejected",
+              "error",
+              "live",
+              "superseded"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "number",
+          "version",
+          "at",
+          "actor",
+          "outcome"
+        ],
+        "title": "HistoryAttemptOut",
+        "type": "object"
+      },
+      "HistoryCountsOut": {
+        "properties": {
+          "fixed": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Fixed",
+            "type": "integer"
+          },
+          "fixing": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Fixing",
+            "type": "integer"
+          },
+          "marketplace": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Marketplace",
+            "type": "integer"
+          },
+          "needs_you": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Needs You",
+            "type": "integer"
+          },
+          "staff": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Staff",
+            "type": "integer"
+          }
+        },
+        "title": "HistoryCountsOut",
+        "type": "object"
+      },
+      "HistoryIssueOut": {
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the seller does, when it is theirs.",
+            "title": "Action"
+          },
+          "cause": {
+            "description": "What went wrong, in plain words.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Cause",
+            "type": "string"
+          },
+          "error_code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "field": {
+            "maxLength": 192,
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "first_seen_at": {
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "content_data",
+              "missing_attribute",
+              "image",
+              "identifier_exemption",
+              "category_mismatch",
+              "account_permission",
+              "marketplace_system",
+              "unknown"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "handler": {
+            "enum": [
+              "kuinn",
+              "you",
+              "marketplace",
+              "staff"
+            ],
+            "title": "Handler",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lane": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto_repair",
+                  "auto_content",
+                  "ai_field",
+                  "seller",
+                  "marketplace",
+                  "retry",
+                  "staff"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lane"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "marketplace_code": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marketplace Code"
+          },
+          "marketplace_message": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The marketplace's own words, scrubbed.",
+            "title": "Marketplace Message"
+          },
+          "occurrences": {
+            "minimum": 1.0,
+            "title": "Occurrences",
+            "type": "integer"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "auto_fixed",
+              "resolved",
+              "dismissed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "value_submitted": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value Submitted"
+          }
+        },
+        "required": [
+          "id",
+          "field",
+          "error_code",
+          "group",
+          "handler",
+          "status",
+          "cause",
+          "occurrences",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "HistoryIssueOut",
         "type": "object"
       },
       "HsnSuggestionOut": {
@@ -3863,6 +4257,49 @@
           "token"
         ],
         "title": "InviteTokenIn",
+        "type": "object"
+      },
+      "IssueHistoryOut": {
+        "properties": {
+          "attempts": {
+            "description": "Newest first.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryAttemptOut"
+            },
+            "maxItems": 10,
+            "title": "Attempts",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/HistoryCountsOut"
+          },
+          "fixes": {
+            "description": "Every fix Kuinn made, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/FixOut"
+            },
+            "maxItems": 100,
+            "title": "Fixes",
+            "type": "array"
+          },
+          "issues": {
+            "description": "Every marketplace ERROR of the listing, newest first.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryIssueOut"
+            },
+            "maxItems": 100,
+            "title": "Issues",
+            "type": "array"
+          },
+          "marketplace": {
+            "$ref": "#/components/schemas/Marketplace"
+          }
+        },
+        "required": [
+          "marketplace",
+          "counts"
+        ],
+        "title": "IssueHistoryOut",
         "type": "object"
       },
       "IssueOut": {
@@ -36534,6 +36971,409 @@
           }
         ],
         "summary": "The listing's audit history, newest first",
+        "tags": [
+          "listings"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/listings/{listing_id}/issue-history": {
+      "get": {
+        "description": "Feedback item 20: every marketplace ERROR of the listing in plain words with who handles\nit (Kuinn, you, the marketplace side or Kuinn's team), and each fix Kuinn made with its before\nand after values, reason and outcome. A read: the engine never runs here.",
+        "operationId": "listings_issue_history",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "attempts": [
+                    {
+                      "actor": "user",
+                      "at": "2026-10-05T09:31:00Z",
+                      "fix_ids": [
+                        "0b1c2d3e-0000-4000-8000-000000001701"
+                      ],
+                      "issue_ids": [
+                        "0b1c2d3e-0000-4000-8000-000000001001",
+                        "0b1c2d3e-0000-4000-8000-000000001002"
+                      ],
+                      "kind": "submission",
+                      "number": 1,
+                      "outcome": "rejected",
+                      "version": 1
+                    }
+                  ],
+                  "counts": {
+                    "fixed": 1,
+                    "fixing": 0,
+                    "marketplace": 0,
+                    "needs_you": 1,
+                    "staff": 0
+                  },
+                  "fixes": [
+                    {
+                      "after": "Navy Blue",
+                      "at": "2026-10-05T09:31:00Z",
+                      "before": "navy blue",
+                      "field": "attributes.color",
+                      "id": "0b1c2d3e-0000-4000-8000-000000001701",
+                      "issue_id": "0b1c2d3e-0000-4000-8000-000000001001",
+                      "kind": "repair",
+                      "outcome": "accepted",
+                      "reason": "The marketplace accepts only values from its own list, so Kuinn sent the matching value from that list.",
+                      "rule": "enum_fold"
+                    }
+                  ],
+                  "issues": [
+                    {
+                      "action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+                      "cause": "Amazon needs a percentage for each fabric in the material detail.",
+                      "error_code": "PATTERN_MISMATCH",
+                      "field": "attributes.fabric_type",
+                      "first_seen_at": "2026-10-05T09:31:00Z",
+                      "group": "content_data",
+                      "handler": "you",
+                      "id": "0b1c2d3e-0000-4000-8000-000000001002",
+                      "lane": "seller",
+                      "last_seen_at": "2026-10-05T09:31:00Z",
+                      "marketplace_code": "18280",
+                      "marketplace_message": "fabric_type must include a percentage.",
+                      "occurrences": 1,
+                      "status": "open",
+                      "value_submitted": "cotton"
+                    },
+                    {
+                      "action": "Pick a value from Amazon's list for that detail, then send the listing again.",
+                      "cause": "Amazon accepts only values from its own list for this detail, and the value sent is not on it.",
+                      "error_code": "VALUE_NOT_ALLOWED",
+                      "field": "attributes.color",
+                      "first_seen_at": "2026-10-05T09:31:00Z",
+                      "group": "content_data",
+                      "handler": "kuinn",
+                      "id": "0b1c2d3e-0000-4000-8000-000000001001",
+                      "lane": "auto_repair",
+                      "last_seen_at": "2026-10-05T09:31:00Z",
+                      "marketplace_code": "90244",
+                      "marketplace_message": "The value for 'color' is not one of the allowed values.",
+                      "occurrences": 1,
+                      "resolved_at": "2026-10-05T09:31:00Z",
+                      "status": "resolved",
+                      "value_submitted": "navy blue"
+                    }
+                  ],
+                  "marketplace": "amazon"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/IssueHistoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Every marketplace issue of this listing, who handles it, and each fix Kuinn made (before, after, reason, outcome)",
         "tags": [
           "listings"
         ],

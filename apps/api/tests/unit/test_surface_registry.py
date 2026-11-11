@@ -97,6 +97,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
     ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
+    ("listings_issue_history", "GET", "/listings/{listing_id}/issue-history"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -459,7 +460,7 @@ def test_login_response_is_login_result() -> None:
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
     # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run
-    assert len(OPS) == 111
+    assert len(OPS) == 112
 
 
 def test_error_codes_per_d2() -> None:

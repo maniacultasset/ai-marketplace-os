@@ -58,6 +58,26 @@ NEUTRAL_THEME_AXES: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
     }
 )
 
+# The top-level nodes of a listing in Flipkart's Listing Management API reference
+# (https://seller.flipkart.com/api-docs/listing-api-docs/LMAPIRef.html). An issue's JSON `path`
+# names one; the error map matches `path:<root>` (Flipkart publishes no error-code list).
+PATH_ROOTS: Final = frozenset(
+    {
+        "product_id",
+        "price",
+        "tax",
+        "listing_status",
+        "shipping_fees",
+        "fulfillment_profile",
+        "fulfillment",
+        "packages",
+        "locations",
+        "address_label",
+        "dating_label",
+    }
+)
+PATH_CATEGORY_PREFIX: Final = "path:"
+
 # Response vocabulary (believed, DW1).
 SUCCESS: Final = "SUCCESS"
 FAILURE: Final = "FAILURE"

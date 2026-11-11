@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Issue history (client feedback item 20; additive MINOR under the open 2.1.0 heading).
+  - **Contract (MINOR).** New op `GET /listings/{listing_id}/issue-history` (`IssueHistoryOut`): every marketplace ERROR of the listing with its plain cause, the marketplace's code and words, the field, the client's error group (`content_data`, `missing_attribute`, `image`, `identifier_exemption`, `category_mismatch`, `account_permission`, `marketplace_system`, `unknown`) and who handles it (`kuinn`, `you`, `marketplace`, `staff`); each fix Kuinn made with its before and after values, reason and outcome (`waiting`, `sent`, `accepted`, `refused`, `replaced`); and each attempt with the ids of its issues and fixes. New vocabularies only; no `mkos_schemas` model changes, so the pinned pipeline is unaffected.
+  - **Behaviour.** A read: the engine never runs from it. Lanes are the resolution read's, so the two reads agree.
+  - **FE notice.** The listing review and live screens show an "Issues and fixes" card.
+
 - Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
   - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
   - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.

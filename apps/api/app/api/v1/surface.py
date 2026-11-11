@@ -91,6 +91,7 @@ from app.api.v1.schemas.invites import (
     InvitePreview,
     ResetLinkOut,
 )
+from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.issues import IssueOut, IssuePage
 from app.api.v1.schemas.listings import (
     ListingDetail,
@@ -745,6 +746,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("listings_resolution", "GET", "/listings/{listing_id}/resolution", 200,
               ResolutionOut, "listings", "What Kuinn tried, changed and needs for this listing",
               "SI11", path_id="listing_id", action=A.TENANT_READ),
+    Operation("listings_issue_history", "GET", "/listings/{listing_id}/issue-history", 200,
+              IssueHistoryOut, "listings", "Every marketplace issue of this listing, who handles "
+              "it, and each fix Kuinn made (before, after, reason, outcome)", "SI11",
+              path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
               JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
               "minutes per listing)", "S21", path_id="listing_id", idempotency=True,

@@ -1417,6 +1417,11 @@ async def _flipkart(state: FakeState, request: Request) -> Response:
                         "listing_id": stored["listing_id"],
                         "attributes": stored["attributes"],
                         "errors": stored["errors"],
+                        **(
+                            {"attribute_errors": stored["attribute_errors"]}
+                            if "attribute_errors" in stored
+                            else {}
+                        ),
                     }
                 )
         return JSONResponse({"listings": found})

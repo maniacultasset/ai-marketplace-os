@@ -516,5 +516,1570 @@
       "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
     },
     "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4000002",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a value for a detail that this listing sends empty.",
+    "seller_action": "Add the missing value to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false,
+      "kuinn_repair": [
+        "fill_from_facts"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "99022",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs more values for one detail than this listing sends.",
+    "seller_action": "Add the missing values to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004401",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs more values for one detail than this listing sends.",
+    "seller_action": "Add the missing values to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90003944",
+    "version": 1,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a value for one detail because of another value this listing sends.",
+    "seller_action": "Add the missing value to the product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4000001",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not accept one of the values in this listing, often the category, item type or browse node.",
+    "seller_action": "Check the value against the category Amazon expects, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90180",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon expects a different kind of value for one detail, for example a number instead of text.",
+    "seller_action": "Enter the value in the form Amazon asks for, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false,
+      "kuinn_repair": [
+        "unit_format"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90244",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon accepts only values from its own list for this detail, and the value sent is not on it.",
+    "seller_action": "Pick a value from Amazon's list for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false,
+      "kuinn_repair": [
+        "enum_fold"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8333",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon accepts only values from its own list for this detail, and the value sent is not on it.",
+    "seller_action": "Pick a value from Amazon's list for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "enum_fold"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004205",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon accepts only some values from its list for this detail, given the other values sent, and the value sent is not one of them.",
+    "seller_action": "Pick a value Amazon allows for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "enum_fold"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90003945",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon accepts only some values from its list for this detail, given the other values sent, and the value sent is not one of them.",
+    "seller_action": "Pick a value Amazon allows for that detail, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "enum_fold"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100095",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon found a value in this listing that it does not accept.",
+    "seller_action": "Check the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004147",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon found a value in this listing that it does not accept.",
+    "seller_action": "Check the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90194",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs this value written in a set format, for example a fabric with its percentage.",
+    "seller_action": "Write the value in the format Amazon's message shows, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004118",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs this value written in a set format, for example a fabric with its percentage.",
+    "seller_action": "Write the value in the format Amazon's message shows, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "18280",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a percentage for each fabric in the material detail.",
+    "seller_action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004200",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a percentage for each fabric in the material detail.",
+    "seller_action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90001217",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a percentage for each fabric in the material detail.",
+    "seller_action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004201",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon cannot read how the fabric detail is written.",
+    "seller_action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90003859",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon cannot read how the fabric detail is written.",
+    "seller_action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004199",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs the fabrics listed from the largest share to the smallest.",
+    "seller_action": "List the fabrics from the largest share to the smallest, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90003907",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs the fabric percentages to add up to 100.",
+    "seller_action": "Correct the fabric percentages so they add up to 100, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90001212",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs the fabric percentages to add up to 100.",
+    "seller_action": "Correct the fabric percentages so they add up to 100, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90199",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not allow HTML tags in this text.",
+    "seller_action": "Remove the HTML tags from the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100339",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not allow markup such as HTML tags in this text.",
+    "seller_action": "Remove the markup from the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90006958",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not allow markup such as HTML tags in this text.",
+    "seller_action": "Remove the markup from the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90196",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not allow web links in this text.",
+    "seller_action": "Remove the web link from the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90001132",
+    "version": 1,
+    "error_code": "PATTERN_MISMATCH",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not allow web links in this text.",
+    "seller_action": "Remove the web link from the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90225",
+    "version": 1,
+    "error_code": "FIELD_TOO_LONG",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a text is longer than it allows, for example a title over 200 characters.",
+    "seller_action": "Shorten the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004145",
+    "version": 1,
+    "error_code": "FIELD_TOO_LONG",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a text is longer than it allows, for example a title over 200 characters.",
+    "seller_action": "Shorten the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90226",
+    "version": 1,
+    "error_code": "FIELD_TOO_SHORT",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a text is shorter than it allows.",
+    "seller_action": "Add to the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004144",
+    "version": 1,
+    "error_code": "FIELD_TOO_SHORT",
+    "error_class": "content_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a text is shorter than it allows.",
+    "seller_action": "Add to the text, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90248",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows fewer values for this detail than the listing sends, often a size detail.",
+    "seller_action": "Keep only the values that fit this product, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90003951",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows no value for this detail, given the other values sent.",
+    "seller_action": "Remove the value, or check the related detail Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "99016",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows this detail fewer times than the listing sends it.",
+    "seller_action": "Remove the extra values, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004117",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows this detail fewer times than the listing sends it.",
+    "seller_action": "Remove the extra values, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90114",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a number is below the lowest value it allows, for example a weight of zero.",
+    "seller_action": "Enter a number at or above Amazon's lowest value, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004114",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a number is below the lowest value it allows, for example a weight of zero.",
+    "seller_action": "Enter a number at or above Amazon's lowest value, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90221",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a number above a set value, for example a weight above zero.",
+    "seller_action": "Enter a number above the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000639",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a number above a set value, for example a weight above zero.",
+    "seller_action": "Enter a number above the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90197",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a number is above the highest value it allows.",
+    "seller_action": "Enter a number at or below Amazon's highest value, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004115",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a number is above the highest value it allows.",
+    "seller_action": "Enter a number at or below Amazon's highest value, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90242",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a number below a set value.",
+    "seller_action": "Enter a number below the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000640",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs a number below a set value.",
+    "seller_action": "Enter a number below the value Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90195",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows fewer decimal places for this number.",
+    "seller_action": "Round the number to the decimal places Amazon allows, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000642",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon allows fewer decimal places for this number.",
+    "seller_action": "Round the number to the decimal places Amazon allows, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100336",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a measurement is below the smallest size it allows.",
+    "seller_action": "Check the measurement and its unit, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "unit_format"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100364",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a measurement is below the smallest size it allows.",
+    "seller_action": "Check the measurement and its unit, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "unit_format"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90193",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs one value to be lower than another, for example the selling price below the list price.",
+    "seller_action": "Correct the two values Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000596",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs one value to be lower than another, for example the selling price below the list price.",
+    "seller_action": "Correct the two values Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90147",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs one value to be no more than another, for example the item weight no more than the package weight.",
+    "seller_action": "Correct the two values Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004207",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs the difference between two values to stay within a limit.",
+    "seller_action": "Correct the two values Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000691",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs the difference between two values to stay within a limit.",
+    "seller_action": "Correct the two values Amazon's message names, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90230",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs this value to match another detail of the listing.",
+    "seller_action": "Make the two values Amazon's message names the same, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90000595",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon needs this value to match another detail of the listing.",
+    "seller_action": "Make the two values Amazon's message names the same, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005022",
+    "version": 1,
+    "error_code": "CROSS_FIELD_MISMATCH",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says the package size is larger than the outer package it sits in.",
+    "seller_action": "Correct the package sizes, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90188",
+    "version": 1,
+    "error_code": "IDENTIFIER_INVALID",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon says the barcode has the wrong length or check digit for its type.",
+    "seller_action": "Check the barcode digits and type (EAN, UPC or GTIN), or claim a GTIN exemption, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false,
+      "kuinn_repair": [
+        "identifier_normalize",
+        "exemption_flag"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "90004119",
+    "version": 1,
+    "error_code": "IDENTIFIER_INVALID",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon says the barcode has the wrong length or check digit for its type.",
+    "seller_action": "Check the barcode digits and type (EAN, UPC or GTIN), or claim a GTIN exemption, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false,
+      "kuinn_repair": [
+        "identifier_normalize",
+        "exemption_flag"
+      ]
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005011",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says a value in this listing conflicts with another product in its catalogue.",
+    "seller_action": "Check the value against the product Amazon's message names. If yours is right, ask Amazon seller support to correct its catalogue.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "101165",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon matched this SKU, barcode and product to more than one item in its catalogue.",
+    "seller_action": "Use a barcode that belongs to this product only, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "101166",
+    "version": 1,
+    "error_code": "IDENTIFIER_INVALID",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon has more than one barcode on record for this SKU.",
+    "seller_action": "Use one barcode per SKU. If Amazon holds a wrong one, ask Amazon seller support to correct it.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005039",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon holds more than one record for this item.",
+    "seller_action": "Contact Amazon seller support with the SKU and barcode so they can merge the records.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005018",
+    "version": 1,
+    "error_code": "CATEGORY_MISMATCH",
+    "error_class": "category_mismatch",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.category",
+    "plain_text": "Amazon says this brand must be listed in a luxury or professional category.",
+    "seller_action": "Choose the luxury or professional category for this product, or ask Amazon if the brand is not a luxury brand.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005019",
+    "version": 1,
+    "error_code": "CATEGORY_MISMATCH",
+    "error_class": "category_mismatch",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.category",
+    "plain_text": "Amazon does not allow this brand in a luxury or professional category.",
+    "seller_action": "Choose a standard category for this product, then regenerate the listing.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "5995",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not let your account update this product.",
+    "seller_action": "Ask Amazon for approval to sell this brand or product in Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "5886",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not let your account list unbranded (generic) products here.",
+    "seller_action": "Apply to Amazon for approval in Seller Central, or list the product under your registered brand.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100334",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon does not let your account list unbranded (generic) products here.",
+    "seller_action": "Apply to Amazon for approval in Seller Central, or list the product under your registered brand.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "5887",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon has blocked your account from listing unbranded (generic) products here.",
+    "seller_action": "Contact Amazon seller support, or list the product under your registered brand.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "100333",
+    "version": 1,
+    "error_code": "ACCOUNT_PERMISSION_DENIED",
+    "error_class": "account_permission",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon has blocked your account from listing unbranded (generic) products here.",
+    "seller_action": "Contact Amazon seller support, or list the product under your registered brand.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "19037",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.selling_price",
+    "plain_text": "Amazon refused the price: it is below the lowest price set in your Seller Central account.",
+    "seller_action": "Check the selling price, or change the price limit in Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "19038",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.selling_price",
+    "plain_text": "Amazon refused the price: it is above the highest price set in your Seller Central account.",
+    "seller_action": "Check the selling price, or change the price limit in Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "18701",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.selling_price",
+    "plain_text": "Amazon refused the price because it may be a pricing mistake.",
+    "seller_action": "Check the selling price and MRP. If the price is right, confirm it in Seller Central, then send the listing again.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/manage-listings-issues",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4005001",
+    "version": 1,
+    "error_code": "VALUE_NOT_ALLOWED",
+    "error_class": "invalid_value",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon says the currency differs from the one already on this item.",
+    "seller_action": "Send prices in the item's original currency (INR on Amazon India). To change it, contact Amazon seller support.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "4000000",
+    "version": 1,
+    "error_code": "MARKETPLACE_UNAVAILABLE",
+    "error_class": "marketplace_technical",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon had an internal error while it processed this listing.",
+    "seller_action": "Nothing to change. Send the listing again later; if it fails twice more, Kuinn's team raises it with Amazon.",
+    "policy_ref": {
+      "source": "sp-api-docs",
+      "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
+      "observed": false
+    },
+    "enabled": true
   }
 ]

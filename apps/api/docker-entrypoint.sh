@@ -25,15 +25,16 @@ case "$ROLE" in
   migrate)
     # alembic upgrade head as migrator, under the migration lock, then the attribute dictionary
     # sync the facts guard reads (DATABASE.md §8.2), then the platform rules, templates and the
-    # Amazon error map from the files in the image (the CLI's defaults); one fixed output line
-    # each. Rules go before templates: generation is gated on a current template only, so a
+    # Amazon and Flipkart error maps from the files in the image (the CLI's defaults); one fixed
+    # output line each. Rules go before templates: generation is gated on a current template only, so a
     # failed rules load must leave no category generatable. Each load is idempotent, so a rerun
     # writes nothing; a refused error-map file fails the job loud (`set -eu`).
     python -m app.cli db migrate
     python -m app.cli dictionary sync
     python -m app.cli rules load
     python -m app.cli templates load
-    exec python -m app.cli errors load
+    python -m app.cli errors load
+    exec python -m app.cli errors load --marketplace flipkart
     ;;
   seed)
     exec python -m app.cli seed --profile "${SEED_PROFILE:-demo}"

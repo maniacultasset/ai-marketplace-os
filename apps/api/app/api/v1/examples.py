@@ -109,6 +109,8 @@ LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
 SIGNUP: Final = "0b1c2d3e-0000-4000-8000-000000001501"
 APPLICANT: Final = "0b1c2d3e-0000-4000-8000-000000001502"
 INVITE: Final = "0b1c2d3e-0000-4000-8000-000000001601"
+REPAIR: Final = "0b1c2d3e-0000-4000-8000-000000001701"
+ISSUE_2: Final = "0b1c2d3e-0000-4000-8000-000000001002"
 T_INVITE_END: Final = "2026-10-12T09:30:00Z"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
@@ -939,6 +941,79 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "task_ids": [TASK],
                 "text": "Answer the open question so Kuinn can fix the listing.",
             },
+        },
+        "listings_issue_history": {
+            "marketplace": "amazon",
+            "counts": {"fixed": 1, "fixing": 0, "needs_you": 1, "marketplace": 0, "staff": 0},
+            "issues": [
+                {
+                    "id": ISSUE_2,
+                    "field": "attributes.fabric_type",
+                    "error_code": "PATTERN_MISMATCH",
+                    "group": "content_data",
+                    "handler": "you",
+                    "lane": "seller",
+                    "status": "open",
+                    "marketplace_code": "18280",
+                    "marketplace_message": "fabric_type must include a percentage.",
+                    "cause": "Amazon needs a percentage for each fabric in the material detail.",
+                    "action": "Write the fabric detail the way Amazon's message shows (for example "
+                    "60% cotton, 40% polyester), then send the listing again.",
+                    "value_submitted": "cotton",
+                    "occurrences": 1,
+                    "first_seen_at": T1,
+                    "last_seen_at": T1,
+                    "resolved_at": None,
+                },
+                {
+                    "id": ISSUE,
+                    "field": "attributes.color",
+                    "error_code": "VALUE_NOT_ALLOWED",
+                    "group": "content_data",
+                    "handler": "kuinn",
+                    "lane": "auto_repair",
+                    "status": "resolved",
+                    "marketplace_code": "90244",
+                    "marketplace_message": "The value for 'color' is not one of the allowed "
+                    "values.",
+                    "cause": "Amazon accepts only values from its own list for this detail, and "
+                    "the value sent is not on it.",
+                    "action": "Pick a value from Amazon's list for that detail, then send the "
+                    "listing again.",
+                    "value_submitted": "navy blue",
+                    "occurrences": 1,
+                    "first_seen_at": T1,
+                    "last_seen_at": T1,
+                    "resolved_at": T1,
+                },
+            ],
+            "fixes": [
+                {
+                    "id": REPAIR,
+                    "issue_id": ISSUE,
+                    "kind": "repair",
+                    "field": "attributes.color",
+                    "rule": "enum_fold",
+                    "before": "navy blue",
+                    "after": "Navy Blue",
+                    "reason": "The marketplace accepts only values from its own list, so Kuinn "
+                    "sent the matching value from that list.",
+                    "outcome": "accepted",
+                    "at": T1,
+                }
+            ],
+            "attempts": [
+                {
+                    "kind": "submission",
+                    "number": 1,
+                    "version": 1,
+                    "at": T1,
+                    "actor": "user",
+                    "outcome": "rejected",
+                    "issue_ids": [ISSUE, ISSUE_2],
+                    "fix_ids": [REPAIR],
+                }
+            ],
         },
         "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {

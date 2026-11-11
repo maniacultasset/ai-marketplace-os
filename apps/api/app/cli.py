@@ -48,12 +48,15 @@ turn it off with `"enabled": false`. Each write is audited with a NULL tenant. A
 exits 1, a missing one 2. Both loaders hold the migration advisory lock for their transaction.
 
 The deploy's migrate job (`APP_ROLE=migrate`) runs `db migrate`, `dictionary sync`, `rules load`,
-`templates load` and `errors load`, in that order and with no path: rules before templates, because
+`templates load`, `errors load` and `errors load --marketplace flipkart`, in that order and with no
+path: rules before templates, because
 generation is gated on a current template only, so a failed rules load leaves no category
 generatable.
 
-`errors load [--file PATH]` (S20 T4; SI9: default `app/db/seed_data/error_map.amazon.json`, the
-Amazon rows taken from Amazon's published SP-API material) loads a JSON list of `marketplace_error_map` rows as `migrator`,
+`errors load [--file PATH] [--marketplace amazon|flipkart]` (S20 T4; SI9: default
+`app/db/seed_data/error_map.amazon.json`, the Amazon rows taken from Amazon's published SP-API
+material; `--marketplace flipkart` defaults to `error_map.flipkart.json`, the Flipkart rows keyed
+on the documented payload node an issue's path names) loads a JSON list of `marketplace_error_map` rows as `migrator`,
 in one transaction: a stored key with the same content is a no-op, one that differs only in
 `enabled` flips it, any other difference refuses the file ("bump version", exit 1, nothing
 written); each write is audited with a NULL tenant. An invalid file exits 1, a missing one 2.
@@ -247,6 +250,9 @@ RULES_SEED_PATH: Final = _rules_seed_path(Path(__file__).resolve())
 ERROR_MAP_FAKE_PATH: Final = Path(__file__).resolve().parent / "db/seed_data/error_map.fake.json"
 ERROR_MAP_AMAZON_PATH: Final = (
     Path(__file__).resolve().parent / "db/seed_data/error_map.amazon.json"
+)
+ERROR_MAP_FLIPKART_PATH: Final = (
+    Path(__file__).resolve().parent / "db/seed_data/error_map.flipkart.json"
 )
 # The platform templates the migrate job loads (`templates load` with no `--file`); generated from
 # `seed_ops.platform_template_loads()`, and it ships in the image too.
@@ -1847,6 +1853,7 @@ def build_parser() -> argparse.ArgumentParser:
     errors_commands = errors.add_subparsers(dest="command", required=True)
     errors_load = errors_commands.add_parser("load", help="load versioned error-map rows")
     errors_load.add_argument("--file", type=Path, default=None)
+    errors_load.add_argument("--marketplace", choices=("amazon", "flipkart"), default="amazon")
     errors_catalog = errors_commands.add_parser(
         "catalog", help="the marketplace errors seen, as JSON lines (staff, read-only)"
     )
@@ -1969,7 +1976,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_proposal_review(args))
     if args.group == "errors":
         # resolved at call time, so the default is the module constant as it stands
-        args.file = args.file or ERROR_MAP_AMAZON_PATH
+        default = (
+            ERROR_MAP_FLIPKART_PATH if args.marketplace == "flipkart" else ERROR_MAP_AMAZON_PATH
+        )
+        args.file = args.file or default
         if not args.file.is_file():
             sys.stderr.write("errors load: no such file\n")
             return EXIT_NO_FILE

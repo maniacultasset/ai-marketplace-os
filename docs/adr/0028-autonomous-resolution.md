@@ -65,3 +65,19 @@ payload go back to the marketplace without a second approval?
   migrator connection; migrator access is the authorisation and the seed PR the second review.
 - **Value maps and the export** are read-only staff reports (`errors value-maps`, `errors export`); an alias change
   stays a reviewed PR to `aliases.py`.
+
+## Client feedback item 20 additions (2026-11-11)
+
+- **Coverage.** `error_map.amazon.json` adds the codes on Amazon's Listings Items troubleshooting and Manage
+  Listings Issues pages (missing values, enums, patterns and fabric, lengths, counts, numbers, cross-field rules,
+  identifiers and the catalogue, luxury and generic-brand eligibility, price limits, currency, Amazon's internal
+  error), each with plain text and a seller action; `policy_ref.kuinn_repair` names the safe repair kinds that can
+  cover a row. Every row still reports only (`auto_fixable` false, `user_action`): the repairer alone decides a
+  repair. `error_map.flipkart.json` is new: Flipkart documents the error shape but no code list, so its rows match
+  the documented payload node an issue's path names (`path:price`, `path:tax`, ...); settings Kuinn does not send
+  in v1 (tax, delivery charges, stock, packages, fulfilment) carry `policy_ref.handled_outside`. The migrate job
+  loads both files.
+- **Issue history read.** `GET /listings/{id}/issue-history`: each marketplace ERROR with its plain cause, the
+  marketplace's code and words, the field, the client's error group and who handles it (Kuinn, the seller, the
+  marketplace side, or Kuinn's team), and each fix with its before and after values, reason and outcome. It reuses
+  this read's lanes, never runs the engine and never writes.
