@@ -43,6 +43,7 @@ from app.services.imports.headers import (
 )
 from app.services.intake_values import COUNTRY_PATTERN, DIMENSION_PATTERN, HSN_PATTERN, MAX_GRAMS
 from app.services.iso_countries import ISO_3166_ALPHA2
+from app.services.package_sense import package_warnings
 
 __all__ = [
     "ATTRIBUTE_COLUMNS",
@@ -423,6 +424,7 @@ def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> Ro
 
     grams = c.grams()
     dims = _dimensions(c)
+    _package_sense(c, category, dims, grams)
     # a child row's images come from its style (S22): no warning on a row with a parent
     urls, chart_url = c.media(warn_without=parent is None)
     attributes = {key: value for key in ATTRIBUTE_COLUMNS if (value := c.get(key)) is not None}
@@ -550,6 +552,27 @@ def _identifier(c: _Checker) -> tuple[str | None, str | None, bool | None]:
             c.fail(ErrorCode.CROSS_FIELD_MISMATCH, "a barcode and identifier_exemption conflict")
             return None, None, None
     return id_type, id_value, exemption
+
+
+_SENSE_COLUMNS: Final = {"package_dimensions": "package size", "package_weight": "package weight"}
+
+
+def _package_sense(
+    c: _Checker,
+    category: str | None,
+    dims: tuple[Decimal | None, Decimal | None, Decimal | None],
+    grams: int | None,
+) -> None:
+    """Item 15: a box that looks wrong for its category is a warning; the row still imports."""
+    sides = None if any(d is None for d in dims) else [d for d in dims if d is not None]
+    for key, message in package_warnings(category, sides, grams).items():
+        c.warnings.append(
+            row_error(
+                ErrorCode.VALUE_NOT_ALLOWED,
+                f"{_SENSE_COLUMNS[key]}: {message}",
+                severity=Severity.WARNING,
+            )
+        )
 
 
 def _dimensions(c: _Checker) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
