@@ -66,6 +66,7 @@ NAMED_KEYS = [
     "data_b64",
     "preview_url",
     "source_preview_url",
+    "applied_preview_url",
 ]
 
 
@@ -400,6 +401,7 @@ def test_si7_keys_redacted_in_log_lines_and_sentry_extra(log_lines: Any) -> None
         "data_b64": "/9j/Zq9base64",
         "preview_url": "https://store.example/k?X-Amz-Signature=Zq9sig",
         "source_preview_url": "https://store.example/s?X-Goog-Signature=Zq9sig",
+        "applied_preview_url": "https://store.example/a?X-Amz-Signature=Zq9sig",
     }
     get_logger("app.tests.si7").info("image_candidate.test", **values)
     assert "Zq9" not in capture.text()
