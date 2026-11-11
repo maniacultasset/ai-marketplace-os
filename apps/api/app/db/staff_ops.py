@@ -195,8 +195,9 @@ async def insert_tenant(
     """The tenant row and its `tenant.created` audit row, on a connection whose
     `app.tenant_id` is already `tenant_id`. `SlugTakenError` (nothing written) when the slug is
     used. Shared by `tenant create`, the platform admin's sign-up approval (ADR-0019) and an
-    owner adding another brand (ADR-0032, audited as that `user`), so all three create a tenant
-    the same way. `trial_ends_at` (with `trial_days` set) fixes the trial end instead of
+    owner adding another brand (ADR-0032), so all three create a tenant the same way. With
+    `actor_user_id` the audit row is not written here: it names that `user`, who must be a member
+    first, so the caller writes it with `audit_tenant_created` after `add_owner`. `trial_ends_at` (with `trial_days` set) fixes the trial end instead of
     `trial_days` from now (ADR-0032: an added brand keeps its owner's trial end)."""
     status = "active" if trial_days is None else "trial"
     trial_ends = None if trial_days is None else datetime.now(UTC) + timedelta(days=trial_days)
@@ -214,6 +215,24 @@ async def insert_tenant(
     ).first()
     if inserted is None:
         raise SlugTakenError("slug taken")
+    if actor_user_id is None:
+        await audit_tenant_created(
+            conn, tenant_id=tenant_id, name=name, staff_email=staff_email, request_id=request_id
+        )
+
+
+async def audit_tenant_created(
+    conn: AsyncConnection,
+    *,
+    tenant_id: uuid.UUID,
+    name: str,
+    staff_email: str | None,
+    request_id: str,
+    actor_user_id: uuid.UUID | None = None,
+) -> None:
+    """The `tenant.created` audit row. A `user` row (ADR-0032) names a member of the tenant
+    (`fk_audit_log_actor_user_id`), so `insert_tenant` leaves it to the caller to write once the
+    owner membership exists."""
     await _audit(
         conn,
         tenant_id=tenant_id,

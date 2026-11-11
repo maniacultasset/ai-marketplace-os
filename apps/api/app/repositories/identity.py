@@ -1056,6 +1056,15 @@ class SignupRepository:
             request_id=request_id,
             actor_user_id=actor_user_id,
         )
+        if actor_user_id is not None:
+            await staff_ops.audit_tenant_created(
+                conn,
+                tenant_id=tenant_id,
+                name=name,
+                staff_email=None,
+                request_id=request_id,
+                actor_user_id=actor_user_id,
+            )
 
 
 @dataclass(frozen=True, slots=True)
