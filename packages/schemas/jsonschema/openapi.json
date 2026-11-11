@@ -1,6 +1,96 @@
 {
   "components": {
     "schemas": {
+      "ActivityItem": {
+        "description": "One recent agent action, newest first.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "write",
+              "send",
+              "photo_check",
+              "import",
+              "brand",
+              "fix"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "marketplace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Marketplace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "product_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Title"
+          },
+          "state": {
+            "enum": [
+              "completed",
+              "failed",
+              "pending"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "text": {
+            "description": "What happened, in plain words.",
+            "maxLength": 300,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "state",
+          "text",
+          "at"
+        ],
+        "title": "ActivityItem",
+        "type": "object"
+      },
       "AiCreditOut": {
         "properties": {
           "checked_at": {
@@ -2708,6 +2798,71 @@
         "title": "GoogleSignupRequest",
         "type": "object"
       },
+      "HomeSummaryOut": {
+        "properties": {
+          "activity": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityItem"
+            },
+            "maxItems": 8,
+            "title": "Activity",
+            "type": "array"
+          },
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "by_marketplace": {
+            "items": {
+              "$ref": "#/components/schemas/MarketplaceCounts"
+            },
+            "maxItems": 2,
+            "title": "By Marketplace",
+            "type": "array"
+          },
+          "listings": {
+            "$ref": "#/components/schemas/ListingCounts"
+          },
+          "marketplaces": {
+            "items": {
+              "$ref": "#/components/schemas/MarketplaceStatus"
+            },
+            "maxItems": 2,
+            "title": "Marketplaces",
+            "type": "array"
+          },
+          "needs_you": {
+            "$ref": "#/components/schemas/NeedsYouCounts"
+          },
+          "needs_you_items": {
+            "items": {
+              "$ref": "#/components/schemas/NeedsYouItem"
+            },
+            "maxItems": 5,
+            "title": "Needs You Items",
+            "type": "array"
+          },
+          "products": {
+            "description": "Products that are not deleted (styles and standalones).",
+            "minimum": 0.0,
+            "title": "Products",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "as_of",
+          "listings",
+          "by_marketplace",
+          "needs_you",
+          "needs_you_items",
+          "activity",
+          "marketplaces",
+          "products"
+        ],
+        "title": "HomeSummaryOut",
+        "type": "object"
+      },
       "HsnSuggestionOut": {
         "description": "SI12: a suggested HSN heading from the category; never stored until the seller saves it.",
         "properties": {
@@ -4508,6 +4663,84 @@
         "title": "ListingContentPatch",
         "type": "object"
       },
+      "ListingCounts": {
+        "description": "Each listing that is not archived, in exactly one bucket (module docstring).",
+        "properties": {
+          "draft": {
+            "description": "Created, not written yet.",
+            "minimum": 0.0,
+            "title": "Draft",
+            "type": "integer"
+          },
+          "in_progress": {
+            "description": "Kuinn or the marketplace is working: writing, sending, or sent and waiting for the marketplace to confirm. Nothing to do.",
+            "minimum": 0.0,
+            "title": "In Progress",
+            "type": "integer"
+          },
+          "inactive": {
+            "description": "Published once, now inactive or removed.",
+            "minimum": 0.0,
+            "title": "Inactive",
+            "type": "integer"
+          },
+          "live": {
+            "description": "The marketplace confirmed the listing live.",
+            "minimum": 0.0,
+            "title": "Live",
+            "type": "integer"
+          },
+          "live_products": {
+            "description": "Distinct products with at least one live or partly live listing.",
+            "minimum": 0.0,
+            "title": "Live Products",
+            "type": "integer"
+          },
+          "partly_live": {
+            "description": "The marketplace has some of its variants live.",
+            "minimum": 0.0,
+            "title": "Partly Live",
+            "type": "integer"
+          },
+          "problem": {
+            "description": "Stopped: the marketplace rejected it, the last step failed, a check blocked it, or an open blocking issue sits on its current version.",
+            "minimum": 0.0,
+            "title": "Problem",
+            "type": "integer"
+          },
+          "ready_to_approve": {
+            "description": "Written and checked, with no open blocking issue: a person approves next.",
+            "minimum": 0.0,
+            "title": "Ready To Approve",
+            "type": "integer"
+          },
+          "ready_to_publish": {
+            "description": "Approved: a person publishes next.",
+            "minimum": 0.0,
+            "title": "Ready To Publish",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "live",
+          "partly_live",
+          "live_products",
+          "in_progress",
+          "problem",
+          "ready_to_approve",
+          "ready_to_publish",
+          "draft",
+          "inactive"
+        ],
+        "title": "ListingCounts",
+        "type": "object"
+      },
       "ListingDetail": {
         "properties": {
           "approve_hint": {
@@ -5522,6 +5755,60 @@
         "title": "MarketplaceBreakdown",
         "type": "object"
       },
+      "MarketplaceCounts": {
+        "properties": {
+          "in_progress": {
+            "minimum": 0.0,
+            "title": "In Progress",
+            "type": "integer"
+          },
+          "listings": {
+            "minimum": 0.0,
+            "title": "Listings",
+            "type": "integer"
+          },
+          "live": {
+            "minimum": 0.0,
+            "title": "Live",
+            "type": "integer"
+          },
+          "marketplace": {
+            "$ref": "#/components/schemas/Marketplace"
+          },
+          "partly_live": {
+            "minimum": 0.0,
+            "title": "Partly Live",
+            "type": "integer"
+          },
+          "problem": {
+            "minimum": 0.0,
+            "title": "Problem",
+            "type": "integer"
+          },
+          "ready_to_approve": {
+            "minimum": 0.0,
+            "title": "Ready To Approve",
+            "type": "integer"
+          },
+          "ready_to_publish": {
+            "minimum": 0.0,
+            "title": "Ready To Publish",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marketplace",
+          "listings",
+          "live",
+          "partly_live",
+          "in_progress",
+          "problem",
+          "ready_to_approve",
+          "ready_to_publish"
+        ],
+        "title": "MarketplaceCounts",
+        "type": "object"
+      },
       "MarketplacePreview": {
         "description": "`GET /api/v1/listings/{listing_id}/preview`: the per-SKU payloads for the listing's current\nversion and the adapter's mapping errors. It carries no verdict: the Rules Engine decides,\nthe adapter only adds errors (`report`).",
         "properties": {
@@ -5588,6 +5875,52 @@
         ],
         "title": "MarketplaceState",
         "type": "string"
+      },
+      "MarketplaceStatus": {
+        "properties": {
+          "account": {
+            "enum": [
+              "connected",
+              "needs_reconnect",
+              "not_connected"
+            ],
+            "title": "Account",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "Listing on this marketplace is open on this deployment.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "marketplace": {
+            "$ref": "#/components/schemas/Marketplace"
+          },
+          "next_step": {
+            "description": "`connect` (no account), `reconnect` (access expired), `fix` (a listing here is stopped), `add_listing` (connected, nothing listed yet), else `none`.",
+            "enum": [
+              "connect",
+              "reconnect",
+              "add_listing",
+              "fix",
+              "none"
+            ],
+            "title": "Next Step",
+            "type": "string"
+          },
+          "publishing_enabled": {
+            "title": "Publishing Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "marketplace",
+          "enabled",
+          "account",
+          "publishing_enabled",
+          "next_step"
+        ],
+        "title": "MarketplaceStatus",
+        "type": "object"
       },
       "MeOut": {
         "properties": {
@@ -5806,6 +6139,194 @@
           "role"
         ],
         "title": "MembershipOut",
+        "type": "object"
+      },
+      "NeedsYouCounts": {
+        "description": "The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.",
+        "properties": {
+          "blocked": {
+            "description": "Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`.",
+            "minimum": 0.0,
+            "title": "Blocked",
+            "type": "integer"
+          },
+          "improve": {
+            "description": "Open questions that hold no listing back (answering improves a listing).",
+            "minimum": 0.0,
+            "title": "Improve",
+            "type": "integer"
+          },
+          "publishing_paused": {
+            "description": "Approved listings waiting while publishing to their marketplace is paused, for a role that approves or publishes. Said, never counted in `total`.",
+            "minimum": 0.0,
+            "title": "Publishing Paused",
+            "type": "integer"
+          },
+          "questions": {
+            "description": "Open questions an open blocking issue waits on (`TaskOut.blocking`).",
+            "minimum": 0.0,
+            "title": "Questions",
+            "type": "integer"
+          },
+          "ready_to_approve": {
+            "description": "Listings ready to approve; 0 for a role that cannot approve.",
+            "minimum": 0.0,
+            "title": "Ready To Approve",
+            "type": "integer"
+          },
+          "ready_to_publish": {
+            "description": "Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused is not counted.",
+            "minimum": 0.0,
+            "title": "Ready To Publish",
+            "type": "integer"
+          },
+          "total": {
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "blocked",
+          "questions",
+          "ready_to_approve",
+          "ready_to_publish",
+          "publishing_paused",
+          "improve"
+        ],
+        "title": "NeedsYouCounts",
+        "type": "object"
+      },
+      "NeedsYouItem": {
+        "description": "One thing to do: the product, the issue in plain words and the action.",
+        "properties": {
+          "action": {
+            "enum": [
+              "fix",
+              "answer",
+              "approve",
+              "publish"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "issue": {
+            "description": "What is wrong, in the seller's words.",
+            "maxLength": 500,
+            "title": "Issue",
+            "type": "string"
+          },
+          "issue_count": {
+            "default": 0,
+            "description": "Open blocking issues on the listing (`blocked` only).",
+            "minimum": 0.0,
+            "title": "Issue Count",
+            "type": "integer"
+          },
+          "issue_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Id"
+          },
+          "kind": {
+            "enum": [
+              "blocked",
+              "question",
+              "approve",
+              "publish"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "listing_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Id"
+          },
+          "marketplace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Marketplace"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "product_sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Sku"
+          },
+          "product_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Title"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "kind",
+          "action",
+          "issue",
+          "at"
+        ],
+        "title": "NeedsYouItem",
         "type": "object"
       },
       "NextStepOut": {
@@ -24531,6 +25052,334 @@
         "summary": "What each marketplace needs for a category",
         "tags": [
           "catalog"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/home/summary": {
+      "get": {
+        "description": "Exact counts of the tenant's listings in one bucket each, the caller's work (blocked\nlistings, blocking questions, listings to approve and to publish), the top 5 things to do,\nthe 8 newest agent actions, and each marketplace's account and next step.",
+        "operationId": "home_summary",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "activity": [
+                    {
+                      "at": "2026-10-05T09:31:00Z",
+                      "kind": "write",
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                      "product_title": "Hand Block Print Kurta Set",
+                      "state": "completed",
+                      "text": "Wrote the Amazon listing for Hand Block Print Kurta Set"
+                    }
+                  ],
+                  "as_of": "2026-10-05T09:31:00Z",
+                  "by_marketplace": [
+                    {
+                      "in_progress": 1,
+                      "listings": 6,
+                      "live": 2,
+                      "marketplace": "amazon",
+                      "partly_live": 0,
+                      "problem": 1,
+                      "ready_to_approve": 1,
+                      "ready_to_publish": 1
+                    },
+                    {
+                      "in_progress": 0,
+                      "listings": 3,
+                      "live": 1,
+                      "marketplace": "flipkart",
+                      "partly_live": 0,
+                      "problem": 1,
+                      "ready_to_approve": 0,
+                      "ready_to_publish": 0
+                    }
+                  ],
+                  "listings": {
+                    "draft": 1,
+                    "in_progress": 1,
+                    "inactive": 0,
+                    "live": 3,
+                    "live_products": 2,
+                    "partly_live": 0,
+                    "problem": 2,
+                    "ready_to_approve": 1,
+                    "ready_to_publish": 1,
+                    "total": 9
+                  },
+                  "marketplaces": [
+                    {
+                      "account": "connected",
+                      "enabled": true,
+                      "marketplace": "amazon",
+                      "next_step": "fix",
+                      "publishing_enabled": false
+                    },
+                    {
+                      "account": "not_connected",
+                      "enabled": false,
+                      "marketplace": "flipkart",
+                      "next_step": "connect",
+                      "publishing_enabled": true
+                    }
+                  ],
+                  "needs_you": {
+                    "blocked": 1,
+                    "improve": 2,
+                    "publishing_paused": 1,
+                    "questions": 1,
+                    "ready_to_approve": 1,
+                    "ready_to_publish": 0,
+                    "total": 3
+                  },
+                  "needs_you_items": [
+                    {
+                      "action": "fix",
+                      "at": "2026-10-05T09:31:00Z",
+                      "issue": "The title is longer than Amazon allows.",
+                      "issue_count": 1,
+                      "issue_id": "0b1c2d3e-0000-4000-8000-000000001001",
+                      "kind": "blocked",
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                      "product_sku": "KURTA-001",
+                      "product_title": "Hand Block Print Kurta Set"
+                    },
+                    {
+                      "action": "answer",
+                      "at": "2026-10-05T09:31:00Z",
+                      "issue": "What is the fabric?",
+                      "kind": "question",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                      "product_sku": "KURTA-001",
+                      "product_title": "Hand Block Print Kurta Set",
+                      "task_id": "0b1c2d3e-0000-4000-8000-000000001101"
+                    }
+                  ],
+                  "products": 7
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/HomeSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Exact listing counts, what needs you, recent agent work and marketplace status",
+        "tags": [
+          "home"
         ],
         "x-mkos-action": "tenant:read"
       }
