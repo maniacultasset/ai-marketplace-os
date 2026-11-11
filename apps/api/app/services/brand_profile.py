@@ -9,14 +9,16 @@ without a `brand_profiles` row reads as the empty profile, whose tag hashes the 
 2. The writes run first: the party is matched on its dedupe key (name, line 1, PIN, country) or
    created, and on a match line 2, city, state and GSTIN are updated (only this route may,
    decision 16); then the profile's party id and the value-less `provenance.manufacturer`.
-   Client item 1: `website_url` and the value-less `provenance.website_url` the same way. The
+   Client item 1: `website_url`, the column only (no `provenance` key: the brand provenance is
+   a fact layer of every product, so a key there would move every product's facts digest). The
    website is stored only: it is never model input (`repositories/brand_profile.py`).
 3. Nothing written → 200 with the current tag, whatever tag was sent (CP13, invariant 10).
    Something written → the tag is compared: against `brand_etag(tenant, None)` when this call
    inserted the row, else against the locked row's `updated_at`. A stale tag is 409
    `STALE_VERSION` and the transaction rolls back, party write included.
-4. One `brand_profile.updated` audit row; `after` holds only the changed `provenance` keys,
-   never the party's name, address or contacts, nor the website (DATABASE.md:328).
+4. One `brand_profile.updated` audit row; `after` holds the changed `provenance` keys and, for
+   the website, only `"set"` or `"cleared"`: never the party's name, address or contacts, nor
+   the website itself (DATABASE.md:328).
 """
 
 from __future__ import annotations
@@ -75,6 +77,15 @@ async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView
     )
 
 
+def _audit_after(provenance: Mapping[str, object], website: str | None) -> dict[str, object]:
+    after: dict[str, object] = {}
+    if provenance:
+        after["provenance"] = dict(provenance)
+    if website is not None:
+        after[WEBSITE] = website
+    return after
+
+
 async def get_brand_profile(principal: Principal) -> BrandProfileView:
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         return await _view(uow, principal.tenant_id)
@@ -93,11 +104,12 @@ async def update_brand_profile(
         locked_at = row.updated_at
         wrote = False
         changed: dict[str, object] = {}
+        website_change: str | None = None
         if WEBSITE in fields:
             url: str | None = fields[WEBSITE]
-            if await uow.brand_profiles.set_website(url, fact):
+            if await uow.brand_profiles.set_website(url):
                 wrote = True
-                changed["website_url"] = None if url is None else fact
+                website_change = "cleared" if url is None else "set"
         if MANUFACTURER in fields:
             party: PartyInput | None = fields[MANUFACTURER]
             party_id = None
@@ -125,7 +137,7 @@ async def update_brand_profile(
             action="brand_profile.updated",
             entity_type="brand_profile",
             entity_id=principal.tenant_id,
-            after=json.dumps({"provenance": changed}),
+            after=json.dumps(_audit_after(changed, website_change)),
         )
         await uow.session.refresh(row)
         return await _view(uow, principal.tenant_id)

@@ -17,14 +17,20 @@ import pytest
 from app.adapters.amazon import constants as c
 from app.adapters.amazon import mapping
 from app.adapters.amazon.drift import diff, sellable_names
-from app.adapters.base import SellerFacts
+from app.adapters.base import PACKAGE_PATHS, SellerFacts, fact_paths
 from app.adapters.flipkart import constants as flipkart
 from app.core.resolved_facts import Package, ProductFacts
 from app.services.requirements import needs_for
 from app.services.seller_facts import seller_facts
 from mkos_schemas.enums import Marketplace
-from tests.adapters.amazon_support import SELLER_FACTS, amazon_family, amazon_item, template
-from tests.support.fake_marketplace import ptd_fixture
+from tests.adapters.amazon_support import (
+    SELLER_FACTS,
+    amazon_adapter,
+    amazon_family,
+    amazon_item,
+    template,
+)
+from tests.support.fake_marketplace import build_fake, ptd_fixture
 from tests.unit.test_amazon_schema_check import ready
 
 MID = mapping.DEFAULT_MARKETPLACE_ID
@@ -169,3 +175,80 @@ def test_seller_facts_carry_the_box() -> None:
     assert out.package_weight_g == 350
     empty = seller_facts(ProductFacts(product_id=uuid.uuid4(), sku="S", level="standalone"))
     assert empty.package_length_cm is None and empty.package_weight_g is None
+
+
+# ---- a live listing's update carries the box ----
+
+
+def test_sellable_items_answer_for_the_box_and_a_parent_does_not() -> None:
+    parent, child, *_rest = amazon_family().units()
+    assert set(PACKAGE_PATHS) <= set(fact_paths(child))
+    assert set(PACKAGE_PATHS) <= set(fact_paths(amazon_item().units()[0]))
+    assert not set(PACKAGE_PATHS) & set(fact_paths(parent))
+
+
+def _spy(adapter: Any) -> list[tuple[str, dict[str, Any]]]:
+    seen: list[tuple[str, dict[str, Any]]] = []
+    original = adapter._client.patch
+
+    async def spy(sku: str, body: dict[str, Any]) -> Any:
+        seen.append((sku, body))
+        return await original(sku, body)
+
+    adapter._client.patch = spy
+    return seen
+
+
+def _patched(body: dict[str, Any]) -> set[str]:
+    return {p["path"] for p in body["patches"] if p["op"] == "replace"}
+
+
+BOX_PATCHES = {
+    f"/attributes/{c.PACKAGE_DIMENSIONS}",
+    f"/attributes/{c.PACKAGE_WEIGHT}",
+}
+
+
+async def test_a_live_standalone_update_replaces_the_box() -> None:
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    sent = _standalone(BOX)
+    await adapter.create_listing(sent)
+    seen = _spy(adapter)
+    sku = sent.units()[0].seller_sku
+    result = await adapter.update_listing(sent, fields={sku: sorted(fact_paths(sent.units()[0]))})
+    (one,) = seen
+    assert _patched(one[1]) >= BOX_PATCHES
+    statuses = {f.field: f.status for f in result.fields}
+    assert statuses["facts.package_dimensions"] == statuses["facts.package_weight"] == "succeeded"
+
+
+async def test_a_live_family_update_sends_the_box_on_children_never_the_parent() -> None:
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    family = amazon_family()
+    boxed = dataclasses.replace(family, unit_facts={u.product_id: BOX for u in family.units()})
+    await adapter.create_listing(boxed)
+    seen = _spy(adapter)
+    await adapter.update_listing(
+        boxed, fields={u.seller_sku: sorted(fact_paths(u)) for u in boxed.units()}
+    )
+    parent, *children = boxed.units()
+    bodies = dict(seen)
+    assert not BOX_PATCHES & _patched(bodies.get(parent.seller_sku, {"patches": []}))
+    assert children and all(_patched(bodies[u.seller_sku]) >= BOX_PATCHES for u in children)
+
+
+async def test_a_retry_of_a_cleared_weight_never_raises() -> None:
+    """A marketplace issue on the weight maps to `facts.package_weight`; once the seller clears
+    the weight, the field retry must not refuse the path (the item still answers for it)."""
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    sent = _standalone(dataclasses.replace(BOX, package_weight_g=None))
+    await adapter.create_listing(sent)
+    seen = _spy(adapter)
+    sku = sent.units()[0].seller_sku
+    result = await adapter.update_listing(sent, fields={sku: ["facts.package_weight"]})
+    assert seen == []
+    assert {f.field for f in result.fields} == {"facts.package_weight"}
+    assert all(f.status != "succeeded" for f in result.fields)

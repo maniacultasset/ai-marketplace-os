@@ -464,8 +464,7 @@ async def test_approve_creates_trial_tenant_owner_and_audit(
 
 def _profile(conn: Conn, tenant_id: str) -> tuple[Any, ...] | None:
     return conn.execute(
-        "SELECT website_url, provenance -> 'website_url' ->> 'source' FROM brand_profiles "
-        "WHERE tenant_id = %s",
+        "SELECT website_url, provenance ? 'website_url' FROM brand_profiles WHERE tenant_id = %s",
         [tenant_id],
     ).fetchone()
 
@@ -479,7 +478,7 @@ async def test_approve_copies_the_website_to_the_brand_profile(
     response = await _approve(api, world, request_id)
     assert response.status_code == 200, response.text
     tenant_id = response.json()["tenant_id"]
-    assert _profile(auth_db, tenant_id) == ("https://kalakar.example", "seller")
+    assert _profile(auth_db, tenant_id) == ("https://kalakar.example", False)
     headers = bearer((await _login(api)).json()["access_token"])
     profile = await api.get(f"{PREFIX}/brand-profile", headers=headers)
     assert profile.status_code == 200 and profile.json()["website_url"] == "https://kalakar.example"
@@ -538,7 +537,7 @@ async def test_approve_copies_a_google_applicants_website(
     assert found is not None and found[0] is not None
     response = await _approve(api, world, str(found[0]))
     assert response.status_code == 200, response.text
-    assert _profile(auth_db, response.json()["tenant_id"]) == ("https://asha.example", "seller")
+    assert _profile(auth_db, response.json()["tenant_id"]) == ("https://asha.example", False)
 
 
 async def test_approve_default_trial_is_30_days(

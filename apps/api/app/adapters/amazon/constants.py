@@ -64,7 +64,6 @@ PACKAGE_DIMENSIONS: Final = "item_package_dimensions"
 PACKAGE_WEIGHT: Final = "item_package_weight"
 PACKAGE_LENGTH_UNIT: Final = "centimeters"
 PACKAGE_WEIGHT_UNIT: Final = "grams"
-PACKAGE_PATHS: Final = ("facts.package_dimensions", "facts.package_weight")
 
 # SI8 T3: the identity attributes. Believed (names, entry shapes and the audience values) until
 # the real LISTING definitions are stored and `templates diff` checks them (SI8 DL-A).

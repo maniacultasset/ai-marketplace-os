@@ -55,7 +55,6 @@ from app.repositories.parties import BrandProfileRepository
 from app.repositories.transactions import identity_session, set_gucs
 from app.services import auth_events
 from app.services.auth import dummy_hash, inet
-from app.services.product_facts import seller_column_fact
 from app.services.sign_in_policy import is_locked
 
 DEFAULT_TRIAL_DAYS: Final = 30  # ADR-0029 (was 14, ADR-0019)
@@ -282,14 +281,14 @@ async def list_requests(
 
 async def _copy_website(session: Any, tenant_id: uuid.UUID, website: str | None) -> None:
     """Client item 1: the applicant's website onto the new brand's profile row (created the way
-    `PATCH /brand-profile` creates it), with the value-less seller provenance. No website writes
+    `PATCH /brand-profile` creates it). No website writes
     nothing. The session's tenant GUC is already the new tenant."""
     url = profile_website(website)
     if url is None:
         return
     profiles = BrandProfileRepository(session, tenant_id)
     await profiles.ensure()
-    await profiles.set_website(url, seller_column_fact(now=datetime.now(UTC)))
+    await profiles.set_website(url)
 
 
 def _conflict() -> ConflictError:

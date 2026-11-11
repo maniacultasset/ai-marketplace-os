@@ -458,3 +458,30 @@ async def test_brand_default_never_reads_another_tenant(world: Any) -> None:
         choices = await uow.brand_profile.brand_choices()
     assert facts is not None and facts.identity.brand_name == "Acme Store"
     assert choices == ("Acme Store",)
+
+
+async def _set_website(tenant: uuid.UUID, url: str | None) -> bool:
+    from app.repositories.uow import tenant_uow
+
+    async with tenant_uow(tenant) as uow:
+        return await uow.brand_profiles.set_website(url)
+
+
+async def test_brand_website_never_moves_a_product_digest(world: Any) -> None:
+    """Client item 1: the brand provenance is a fact layer of every product, so setting or
+    clearing the brand website must leave every product's facts digest (the approval pin)
+    as it was."""
+    from app.core.resolved_facts import facts_digest
+
+    acme = world.tenant("acme")
+    f.brand_profile(world.conn, acme, brand_names=["Acme"])
+    p = f.product(world.conn, acme, sku="KURTA-W", mrp="999.00")
+    before = await _resolve(acme, p)
+    assert before is not None
+    assert await _set_website(acme, "https://acme.example") is True
+    stored = await _resolve(acme, p)
+    assert stored is not None and "website_url" not in stored.provenance
+    assert facts_digest(stored) == facts_digest(before)
+    assert await _set_website(acme, None) is True
+    cleared = await _resolve(acme, p)
+    assert cleared is not None and facts_digest(cleared) == facts_digest(before)

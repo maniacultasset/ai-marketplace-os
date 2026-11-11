@@ -85,6 +85,7 @@ from app.adapters.amazon import schema_check
 from app.adapters.amazon.repairs import apply_repairs
 from app.adapters.base import (
     FACT_SPEC_KEYS,
+    PACKAGE_PATHS,
     PRICE_PATHS,
     STYLE_FACT_KEYS,
     AdapterItem,
@@ -395,7 +396,7 @@ def _package(
         }
         entry["marketplace_id"] = marketplace_id
         out[c.PACKAGE_DIMENSIONS] = [entry]
-        sent.append(c.PACKAGE_PATHS[0])
+        sent.append(PACKAGE_PATHS[0])
     weight = facts.package_weight_g
     if weight is not None and weight > 0:
         out[c.PACKAGE_WEIGHT] = [
@@ -405,7 +406,7 @@ def _package(
                 "marketplace_id": marketplace_id,
             }
         ]
-        sent.append(c.PACKAGE_PATHS[1])
+        sent.append(PACKAGE_PATHS[1])
     return out, sent
 
 
@@ -816,8 +817,8 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     index[c.OFFER_ATTRIBUTE] = set(PRICE_PATHS)
     index[c.MANUFACTURER_CONTACT] = {"facts.manufacturer"}
     # item 15: the packed box
-    index[c.PACKAGE_DIMENSIONS] = {c.PACKAGE_PATHS[0]}
-    index[c.PACKAGE_WEIGHT] = {c.PACKAGE_PATHS[1]}
+    index[c.PACKAGE_DIMENSIONS] = {PACKAGE_PATHS[0]}
+    index[c.PACKAGE_WEIGHT] = {PACKAGE_PATHS[1]}
     # SI8: the style identity facts
     index[c.BRAND_ATTRIBUTE] = {"facts.brand_name"}
     for name in c.AUDIENCE_ATTRIBUTES:

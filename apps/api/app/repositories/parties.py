@@ -48,8 +48,6 @@ class PartyFields:
 # the columns only the brand profile route may update on a dedupe match (decision 16)
 MATCH_UPDATABLE: Final = ("address_line2", "city", "state_code", "gstin")
 MANUFACTURER_KEY: Final = "manufacturer"
-WEBSITE_KEY: Final = "website_url"
-"""The brand website's dictionary key (`attribute_dictionary.json`: brand level, seller only)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,25 +245,17 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         ).returning(BrandProfile.tenant_id)
         return (await self.db.execute(stmt)).first() is not None
 
-    async def set_website(self, url: str | None, fact: Mapping[str, Any]) -> bool:
-        """Write `website_url` and `provenance.website_url` (the value-less seller Fact), or
-        clear both with `url=None`. True when a row was written (an unchanged value writes
-        nothing). Call `ensure` first."""
+    async def set_website(self, url: str | None) -> bool:
+        """Write `website_url`, or clear it with `url=None`. True when a row was written (an
+        unchanged value writes nothing). Call `ensure` first. The column only: the brand's
+        `provenance` is a fact layer of every product (`repositories/product_facts.py`), so a
+        `provenance.website_url` key would move every product's `facts_digest` and break the
+        approval pins of listings not yet published. The website is no product fact."""
         column = BrandProfile.website_url
-        if url is None:
-            changed = or_(column.is_not(None), BrandProfile.provenance.has_key(WEBSITE_KEY))
-            provenance = BrandProfile.provenance.op("-")(WEBSITE_KEY)
-        else:
-            new = cast(literal(json.dumps(dict(fact))), JSONB)
-            changed = or_(
-                column.is_distinct_from(url),
-                BrandProfile.provenance[WEBSITE_KEY]["source"].is_distinct_from(new["source"]),
-            )
-            provenance = BrandProfile.provenance.op("||")(func.jsonb_build_object(WEBSITE_KEY, new))
         stmt = self._scoped_write(
             update(BrandProfile)
-            .where(self._tenant_criterion(include_platform=False), changed)
-            .values({column: url, BrandProfile.provenance: provenance})
+            .where(self._tenant_criterion(include_platform=False), column.is_distinct_from(url))
+            .values({column: url})
         ).returning(BrandProfile.tenant_id)
         return (await self.db.execute(stmt)).first() is not None
 

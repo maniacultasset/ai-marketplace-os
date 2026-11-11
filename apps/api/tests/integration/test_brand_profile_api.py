@@ -288,11 +288,10 @@ async def test_website_set_read_and_cleared(
     assert read.json()["website_url"] == SITE
     assert read.headers["ETag"] == stored.headers["ETag"]
     row = auth_db.execute(
-        "SELECT website_url, provenance -> 'website_url' ->> 'source' FROM brand_profiles "
-        "WHERE tenant_id = %s",
+        "SELECT website_url, provenance ? 'website_url' FROM brand_profiles WHERE tenant_id = %s",
         [fresh.tenant("acme")],
     ).fetchone()
-    assert row == (SITE, "seller")
+    assert row == (SITE, False)
     cleared = await _put(
         api, fresh, {"website_url": None}, etag=stored.headers["ETag"], email=email
     )
@@ -345,5 +344,5 @@ async def test_website_audit_after_is_value_less(
 ) -> None:
     assert (await _put(api, fresh, {"website_url": SITE})).status_code == 200
     after = _audits(auth_db)[-1][7]
-    assert set(after) == {"provenance"} and set(after["provenance"]) == {"website_url"}
+    assert after == {"website_url": "set"}
     assert "kalakar" not in json.dumps(after)

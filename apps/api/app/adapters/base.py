@@ -72,6 +72,9 @@ STYLE_FACT_KEYS: Final = ("brand_name", "gender", "style_number")
 """SI8: the style-owned identity facts every item answers for at `facts.<key>` (a child's are
 always its style's, `ck_products_style_owned`)."""
 PRICE_PATHS: Final = ("facts.mrp", "facts.selling_price")
+# Client item 15: the packed box, answered for by every sellable item (`fact_paths`) so a live
+# listing's update scope carries it; an adapter that does not send it reports it skipped.
+PACKAGE_PATHS: Final = ("facts.package_dimensions", "facts.package_weight")
 _CENT: Final = Decimal("0.01")
 _HUNDRED: Final = Decimal(100)
 # scheme :// authority rest (adapters import no URL or socket library, `test_fake_adapter`)
@@ -594,10 +597,10 @@ def unit_images(listing: AdapterListing, unit: AdapterItem) -> tuple[UnitImage, 
 
 def fact_paths(unit: AdapterItem) -> tuple[str, ...]:
     """The `facts.*` paths one item answers for: the compliance and style identity facts for
-    every item, the price paths for a sellable one (standalone, child)."""
+    every item, the price and package paths for a sellable one (standalone, child)."""
     paths = {f"facts.{k}" for k in (*FACT_SPEC_KEYS, *STYLE_FACT_KEYS)}
     if unit.item_role != "parent":
-        paths |= set(PRICE_PATHS)
+        paths |= {*PRICE_PATHS, *PACKAGE_PATHS}
     return tuple(sorted(paths))
 
 
