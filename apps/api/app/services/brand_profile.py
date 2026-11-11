@@ -13,8 +13,15 @@
    Something written → the tag is compared: against `brand_etag(tenant, None)` when this call
    inserted the row, else against the locked row's `updated_at`. A stale tag is 409
    `STALE_VERSION` and the transaction rolls back, party write included.
-4. One `brand_profile.updated` audit row; `after` holds only `provenance.manufacturer`, never
-   the party's name, address or contacts (DATABASE.md:328).
+4. One `brand_profile.updated` audit row; `after` holds only the changed keys' `provenance`
+   (`manufacturer`, `brand_description`) and, when the voice moved, `brand_voice`: the names of
+   the voice fields that changed. Never the party's name, address or contacts (DATABASE.md:328),
+   never the description or voice text.
+
+Client feedback item 19: `brand_description` (with its value-less seller Fact, as the
+manufacturer) and `brand_voice` (`services.brand_voice`; every answer empty stores NULL) are
+written the same way, under the same `If-Match`. Neither is chunked or embedded: the generation
+context sends both whole (`BrandPromptRepository.for_prompt`), so no `brand_embed` job is queued.
 """
 
 from __future__ import annotations
@@ -31,6 +38,7 @@ from mkos_schemas.codes import ErrorCode
 from app.core.errors import ConflictError
 from app.core.rbac import Principal
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.services.brand_voice import BrandVoice, changed_voice_fields, stored_voice
 from app.services.intake_values import PartyInput
 from app.services.product_facts import seller_column_fact
 from app.services.products import PartyView, party_fields, party_view
@@ -44,6 +52,9 @@ __all__ = [
 
 BRAND_ETAG_NS: Final = uuid.UUID("579f7b2f-e7d6-4ba6-a109-dc17762550d2")
 MANUFACTURER: Final = "default_manufacturer"
+DESCRIPTION: Final = "brand_description"
+VOICE: Final = "brand_voice"
+FIELDS: Final = frozenset({MANUFACTURER, DESCRIPTION, VOICE})
 
 
 def brand_etag(tenant_id: uuid.UUID, updated_at: datetime | None) -> str:
@@ -56,6 +67,8 @@ class BrandProfileView:
     default_manufacturer: PartyView | None
     updated_at: datetime | None
     etag: str
+    brand_description: str | None = None
+    brand_voice: dict[str, Any] | None = None
 
 
 async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView:
@@ -66,7 +79,13 @@ async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView
     if row.default_manufacturer_party_id is not None:
         found = await uow.parties.get(row.default_manufacturer_party_id)
         party = None if found is None else party_view(found, inherited=False)
-    return BrandProfileView(party, row.updated_at, brand_etag(tenant_id, row.updated_at))
+    return BrandProfileView(
+        party,
+        row.updated_at,
+        brand_etag(tenant_id, row.updated_at),
+        brand_description=row.brand_description,
+        brand_voice=row.brand_voice,
+    )
 
 
 async def get_brand_profile(principal: Principal) -> BrandProfileView:
@@ -77,15 +96,19 @@ async def get_brand_profile(principal: Principal) -> BrandProfileView:
 async def update_brand_profile(
     principal: Principal, fields: Mapping[str, Any], if_match: str
 ) -> BrandProfileView:
-    if set(fields) - {MANUFACTURER}:
-        raise ValueError("update_brand_profile takes default_manufacturer only")
+    if set(fields) - FIELDS:
+        raise ValueError(
+            "update_brand_profile takes default_manufacturer, brand_description and brand_voice"
+        )
     now = datetime.now(UTC)
     fact = seller_column_fact(now=now)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         inserted = await uow.brand_profiles.ensure()
         row = await uow.brand_profiles.get_for_update()
         locked_at = row.updated_at
+        voice_before = row.brand_voice
         wrote = False
+        audited: dict[str, Any] = {}
         if MANUFACTURER in fields:
             party: PartyInput | None = fields[MANUFACTURER]
             party_id = None
@@ -98,12 +121,28 @@ async def update_brand_profile(
                 # the same party with a new address: move the profile's version too
                 await uow.brand_profiles.touch()
             wrote = wrote or linked
+            if wrote:
+                audited["manufacturer"] = None if party is None else fact
+        if DESCRIPTION in fields:
+            description: str | None = fields[DESCRIPTION]
+            if await uow.brand_profiles.set_description(description, fact):
+                wrote = True
+                audited[DESCRIPTION] = None if description is None else fact
+        voice_changed: list[str] = []
+        if VOICE in fields:
+            given: BrandVoice | None = fields[VOICE]
+            voice = stored_voice(given)
+            if await uow.brand_profiles.set_voice(voice):
+                wrote = True
+                voice_changed = changed_voice_fields(voice_before, voice)
         if not wrote:
             return await _view(uow, principal.tenant_id)
         expected = brand_etag(principal.tenant_id, None if inserted else locked_at)
         if expected != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "brand_profile_etag")
-        stored = fields[MANUFACTURER]
+        after: dict[str, Any] = {"provenance": audited}
+        if voice_changed:
+            after[VOICE] = voice_changed
         await uow.audit.write(
             tenant_id=principal.tenant_id,
             actor_type="user",
@@ -111,7 +150,7 @@ async def update_brand_profile(
             action="brand_profile.updated",
             entity_type="brand_profile",
             entity_id=principal.tenant_id,
-            after=json.dumps({"provenance": {"manufacturer": None if stored is None else fact}}),
+            after=json.dumps(after, sort_keys=True),
         )
         await uow.session.refresh(row)
         return await _view(uow, principal.tenant_id)

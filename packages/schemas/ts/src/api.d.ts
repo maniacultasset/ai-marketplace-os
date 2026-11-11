@@ -824,9 +824,10 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The brand profile: the default manufacturer every product inherits
-         * @description The brand profile (the default manufacturer every product inherits), with its `ETag`. A
-         *     brand that never saved one reads as the empty profile.
+         * The brand profile: the default manufacturer, description and voice
+         * @description The brand profile (the default manufacturer every product inherits, the brand description
+         *     and the brand voice), with its `ETag`. A brand that never saved one reads as the empty
+         *     profile.
          */
         get: operations["brand_profile_get"];
         put?: never;
@@ -836,8 +837,9 @@ export interface paths {
         head?: never;
         /**
          * Update the brand profile (If-Match: the ETag from GET)
-         * @description Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
-         *     (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
+         * @description Set or clear the default manufacturer, the brand description or the brand voice (owner,
+         *     admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
+         *     unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always win.
          */
         patch: operations["brand_profile_update"];
         trace?: never;
@@ -2725,14 +2727,90 @@ export interface components {
         };
         /** BrandProfileIn */
         BrandProfileIn: {
+            /**
+             * Brand Description
+             * @description What the brand is, in a few lines. Absent leaves it unchanged; null clears it.
+             */
+            brand_description?: string | null;
+            /** @description The whole brand voice (it replaces the stored one). Absent leaves it unchanged; null, or every answer empty, clears it. */
+            brand_voice?: components["schemas"]["BrandVoice"] | null;
             /** @description Absent leaves it unchanged; null clears it. */
             default_manufacturer?: components["schemas"]["PartyIn"] | null;
         };
         /** BrandProfileOut */
         BrandProfileOut: {
+            /** Brand Description */
+            brand_description?: string | null;
+            /** @description Null until the seller answers "Tell Kuinn about your brand". */
+            brand_voice?: components["schemas"]["BrandVoiceOut"] | null;
             default_manufacturer?: components["schemas"]["PartyOut"] | null;
             /** Updated At */
             updated_at?: string | null;
+        };
+        /**
+         * BrandVoice
+         * @description How Kuinn writes for this brand. Absent answers are empty; nothing here is a fact.
+         */
+        BrandVoice: {
+            /**
+             * Audience
+             * @description Who buys it, in the seller's words.
+             */
+            audience?: string | null;
+            /**
+             * Claim Limits
+             * @description Claims the brand never makes.
+             */
+            claim_limits?: string[];
+            /**
+             * Differentiators
+             * @description What makes it different.
+             */
+            differentiators?: string[];
+            /**
+             * Example Copy
+             * @description A short piece of copy the seller likes.
+             */
+            example_copy?: string | null;
+            /**
+             * Positioning
+             * @description How the brand wants to be seen.
+             */
+            positioning?: string | null;
+            /**
+             * Price Segment
+             * @description Where the price sits.
+             */
+            price_segment?: ("budget" | "mid" | "premium" | "luxury") | null;
+            /**
+             * Words To Avoid
+             * @description Words the copy must not use.
+             */
+            words_to_avoid?: string[];
+            /**
+             * Words To Use
+             * @description Words the copy should use.
+             */
+            words_to_use?: string[];
+        };
+        /** BrandVoiceOut */
+        BrandVoiceOut: {
+            /** Audience */
+            audience?: string | null;
+            /** Claim Limits */
+            claim_limits?: string[];
+            /** Differentiators */
+            differentiators?: string[];
+            /** Example Copy */
+            example_copy?: string | null;
+            /** Positioning */
+            positioning?: string | null;
+            /** Price Segment */
+            price_segment?: ("budget" | "mid" | "premium" | "luxury") | null;
+            /** Words To Avoid */
+            words_to_avoid?: string[];
+            /** Words To Use */
+            words_to_use?: string[];
         };
         /** CanonicalListing */
         CanonicalListing: {
@@ -17589,6 +17667,28 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "brand_description": "Hand-block printed cotton wear from Jaipur.",
+                     *       "brand_voice": {
+                     *         "audience": "Women 25 to 40 who buy for daily office wear",
+                     *         "claim_limits": [
+                     *           "No organic claims"
+                     *         ],
+                     *         "differentiators": [
+                     *           "Hand-block printed",
+                     *           "Pre-washed cotton"
+                     *         ],
+                     *         "example_copy": "Soft cotton that keeps its shape wash after wash.",
+                     *         "positioning": "Everyday handloom, made to last",
+                     *         "price_segment": "mid",
+                     *         "words_to_avoid": [
+                     *           "cheap",
+                     *           "best ever"
+                     *         ],
+                     *         "words_to_use": [
+                     *           "breathable",
+                     *           "easy care"
+                     *         ]
+                     *       },
                      *       "default_manufacturer": {
                      *         "address_line1": "12 MG Road",
                      *         "city": "Bengaluru",
@@ -17837,6 +17937,28 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "brand_description": "Hand-block printed cotton wear from Jaipur.",
+                     *       "brand_voice": {
+                     *         "audience": "Women 25 to 40 who buy for daily office wear",
+                     *         "claim_limits": [
+                     *           "No organic claims"
+                     *         ],
+                     *         "differentiators": [
+                     *           "Hand-block printed",
+                     *           "Pre-washed cotton"
+                     *         ],
+                     *         "example_copy": "Soft cotton that keeps its shape wash after wash.",
+                     *         "positioning": "Everyday handloom, made to last",
+                     *         "price_segment": "mid",
+                     *         "words_to_avoid": [
+                     *           "cheap",
+                     *           "best ever"
+                     *         ],
+                     *         "words_to_use": [
+                     *           "breathable",
+                     *           "easy care"
+                     *         ]
+                     *       },
                      *       "default_manufacturer": {
                      *         "address_line1": "12 MG Road",
                      *         "city": "Bengaluru",

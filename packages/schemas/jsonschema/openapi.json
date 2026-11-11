@@ -980,6 +980,31 @@
       "BrandProfileIn": {
         "additionalProperties": false,
         "properties": {
+          "brand_description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the brand is, in a few lines. Absent leaves it unchanged; null clears it.",
+            "title": "Brand Description"
+          },
+          "brand_voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandVoice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The whole brand voice (it replaces the stored one). Absent leaves it unchanged; null, or every answer empty, clears it."
+          },
           "default_manufacturer": {
             "anyOf": [
               {
@@ -997,6 +1022,28 @@
       },
       "BrandProfileOut": {
         "properties": {
+          "brand_description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Description"
+          },
+          "brand_voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandVoiceOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until the seller answers \"Tell Kuinn about your brand\"."
+          },
           "default_manufacturer": {
             "anyOf": [
               {
@@ -1021,6 +1068,202 @@
           }
         },
         "title": "BrandProfileOut",
+        "type": "object"
+      },
+      "BrandVoice": {
+        "additionalProperties": false,
+        "description": "How Kuinn writes for this brand. Absent answers are empty; nothing here is a fact.",
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who buys it, in the seller's words.",
+            "title": "Audience"
+          },
+          "claim_limits": {
+            "description": "Claims the brand never makes.",
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 15,
+            "title": "Claim Limits",
+            "type": "array"
+          },
+          "differentiators": {
+            "description": "What makes it different.",
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Differentiators",
+            "type": "array"
+          },
+          "example_copy": {
+            "anyOf": [
+              {
+                "maxLength": 1500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short piece of copy the seller likes.",
+            "title": "Example Copy"
+          },
+          "positioning": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the brand wants to be seen.",
+            "title": "Positioning"
+          },
+          "price_segment": {
+            "anyOf": [
+              {
+                "enum": [
+                  "budget",
+                  "mid",
+                  "premium",
+                  "luxury"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the price sits.",
+            "title": "Price Segment"
+          },
+          "words_to_avoid": {
+            "description": "Words the copy must not use.",
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Words To Avoid",
+            "type": "array"
+          },
+          "words_to_use": {
+            "description": "Words the copy should use.",
+            "items": {
+              "maxLength": 60,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 30,
+            "title": "Words To Use",
+            "type": "array"
+          }
+        },
+        "title": "BrandVoice",
+        "type": "object"
+      },
+      "BrandVoiceOut": {
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience"
+          },
+          "claim_limits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Claim Limits",
+            "type": "array"
+          },
+          "differentiators": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Differentiators",
+            "type": "array"
+          },
+          "example_copy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Example Copy"
+          },
+          "positioning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Positioning"
+          },
+          "price_segment": {
+            "anyOf": [
+              {
+                "enum": [
+                  "budget",
+                  "mid",
+                  "premium",
+                  "luxury"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Segment"
+          },
+          "words_to_avoid": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Words To Avoid",
+            "type": "array"
+          },
+          "words_to_use": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Words To Use",
+            "type": "array"
+          }
+        },
+        "title": "BrandVoiceOut",
         "type": "object"
       },
       "CanonicalListing": {
@@ -22514,13 +22757,35 @@
     },
     "/api/v1/brand-profile": {
       "get": {
-        "description": "The brand profile (the default manufacturer every product inherits), with its `ETag`. A\nbrand that never saved one reads as the empty profile.",
+        "description": "The brand profile (the default manufacturer every product inherits, the brand description\nand the brand voice), with its `ETag`. A brand that never saved one reads as the empty\nprofile.",
         "operationId": "brand_profile_get",
         "responses": {
           "200": {
             "content": {
               "application/json": {
                 "example": {
+                  "brand_description": "Hand-block printed cotton wear from Jaipur.",
+                  "brand_voice": {
+                    "audience": "Women 25 to 40 who buy for daily office wear",
+                    "claim_limits": [
+                      "No organic claims"
+                    ],
+                    "differentiators": [
+                      "Hand-block printed",
+                      "Pre-washed cotton"
+                    ],
+                    "example_copy": "Soft cotton that keeps its shape wash after wash.",
+                    "positioning": "Everyday handloom, made to last",
+                    "price_segment": "mid",
+                    "words_to_avoid": [
+                      "cheap",
+                      "best ever"
+                    ],
+                    "words_to_use": [
+                      "breathable",
+                      "easy care"
+                    ]
+                  },
                   "default_manufacturer": {
                     "address_line1": "12 MG Road",
                     "city": "Bengaluru",
@@ -22756,14 +23021,14 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "The brand profile: the default manufacturer every product inherits",
+        "summary": "The brand profile: the default manufacturer, description and voice",
         "tags": [
           "brand"
         ],
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET\n(409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.",
+        "description": "Set or clear the default manufacturer, the brand description or the brand voice (owner,\nadmin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is\nunchanged, `null` clears. The voice shapes tone and emphasis only: product facts always win.",
         "operationId": "brand_profile_update",
         "parameters": [
           {
@@ -22794,6 +23059,28 @@
             "content": {
               "application/json": {
                 "example": {
+                  "brand_description": "Hand-block printed cotton wear from Jaipur.",
+                  "brand_voice": {
+                    "audience": "Women 25 to 40 who buy for daily office wear",
+                    "claim_limits": [
+                      "No organic claims"
+                    ],
+                    "differentiators": [
+                      "Hand-block printed",
+                      "Pre-washed cotton"
+                    ],
+                    "example_copy": "Soft cotton that keeps its shape wash after wash.",
+                    "positioning": "Everyday handloom, made to last",
+                    "price_segment": "mid",
+                    "words_to_avoid": [
+                      "cheap",
+                      "best ever"
+                    ],
+                    "words_to_use": [
+                      "breathable",
+                      "easy care"
+                    ]
+                  },
                   "default_manufacturer": {
                     "address_line1": "12 MG Road",
                     "city": "Bengaluru",

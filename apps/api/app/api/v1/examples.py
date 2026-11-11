@@ -166,6 +166,17 @@ _BRAND_PROFILE: Final = {
         "gstin": "29ABCDE1234F1Z5",
         "inherited": False,
     },
+    "brand_description": "Hand-block printed cotton wear from Jaipur.",
+    "brand_voice": {
+        "audience": "Women 25 to 40 who buy for daily office wear",
+        "price_segment": "mid",
+        "positioning": "Everyday handloom, made to last",
+        "differentiators": ["Hand-block printed", "Pre-washed cotton"],
+        "words_to_use": ["breathable", "easy care"],
+        "words_to_avoid": ["cheap", "best ever"],
+        "claim_limits": ["No organic claims"],
+        "example_copy": "Soft cotton that keeps its shape wash after wash.",
+    },
     "updated_at": T0,
 }
 

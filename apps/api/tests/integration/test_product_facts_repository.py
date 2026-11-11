@@ -167,7 +167,9 @@ async def test_brand_profile_for_prompt_fields_exact(world: Any) -> None:
         "brand_owner_type",
         "content_locale",
         "brand_description",
+        "brand_voice",
     }
+    assert shown["brand_voice"] is None
     assert shown["tone"] == "warm" and shown["brand_names"] == ["Acme"]
     assert "acme.example" not in repr(shown)
 
@@ -176,6 +178,7 @@ async def test_brand_profile_for_prompt_no_brand_profiles_row(world: Any) -> Non
     shown = await _brand(world.tenant("acme"))
     assert shown["content_locale"] == "en-IN"
     assert shown["brand_names"] == [] and shown["brand_description"] is None
+    assert shown["brand_voice"] is None
 
 
 async def test_brand_profile_for_prompt_description_capped_2000(world: Any) -> None:

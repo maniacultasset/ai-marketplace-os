@@ -20,6 +20,10 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Brand voice (client feedback 11 Nov 2026, item 19; additive MINOR under the open 2.1.0 heading).
+  - **Contract (MINOR).** `BrandProfileIn.brand_description?` and `BrandProfileIn.brand_voice?` (absent unchanged, null clears; an all-empty voice clears), `BrandProfileOut.brand_description` and `BrandProfileOut.brand_voice` (`BrandVoiceOut`: `audience`, `price_segment` budget|mid|premium|luxury, `positioning`, `differentiators`, `words_to_use`, `words_to_avoid`, `claim_limits`, `example_copy`; null until answered). Same op, ETag and roles.
+  - **Seam.** No model change: `GenerationContext.brand_profile` (a free dict) gains `brand_voice` (that shape, or null) beside the existing `brand_description`. A pinned pipeline that does not read it ignores it.
+
 - Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
   - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
   - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.

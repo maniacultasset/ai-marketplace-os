@@ -69,7 +69,12 @@ def _audits(conn: Conn) -> list[tuple[Any, ...]]:
 async def test_get_without_row_is_empty(api: httpx.AsyncClient, fresh: World) -> None:
     response = await api.get(URL, headers=_as(fresh, "reviewer@acme.test"))
     assert response.status_code == 200, response.text
-    assert response.json() == {"default_manufacturer": None, "updated_at": None}
+    assert response.json() == {
+        "default_manufacturer": None,
+        "brand_description": None,
+        "brand_voice": None,
+        "updated_at": None,
+    }
     assert response.headers["ETag"]
 
 
@@ -118,6 +123,12 @@ async def test_first_put_with_none_etag(api: httpx.AsyncClient, fresh: World, ro
         {"default_manufacturer": {**PARTY, "state_code": "XX"}},
         {"default_manufacturer": {**PARTY, "postal_code": "012345"}},
         {"other": 1},
+        {"brand_description": "x" * 2001},
+        {"brand_voice": {"price_segment": "cheap"}},
+        {"brand_voice": {"words_to_avoid": ["x" * 61]}},
+        {"brand_voice": {"example_copy": "Bearer abcdefghijklmnopqrstu"}},
+        {"brand_voice": {"tone": "warm"}},
+        {"website_url": "https://acme.example"},
     ],
 )
 async def test_put_validation(api: httpx.AsyncClient, fresh: World, body: dict[str, Any]) -> None:
@@ -256,3 +267,133 @@ async def test_products_inherit_and_patch_returns_to_it(
     assert back.status_code == 200, back.text
     assert back.json()["manufacturer"]["legal_name"] == PARTY["legal_name"]
     assert back.json()["manufacturer"]["inherited"] is True
+
+
+# ---- client feedback item 19: the brand description and the brand voice ----
+
+VOICE: dict[str, Any] = {
+    "audience": "Women 25 to 40 who buy for office wear",
+    "price_segment": "mid",
+    "positioning": "Everyday handloom, made to last",
+    "differentiators": ["Hand-block printed"],
+    "words_to_use": ["breathable", "easy care"],
+    "words_to_avoid": ["cheap"],
+    "claim_limits": ["No organic claims"],
+    "example_copy": "Soft cotton that keeps its shape.",
+}
+
+
+def _stored(conn: Conn, world: World) -> tuple[Any, ...] | None:
+    return conn.execute(
+        "SELECT brand_description, brand_voice, provenance FROM brand_profiles "
+        "WHERE tenant_id = %s",
+        [world.tenant("acme")],
+    ).fetchone()
+
+
+@pytest.mark.parametrize("role", ["owner", "admin"])
+async def test_voice_and_description_round_trip(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn, role: str
+) -> None:
+    body = {"brand_description": "Cotton wear from Jaipur.", "brand_voice": VOICE}
+    saved = await _put(api, fresh, body, email=f"{role}@acme.test")
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["brand_voice"] == VOICE
+    assert saved.json()["brand_description"] == "Cotton wear from Jaipur."
+    read = await api.get(URL, headers=_as(fresh, "reviewer@acme.test"))
+    assert read.json()["brand_voice"] == VOICE and read.headers["ETag"] == saved.headers["ETag"]
+    row = _stored(auth_db, fresh)
+    assert row is not None and row[1] == VOICE
+    assert row[2]["brand_description"]["source"] == "seller"
+    assert "value" not in row[2]["brand_description"]
+
+
+async def test_voice_keeps_the_manufacturer_and_vice_versa(
+    api: httpx.AsyncClient, fresh: World
+) -> None:
+    first = await _put(api, fresh, {"default_manufacturer": PARTY})
+    voiced = await _put(api, fresh, {"brand_voice": VOICE}, etag=first.headers["ETag"])
+    assert voiced.status_code == 200, voiced.text
+    assert voiced.json()["default_manufacturer"]["legal_name"] == PARTY["legal_name"]
+    moved = {**PARTY, "legal_name": "Another Maker Pvt Ltd"}
+    again = await _put(api, fresh, {"default_manufacturer": moved}, etag=voiced.headers["ETag"])
+    assert again.json()["brand_voice"] == VOICE
+
+
+async def test_voice_same_again_is_a_no_op(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn
+) -> None:
+    first = await _put(api, fresh, {"brand_voice": VOICE, "brand_description": "Cotton."})
+    audits = len(_audits(auth_db))
+    # any key order, trimmed text and a repeated word store the same voice
+    same = {**dict(reversed(list(VOICE.items()))), "words_to_avoid": [" cheap", "Cheap"]}
+    again = await _put(
+        api, fresh, {"brand_voice": same, "brand_description": "Cotton."}, etag='"stale"'
+    )
+    assert again.status_code == 200, again.text
+    assert again.headers["ETag"] == first.headers["ETag"]
+    assert len(_audits(auth_db)) == audits
+
+
+async def test_voice_stale_etag_409_writes_nothing(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn
+) -> None:
+    old = await _etag(api, fresh)
+    assert (await _put(api, fresh, {"brand_voice": VOICE}, etag=old)).status_code == 200
+    changed = {**VOICE, "audience": "Students"}
+    response = await _put(api, fresh, {"brand_voice": changed}, etag=old)
+    assert response.status_code == 409
+    assert response.json()["error"]["type"] == "STALE_VERSION"
+    row = _stored(auth_db, fresh)
+    assert row is not None and row[1]["audience"] == VOICE["audience"]
+
+
+async def test_voice_wrong_role_403(api: httpx.AsyncClient, fresh: World) -> None:
+    tag = await _etag(api, fresh)
+    for role in ("operator", "reviewer"):
+        response = await _put(
+            api, fresh, {"brand_voice": VOICE}, etag=tag, email=f"{role}@acme.test"
+        )
+        assert response.status_code == 403
+
+
+async def test_voice_clears_with_null_or_all_empty(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn
+) -> None:
+    first = await _put(api, fresh, {"brand_voice": VOICE, "brand_description": "Cotton."})
+    empty = await _put(
+        api,
+        fresh,
+        {"brand_voice": {"words_to_use": [], "audience": None}, "brand_description": None},
+        etag=first.headers["ETag"],
+    )
+    assert empty.status_code == 200, empty.text
+    assert empty.json()["brand_voice"] is None and empty.json()["brand_description"] is None
+    row = _stored(auth_db, fresh)
+    assert row is not None and row[0] is None and row[1] is None
+    assert "brand_description" not in row[2]
+    again = await _put(api, fresh, {"brand_voice": VOICE}, etag=empty.headers["ETag"])
+    cleared = await _put(api, fresh, {"brand_voice": None}, etag=again.headers["ETag"])
+    assert cleared.json()["brand_voice"] is None
+
+
+async def test_voice_audit_names_fields_never_text(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn
+) -> None:
+    first = await _put(api, fresh, {"brand_voice": VOICE, "brand_description": "Cotton."})
+    after = _audits(auth_db)[-1][7]
+    assert set(after) == {"provenance", "brand_voice"}
+    assert after["brand_voice"] == list(VOICE)
+    assert set(after["provenance"]) == {"brand_description"}
+    text = json.dumps(after)
+    assert "Cotton" not in text and "breathable" not in text and "Women" not in text
+    moved = {**VOICE, "words_to_avoid": ["cheap", "flimsy"]}
+    await _put(api, fresh, {"brand_voice": moved}, etag=first.headers["ETag"])
+    assert _audits(auth_db)[-1][7] == {"provenance": {}, "brand_voice": ["words_to_avoid"]}
+
+
+async def test_voice_is_tenant_scoped(api: httpx.AsyncClient, fresh: World) -> None:
+    assert (await _put(api, fresh, {"brand_voice": VOICE})).status_code == 200
+    theirs = await api.get(URL, headers=_as(fresh, "owner@bharat.test"))
+    assert theirs.status_code == 200
+    assert "breathable" not in theirs.text

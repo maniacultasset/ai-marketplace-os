@@ -3,6 +3,10 @@
 `PartyIn` mirrors the `business_parties` CHECKs of revision 0001 (`0001_core_tenancy.py`), plus
 the fixed list of 36 Indian state codes and no NUL in any string, so a refused value is a 422 and
 never a CHECK's 500. Email and phone are accepted on write but never returned on product reads.
+
+Client feedback item 19: the profile also carries `brand_description` and the structured
+`brand_voice` (`app.services.brand_voice.BrandVoice` owns the shape and caps). Both shape how
+listings are written; product facts always win.
 """
 
 from __future__ import annotations
@@ -15,8 +19,9 @@ from pydantic import AfterValidator, AwareDatetime, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.india import STATE_CODES
+from app.services.brand_voice import BrandVoice, DescriptionText, PriceSegment
 
-__all__ = ["BrandProfileIn", "BrandProfileOut", "PartyIn", "PartyOut"]
+__all__ = ["BrandProfileIn", "BrandProfileOut", "BrandVoiceOut", "PartyIn", "PartyOut"]
 
 
 def _state(value: str) -> str:
@@ -86,8 +91,34 @@ class BrandProfileIn(StrictModel):
     default_manufacturer: PartyIn | None = Field(
         default=None, description="Absent leaves it unchanged; null clears it."
     )
+    brand_description: DescriptionText | None = Field(
+        default=None,
+        description="What the brand is, in a few lines. Absent leaves it unchanged; null clears it.",
+    )
+    brand_voice: BrandVoice | None = Field(
+        default=None,
+        description=(
+            "The whole brand voice (it replaces the stored one). Absent leaves it unchanged; "
+            "null, or every answer empty, clears it."
+        ),
+    )
+
+
+class BrandVoiceOut(WireModel):
+    audience: str | None = None
+    price_segment: PriceSegment | None = None
+    positioning: str | None = None
+    differentiators: list[str] = Field(default_factory=list)
+    words_to_use: list[str] = Field(default_factory=list)
+    words_to_avoid: list[str] = Field(default_factory=list)
+    claim_limits: list[str] = Field(default_factory=list)
+    example_copy: str | None = None
 
 
 class BrandProfileOut(WireModel):
     default_manufacturer: PartyOut | None = None
+    brand_description: str | None = None
+    brand_voice: BrandVoiceOut | None = Field(
+        default=None, description='Null until the seller answers "Tell Kuinn about your brand".'
+    )
     updated_at: AwareDatetime | None = None
