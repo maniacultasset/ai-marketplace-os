@@ -185,9 +185,10 @@ async def test_hint_own_work_then_no_other_approver(
     made = await generated(gen_world, OWNER_EMAIL)
     assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (False, "own_work")
     _deactivate(gen_world, REVIEWER)  # the brand's one other approver leaves
+    # ADR-0031: an owner is told it can turn on owner approval
     assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (
         False,
-        "no_other_approver",
+        "owner_can_enable",
     )
 
 
@@ -199,7 +200,7 @@ async def test_other_tenant_reviewer_never_counts(
     # bharat has an active reviewer and owner of its own: still nobody in acme
     assert _hint(await _get(api, gen_world, made.listing_id, OWNER_EMAIL)) == (
         False,
-        "no_other_approver",
+        "owner_can_enable",
     )
 
 

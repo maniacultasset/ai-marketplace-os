@@ -273,6 +273,7 @@ async def test_history_names_the_rejected_version_and_the_reason(
         "listing_version_id": str(made.version_id),
         "version": 1,
         "reason_code": "poor_quality",
+        "self_approval": False,
     }
     assert FEEDBACK not in got.text  # untrusted free text stays out of the history
     assert all(e["review"] is None for e in events if e["action"] != "listing.rejected")

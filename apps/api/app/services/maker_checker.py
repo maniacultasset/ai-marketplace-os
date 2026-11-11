@@ -12,9 +12,15 @@ as "nobody contributed").
 `approver_refusal(approver, chain)` is `MAKER_CHECKER_VIOLATION` when the approver is in the
 chain. The database's `lv_guard` (MKC01) checks the same chain again as the backstop.
 
-`approve_block(caller, role=, active=, chain=)` (SI10 T16) is the one predicate behind both the
-approve path and the review read's `can_approve`: `not_approver` (not an active reviewer or owner;
-checked first, CP-D7), `own_work` (in the chain), else None. Maker-checker itself is unchanged.
+`approve_block(caller, role=, active=, chain=, owner_self_approval=)` (SI10 T16) is the one
+predicate behind both the approve path and the review read's `can_approve`: `not_approver` (not an
+active reviewer or owner; checked first, CP-D7), `own_work` (in the chain), else None.
+
+ADR-0031 (owner decision 2026-11-11): when the brand's `tenants.owner_self_approval` is on, an
+active `owner` in the chain is not blocked. `lv_guard` marks the approval
+(`listing_versions.self_approved`) and the approve path records that mark; `is_self_approval` is
+the review read's preview of it. A reviewer in the chain is always `own_work`, whatever the setting; operators
+and admins never approve. `lv_guard` (MKC01) permits exactly the same case.
 """
 
 from __future__ import annotations
@@ -28,7 +34,9 @@ from mkos_schemas.codes import ErrorCode
 
 CHAIN_ROOTS: Final = frozenset({"generation"})
 APPROVER_ROLES: Final = frozenset({"reviewer", "owner"})
-ApproveHint = Literal["own_work", "no_other_approver", "not_approver"]
+# ADR-0031: the only role that may approve its own work, and only under the brand's setting
+SELF_APPROVER_ROLES: Final = frozenset({"owner"})
+ApproveHint = Literal["own_work", "no_other_approver", "not_approver", "owner_can_enable"]
 ApproveBlock = Literal["own_work", "not_approver"]
 
 
@@ -78,11 +86,28 @@ def approver_refusal(approver: uuid.UUID, chain: frozenset[uuid.UUID]) -> ErrorC
     return ErrorCode.MAKER_CHECKER_VIOLATION if approver in chain else None
 
 
+def may_self_approve(role: str | None, *, owner_self_approval: bool) -> bool:
+    """ADR-0031: the setting is on and the approver's membership role is `owner`."""
+    return owner_self_approval and role in SELF_APPROVER_ROLES
+
+
 def approve_block(
-    caller: uuid.UUID, *, role: str | None, active: bool, chain: frozenset[uuid.UUID]
+    caller: uuid.UUID,
+    *,
+    role: str | None,
+    active: bool,
+    chain: frozenset[uuid.UUID],
+    owner_self_approval: bool = False,
 ) -> ApproveBlock | None:
     if not active or role not in APPROVER_ROLES:
         return "not_approver"
-    if approver_refusal(caller, chain) is not None:
+    if approver_refusal(caller, chain) is not None and not may_self_approve(
+        role, owner_self_approval=owner_self_approval
+    ):
         return "own_work"
     return None
+
+
+def is_self_approval(caller: uuid.UUID, chain: frozenset[uuid.UUID]) -> bool:
+    """True when an allowed approval is of the caller's own work (recorded, ADR-0031)."""
+    return caller in chain

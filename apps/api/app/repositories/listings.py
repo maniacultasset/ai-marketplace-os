@@ -906,11 +906,12 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
 
     async def approve(
         self, listing_id: uuid.UUID, version_id: uuid.UUID, approver: uuid.UUID
-    ) -> bool:
+    ) -> bool | None:
         """`UPDATE ... SET approved_by_user_id WHERE approved_by_user_id IS NULL` (DATABASE.md
         §7.1). `lv_guard` stamps `approved_at` and refuses a maker, an editor, an inactive or
         non-approving member or a stale version with MKC01 (→ `ConflictError`
-        MAKER_CHECKER_VIOLATION). False when the version was already approved."""
+        MAKER_CHECKER_VIOLATION). Returns the row's `self_approved` as `lv_guard` wrote it
+        (ADR-0031), or None when the version was already approved."""
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("listing_versions write for another tenant's unit of work")
         criterion = self._tenant_criterion(include_platform=False)
@@ -923,15 +924,15 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
                 criterion,
             )
             .values(approved_by_user_id=approver)
-        ).returning(ListingVersion.id)
+        ).returning(ListingVersion.self_approved)
         try:
-            row = (await self.db.execute(stmt)).scalar_one_or_none()
+            row: bool | None = (await self.db.execute(stmt)).scalar_one_or_none()
         except DBAPIError as exc:
             mapped = map_db_error(exc)
             if mapped is not None:
                 raise mapped from exc
             raise
-        return row is not None
+        return row
 
 
 def _uuid(value: object) -> uuid.UUID:

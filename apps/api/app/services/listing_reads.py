@@ -28,7 +28,13 @@ from app.services import listing_display
 from app.services.generation_context import previous_listing
 from app.services.listing_display import needs_you_counts, recheck_page, recheck_stale
 from app.services.listings import listing_fields, to_detail
-from app.services.maker_checker import APPROVER_ROLES, ApproveHint, approve_block
+from app.services.maker_checker import (
+    APPROVER_ROLES,
+    SELF_APPROVER_ROLES,
+    ApproveHint,
+    approve_block,
+    is_self_approval,
+)
 
 QUEUE_TAG: Final = "queue"
 RECENT_TAG: Final = "recent"
@@ -96,7 +102,7 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
         content = previous_listing(listing, version)
         counts = await needs_you_counts(uow, [listing])
         body = to_detail(listing, content, summary, counts.get(listing.id, 0))
-        body["can_approve"], body["approve_hint"] = await _approve_hint(
+        body["can_approve"], body["approve_hint"], body["self_approval"] = await _approve_hint(
             uow, principal, listing, version
         )
     return body, etag_of(body.get("current_version_id"))
@@ -104,27 +110,38 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
 
 async def _approve_hint(
     uow: Any, principal: Principal, listing: Any, version: Any
-) -> tuple[bool | None, ApproveHint | None]:
+) -> tuple[bool | None, ApproveHint | None, bool | None]:
     """SI10 T16 (CP-D16): whether role eligibility and maker-checker let the caller approve the
-    current version, and why not. Null unless the listing is reviewable with a version; the
-    approve route's other gates (permission, stale pins, images) still answer on the click."""
+    current version, why not, and (ADR-0031) whether that approval would be a self-approval.
+    Null unless the listing is reviewable with a version; the approve route's other gates
+    (permission, stale pins, images) still answer on the click.
+
+    Blocked by `own_work` with nobody else able to approve: `owner_can_enable` for an owner (the
+    brand's `owner_self_approval` is then off: with it on, an owner is never `own_work`), else
+    `no_other_approver`."""
     from app.services.review import REVIEWABLE, version_chain
 
     if version is None or listing.status not in REVIEWABLE:
-        return None, None
+        return None, None, None
     chain = await version_chain(uow, listing.id, version.id)
     member = await uow.members.approver_state(principal.user_id)
+    role = None if member is None else member[0]
     block = approve_block(
         principal.user_id,
-        role=None if member is None else member[0],
+        role=role,
         active=member is not None and member[1],
         chain=chain,
+        owner_self_approval=await uow.tenants.owner_self_approval(),
     )
     if block is None:
-        return True, None
+        return True, None, is_self_approval(principal.user_id, chain)
     if block == "own_work" and not (await uow.members.approver_ids(APPROVER_ROLES)) - chain:
-        return False, "no_other_approver"
-    return False, block
+        return (
+            False,
+            "owner_can_enable" if role in SELF_APPROVER_ROLES else "no_other_approver",
+            False,
+        )
+    return False, block, False
 
 
 def etag_of(version_id: object) -> str | None:
@@ -178,11 +195,13 @@ async def _reviews(
         version_id,
         number,
         reason,
+        self_approved,
     ) in await uow.review_decisions.for_requests(listing_id, wanted):
         action = next(a for a, d in REVIEW_ACTIONS.items() if d == decision)
         out[(action, request_id)] = {
             "listing_version_id": version_id,
             "version": number,
             "reason_code": reason,
+            "self_approval": decision == "approve" and bool(self_approved),
         }
     return out

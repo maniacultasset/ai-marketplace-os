@@ -105,6 +105,8 @@ class Tenant(TenantScoped, Base):
     plan: Mapped[str | None] = mapped_column(Text)
     trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     auto_publish: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    # 0030 (ADR-0031): an owner may approve its own listings; off by default
+    owner_self_approval: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     llm_daily_budget_usd: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     offboarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     purge_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

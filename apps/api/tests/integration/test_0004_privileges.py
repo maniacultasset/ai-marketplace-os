@@ -71,7 +71,11 @@ VERSION_INSERT = frozenset(
 )
 # table → (table-level privileges, column-level UPDATE, column-level INSERT)
 MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
-    "tenants": (APPEND, frozenset({"name", "tone", "guidelines", "glossary"}), frozenset()),
+    "tenants": (
+        APPEND,
+        frozenset({"name", "tone", "guidelines", "glossary", "owner_self_approval"}),  # 0030
+        frozenset(),
+    ),
     "users": (RW, frozenset(), frozenset()),
     "tenant_memberships": (
         APPEND,

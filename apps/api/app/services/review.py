@@ -21,7 +21,10 @@
    with the currently resolved pins → 409 `STALE_VERSION` (G9); the approver in the contributor
    chain, or not an active reviewer or owner (read `FOR SHARE`; an account whose email is
    unverified, made from a copied invite link, counts as not active: V1 hardening #12) → audit
-   `listing.approve_denied`, item 403 `MAKER_CHECKER_VIOLATION`. Then the version's approval
+   `listing.approve_denied`, item 403 `MAKER_CHECKER_VIOLATION`. ADR-0031: with the brand's
+   `owner_self_approval` on, an active owner in the chain is allowed; its approval is a
+   self-approval (`lv_guard` sets `listing_versions.self_approved` with the approval, and a
+   `listing.self_approved` audit row sits beside `listing.approved`). Then the version's approval
    (`lv_guard` checks it again: MKC01 → the savepoint rolls back, the denial is audited, 403),
    the `approve` decision with the run's `facts_digest`, the move to `approved`, and the audit
    `listing.approved`.
@@ -70,6 +73,7 @@ from app.services.generation_context import previous_listing
 from app.services.image_gate import evaluate_image_gate
 from app.services.listings import current_pins
 from app.services.maker_checker import (
+    ApproveBlock,
     VersionLink,
     approve_block,
     contributor_chain,
@@ -120,6 +124,8 @@ _STATUS: Final[Mapping[ErrorCode, int]] = {
     ErrorCode.INTERNAL_ERROR: 500,
 }
 ALREADY_APPROVED: Final = "edit or regenerate to approve again"
+# ADR-0031: the `reason` of a `listing.self_approved` audit row (the brand setting that allowed it)
+SELF_APPROVAL_REASON: Final = "owner_self_approval"
 
 
 @dataclass(frozen=True, slots=True)
@@ -325,18 +331,21 @@ async def version_chain(
     return contributor_chain(version_id, links)
 
 
-async def _maker_checker(ctx: _Ctx, listing: Any, version: Any) -> bool:
-    """True when the approver may approve: outside the chain, an active reviewer or owner."""
+async def _maker_checker(ctx: _Ctx, listing: Any, version: Any) -> ApproveBlock | None:
+    """The approve block, None when the approver is an active reviewer or owner outside the
+    chain, or (ADR-0031) an active owner in it while the brand's `owner_self_approval` is on.
+    Whether an approval is a self-approval is `lv_guard`'s mark (`listing_versions.self_approved`),
+    not decided here."""
     approver = ctx.principal.user_id
     chain = await version_chain(ctx.uow, listing.id, version.id)
     member = await ctx.uow.members.approver_state(approver)
-    block = approve_block(
+    return approve_block(
         approver,
         role=None if member is None else member[0],
         active=member is not None and member[1],
         chain=chain,
+        owner_self_approval=await ctx.uow.tenants.owner_self_approval(),
     )
-    return block is None
 
 
 async def _audit(ctx: _Ctx, listing: Any, action: str, **kw: Any) -> None:
@@ -378,10 +387,15 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
     await _adapter_gate(ctx, listing)
     await _preview_gate(ctx, listing)
     digest = await _pins_digest(ctx, listing, version)
-    if not await _maker_checker(ctx, listing, version):
+    block = await _maker_checker(ctx, listing, version)
+    if block is not None:
         return await _deny(ctx, listing.id, listing.status)
     uow = ctx.uow
-    if not await uow.listing_versions.approve(listing.id, version.id, ctx.principal.user_id):
+    # lv_guard alone decides and marks a self-approval; the audit follows its mark
+    self_approved = await uow.listing_versions.approve(
+        listing.id, version.id, ctx.principal.user_id
+    )
+    if self_approved is None:
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)
     await uow.review_decisions.insert_approve(
         listing.id,
@@ -405,7 +419,21 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
         before=json.dumps({"status": from_status}),
         after=json.dumps({"status": "approved"}),
     )
-    log.info("listing.approved", listing_id=str(listing.id), version_id=str(version.id))
+    if self_approved:
+        # ADR-0031: every approval of one's own work is visibly recorded
+        await _audit(
+            ctx,
+            listing,
+            "listing.self_approved",
+            after=json.dumps({"status": "approved"}),
+            reason=SELF_APPROVAL_REASON,
+        )
+    log.info(
+        "listing.approved",
+        listing_id=str(listing.id),
+        version_id=str(version.id),
+        self_approval=self_approved,
+    )
     return ItemOutcome(listing.id, 200, moved.status)
 
 

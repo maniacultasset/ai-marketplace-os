@@ -147,6 +147,18 @@ def require_platform_admin() -> Any:
 STEP_UP_MARK: Final = "__mkos_step_up__"
 
 
+async def check_recent_mfa(claims: JWTClaims, principal: Principal, *, otp_only: bool) -> None:
+    """The step-up check itself, for a route that needs it only for some fields (ADR-0031: the
+    `owner_self_approval` change on `PATCH /tenants/me`); `require_recent_mfa` wraps it."""
+    if get_settings().mfa_enforcement != "all":
+        return
+    if step_up_fresh(claims.mfa_at, claims.amr, datetime.now(UTC), otp_only=otp_only):
+        return
+    if not await has_active_factor(principal.user_id):
+        raise ApiError(403, ErrorCode.MFA_ENROLLMENT_REQUIRED)
+    raise ApiError(403, ErrorCode.MFA_STEP_UP_REQUIRED)
+
+
 @cache
 def require_recent_mfa(*, otp_only: bool) -> Any:
     """DPP-1 step-up (ADR-0021): under `MFA_ENFORCEMENT=all` the access token must carry a code
@@ -159,13 +171,7 @@ def require_recent_mfa(*, otp_only: bool) -> Any:
         claims: Annotated[JWTClaims, Depends(access_claims)],
         principal: Annotated[Principal, Depends(get_current_principal)],
     ) -> None:
-        if get_settings().mfa_enforcement != "all":
-            return
-        if step_up_fresh(claims.mfa_at, claims.amr, datetime.now(UTC), otp_only=otp_only):
-            return
-        if not await has_active_factor(principal.user_id):
-            raise ApiError(403, ErrorCode.MFA_ENROLLMENT_REQUIRED)
-        raise ApiError(403, ErrorCode.MFA_STEP_UP_REQUIRED)
+        await check_recent_mfa(claims, principal, otp_only=otp_only)
 
     dependency.__name__ = "require_recent_mfa_otp" if otp_only else "require_recent_mfa_any"
     setattr(dependency, STEP_UP_MARK, "otp" if otp_only else "any")

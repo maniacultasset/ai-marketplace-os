@@ -629,10 +629,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
               "The brand profile", "S16", etag=True, action=A.TENANT_READ),
+    # ADR-0031: `owner_self_approval` is owner only and needs a step-up (checked in the route,
+    # for that field only, so a profile edit never asks for a code)
     Operation("tenants_me_update", "PATCH", "/tenants/me", 200, TenantOut, "tenants",
               "Update the brand profile (If-Match: the ETag from GET)", "S16", has_body=True,
               if_match=True, conflict_code=E.STALE_VERSION, etag=True,
-              action=A.SETTINGS_MANAGE),
+              action=A.SETTINGS_MANAGE, extra_codes={403: STEP_UP_CODES}),
     Operation("brand_documents_upload", "POST", "/brand/documents", 202, JobAccepted, "brand",
               "Upload a brand document for chunking", "S16", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE),
     Operation("brand_documents_list", "GET", "/brand/documents", 200, BrandDocumentPage,
