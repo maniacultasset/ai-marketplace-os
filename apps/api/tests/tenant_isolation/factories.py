@@ -133,6 +133,11 @@ def _tenant_rows(conn: Conn, world: World) -> None:
             created_by_user_id=side.user_id,
         ),
     )
+    # 0029 (client feedback 11 Nov): a SKU counter
+    put(
+        "sku_counters",
+        f.insert(conn, "sku_counters", tenant_id=t, code="ACME-KUR", last_value=1),
+    )
     ops.idempotency_key(conn, side)
     put("idempotency_keys", None)
     put("refresh_tokens", ops.refresh_token(conn, side))

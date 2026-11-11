@@ -41,6 +41,12 @@ EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
         "ethnic_wear_kurta_sets": ("gender",),
     }
 )
+# Client feedback 11 Nov (item 5): the plain name of each seeded Amazon product type, shown beside
+# the type itself in the category picker ("On Amazon: Kurta (KURTA)"). A type missing here reads
+# as words from its code.
+PRODUCT_TYPE_NAMES: Final[Mapping[str, str]] = MappingProxyType(
+    {"KURTA": "Kurta", "SHIRT": "Shirt", "LAMP": "Lamp"}
+)
 # SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
 MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
 # SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,

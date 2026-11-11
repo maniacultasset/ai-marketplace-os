@@ -1123,6 +1123,59 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "job_id": JOB,
             "poll_url": f"/api/v1/jobs/{JOB}",
         },
+        "catalog_categories_list": {
+            "items": [
+                {
+                    "category": "ethnic_wear_kurta_sets",
+                    "label": "Kurta sets",
+                    "enabled": True,
+                    "marketplaces": [
+                        {
+                            "marketplace": "amazon",
+                            "product_type": "KURTA",
+                            "product_type_name": "Kurta",
+                            "external_category_id": None,
+                            "template_version": 3,
+                        },
+                        {
+                            "marketplace": "flipkart",
+                            "product_type": "kurta",
+                            "product_type_name": "Kurta",
+                            "external_category_id": None,
+                            "template_version": 3,
+                        },
+                    ],
+                }
+            ],
+            "suggest_enabled": True,
+        },
+        "catalog_category_suggest": {
+            "suggestion_id": JOB,
+            "status": "queued",
+            "candidates": [],
+        },
+        "catalog_category_suggestion_get": {
+            "suggestion_id": JOB,
+            "status": "suggested",
+            "candidates": [
+                {
+                    "category": "ethnic_wear_kurta_sets",
+                    "label": "Kurta sets",
+                    "confidence": 0.92,
+                    "rationale": "The name says kurta with palazzo and dupatta.",
+                    "unsure": False,
+                }
+            ],
+        },
+        "skus_availability": {
+            "sku": "ACME-KUR-0007",
+            "available": False,
+            "product_id": PRODUCT_1,
+            "title": "Cotton kurta set",
+            "is_variant": False,
+            "deleted": False,
+        },
+        "skus_suggest": {"sku": "ACME-KUR-0008"},
         "catalog_requirements_get": {
             "category": "tshirts",
             "amazon": [

@@ -75,6 +75,16 @@ class ProductUpsert:
 
 
 @dataclass(frozen=True, slots=True)
+class SkuHolder:
+    """The product row that holds a SKU (client feedback 11 Nov: the live SKU check)."""
+
+    id: uuid.UUID
+    title: str
+    parent_product_id: uuid.UUID | None
+    deleted: bool
+
+
+@dataclass(frozen=True, slots=True)
 class Upserted:
     id: uuid.UUID
     inserted: bool
@@ -275,6 +285,26 @@ class ProductRepository(TenantScopedRepository[Product]):
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.category)
         found: str | None = (await self.db.execute(stmt)).scalar_one_or_none()
         return found
+
+    async def holder_of_sku(self, sku: str) -> SkuHolder | None:
+        """The row holding `sku` in this tenant (soft-deleted rows included: the SKU unique
+        covers them), or None when the SKU is free. Styles and variants share the one unique."""
+        stmt = (
+            self._select()
+            .where(Product.sku == sku)
+            .with_only_columns(
+                Product.id, Product.title, Product.parent_product_id, Product.deleted_at
+            )
+        )
+        found = (await self.db.execute(stmt)).one_or_none()
+        if found is None:
+            return None
+        return SkuHolder(
+            id=found[0],
+            title=found[1],
+            parent_product_id=found[2],
+            deleted=found[3] is not None,
+        )
 
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
