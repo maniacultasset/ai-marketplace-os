@@ -231,3 +231,94 @@ def test_read_only_roles_never_see_phone_or_owner_name(admin_conn: Conn) -> None
                 [role, column],
             ).fetchone()
             assert row == (expected,), (role, column)
+
+
+# ---- 0030 (ADR-0019 amendment): the status handle ----
+
+HANDLE_A = bytes.fromhex("aa" * 32)
+HANDLE_B = bytes.fromhex("bb" * 32)
+
+
+def _issue(conn: Conn, request: UUID, digest: bytes) -> bool:
+    row = conn.execute(
+        "SELECT public.app_set_signup_status_handle(%s, %s)", [request, digest]
+    ).fetchone()
+    assert row is not None
+    return bool(row[0])
+
+
+def _by_hash(conn: Conn, digest: bytes) -> list[tuple[Any, ...]]:
+    conn.execute("SELECT set_config('app.token_hash', %s, true)", [digest.hex()])
+    return conn.execute(
+        "SELECT id, brand_name FROM signup_requests WHERE status_handle_hash = %s", [digest]
+    ).fetchall()
+
+
+def test_handle_issued_only_for_own_pending_request(app_conn: Conn, world: SignupWorld) -> None:
+    with as_user(app_conn, world.applicant_b):
+        assert _issue(app_conn, world.request_a, HANDLE_B) is False  # someone else's request
+        assert _issue(app_conn, world.request_b, b"short") is False  # not a sha256
+    with as_user(app_conn, None):
+        assert _issue(app_conn, world.request_a, HANDLE_A) is False  # no caller
+    with as_user(app_conn, world.member, world.tenant):
+        assert _issue(app_conn, world.request_a, HANDLE_A) is False
+    with as_user(app_conn, world.applicant_a):
+        assert _issue(app_conn, world.request_a, HANDLE_A) is True
+        row = app_conn.execute(
+            "SELECT status_handle_hash, status_handle_expires_at - now() "
+            "FROM signup_requests WHERE id = %s",
+            [world.request_a],
+        ).fetchone()
+        assert row is not None and bytes(row[0]) == HANDLE_A
+        assert 29 * 86400 < row[1].total_seconds() <= 30 * 86400
+
+
+def test_handle_reads_only_the_row_it_names(app_conn: Conn, world: SignupWorld) -> None:
+    with as_user(app_conn, world.applicant_a):
+        assert _issue(app_conn, world.request_a, HANDLE_A) is True
+        # another browser with no user GUC: only the named row, only with its hash
+        app_conn.execute("SELECT set_config('app.user_id', '', true)")
+        assert _by_hash(app_conn, HANDLE_A) == [(world.request_a, "A")]
+        assert _by_hash(app_conn, HANDLE_B) == []
+        app_conn.execute("SELECT set_config('app.token_hash', %s, true)", [HANDLE_A.hex()])
+        assert _ids(app_conn) == {world.request_a}  # never applicant B's row
+
+
+def test_expired_handle_reads_nothing(app_conn: Conn, admin_conn: Conn, world: SignupWorld) -> None:
+    admin_conn.execute(
+        "UPDATE signup_requests SET status_handle_hash = %s, "
+        "status_handle_expires_at = now() - interval '1 second' WHERE id = %s",
+        [HANDLE_B, world.request_b],
+    )
+    try:
+        with as_user(app_conn, None):
+            assert _by_hash(app_conn, HANDLE_B) == []
+    finally:
+        admin_conn.execute(
+            "UPDATE signup_requests SET status_handle_hash = NULL, "
+            "status_handle_expires_at = NULL WHERE id = %s",
+            [world.request_b],
+        )
+
+
+def test_app_rw_cannot_write_the_handle_columns(app_conn: Conn, world: SignupWorld) -> None:
+    for user in (world.applicant_a, world.admin):
+        with (
+            as_user(app_conn, user, world.tenant if user == world.admin else None),
+            pytest.raises(psycopg.errors.InsufficientPrivilege),
+        ):
+            app_conn.execute(
+                "UPDATE signup_requests SET status_handle_hash = %s, "
+                "status_handle_expires_at = now() + interval '1 year' WHERE id = %s",
+                [HANDLE_A, world.request_a],
+            )
+
+
+def test_read_only_roles_never_see_the_handle(admin_conn: Conn) -> None:
+    for role in ("app_ro", "app_platform_ro"):
+        for column in ("status_handle_hash", "status_handle_expires_at"):
+            row = admin_conn.execute(
+                "SELECT has_column_privilege(%s, 'public.signup_requests', %s, 'SELECT')",
+                [role, column],
+            ).fetchone()
+            assert row == (False,), (role, column)

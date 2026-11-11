@@ -77,7 +77,7 @@ def _generic() -> ApiError:
     return ApiError(401, ErrorCode.UNAUTHENTICATED, GENERIC_FAILURE)
 
 
-def _status_out(row: SignupRow) -> SignupStatusOut:
+def _status_out(row: SignupRow, status_handle: str | None = None) -> SignupStatusOut:
     return SignupStatusOut.model_validate(
         {
             "request_id": row.id,
@@ -87,6 +87,7 @@ def _status_out(row: SignupRow) -> SignupStatusOut:
             "tenant_id": row.created_tenant_id,
             "created_at": row.created_at,
             "decided_at": row.decided_at,
+            "status_handle": status_handle,
         }
     )
 
@@ -183,7 +184,9 @@ def _complete_out(done: google_signin.Completed) -> GoogleCompleteOut:
         )
     if done.outcome == "pending" and done.signup is not None:
         return GoogleCompleteOut(
-            outcome="pending", email=done.email, signup=_status_out(done.signup)
+            outcome="pending",
+            email=done.email,
+            signup=_status_out(done.signup, done.status_handle),
         )
     if done.outcome == "needs_details" and done.details is not None:
         d = done.details
@@ -277,4 +280,4 @@ async def signup_google(body: GoogleSignupRequest, request: Request) -> SignupSt
         raise _flow_invalid() from None
     if isinstance(created, google_signin.Failure):
         raise _generic()
-    return _status_out(created)
+    return _status_out(created.row, created.status_handle)

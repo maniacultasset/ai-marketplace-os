@@ -129,6 +129,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # ADR-0019: self-serve sign-up and the platform admin's queue (50 + 5)
     ("signup_create", "POST", "/signup"),
     ("signup_status", "POST", "/signup/status"),
+    ("signup_status_poll", "POST", "/signup/status/poll"),  # ADR-0019 amendment (+ 1)
     ("signup_google", "POST", "/signup/google"),
     ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
     ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
@@ -331,6 +332,7 @@ def test_public_ops() -> None:
         # ADR-0019
         "signup_create",
         "signup_status",
+        "signup_status_poll",  # ADR-0019 amendment: the status handle is checked in the service
         # DPP-1: the challenge steps (the challenge is checked in the service)
         "auth_login_mfa",
         "auth_login_mfa_enroll",
@@ -458,8 +460,9 @@ def test_login_response_is_login_result() -> None:
 
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
-    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run
-    assert len(OPS) == 111
+    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
+    # the ADR-0019 amendment adds the sign-up status poll
+    assert len(OPS) == 112
 
 
 def test_error_codes_per_d2() -> None:
@@ -574,6 +577,8 @@ def test_error_codes_per_d2() -> None:
             "invites_accept",
             "invites_join",
             "auth_password_reset",
+            # ADR-0019 amendment: an unknown, replaced or expired status handle
+            "signup_status_poll",
         }
         if "not_found" in c or platform_404:
             assert codes[404] == (E.NOT_FOUND,), op.op_id

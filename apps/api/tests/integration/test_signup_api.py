@@ -105,7 +105,7 @@ async def test_signup_creates_user_and_pending_request(
     response = await _signup(api, phone="+91 98765 43210", website="https://kalakar.test")
     assert response.status_code == 202, response.text
     body = response.json()
-    assert set(body) == {"request_id", "status"} and body["status"] == "pending"
+    assert set(body) == {"request_id", "status", "status_handle"} and body["status"] == "pending"
     user = auth_db.execute(
         "SELECT id, display_name, is_platform_admin, hashed_password FROM users WHERE email = %s",
         [FORM["email"]],
@@ -181,7 +181,7 @@ async def test_signup_existing_email_wrong_password_reveals_nothing(
 ) -> None:
     response = await _signup(api, email="owner@acme.test", password="Not-the-Password-0123")
     assert response.status_code == 202
-    assert set(response.json()) == {"request_id", "status"}
+    assert set(response.json()) == {"request_id", "status", "status_handle"}
     assert _count(auth_db, "SELECT count(*) FROM signup_requests") == 0
     assert audit_rows(auth_db, "signup.requested") == []
 

@@ -329,6 +329,13 @@ class SignupRequest(Base):
         ),
         Index(conv("ix_signup_requests_status_created_at"), "status", "created_at", "id"),
         Index(conv("ix_signup_requests_user_id"), "user_id", "created_at"),
+        # 0030 (ADR-0019 amendment): the poll finds the one request by its handle's hash
+        Index(
+            conv("uq_signup_requests_status_handle_hash"),
+            "status_handle_hash",
+            unique=True,
+            postgresql_where=text("status_handle_hash IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = id_column()
@@ -346,6 +353,10 @@ class SignupRequest(Base):
     updated_at: Mapped[datetime] = updated_at_column()
     # 0012 (ADR-0020): `google` when Google verified the applicant's email; set at insert only
     verified_via: Mapped[str | None] = mapped_column(Text)
+    # 0030 (ADR-0019 amendment): the sha256 of the applicant's status handle and its expiry,
+    # written only by `app_set_signup_status_handle`; never granted to the read-only roles
+    status_handle_hash: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
+    status_handle_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class LoginFlow(Base):

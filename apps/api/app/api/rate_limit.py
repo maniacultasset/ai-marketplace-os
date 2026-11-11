@@ -12,6 +12,8 @@
 - `enforce_signup_limit(request)`: the same 5/min per `sha256(ip)` alone, called by the public
   sign-up before anything else, so one address cannot mint accounts across many emails
   (ADR-0019).
+- `enforce_signup_poll_limit(request, handle)`: the sign-up status poll (ADR-0019 amendment),
+  per `sha256(ip|handle)` and, at a higher ceiling, per `sha256(ip)`.
 - `enforce_google_limit(request)`: `AUTH_GOOGLE_RATE_LIMIT_PER_MIN` (10) per `sha256(ip)` on
   every Google sign-in step (ADR-0020); the JSON steps then add the login limiter keyed on the
   email their handle carries, before the handle is consumed.
@@ -161,6 +163,30 @@ def signup_bucket(ip: str) -> str:
 
 async def enforce_signup_limit(request: Request) -> None:
     await _enforce(signup_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
+
+
+# ADR-0019 amendment (11 Nov 2026): the waiting page polls every 15 s (4 a minute), so one handle
+# gets twice the login rate (room for a refresh when the tab comes back), and one address gets
+# `SIGNUP_POLL_IP_CEILING` times that across handles (browsers behind one proxy egress).
+SIGNUP_POLL_PER_HANDLE: Final = 2
+SIGNUP_POLL_IP_CEILING: Final = 20
+
+
+def signup_poll_bucket(ip: str, handle: str) -> str:
+    return f"signup-poll:{hashlib.sha256(f'{ip}|{handle}'.encode()).hexdigest()}"
+
+
+def signup_poll_ip_bucket(ip: str) -> str:
+    return f"signup-poll-ip:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_signup_poll_limit(request: Request, handle: str) -> None:
+    """The status poll, before the handle is looked up: per `sha256(ip|handle)` and per
+    `sha256(ip)`. The handle itself never appears in a bucket key."""
+    limit = get_settings().auth_login_rate_limit_per_min * SIGNUP_POLL_PER_HANDLE
+    ip = request_ip(request)
+    await _enforce(signup_poll_ip_bucket(ip), limit * SIGNUP_POLL_IP_CEILING)
+    await _enforce(signup_poll_bucket(ip, handle), limit)
 
 
 def invite_bucket(ip: str) -> str:

@@ -28,6 +28,20 @@ REASON_MAX: Final = 1000
 PHONE_PATTERN: Final = r"^\+?[0-9][0-9 ()-]{5,30}$"
 
 SignupStatus = Literal["pending", "approved", "rejected"]
+STATUS_HANDLE_DESCRIPTION: Final = (
+    "ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for "
+    "`POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. "
+    "Keep it in the browser's storage only: never put it in a URL, a log or analytics."
+)
+
+StatusHandle = Annotated[
+    str,
+    Field(
+        pattern=r"^[A-Za-z0-9_-]{43}$",
+        description="The `status_handle` a sign-up answer returned (43 base64url characters). "
+        "Never log it or put it in a URL.",
+    ),
+]
 
 
 def _signup_email(value: str) -> str:
@@ -66,6 +80,11 @@ class SignupAccepted(WireModel):
 
     request_id: UUID
     status: Literal["pending"]
+    status_handle: str | None = Field(
+        default=None,
+        description=f"{STATUS_HANDLE_DESCRIPTION} Always set; like `request_id`, a handle for an "
+        "email that already had an account may name nothing (the poll then answers 404).",
+    )
 
 
 class SignupStatusRequest(StrictModel):
@@ -81,6 +100,24 @@ class SignupStatusOut(WireModel):
     tenant_id: UUID | None = None
     created_at: datetime
     decided_at: datetime | None = None
+    status_handle: str | None = Field(
+        default=None,
+        description=f"{STATUS_HANDLE_DESCRIPTION} Set only while the request is `pending`.",
+    )
+
+
+class SignupPollRequest(StrictModel):
+    status_handle: StatusHandle
+
+
+class SignupPollOut(WireModel):
+    """The one request a status handle names, and nothing else: no ids, email or tenant."""
+
+    status: SignupStatus
+    brand_name: NonBlankStr
+    requested_at: datetime
+    decided_at: datetime | None = None
+    reason: str | None = Field(default=None, description="The admin's reason, when `rejected`.")
 
 
 class SignupRequestOut(WireModel):

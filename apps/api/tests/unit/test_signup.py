@@ -31,7 +31,7 @@ from app.api.v1.schemas.signup import (
 from app.api.v1.surface import NO_ROLES, OPS, cases, declared_responses
 from app.core.errors import ConflictError, NotFoundError
 from app.core.rbac import PLATFORM_ADMIN, Action, Principal, route_policy
-from app.repositories.identity import AuthState, SignupRow, SlugTakenError, UserRow
+from app.repositories.identity import AuthState, SignupPollRow, SignupRow, SlugTakenError, UserRow
 from app.services import signup as svc
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
@@ -197,7 +197,7 @@ def test_decision_outcome(status: str, decision: Any, outcome: str) -> None:
 
 # ---- the registry ----
 
-SIGNUP_OPS = ("signup_create", "signup_status")
+SIGNUP_OPS = ("signup_create", "signup_status", "signup_status_poll")
 ADMIN_OPS = (
     "admin_signup_requests_list",
     "admin_signup_requests_approve",
@@ -373,6 +373,7 @@ class World:
     email_race: bool = False
     locked: bool = False
     failures: list[uuid.UUID] = field(default_factory=list)
+    handles: dict[uuid.UUID, bytes] = field(default_factory=dict)
     lookups: int = 0
     email_locks: list[str] = field(default_factory=list)
     email_busy: bool = False
@@ -439,6 +440,24 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
 
         async def lock(self, request_id: uuid.UUID) -> SignupRow | None:
             return world.requests.get(request_id)
+
+        async def set_status_handle(self, request_id: uuid.UUID, digest: bytes) -> bool:
+            # the definer's rule: only the caller's own pending request
+            row = world.requests.get(request_id)
+            caller = next((g["user_id"] for g in reversed(world.gucs) if "user_id" in g), None)
+            if row is None or row.status != "pending" or row.user_id != caller:
+                return False
+            world.handles[request_id] = digest
+            return True
+
+        async def by_status_handle(self, digest: bytes) -> Any:
+            for request_id, stored in world.handles.items():
+                if stored == digest:
+                    r = world.requests[request_id]
+                    return SignupPollRow(
+                        r.status, r.brand_name, r.created_at, r.decided_at, r.reason
+                    )
+            return None
 
         async def create_tenant(self, **kw: Any) -> None:
             if kw["slug"] in world.taken:
@@ -628,7 +647,11 @@ async def test_signup_status_refusals_none(monkeypatch: pytest.MonkeyPatch) -> N
     assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") is None  # no request
     row = _row(user_id=user.id)
     world.requests[row.id] = row
-    assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") == row
+    read = await svc.signup_status(user.email, "Brass-Lantern-Path-0123")
+    assert read is not None and read.row == row
+    assert read.status_handle is not None and world.handles[row.id] == svc.status_handle_hash(
+        read.status_handle
+    )
     world.locked = True
     assert await svc.signup_status(user.email, "Brass-Lantern-Path-0123") is None
 
@@ -807,7 +830,7 @@ def test_0021_is_the_single_head() -> None:
     # proposals (SI13) on top of that (re-chained from 0023 at the 2026-11-09 merge), and the
     # V1.1 assist tables (SI14) on top of them, the photo read on upload (V1.1) on top, and the
     # accepted candidates out of the cache index (ADR-0030 amendment) on top of the admin Google link
-    assert revisions - parents == {"0030_candidate_cache_accepted"}
+    assert revisions - parents == {"0031_signup_status_handle"}
 
 
 @pytest.mark.parametrize(
@@ -860,3 +883,151 @@ async def test_busy_email_lock_writes_nothing(monkeypatch: pytest.MonkeyPatch, k
     assert not world.inserted_users and not world.requests and world.lookups == 0
     assert await svc.signup_status("founder@kalakar.example", "Brass-Lantern-Path-0123") is None
     assert world.lookups == 0
+
+
+# ---- the status handle (ADR-0019 amendment, 11 Nov 2026) ----
+
+HANDLE = re.compile(r"^[A-Za-z0-9_-]{43}$")
+
+
+def test_new_status_handle_is_32_random_bytes_urlsafe() -> None:
+    handles = {svc.new_status_handle() for _ in range(64)}
+    assert len(handles) == 64 and all(HANDLE.fullmatch(h) for h in handles)
+    digest = svc.status_handle_hash("A" * 43)
+    assert len(digest) == 32 and digest != b"A" * 32
+
+
+def test_poll_request_takes_only_a_well_formed_handle() -> None:
+    from app.api.v1.schemas.signup import SignupPollRequest
+
+    SignupPollRequest.model_validate({"status_handle": "a" * 43})
+    for bad in ("", "a" * 42, "a" * 44, "+" * 43, "a" * 42 + "="):
+        with pytest.raises(ValidationError):
+            SignupPollRequest.model_validate({"status_handle": bad})
+    with pytest.raises(ValidationError):
+        SignupPollRequest.model_validate({"status_handle": "a" * 43, "email": "a@b.test"})
+
+
+def test_poll_out_names_only_the_allowed_fields() -> None:
+    from app.api.v1.schemas.signup import SignupPollOut
+
+    assert set(SignupPollOut.model_fields) == {
+        "status", "brand_name", "requested_at", "decided_at", "reason",
+    }  # fmt: skip
+
+
+async def test_new_signup_issues_a_stored_hash_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    accepted = await _signup()
+    assert HANDLE.fullmatch(accepted.status_handle)
+    assert world.handles == {accepted.request_id: svc.status_handle_hash(accepted.status_handle)}
+    found = await svc.poll_status(accepted.status_handle)
+    assert found is not None and found.status == "pending" and found.brand_name == "Kalakar Weaves"
+
+
+async def test_blank_answers_carry_a_handle_that_names_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    _user(world)
+    wrong = await _signup(password="Wrong-but-Valid-0123")
+    assert HANDLE.fullmatch(wrong.status_handle)
+    assert world.handles == {} and await svc.poll_status(wrong.status_handle) is None
+
+
+async def test_existing_user_right_password_handle_names_the_pending_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    _user(world)
+    first = await _signup()
+    second = await _signup(brand_name="Another Name")
+    [pending] = world.requests.values()
+    # a re-observation replaces the hash; the older handle names nothing any more
+    assert world.handles == {pending.id: svc.status_handle_hash(second.status_handle)}
+    assert await svc.poll_status(first.status_handle) is None
+    assert (await svc.poll_status(second.status_handle)) is not None
+
+
+async def test_status_read_of_a_decided_request_issues_no_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    user = _user(world)
+    row = _row(user_id=user.id, status="rejected", reason="no", decided_at=NOW)
+    world.requests[row.id] = row
+    read = await svc.signup_status(user.email, "Brass-Lantern-Path-0123")
+    assert read is not None and read.row == row and read.status_handle is None
+    assert world.handles == {}
+
+
+def _poll_app(monkeypatch: pytest.MonkeyPatch, found: Any) -> tuple[TestClient, list[str]]:
+    from app.api.v1.routers import signup as router_module
+
+    limited: list[str] = []
+
+    async def fake_limit(_: Any, handle: str) -> None:
+        limited.append(handle)
+
+    async def fake_poll(_: str) -> Any:
+        return found
+
+    async def no_hit(_: str, __: int) -> int:  # the public per-IP limiter, without Postgres
+        return 0
+
+    monkeypatch.setattr("app.services.rate_limit.hit", no_hit)
+    monkeypatch.setattr(router_module, "enforce_signup_poll_limit", fake_limit)
+    monkeypatch.setattr(svc, "poll_status", fake_poll)
+    app = FastAPI()
+    install_error_handlers(app)
+    app.include_router(router_module.router, prefix="/api/v1")
+    return TestClient(app, raise_server_exceptions=False), limited
+
+
+def test_poll_route_limits_then_answers_only_allowed_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    found = SignupPollRow("approved", "Kalakar Weaves", NOW, NOW, "stale text")
+    client, limited = _poll_app(monkeypatch, found)
+    response = client.post("/api/v1/signup/status/poll", json={"status_handle": "h" * 43})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body) == {"status", "brand_name", "requested_at", "decided_at", "reason"}
+    assert body["status"] == "approved" and body["reason"] is None  # a reason only when rejected
+    assert limited == ["h" * 43]
+
+
+def test_poll_route_unknown_handle_is_a_generic_404(monkeypatch: pytest.MonkeyPatch) -> None:
+    client, limited = _poll_app(monkeypatch, None)
+    one = client.post("/api/v1/signup/status/poll", json={"status_handle": "x" * 43})
+    two = client.post("/api/v1/signup/status/poll", json={"status_handle": "y" * 43})
+    assert one.status_code == two.status_code == 404
+    assert one.json()["error"]["type"] == "NOT_FOUND"
+    assert "x" * 43 not in one.text
+
+    def strip(b: dict[str, Any]) -> dict[str, Any]:
+        drop = {"error_report", "correlation_id"}
+        return {k: v for k, v in b["error"].items() if k not in drop}
+
+    assert strip(one.json()) == strip(two.json())
+    assert len(limited) == 2
+
+
+def test_poll_limit_key_never_holds_the_handle() -> None:
+    from app.api import rate_limit
+
+    handle = "z" * 43
+    for key in (rate_limit.signup_poll_bucket("203.0.113.7", handle),
+                rate_limit.signup_poll_ip_bucket("203.0.113.7")):  # fmt: skip
+        assert handle not in key and "203.0.113.7" not in key
+
+
+def test_redaction_hides_the_handle() -> None:
+    from app.core.redaction import redact
+
+    out = redact({"status_handle": "s" * 43, "path": "/x?status_handle=" + "s" * 43})
+    assert "s" * 43 not in str(out)
