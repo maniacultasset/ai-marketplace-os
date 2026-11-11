@@ -180,7 +180,7 @@ def test_profile_body_carries_description_and_voice() -> None:
         {"brand_description": "token Bearer abcdefghijklmnopqrstu"},
         {"brand_voice": {"price_segment": "low"}},
         {"brand_voice": "warm"},
-        {"website_url": "https://acme.example"},
+        {"website_url": "acme.example"},  # wave A: the website must be an http(s) link
     ],
 )
 def test_profile_body_refused(body: dict[str, Any]) -> None:
