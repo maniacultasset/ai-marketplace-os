@@ -256,7 +256,11 @@ def model_rewrites(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def _runs(world: GenWorld, job_id: Any) -> list[tuple[Any, ...]]:
     return world.conn.execute(
-        "SELECT run_reason, run_scope FROM agent_runs WHERE job_id = %s", [job_id]
+        # the version's generation calls (a brand lookup's embedding call is linked to no
+        # version and records no reason)
+        "SELECT run_reason, run_scope FROM agent_runs "
+        "WHERE job_id = %s AND listing_version_id IS NOT NULL",
+        [job_id],
     ).fetchall()
 
 
