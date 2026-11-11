@@ -20,7 +20,7 @@ from app.db.platform_loads import ErrorMapIn, load_error_map_file
 from app.services.resolution.history import GROUPS, group_of
 from app.services.resolution.plan import PlanContext, lane_for
 from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
-from mkos_schemas.enums import Marketplace, RetryClass
+from mkos_schemas.enums import Marketplace
 
 # the client's taxonomy (feedback item 20); `unknown` is only for an unmapped issue
 TAXONOMY: Final = frozenset(
@@ -118,11 +118,11 @@ def test_every_class_has_a_group() -> None:
 @pytest.mark.parametrize("path", [ERROR_MAP_AMAZON_PATH, ERROR_MAP_FLIPKART_PATH])
 def test_no_row_sets_its_own_fix(path: Any) -> None:
     """A map row sets no fix action of its own: the lane comes from the code (the fix policy and
-    the planner, checked below). Its retry class is its code's, or `user_action`."""
+    the planner, checked below). A documented row is `user_action` (SI13 CP-D20); a resend of
+    Amazon's internal error comes from its code's policy, not from the row."""
     for row in load_error_map_file(path):
         assert row.auto_fixable is False and row.fix_action is None, row.raw_value
-        own = ERROR_CODE_META[row.error_code].retry_class
-        assert row.retry_class in (own, RetryClass.USER_ACTION), row.raw_value
+        assert row.retry_class.value == "user_action", row.raw_value
         assert row.severity.value == "error", row.raw_value
         assert row.seller_action, row.raw_value
         assert "{" not in row.plain_text, row.raw_value

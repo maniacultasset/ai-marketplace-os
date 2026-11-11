@@ -2068,7 +2068,7 @@
     "version": 1,
     "error_code": "MARKETPLACE_UNAVAILABLE",
     "error_class": "marketplace_technical",
-    "retry_class": "auto_retry",
+    "retry_class": "user_action",
     "severity": "error",
     "auto_fixable": false,
     "fix_action": null,

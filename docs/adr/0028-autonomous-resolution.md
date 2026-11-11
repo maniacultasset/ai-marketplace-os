@@ -77,8 +77,8 @@ payload go back to the marketplace without a second approval?
   make-up, price, a count, a number) is `VALUE_NOT_ALLOWED`, `CROSS_FIELD_MISMATCH` or `MISSING_ATTRIBUTE` and goes
   to the seller or Kuinn's team, never to the AI; only a text rule on Kuinn's own text (HTML, web links, a length)
   takes the deterministic content fix (`FIELD_TOO_LONG`) or the one-field AI rewrite (`PATTERN_MISMATCH`,
-  `FIELD_TOO_SHORT`, credit-gated, one try per key); Amazon's internal error 4000000 (`MARKETPLACE_UNAVAILABLE`,
-  `auto_retry`) is resent; brand and generic-product eligibility goes to the marketplace lane; the luxury-category
+  `FIELD_TOO_SHORT`, credit-gated, one try per key); Amazon's internal error 4000000 (`MARKETPLACE_UNAVAILABLE`;
+  the row stays `user_action`, as every documented row) is resent by its code's policy; brand and generic-product eligibility goes to the marketplace lane; the luxury-category
   codes 4005018/4005019 are `CATEGORY_MISMATCH` (the seller recategorises). `error_map.flipkart.json` is new: Flipkart documents the error shape but no code list, so its rows match
   the documented payload node an issue's path names (`path:price`, `path:tax`, ...); settings Kuinn does not send
   in v1 (tax, delivery charges, stock, packages, fulfilment) carry `policy_ref.handled_outside`. The migrate job
