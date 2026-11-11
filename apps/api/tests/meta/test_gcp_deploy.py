@@ -1457,6 +1457,22 @@ def test_size_chart_read_switch_reaches_both_roles(toolkit: Path, tmp_path: Path
     assert "SIZE_CHART_READ_ENABLED must be true or false" in result.stderr
 
 
+def test_photo_views_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """Feedback 7 and 8: the read (api) and the generation gate (worker) read one switch; off
+    unless the env file says so."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "false"
+    assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "false"
+    _set_env(toolkit, "staging", PHOTO_VIEWS_ENABLED="true")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "true"
+    assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "true"
+    _set_env(toolkit, "staging", PHOTO_VIEWS_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "PHOTO_VIEWS_ENABLED must be true or false" in result.stderr
+
+
 def test_prod_pins_amazon_publishing_off(repo_root: Path) -> None:
     """The owner asked on 2026-11-09 that the real seller account receives no publishes until
     they say go: prod.env ships the kill switch off, with the reason next to it."""

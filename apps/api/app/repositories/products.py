@@ -170,6 +170,22 @@ class ProductRepository(TenantScopedRepository[Product]):
         )
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def child_sizes(self, style_id: uuid.UUID) -> builtins.list[str]:
+        """The `variant_attributes.size` of each live child of `style_id` that has one, in id
+        order (the photo views' size chart check)."""
+        size = Product.variant_attributes["size"].astext
+        stmt = (
+            self._select()
+            .where(
+                Product.parent_product_id == style_id,
+                Product.deleted_at.is_(None),
+                size.is_not(None),
+            )
+            .with_only_columns(size)
+            .order_by(Product.id)
+        )
+        return [str(v) for v in (await self.db.execute(stmt)).scalars() if v]
+
     async def child_prices(
         self, style_id: uuid.UUID
     ) -> builtins.list[tuple[Decimal | None, Decimal | None]]:

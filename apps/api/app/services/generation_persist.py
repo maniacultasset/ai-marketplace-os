@@ -67,6 +67,7 @@ from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcil
 from app.services.issues import record_auto_fixes, sync_issues
 from app.services.photo_facts import PhotoDecision, PhotoSet
 from app.services.photo_facts_store import apply_photo_decision
+from app.services.photo_views import listing_findings
 from app.services.pipeline_deps import RulesCall
 from app.services.remote_preview import request_preview
 
@@ -356,7 +357,9 @@ def make_persist(plan: PersistPlan) -> Any:
                 uow,
                 listing,
                 "vision_model",
-                image_issue_report(content, stored, plan.image_reports),
+                image_issue_report(
+                    content, stored, plan.image_reports, await listing_findings(uow, content)
+                ),
                 run_id=None,
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,

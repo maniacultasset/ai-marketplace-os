@@ -6437,6 +6437,212 @@
         "title": "PhotoReadOut",
         "type": "object"
       },
+      "PhotoViewOut": {
+        "description": "Feedback 7: one row of the product's photo checklist. `status`: `present`, `missing`, or\n`invalid` (every photo in the view failed its checks; upload a new one). A size chart the\nseller saved counts as present with no photo.",
+        "properties": {
+          "amazon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "required",
+                  "recommended",
+                  "optional"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amazon"
+          },
+          "flipkart": {
+            "anyOf": [
+              {
+                "enum": [
+                  "required",
+                  "recommended",
+                  "optional"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flipkart"
+          },
+          "image_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Image Ids",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "requirement": {
+            "enum": [
+              "required",
+              "recommended",
+              "optional"
+            ],
+            "title": "Requirement",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ImageSlot"
+          },
+          "status": {
+            "enum": [
+              "present",
+              "missing",
+              "invalid"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "view": {
+            "enum": [
+              "front",
+              "back",
+              "close_up",
+              "size_chart",
+              "lifestyle",
+              "packaging_label"
+            ],
+            "title": "View",
+            "type": "string"
+          },
+          "why": {
+            "description": "One plain line on why the view helps.",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "label",
+          "slot",
+          "requirement",
+          "why",
+          "status"
+        ],
+        "title": "PhotoViewOut",
+        "type": "object"
+      },
+      "PhotoViewRuleOut": {
+        "description": "One photo view of a category's checklist. `requirement` is the strictest any marketplace\ngives it; `amazon` and `flipkart` are each marketplace's own (null: that marketplace's list\nleaves the view out). A photo fills the view when it is uploaded with this `slot` and\n`role`; the size chart also counts once the seller saved a chart.",
+        "properties": {
+          "amazon": {
+            "anyOf": [
+              {
+                "enum": [
+                  "required",
+                  "recommended",
+                  "optional"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amazon"
+          },
+          "flipkart": {
+            "anyOf": [
+              {
+                "enum": [
+                  "required",
+                  "recommended",
+                  "optional"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flipkart"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "requirement": {
+            "enum": [
+              "required",
+              "recommended",
+              "optional"
+            ],
+            "title": "Requirement",
+            "type": "string"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "enum": [
+                  "back",
+                  "close_up"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/ImageSlot"
+          },
+          "view": {
+            "enum": [
+              "front",
+              "back",
+              "close_up",
+              "size_chart",
+              "lifestyle",
+              "packaging_label"
+            ],
+            "title": "View",
+            "type": "string"
+          },
+          "why": {
+            "description": "One plain line on why the view helps.",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "view",
+          "label",
+          "slot",
+          "requirement",
+          "why"
+        ],
+        "title": "PhotoViewRuleOut",
+        "type": "object"
+      },
       "PipelineStage": {
         "description": "TRANSIENT progress only — never written to listings.status.",
         "enum": [
@@ -7247,6 +7453,14 @@
             "title": "Photo Reading",
             "type": "boolean"
           },
+          "photo_views": {
+            "description": "Feedback 7: the photo checklist for the product's category, with what is present; single reads only. Empty on lists and while the checklist is switched off.",
+            "items": {
+              "$ref": "#/components/schemas/PhotoViewOut"
+            },
+            "title": "Photo Views",
+            "type": "array"
+          },
           "product_identifier": {
             "anyOf": [
               {
@@ -7281,6 +7495,17 @@
                 "type": "null"
               }
             ]
+          },
+          "size_chart_check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeChartCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Feedback 8: the size chart check of a style or standalone; single reads only. Null on lists, on a variant and while the checklist is switched off."
           },
           "size_chart_read_enabled": {
             "default": false,
@@ -8114,7 +8339,7 @@
         "type": "object"
       },
       "RequirementsOut": {
-        "description": "Each list is the sorted dictionary keys the marketplace needs before it accepts a listing\nof this category: its required facts, the category template's required attributes and a\nreviewed extras table. Shown to the seller; the extras are never sent.",
+        "description": "Each list is the sorted dictionary keys the marketplace needs before it accepts a listing\nof this category: its required facts, the category template's required attributes and a\nreviewed extras table (with `PHOTO_VIEWS_ENABLED` on, `size_measurements` where the size\nchart is required). Shown to the seller; the extras are never sent.",
         "properties": {
           "amazon": {
             "items": {
@@ -8133,6 +8358,14 @@
               "type": "string"
             },
             "title": "Flipkart",
+            "type": "array"
+          },
+          "photo_views": {
+            "description": "Feedback 7: the category's photo view checklist, in display order; empty while the checklist is switched off (show the fixed Front, Back, Close-up and Size chart tiles then).",
+            "items": {
+              "$ref": "#/components/schemas/PhotoViewRuleOut"
+            },
+            "title": "Photo Views",
             "type": "array"
           }
         },
@@ -8834,6 +9067,39 @@
           "rows"
         ],
         "title": "SizeChart",
+        "type": "object"
+      },
+      "SizeChartCheckOut": {
+        "description": "Feedback 8: the size chart of a style or standalone. `required`: a marketplace's checklist\nneeds it before approval (show \"Needed\" while `saved` is false). `missing_sizes`: variant\nsizes the saved chart has no row for (they block approval); `unused_sizes`: chart sizes no\nvariant has (a warning). Case and spaces are ignored when sizes are matched.",
+        "properties": {
+          "missing_sizes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Sizes",
+            "type": "array"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "saved": {
+            "title": "Saved",
+            "type": "boolean"
+          },
+          "unused_sizes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unused Sizes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "required",
+          "saved"
+        ],
+        "title": "SizeChartCheckOut",
         "type": "object"
       },
       "SizeChartReadOut": {
@@ -24235,7 +24501,7 @@
     },
     "/api/v1/catalog/requirements": {
       "get": {
-        "description": "The dictionary keys Amazon and Flipkart need for a listing of `category`: each\nmarketplace's required facts, the category template's required attributes and a reviewed\nextras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN\nexemption, and the audience for Kurta sets and T-shirts). Shown as \"Needed\"; the extras are\nnever sent. An unknown category answers the facts and extras only.",
+        "description": "The dictionary keys Amazon and Flipkart need for a listing of `category`: each\nmarketplace's required facts, the category template's required attributes and a reviewed\nextras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN\nexemption, and the audience for Kurta sets and T-shirts). Shown as \"Needed\"; the extras are\nnever sent. An unknown category answers the facts and extras only. `photo_views` is the\ncategory's photo checklist (each view required, recommended or optional, and why).",
         "operationId": "catalog_requirements_get",
         "parameters": [
           {

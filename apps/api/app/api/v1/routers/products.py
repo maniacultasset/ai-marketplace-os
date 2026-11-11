@@ -18,6 +18,7 @@ from mkos_schemas.codes import ErrorCode
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
+from app.api.v1.routers.catalog import photo_view_fields
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
@@ -30,6 +31,7 @@ from app.api.v1.schemas.products import (
     PackageOut,
     PhotoFactOut,
     PhotoReadOut,
+    PhotoViewOut,
     ProductCreate,
     ProductIdentifierOut,
     ProductImageOut,
@@ -38,6 +40,7 @@ from app.api.v1.schemas.products import (
     ProductPatch,
     RecategorizeIn,
     SizeChart,
+    SizeChartCheckOut,
     SizeChartRow,
     SizeChartSuggestionOut,
     SuggestedSizeChart,
@@ -201,6 +204,24 @@ def _out(view: products.ProductView) -> ProductOut:
         thumbnail_expires_at=view.thumbnail_expires_at,
         variation_theme=view.variation_theme,
         size_run=view.size_run,
+        photo_views=[
+            PhotoViewOut.model_construct(
+                **photo_view_fields(state.rule),
+                status=state.status,
+                image_ids=list(state.image_ids),
+            )
+            for state in view.photo_views
+        ],
+        size_chart_check=(
+            None
+            if view.size_chart_check is None
+            else SizeChartCheckOut.model_construct(
+                required=view.size_chart_check.required,
+                saved=view.size_chart_check.saved,
+                missing_sizes=list(view.size_chart_check.missing_sizes),
+                unused_sizes=list(view.size_chart_check.unused_sizes),
+            )
+        ),
         suggestions=SuggestionsOut.model_construct(
             category=(
                 None

@@ -165,17 +165,20 @@ async def schema_changed(uow: TenantUnitOfWork, listing: Any, adapter: ErrorRepo
 
 async def photo_report(uow: TenantUnitOfWork, canonical: Any, version: Any) -> ErrorReport:
     """The version's photo findings as generation syncs them: the live images' stored reports
-    for this marketplace, and the pipeline's vision reports kept on the version."""
+    for this marketplace, the pipeline's vision reports kept on the version, and (feedback 7
+    and 8) the product's missing photo views and size chart findings."""
     from mkos_schemas.images import ImageReport
 
     from app.services.image_gate import image_issue_report
+    from app.services.photo_views import listing_findings
 
     ids = [ref.image_id for ref in canonical.images]
     found = await uow.images.live_reports_for_images(ids) if ids else {}
     market = canonical.marketplace
     stored = {image_id: reports[market] for image_id, reports in found.items() if market in reports}
     pipeline = [ImageReport.model_validate(r) for r in (version.image_reports_json or [])]
-    return image_issue_report(canonical, stored, pipeline)
+    views = await listing_findings(uow, canonical)
+    return image_issue_report(canonical, stored, pipeline, views)
 
 
 async def photos_changed(uow: TenantUnitOfWork, listing: Any, photos: ErrorReport) -> bool:
