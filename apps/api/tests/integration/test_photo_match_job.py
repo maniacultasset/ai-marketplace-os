@@ -203,7 +203,9 @@ async def test_a_check_whose_job_ended_reads_as_not_checked(pw: PhotoWorld) -> N
     image = pw.images["secondary"]
     job = await _queue(pw, image)
     assert job is not None
-    pw.conn.execute("UPDATE job_runs SET status = 'cancelled' WHERE id = %s", [job])
+    pw.conn.execute(
+        "UPDATE job_runs SET status = 'cancelled', finished_at = now() WHERE id = %s", [job]
+    )
     assert (await _read(pw, image)).status == "failed"
 
 
