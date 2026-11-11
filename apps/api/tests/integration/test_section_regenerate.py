@@ -288,7 +288,9 @@ async def test_a_section_job_changes_only_its_sections_and_keeps_locks(
     assert out["content"]["bullets"] == base["content"]["bullets"]
     assert out["keywords"] == base["keywords"]
     runs = _runs(gen_world, accepted.job_id)
-    assert runs and set(runs) == {("section_regenerate", ["content.description"])}
+    assert runs and {(r, tuple(s)) for r, s in runs} == {
+        ("section_regenerate", ("content.description",))
+    }
 
 
 @pytest.mark.usefixtures("model_rewrites")
