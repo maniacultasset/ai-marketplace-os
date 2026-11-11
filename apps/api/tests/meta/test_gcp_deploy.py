@@ -1463,7 +1463,8 @@ def test_photo_views_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) ->
     out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
     assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "false"
     assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "false"
-    _set_env(toolkit, "staging", PHOTO_VIEWS_ENABLED="true")
+    env = toolkit / "staging.env"  # the env files name no value yet: deploy.sh reads it as off
+    env.write_text(env.read_text(encoding="utf-8") + "PHOTO_VIEWS_ENABLED=true\n", encoding="utf-8")
     out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
     assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "true"
     assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "true"
