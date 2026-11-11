@@ -2805,6 +2805,19 @@
             "description": "Set only with status `accepted`: the candidate's image already took this place and still holds it (the live main of the same product and colourway, or the product's size-chart image for a size chart). No new job was started.",
             "title": "Accepted Image Id"
           },
+          "applied_preview_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set only with `accepted_image_id`: a short-lived signed GET (10 minutes) of the applied image, so a page read before the accept can show it at once. Never stored with the idempotent answer: a replay signs a fresh one.",
+            "title": "Applied Preview Url"
+          },
           "candidate_id": {
             "format": "uuid",
             "title": "Candidate Id",
@@ -46330,7 +46343,7 @@
         "x-mkos-action": "tenant:read"
       },
       "post": {
-        "description": "Ask for a candidate: `white_background` (an AI edit of the live main photo; only while\nimage editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or\n`size_chart` (an image of the product's size chart, no AI). A candidate is never a product\nimage until it is accepted. The same source asked again answers the same candidate; 202 names\nits job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`\nmeans it is already applied: that image is still this colourway's live main. An accepted\ncandidate whose image was replaced or deleted no longer answers: a new one is made. A new\nAI edit while AI is paused for every brand is 503 with the pause's code and no\n`Retry-After` (SI10).",
+        "description": "Ask for a candidate: `white_background` (an AI edit of the live main photo; only while\nimage editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or\n`size_chart` (an image of the product's size chart, no AI). A candidate is never a product\nimage until it is accepted. The same source asked again answers the same candidate; 202 names\nits job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`\nmeans it is already applied: that image is still this colourway's live main, and\n`applied_preview_url` signs it for 10 minutes so the page can show it. An accepted\ncandidate whose image was replaced or deleted no longer answers: a new one is made. A new\nAI edit while AI is paused for every brand is 503 with the pause's code and no\n`Retry-After` (SI10).",
         "operationId": "image_candidates_create",
         "parameters": [
           {

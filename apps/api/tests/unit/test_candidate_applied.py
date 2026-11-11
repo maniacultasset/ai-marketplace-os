@@ -132,3 +132,70 @@ async def test_a_size_chart_is_applied_while_its_image_is_the_chart(
     row = _candidate(made, kind="size_chart")
     uow: Any = _Uow([made])
     assert (await svc._still_applied(uow, row, None) is row) is applied
+
+
+class _Store:
+    def __init__(self) -> None:
+        self.signed: list[tuple[str, int]] = []
+
+    async def presign_get(self, bucket: str, key: str, *, expires_s: int) -> str:
+        self.signed.append((key, expires_s))
+        return f"https://store.test/{key}?X-Amz-Signature=x"
+
+
+def _signing(monkeypatch: pytest.MonkeyPatch, uow: Any) -> _Store:
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def fake_uow(tenant_id: uuid.UUID, *, user_id: uuid.UUID | None = None) -> Any:
+        yield uow
+
+    store = _Store()
+    monkeypatch.setattr(svc, "tenant_uow", fake_uow)
+    monkeypatch.setattr(svc, "get_storage", lambda: store)
+    monkeypatch.setattr(svc, "images_bucket", lambda: "images")
+    return store
+
+
+def _with_row(uow: Any, row: Any) -> Any:
+    async def get(candidate_id: uuid.UUID) -> Any:
+        return row if candidate_id == row.id else None
+
+    uow.image_candidates.get = get
+    return uow
+
+
+_PRINCIPAL: Any = SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
+
+
+async def test_an_applied_answer_signs_the_candidates_own_image(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A stale page shows the processed photo at once: the candidate's stored image, for 10
+    minutes."""
+    made = _image()
+    row = _candidate(made, colourway_id=RED, storage_key="t/candidates/c.jpg")
+    store = _signing(monkeypatch, _with_row(_Uow([made]), row))
+    answer = svc._accepted(row, with_job=False)
+    url = await svc._applied_preview(_PRINCIPAL, answer)
+    assert url is not None and "X-Amz-Signature" in url
+    assert store.signed == [("t/candidates/c.jpg", svc.PREVIEW_TTL_S)]
+
+
+async def test_no_signed_image_once_it_is_no_longer_the_main(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A replayed "already applied" answer signs nothing after its image was replaced."""
+    made = _image(slot="secondary")
+    row = _candidate(made, colourway_id=RED, storage_key="t/candidates/c.jpg")
+    store = _signing(monkeypatch, _with_row(_Uow([made]), row))
+    answer = {**svc._accepted(row, with_job=False), "accepted_image_id": str(made.id)}
+    assert await svc._applied_preview(_PRINCIPAL, answer) is None
+    assert store.signed == []
+
+
+async def test_no_signed_image_for_any_other_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+    row = _candidate(None, status="queued", colourway_id=RED, storage_key=None)
+    store = _signing(monkeypatch, _with_row(_Uow([]), row))
+    assert await svc._applied_preview(_PRINCIPAL, svc._accepted(row, with_job=True)) is None
+    assert store.signed == []

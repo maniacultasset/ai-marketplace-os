@@ -971,6 +971,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "job_id": JOB,
             "poll_url": f"/api/v1/jobs/{JOB}",
             "accepted_image_id": None,
+            "applied_preview_url": None,
         },
         "image_candidates_list": {"items": [_CANDIDATE]},
         "image_candidates_accept": {

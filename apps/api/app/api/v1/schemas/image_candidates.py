@@ -67,6 +67,12 @@ class ImageCandidateAccepted(WireModel):
         "this place and still holds it (the live main of the same product and colourway, or "
         "the product's size-chart image for a size chart). No new job was started.",
     )
+    applied_preview_url: Annotated[str | None, Field(max_length=4096)] = Field(
+        default=None,
+        description="Set only with `accepted_image_id`: a short-lived signed GET (10 minutes) "
+        "of the applied image, so a page read before the accept can show it at once. Never "
+        "stored with the idempotent answer: a replay signs a fresh one.",
+    )
 
 
 class FidelityOut(WireModel):

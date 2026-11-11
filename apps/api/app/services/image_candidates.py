@@ -28,6 +28,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, JobKind
 
 from app.adapters.storage import (
+    StorageConfigError,
     StorageNotFound,
     StorageObjectTooLarge,
     get_storage,
@@ -394,7 +395,28 @@ async def create_candidate(
         job_id=answer.get("job_id"),
         status=answer.get("status"),
     )
-    return answer
+    return {**answer, "applied_preview_url": await _applied_preview(principal, answer)}
+
+
+async def _applied_preview(principal: Principal, answer: Mapping[str, Any]) -> str | None:
+    """An "already applied" answer's 10-minute signed GET of the candidate's stored image, so a
+    page read before the accept can show the processed photo at once. Signed after the
+    idempotent call and never stored with the answer (CP-D18), so a replay signs afresh, and
+    only while the image still holds its place (`_still_applied`); None otherwise, or when the
+    store is not configured."""
+    if answer.get("status") != "accepted" or not answer.get("accepted_image_id"):
+        return None
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        row = await uow.image_candidates.get(uuid.UUID(str(answer["candidate_id"])))
+        applied = None if row is None else await _still_applied(uow, row, row.colourway_id)
+    if applied is None or not applied.storage_key:
+        return None
+    try:
+        storage = get_storage()
+    except StorageConfigError:
+        log.warning("image_candidate.preview_unsigned", reason="storage_config")
+        return None
+    return await storage.presign_get(images_bucket(), applied.storage_key, expires_s=PREVIEW_TTL_S)
 
 
 def _fidelity(row: ImageCandidate) -> dict[str, Any] | None:

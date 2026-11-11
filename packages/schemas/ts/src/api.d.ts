@@ -2020,7 +2020,8 @@ export interface paths {
          *     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
          *     image until it is accepted. The same source asked again answers the same candidate; 202 names
          *     its job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`
-         *     means it is already applied: that image is still this colourway's live main. An accepted
+         *     means it is already applied: that image is still this colourway's live main, and
+         *     `applied_preview_url` signs it for 10 minutes so the page can show it. An accepted
          *     candidate whose image was replaced or deleted no longer answers: a new one is made. A new
          *     AI edit while AI is paused for every brand is 503 with the pause's code and no
          *     `Retry-After` (SI10).
@@ -3416,6 +3417,11 @@ export interface components {
              * @description Set only with status `accepted`: the candidate's image already took this place and still holds it (the live main of the same product and colourway, or the product's size-chart image for a size chart). No new job was started.
              */
             accepted_image_id?: string | null;
+            /**
+             * Applied Preview Url
+             * @description Set only with `accepted_image_id`: a short-lived signed GET (10 minutes) of the applied image, so a page read before the accept can show it at once. Never stored with the idempotent answer: a replay signs a fresh one.
+             */
+            applied_preview_url?: string | null;
             /**
              * Candidate Id
              * Format: uuid
