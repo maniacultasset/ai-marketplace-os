@@ -5560,6 +5560,17 @@
                 "type": "null"
               }
             ]
+          },
+          "unlock": {
+            "description": "Locked paths to release, so a regenerate may rewrite them again. Every path this edit changes is locked (an edited path stays locked). Content sent unchanged with only `unlock` makes no new version.",
+            "items": {
+              "maxLength": 80,
+              "pattern": "^(content\\.(title|bullets|description)|keywords\\.(search_terms|hidden_terms)|attributes\\.[a-z0-9_]{1,64})$",
+              "type": "string"
+            },
+            "maxItems": 256,
+            "title": "Unlock",
+            "type": "array"
           }
         },
         "required": [
@@ -5648,6 +5659,21 @@
       },
       "ListingDetail": {
         "properties": {
+          "affected_sections": {
+            "description": "The sections that use a fact the seller answered after the last AI run that wrote that section (a generation, a whole regenerate, or a section regenerate or AI fix that covered it), in card order. A seller's edit or a fact-only version is not an AI run, so it never hides them; a fully locked section is left out. Regenerate with these `sections` and `for_answers: true` to use the answers.",
+            "items": {
+              "enum": [
+                "title",
+                "bullets",
+                "description",
+                "keywords",
+                "attributes"
+              ],
+              "type": "string"
+            },
+            "title": "Affected Sections",
+            "type": "array"
+          },
           "approve_hint": {
             "anyOf": [
               {
@@ -5775,6 +5801,14 @@
               }
             ],
             "title": "Live Url"
+          },
+          "locked_paths": {
+            "description": "The paths the seller edited (`content.title`, `content.bullets`, `content.description`, `keywords.search_terms`, `keywords.hidden_terms`, `attributes.<key>`). No regenerate changes them; `unlock` on the content PATCH releases one. Sorted.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Locked Paths",
+            "type": "array"
           },
           "marketplace": {
             "$ref": "#/components/schemas/Marketplace"
@@ -9937,6 +9971,12 @@
       "RegenerateRequest": {
         "additionalProperties": false,
         "properties": {
+          "for_answers": {
+            "default": false,
+            "description": "The seller's answers asked for it (`affected_sections`); recorded as the run's reason. Needs `sections`.",
+            "title": "For Answers",
+            "type": "boolean"
+          },
           "instructions": {
             "anyOf": [
               {
@@ -9949,6 +9989,30 @@
               }
             ],
             "title": "Instructions"
+          },
+          "sections": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "title",
+                    "bullets",
+                    "description",
+                    "keywords",
+                    "attributes"
+                  ],
+                  "type": "string"
+                },
+                "maxItems": 5,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rewrite only these sections; every other part of the listing stays as it is. Locked paths are never rewritten (422 VALIDATION_FAILED on `sections` when every path asked for is locked). Omitted: the whole listing, locked paths kept.",
+            "title": "Sections"
           }
         },
         "title": "RegenerateRequest",
@@ -42311,7 +42375,7 @@
     },
     "/api/v1/listings/{listing_id}/regenerate": {
       "post": {
-        "description": "Regenerate an existing listing; a reviewer may do this, but may not generate fresh.",
+        "description": "Regenerate an existing listing, or only some `sections` of it; a reviewer may do this,\nbut may not generate fresh. The seller's locked edits are never rewritten.",
         "operationId": "listings_regenerate",
         "parameters": [
           {

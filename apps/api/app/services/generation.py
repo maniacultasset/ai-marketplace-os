@@ -30,6 +30,15 @@ paused/archived → 409, `created` → 409 `INVALID_STATUS_TRANSITION`; otherwis
 `regenerate_requested` decision on the current version (NULL when there is none) naming the job,
 then the move to `generating` (event `regenerate`) with the approval cleared (it voids it). A
 reviewer may regenerate but not generate fresh (the route's action decides).
+
+Client feedback 14: with `sections` the regenerate rewrites only those sections
+(`services/sections.py`): the listing needs a current version (else 409
+`INVALID_STATUS_TRANSITION`), the sections' paths less the locked ones are the job's
+`target_fields` (none left → 422 `VALIDATION_FAILED` on `sections`), and the payload is a
+`SectionPayload` (`mode sections`, the current version as its base, the reason
+`section_regenerate`, or `answers_applied` for "Update these sections"). The status, decision,
+move and audit steps are the whole regenerate's: an AI change is a new version that waits for
+approval, and the approval is cleared.
 """
 
 from __future__ import annotations
@@ -56,6 +65,7 @@ from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.category_gate import category_enabled
 from app.services.photo_match import queue_product_photo_matches
+from app.services.sections import Section, section_targets
 
 log = get_logger(__name__)
 
@@ -111,7 +121,9 @@ async def enqueue_generate(
     http_key: str,
     listing_id: uuid.UUID,
     instructions: str | None,
+    payload: dict[str, Any] | None = None,
 ) -> uuid.UUID:
+    """`payload` replaces the plain `{"user_instructions"}` one (a section regenerate's)."""
     enqueued = await uow.job_runs.enqueue(
         EnqueueSpec(
             kind=JobKind.LISTING_GENERATE,
@@ -120,12 +132,31 @@ async def enqueue_generate(
             listing_id=listing_id,
             created_by=principal.user_id,
             http_key=http_key,
-            payload={PAYLOAD_KEY: instructions},
+            payload={PAYLOAD_KEY: instructions} if payload is None else payload,
         )
     )
     if not enqueued.created:  # the derived key already names a job: a live one is busy
         raise ConflictError(ErrorCode.LISTING_BUSY, "job_runs")
     return enqueued.job.id
+
+
+def section_payload(
+    listing: Any, sections: Sequence[Section], *, for_answers: bool = False
+) -> dict[str, Any]:
+    """The `SectionPayload` of a section regenerate (module docstring)."""
+    from app.workers.payloads import SectionPayload
+
+    if listing.current_version_id is None:
+        raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
+    targets = section_targets(sections, getattr(listing, "locked_paths", None) or ())
+    if not targets:  # every path asked for is the seller's locked edit
+        raise InputError(ErrorCode.VALIDATION_FAILED, "sections")
+    return SectionPayload(
+        listing_id=listing.id,
+        base_version_id=listing.current_version_id,
+        target_fields=targets,
+        reason="answers_applied" if for_answers else "section_regenerate",
+    ).model_dump(mode="json")
 
 
 async def _regenerate_locked(
@@ -134,11 +165,15 @@ async def _regenerate_locked(
     http_key: str,
     listing: Any,
     instructions: str | None,
+    sections: Sequence[Section] = (),
+    *,
+    for_answers: bool = False,
 ) -> ItemAccepted:
     _status_gate(listing)
     if listing.status == CREATED:
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
-    job_id = await enqueue_generate(uow, principal, http_key, listing.id, instructions)
+    payload = section_payload(listing, sections, for_answers=for_answers) if sections else None
+    job_id = await enqueue_generate(uow, principal, http_key, listing.id, instructions, payload)
     await queue_product_photo_matches(uow, listing.product_id)  # V1.1: the due photo checks
     await uow.review_decisions.insert_regenerate_requested(
         listing.id, listing.current_version_id, instructions, job_id
@@ -167,6 +202,7 @@ async def _regenerate_locked(
         listing_id=str(listing.id),
         job_id=str(job_id),
         listing_event="regenerate",
+        sections=len(sections),
     )
     return ItemAccepted(job_id=job_id, listing_id=listing.id)
 
@@ -241,12 +277,17 @@ async def request_regeneration(
     http_key: str,
     listing_id: uuid.UUID,
     instructions: str | None,
+    sections: Sequence[Section] = (),
+    *,
+    for_answers: bool = False,
 ) -> ItemAccepted:
     check_instructions(instructions, "instructions")
     listing = await uow.listings.get_for_update(listing_id)
     if listing is None:
         raise NotFoundError("listing_id")
-    return await _regenerate_locked(uow, principal, http_key, listing, instructions)
+    return await _regenerate_locked(
+        uow, principal, http_key, listing, instructions, sections, for_answers=for_answers
+    )
 
 
 async def enforce_live_generate_cap(uow: TenantUnitOfWork) -> None:
@@ -305,11 +346,17 @@ async def accept_regenerate(
     path: str,
     listing_id: uuid.UUID,
     instructions: str | None,
+    sections: Sequence[Section] = (),
+    *,
+    for_answers: bool = False,
 ) -> dict[str, Any]:
     from app.services.budget import admit, refuse
     from app.services.idempotency import idempotent
 
-    payload = json.dumps({"instructions": instructions}, sort_keys=True).encode()
+    body: dict[str, Any] = {"instructions": instructions}
+    if sections:  # a whole regenerate's stored body stays byte-equal
+        body.update(sections=list(sections), for_answers=for_answers)
+    payload = json.dumps(body, sort_keys=True).encode()
     now = datetime.now(UTC)
     refusal = await admit(principal.tenant_id, now)  # before any connection is held
 
@@ -317,7 +364,9 @@ async def accept_regenerate(
         uow = repositories_on(session, principal.tenant_id)
         refuse(refusal, now)
         await enforce_live_generate_cap(uow)
-        accepted = await request_regeneration(uow, principal, key, listing_id, instructions)
+        accepted = await request_regeneration(
+            uow, principal, key, listing_id, instructions, sections, for_answers=for_answers
+        )
         return 202, accepted_body(accepted)
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)

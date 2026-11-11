@@ -25,7 +25,7 @@ from sqlalchemy import (
     Uuid,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql.elements import conv
 
@@ -167,6 +167,9 @@ class AgentRun(TenantScoped, Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     input_digest: Mapped[str | None] = mapped_column(Text)
+    # 0033 (client feedback 14): why a generation job's call ran and the paths it could change
+    run_reason: Mapped[str | None] = mapped_column(Text)
+    run_scope: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
     created_at: Mapped[datetime] = created_at_column()
 
 

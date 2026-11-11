@@ -143,8 +143,10 @@ async def test_the_editor_of_the_base_cannot_approve_the_fix_version(
     prev.fake.preview_errors = []
     made = await generated(prev.world, OPERATOR)
     await _run_previews(prev, made.listing_id)
-    base = await _edit_title(
-        api, prev, made, OWNER, "Cotton Kurta Set with Dupatta for Women Pure Cotton"
+    # client feedback 14: the edited path is locked and never auto-fixed, so OWNER edits the
+    # description and the marketplace refuses the (unlocked) title
+    base = await _edit_content(
+        api, prev, made, OWNER, description="A pure cotton kurta set with a matching dupatta."
     )
     title = _content(prev, base.version_id)["content"]["title"]
     prev.fake.preview_errors = [_too_long(len(title) - 3)]
@@ -167,8 +169,8 @@ async def test_the_editor_of_the_base_cannot_approve_the_fix_version(
     assert other.json()["items"][0]["http_status"] == 200, other.text
 
 
-async def _edit_title(
-    api: httpx.AsyncClient, pw: PubWorld, made: Made, email: str, title: str
+async def _edit_content(
+    api: httpx.AsyncClient, pw: PubWorld, made: Made, email: str, **change: str
 ) -> Made:
     from .products_support import bearer_for
 
@@ -176,7 +178,7 @@ async def _edit_title(
     response = await api.patch(
         f"/api/v1/listings/{made.listing_id}/content",
         headers=headers,
-        json={"content": {**_content(pw, made.version_id)["content"], "title": title}},
+        json={"content": {**_content(pw, made.version_id)["content"], **change}},
     )
     assert response.status_code == 200, response.text
     return Made(made.listing_id, uuid.UUID(response.json()["current_version_id"]), made.job_id)

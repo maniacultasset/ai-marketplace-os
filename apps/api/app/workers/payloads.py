@@ -65,6 +65,25 @@ class AutoFixPayload(_Payload):
     feedback: tuple[str, ...] = Field(default=(), max_length=5)
 
 
+RunReason = Literal["generate", "regenerate", "section_regenerate", "answers_applied", "resolution"]
+
+
+class SectionPayload(_Payload):
+    """Client feedback 14: a seller's section regenerate, a `listing_generate` job with `mode
+    sections`. The model's result is merged so only `target_fields` change (the `ai_field`
+    merge), and every locked path stays the base version's. `reason` is `section_regenerate`
+    (the seller's button) or `answers_applied` (Update these sections). The instructions ride on
+    the `regenerate_requested` row, as on a whole regenerate. No `trigger`: a person asked, so
+    the resolution cap never counts it. An older worker reads an unknown mode as a whole
+    regenerate, so a job enqueued during a rollout still runs."""
+
+    listing_id: UUID
+    mode: Literal["sections"] = "sections"
+    base_version_id: UUID
+    target_fields: tuple[str, ...] = Field(min_length=1, max_length=MAX_TARGET_FIELDS)
+    reason: Literal["section_regenerate", "answers_applied"] = "section_regenerate"
+
+
 # SI11 keys left out at their default, so every payload written before SI11 (and every user job
 # since) stays byte-equal: an older worker, the fixtures and the job keys see no change.
 _OMIT_AT_DEFAULT = frozenset({"trigger", "op", "version_id", "basis"})

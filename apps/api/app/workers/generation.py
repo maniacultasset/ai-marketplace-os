@@ -37,6 +37,16 @@ none, so they record no photo set and the next run tries again. A failed photo c
 generation (`runs_failed_transiently` ignores photo records). The claim-time reservation covers
 the vision call.
 
+Client feedback 14 (11 Nov 2026): a seller's section regenerate (`mode sections`,
+`SectionPayload`) runs the `ai_field` body: no photo read, the result merged so only its
+`target_fields` change, a version with those `changed_paths`. Field locks: every path in
+`listings.locked_paths` is copied back from the base version on every regenerate (whole, section,
+or the resolution engine's `ai_field` rewrite, whose locked targets are dropped first: none left
+fails the job before any model call, and the hook hands the refusals to a person). A whole
+regenerate that kept a lock records `changed_paths`, so the version is not a fresh generation and
+the editor of a kept path can still never approve it (lv_guard's contributor chain). Every
+`agent_runs` row carries the job's `run_reason` and `run_scope` (0033).
+
 A transient failure is not retried inside the job: `listing_generate` keeps `max_attempts=1`
 (`policy.py`); the seller regenerates.
 
@@ -89,10 +99,12 @@ from app.services.photo_facts import (
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.resolution.merge import merge_targets
 from app.services.rules_loader import RuleLoadError, load_rules
+from app.services.sections import covered as lock_holds
+from app.services.sections import edited_paths, keep_locked
 from app.services.seller_facts import seller_overlay
 from app.workers import budget
 from app.workers.errors import JobFailed
-from app.workers.payloads import AutoFixPayload
+from app.workers.payloads import AutoFixPayload, RunReason, SectionPayload
 from app.workers.registry import JobContext, Outcome, register
 
 log = get_logger(__name__)
@@ -236,11 +248,10 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
 
         return await run_auto_fix(ctx)
     # SI11 T16: an AI rewrite of the refused fields only (the same body, gates and records)
-    fix = (
-        AutoFixPayload.model_validate(ctx.payload)
-        if ctx.payload.get("mode") == "ai_field"
-        else None
-    )
+    mode = ctx.payload.get("mode")
+    fix = AutoFixPayload.model_validate(ctx.payload) if mode == "ai_field" else None
+    # client feedback 14: the seller's section regenerate (the same merge, a person's request)
+    section = SectionPayload.model_validate(ctx.payload) if mode == "sections" else None
     settings = get_settings()
     tenant, job_id = ctx.tenant_id, ctx.job_run_id
     try:
@@ -271,6 +282,36 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             raise _fail(
                 ctx, ErrorCode.GENERATION_FAILED, "Kuinn could not fix it.", zero_reservation=True
             )
+        if section is not None and listing.current_version_id != section.base_version_id:
+            raise _fail(
+                ctx,
+                ErrorCode.GENERATION_FAILED,
+                "The listing changed. Try again.",
+                zero_reservation=True,
+            )
+        locked = tuple(getattr(listing, "locked_paths", None) or ())
+        scope: tuple[str, ...] = ()
+        if fix is not None:  # a locked target is the seller's edit: never rewritten
+            scope = tuple(p for p in fix.target_fields if not lock_holds(p, locked))
+            if not scope:
+                raise _fail(
+                    ctx,
+                    ErrorCode.GENERATION_FAILED,
+                    "Kuinn could not fix it.",
+                    zero_reservation=True,
+                )
+        elif section is not None:
+            scope = section.target_fields
+        scoped = fix is not None or section is not None
+        reason: RunReason
+        if fix is not None:
+            reason = "resolution"
+        elif section is not None:
+            reason = section.reason
+        elif await uow.review_decisions.has_regenerate_for_job(job.id):
+            reason = "regenerate"
+        else:
+            reason = "generate"
         try:
             rules = await load_rules(
                 uow, tenant_id=tenant, marketplace=listing.marketplace, category=listing.category
@@ -295,7 +336,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 facts=facts,
                 request_id=ctx.request_id,
                 max_attempts=settings.llm_max_correction_attempts,
-                target_fields=() if fix is None else fix.target_fields,
+                target_fields=scope,
                 feedback=() if fix is None else fix.feedback,
             )
         except GenerationContextError as exc:
@@ -315,7 +356,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             else tuple(
                 r.id
                 for r in await uow.listing_issues.open_by_ids(listing.id, fix.issue_ids)
-                if r.field_path in fix.target_fields
+                if r.field_path in scope
             )
         )
 
@@ -329,7 +370,7 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
     sent_set = photo_set(context_images, {r.image_id: r.clean_content_hash or "" for r in picked})
     targets = (
         []
-        if rules.template is None or fix is not None  # a field fix reads no photos
+        if rules.template is None or scoped  # a field fix or a section reads no photos
         else build_targets(
             facts, rules.template, context_images, current_set=sent_set, last_set=seen_set
         )
@@ -362,11 +403,15 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         "request_id": ctx.request_id,
         "created_by": created_by,
         "pins": pins,
+        "run_reason": reason,
+        "run_scope": scope or None,
     }
+    if section is not None:  # client feedback 14: only the sections' paths change
+        plan_base.update(origin="regeneration", changed_paths=scope)
     if fix is not None:  # SI11 T16: only the target paths change; the refusals close as AI fixes
         plan_base.update(
             origin="regeneration",
-            changed_paths=tuple(fix.target_fields),
+            changed_paths=scope,
             closes=tuple(
                 (issue_id, "Kuinn rewrote this field the way the marketplace accepts it.")
                 for issue_id in covered
@@ -459,9 +504,14 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
         )
     report: ErrorReport | None = None
     fixes: tuple[FixRecord, ...] = ()
-    if trusted.listing is not None and fix is not None and gctx.previous_version is not None:
-        # SI11 T16: the base everywhere but the targets, whatever the model returned
-        merged = merge_targets(gctx.previous_version, trusted.listing, fix.target_fields)
+    previous = gctx.previous_version
+    if trusted.listing is not None and scoped and previous is not None:
+        # SI11 T16: the base everywhere but the targets, whatever the model returned; then the
+        # locked paths are the base's too (client feedback 14), and the factual attributes the
+        # seller's (SI2 D5: a fact answered since the base reaches the version; a factual key is
+        # never lockable, so this never undoes a lock)
+        kept = keep_locked(merge_targets(previous, trusted.listing, scope), previous, locked)
+        merged = seller_overlay(kept, facts, rules.template)
         trusted = dataclasses.replace(trusted, listing=merged)
         report = recheck(merged, rules, product, rejections=rejections)
     elif trusted.listing is not None:
@@ -472,8 +522,16 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             lambda candidate: recheck(candidate, rules, product, rejections=rejections),
             FixContext(ruleset=rules.ruleset, template=rules.template, critical_keys=critical),
         )
-        trusted = dataclasses.replace(trusted, listing=fixed.listing)
-        report, fixes = fixed.report, fixed.records
+        final, report, fixes = fixed.listing, fixed.report, fixed.records
+        if locked and previous is not None and reason == "regenerate":
+            # client feedback 14: the seller's locked edits survive a whole regenerate (and its
+            # fix pass); the version names what changed, so the contributor chain continues
+            final = keep_locked(fixed.listing, previous, locked)
+            if final != fixed.listing:
+                report = recheck(final, rules, product, rejections=rejections)
+                fixes = tuple(f for f in fixes if not lock_holds(f.field, locked))
+            plan_base.update(changed_paths=tuple(edited_paths(previous, final)) or ("content",))
+        trusted = dataclasses.replace(trusted, listing=final)
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )

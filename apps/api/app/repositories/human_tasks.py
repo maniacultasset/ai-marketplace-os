@@ -130,6 +130,22 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         await self.apply_reconnect(account_id, user_id)
         return task_id
 
+    async def fact_answers(self, product_id: uuid.UUID) -> builtins.list[tuple[str, datetime]]:
+        """Client feedback 14: the targets (`facts.attributes.<key>`) of the product's answered
+        fact questions (answered or applied) with when each was answered."""
+        stmt = (
+            self._select()
+            .where(
+                HumanTask.product_id == product_id,
+                HumanTask.kind.in_(FACT_TASK_KINDS),
+                HumanTask.status.in_(("answered", "applied")),
+                HumanTask.answered_at.is_not(None),
+            )
+            .with_only_columns(HumanTask.target_path, HumanTask.answered_at)
+        )
+        rows = (await self.db.execute(stmt)).all()
+        return [(str(path), at) for path, at in rows if path and at is not None]
+
     async def any_applied_after(self, task_ids: builtins.list[uuid.UUID], at: datetime) -> bool:
         """S21 `human_resolution`: one of `task_ids` reached `applied` after `at`."""
         if not task_ids:
