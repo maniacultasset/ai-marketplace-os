@@ -1,19 +1,24 @@
-"""The brand profile (owner step S16): read it, and update it under `If-Match`."""
+"""The brand profile (owner step S16): read it, and update it under `If-Match`. ADR-0032: an owner
+adds another brand (`POST /tenants`)."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
+from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Marketplace
 
-from app.api.v1.deps import IfMatch, get_current_principal
+from app.api.errors import ApiError
+from app.api.rate_limit import enforce_tenant_create_limit
+from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
+from app.api.v1.schemas.tenant_create import TenantCreate, TenantCreated
 from app.api.v1.schemas.tenants import TenantCapabilitiesOut, TenantOut, TenantPatch
 from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
 from app.core.flags import publish_enabled
 from app.core.rbac import Principal
-from app.services import tenants
+from app.services import tenant_create, tenants
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -30,6 +35,7 @@ def capabilities_out() -> TenantCapabilitiesOut:
         category_lamps_enabled=s.category_lamps_enabled,
         size_chart_read_enabled=s.size_chart_read_enabled,
         image_edit_enabled=s.image_edit_enabled,
+        tenant_create_enabled=s.tenant_create_enabled,
     )
 
 
@@ -67,3 +73,38 @@ async def tenants_me_update(
     view, tag = await tenants.update_profile(principal, fields, if_match)
     response.headers["ETag"] = tag
     return _out(view)
+
+
+# ADR-0032: the 403 messages say which rule refused (one code, PERMISSION_DENIED)
+REFUSALS: dict[tenant_create.Refusal, str] = {
+    "not_owner": "Only an owner of this brand can add another brand.",
+    "suspended": "One of your brands is suspended. Contact support to add a brand.",
+    "cap_reached": "You own the most brands allowed. Contact support to add more.",
+}
+
+
+@route(router, OPS["tenants_create"])
+async def tenants_create(
+    body: TenantCreate,
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+    response: Response,
+) -> TenantCreated:
+    """Add another brand without a new sign-up review (ADR-0032). The caller must own the brand
+    the token names (an admin there is 403), hold no suspended brand, and own fewer live brands
+    than the cap (403 `PERMISSION_DENIED`, the message says which). The new brand is a `trial`
+    made as an approved sign-up is, with the caller as its owner; `website` goes on its brand
+    profile. Then switch to it with `POST /auth/switch-tenant`. 501 while the switch
+    (`TENANT_CREATE_ENABLED`) is off. Limited per user."""
+    if not get_settings().tenant_create_enabled:
+        raise ApiError(501, ErrorCode.NOT_IMPLEMENTED, "Adding a brand is switched off.")
+    await enforce_tenant_create_limit(principal.user_id)
+    try:
+        status, out = await tenant_create.create_tenant(
+            principal, body.name, body.website, idempotency_key, request.url.path
+        )
+    except tenant_create.TenantCreateRefusedError as refused:
+        raise ApiError(403, ErrorCode.PERMISSION_DENIED, REFUSALS[refused.reason]) from None
+    response.status_code = status
+    return TenantCreated.model_validate(out)

@@ -67,6 +67,10 @@ class TenantCapabilitiesOut(WireModel):
     image_edit_enabled: bool = Field(
         default=False, description="`IMAGE_EDIT_ENABLED`: the AI white-background edit."
     )
+    tenant_create_enabled: bool = Field(
+        default=False,
+        description="`TENANT_CREATE_ENABLED`: an owner can add another brand (ADR-0032).",
+    )
 
 
 class TenantOut(WireModel):

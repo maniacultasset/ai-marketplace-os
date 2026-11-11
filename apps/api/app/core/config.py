@@ -227,6 +227,10 @@ class Settings(BaseSettings):
     google_issuer: str = GOOGLE_ENDPOINTS["google_issuer"][1]
     auth_google_rate_limit_per_min: int = Field(default=10, ge=1)
 
+    # ---- another brand (ADR-0032): an owner adds a brand without a new sign-up review ----
+    tenant_create_enabled: bool = False
+    tenant_create_max_owned: int = Field(default=10, ge=1, le=100)
+
     # ---- models: per-provider keys ----
     llm_gateway: LlmGateway = "direct"
     llm_provider: Literal["openai", "deepseek"] = "openai"

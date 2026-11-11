@@ -92,6 +92,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "catalog_requirements_get",  # SI12
         "products_category_suggest",  # SI14
         "products_size_run_create",  # V1.1
+        "tenants_create",  # ADR-0032
         "imports_column_map_create",  # SI14
         "imports_column_map_get",  # SI14
         "imports_column_map_confirm",  # SI14

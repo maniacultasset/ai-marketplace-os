@@ -546,6 +546,15 @@ class MembershipRepository:
         row = (await self.db.execute(stmt)).one_or_none()
         return None if row is None else _membership_row(row)
 
+    async def lock_brand_creation(self, user_id: uuid.UUID) -> None:
+        """ADR-0032: a transaction-scoped advisory lock per user, so two parallel "add a brand"
+        calls (different idempotency keys) count the owned brands one after the other and the
+        cap holds."""
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended('tenant-create:' || :u, 0))"),
+            {"u": str(user_id)},
+        )
+
     async def touch_last_used(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """`last_used_at = now()`; needs `app.tenant_id` = `tenant_id` (the UPDATE policy)."""
         stmt = identity_scope(
@@ -997,12 +1006,15 @@ class SignupRepository:
         slug: str,
         trial_days: int,
         owner_id: uuid.UUID,
-        staff_email: str,
+        staff_email: str | None,
+        actor_user_id: uuid.UUID | None = None,
     ) -> None:
         """The tenant and its owner membership through the staff CLI's own statements
         (`staff_ops.insert_tenant` and `add_owner`), on this session's connection as app_rw.
         The caller has set `app.tenant_id` = `tenant_id` (the t_tenant policies). A used slug is
-        `SlugTakenError` with nothing written, so the caller may try another."""
+        `SlugTakenError` with nothing written, so the caller may try another. The audit rows
+        name the approving admin (`staff_email`), or (ADR-0032) the owner who added the brand
+        (`actor_user_id`)."""
         conn = await self.db.connection()
         request_id = current_request_id() or "-"
         await staff_ops.insert_tenant(
@@ -1013,6 +1025,7 @@ class SignupRepository:
             staff_email=staff_email,
             trial_days=trial_days,
             request_id=request_id,
+            actor_user_id=actor_user_id,
         )
         await staff_ops.add_owner(
             conn,
@@ -1020,6 +1033,7 @@ class SignupRepository:
             user_id=owner_id,
             staff_email=staff_email,
             request_id=request_id,
+            actor_user_id=actor_user_id,
         )
 
 

@@ -182,6 +182,16 @@ async def enforce_reset_limit(request: Request) -> None:
     await _enforce(reset_bucket(request_ip(request)), get_settings().auth_login_rate_limit_per_min)
 
 
+def tenant_create_bucket(user_id: UUID) -> str:
+    return f"tenant-create:{user_id}"
+
+
+async def enforce_tenant_create_limit(user_id: UUID) -> None:
+    """ADR-0032: adding a brand, per user (whichever brand the token names), at the login's
+    per-minute rate, on top of the tenant limiter. The owned-brand cap bounds the total."""
+    await _enforce(tenant_create_bucket(user_id), get_settings().auth_login_rate_limit_per_min)
+
+
 async def enforce_tenant_limit(tenant_id: UUID) -> None:
     await _enforce(f"t:{tenant_id}", get_settings().rate_limit_per_tenant_per_min)
 

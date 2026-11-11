@@ -64,6 +64,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("tenants_me", "GET", "/tenants/me"),
     # S16: the profile update, the document list and delete (40 + 3)
     ("tenants_me_update", "PATCH", "/tenants/me"),
+    ("tenants_create", "POST", "/tenants"),  # ADR-0032: an owner adds another brand
     ("brand_documents_upload", "POST", "/brand/documents"),
     ("brand_documents_list", "GET", "/brand/documents"),
     ("brand_documents_delete", "DELETE", "/brand/documents/{document_id}"),
@@ -296,6 +297,7 @@ D9_IDEMPOTENT = {
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
     "products_bulk_delete",  # PD1
+    "tenants_create",  # ADR-0032
 }
 
 
@@ -368,6 +370,7 @@ STEP_UP = {
     "auth_google_unlink": "any",  # ADR-0020
     "invites_create": "any",  # SI5
     "members_password_reset": "otp",  # SI5: a reset link needs a TOTP code
+    "tenants_create": "any",  # ADR-0032
 }
 # ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
 # dropped it (still platform-admin only) and the window is 30 minutes
@@ -458,8 +461,9 @@ def test_login_response_is_login_result() -> None:
 
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
-    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run
-    assert len(OPS) == 111
+    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
+    # ADR-0032 adds the brand create
+    assert len(OPS) == 112
 
 
 def test_error_codes_per_d2() -> None:
@@ -611,7 +615,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1",
+        "SI12", "SI14", "PD1", "ADR-0032",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

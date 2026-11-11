@@ -100,6 +100,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "auth_password_reset": {"token": "R" * 43, "new_password": COMPLIANT_PASSWORD},
     "admin_tenants_activate": {"reason": "Paid by bank transfer."},
     "admin_tenants_extend_trial": {"days": 30, "reason": "Pilot runs longer."},
+    # ADR-0032
+    "tenants_create": {"name": "Kalakar Home", "website": "https://kalakar.example"},
 }
 # Ops whose every body field is optional: `{}` is valid, so break a field instead.
 _INVALID_JSON: dict[str, dict[str, Any]] = {

@@ -20,6 +20,10 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Add another brand (ADR-0032, client feedback item 18; additive MINOR under the open 2.1.0 heading).
+  - **Contract (MINOR).** New op `POST /tenants` (`TenantCreate {name, website?}`, 201 `TenantCreated {id, name, slug, status, trial_ends_at, role}`): an owner of the brand the token names adds a trial brand they own, with no sign-up review. Idempotency-Key required; step-up `any`; 403 `PERMISSION_DENIED` for an admin, an owner holding a suspended brand, or the owned-brand cap (the message says which); 501 `NOT_IMPLEMENTED` while `TENANT_CREATE_ENABLED` is off. `TenantCapabilitiesOut.tenant_create_enabled?` (default false).
+  - **FE notice.** The brand switcher offers "Add another brand" to an owner while the capability is on, then switches into the new brand with `POST /auth/switch-tenant`.
+
 - Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
   - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
   - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.
