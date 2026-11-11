@@ -57,6 +57,13 @@ async def _queue(pw: PhotoWorld, image_id: uuid.UUID) -> uuid.UUID | None:
         return await queue_photo_match(uow, image_id)
 
 
+def _stub() -> Any:
+    """The stub's module (the package's `photo_match` name is the entry point function)."""
+    import importlib
+
+    return importlib.import_module("mkos_pipeline.photo_match")
+
+
 async def _run(job_id: uuid.UUID) -> None:
     from app.workers import wrapper
     from app.workers.tasks import register_bodies
@@ -110,7 +117,7 @@ async def _keep(pw: PhotoWorld, image_id: uuid.UUID) -> dict[str, Any]:
 
 
 async def test_a_secondary_photo_is_checked_once_against_the_main_photo(pw: PhotoWorld) -> None:
-    import mkos_pipeline.photo_match as stub
+    stub = _stub()
 
     image = pw.images["secondary"]
     job = await _queue(pw, image)
@@ -135,7 +142,7 @@ async def test_a_secondary_photo_is_checked_once_against_the_main_photo(pw: Phot
 
 
 async def test_the_main_photo_is_checked_by_its_title(pw: PhotoWorld) -> None:
-    import mkos_pipeline.photo_match as stub
+    stub = _stub()
 
     job = await _queue(pw, pw.images["main"])
     assert job is not None
@@ -144,8 +151,8 @@ async def test_the_main_photo_is_checked_by_its_title(pw: PhotoWorld) -> None:
 
 
 async def test_a_mismatch_asks_the_seller_blocks_approval_until_kept(pw: PhotoWorld) -> None:
+    _title(pw, "Cotton Kurta [photo-mismatch]")  # before the generate: the version reads it
     accepted = await generate(pw, None)  # the generate queued the photos' checks
-    _title(pw, "Cotton Kurta [photo-mismatch]")
     jobs = [_queued(pw, pw.images[slot]) for slot in ("main", "secondary", "lifestyle")]
     for job in jobs:
         await _run(job)
@@ -166,8 +173,8 @@ async def test_a_mismatch_asks_the_seller_blocks_approval_until_kept(pw: PhotoWo
 
 
 async def test_unsure_only_warns(pw: PhotoWorld) -> None:
-    accepted = await generate(pw, None)
     _title(pw, "Cotton Kurta [photo-unsure]")
+    accepted = await generate(pw, None)
     for slot in ("main", "secondary", "lifestyle"):
         await _run(_queued(pw, pw.images[slot]))
         assert (await _read(pw, pw.images[slot])).status == "unsure"
@@ -201,8 +208,8 @@ async def test_a_check_whose_job_ended_reads_as_not_checked(pw: PhotoWorld) -> N
 
 
 async def test_a_colour_edit_queues_the_check_for_the_new_colour(pw: PhotoWorld) -> None:
-    accepted = await generate(pw, None)
     _title(pw, "Cotton Kurta [photo-mismatch]")
+    accepted = await generate(pw, None)
     for slot in ("main", "secondary", "lifestyle"):
         await _run(_queued(pw, pw.images[slot]))
     assert (await approve(pw, accepted.listing_id)).http_status == 422
@@ -239,11 +246,7 @@ async def test_a_new_colour_is_a_new_check(pw: PhotoWorld) -> None:
     first = await _queue(pw, image)
     assert first is not None
     await _run(first)
-    pw.conn.execute(
-        "UPDATE products SET attributes = attributes || jsonb_build_object('color', %s::jsonb) "
-        "WHERE id = %s",
-        [Jsonb({"value": "Mustard Yellow", "source": "seller"}), pw.product_id],
-    )
+    pw.put_fact("color", seller_fact("Mustard Yellow"))
     second = await _queue(pw, image)
     assert second is not None and second != first
     await _run(second)
