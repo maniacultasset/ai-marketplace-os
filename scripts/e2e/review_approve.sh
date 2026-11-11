@@ -2,7 +2,9 @@
 # S19 review and approval, HTTP only (CODE-PLAN S19 T15; AC 16): an acme owner generates a listing
 # (`validated`); the owner's own approve is an item 403 MAKER_CHECKER_VIOLATION (the generator
 # never approves), an operator may not approve at all (403 PERMISSION_DENIED), and a second user,
-# the reviewer, approves it (item 200, `approved`). The same Idempotency-Key replays the same
+# the reviewer, approves it (item 200, `approved`). The product carries a saved size chart and a
+# front, back and close-up photo before it generates, so the photo view checklist
+# (`PHOTO_VIEWS_ENABLED`) is met. The same Idempotency-Key replays the same
 # body; nothing is sent to a marketplace (`not_submitted`); the history shows the denial and the
 # approval; bharat reads acme's listing as 404.
 #
@@ -12,6 +14,7 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> $0 [base_url]" >&2
@@ -123,7 +126,7 @@ wait_job() {
 }
 
 new_product() {
-  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\"}"
+  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\", \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   json 'b["id"]'
 }
@@ -141,6 +144,9 @@ product="$(new_product "$owner" "E2E-GEN-$(date +%s)-$RANDOM")"
 step worker_start
 bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
+
+step photo_views_ready
+photo_views_upload "$api" "$owner" "$product" "e2e-review-img-$run" "$work" || fail "the photo checklist is not met"
 
 step owner_generate_202
 call POST /listings/generate "$owner" "e2e-review-gen-$run" "{\"product_id\": \"$product\", \"marketplace\": \"amazon\"}"

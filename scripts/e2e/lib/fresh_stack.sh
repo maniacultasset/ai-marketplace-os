@@ -21,6 +21,10 @@
 #   e2e         `make seed`, FLIPKART_ENABLED=true; no fake and no worker (`make e2e` starts its
 #               own fake; the scripts' WORKER_START/WORKER_STOP hooks own every worker, and the
 #               hooks in the env file carry this stack's overrides).
+# Both profiles turn the photo view checklist and the photo match on (PHOTO_VIEWS_ENABLED and
+# PHOTO_MATCH_ENABLED, for the API and every worker, whatever this checkout's .env says), as in
+# production: the flows that approve meet the checklist (scripts/e2e/lib/photo_views.sh) and the
+# stub pipeline answers every photo match `match`.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 
@@ -184,7 +188,7 @@ up() {
   eval "$(printf '%s\n' "$assignments" | sed 's/^/export /')"
   export COMPOSE_PROJECT_NAME
 
-  local app_dsn migrator_dsn s3 fake base flipkart
+  local app_dsn migrator_dsn s3 fake base flipkart photo_switches="" key
   app_dsn="$(sed -n 's/^DATABASE_URL=//p' .env | sed -E "s#@localhost:[0-9]+/#@localhost:${PG_HOST_PORT}/#")"
   migrator_dsn="$(sed -n 's/^ALEMBIC_DATABASE_URL=//p' .env | sed -E "s#@localhost:[0-9]+/#@localhost:${PG_HOST_PORT}/#")"
   s3="http://localhost:${MINIO_API_HOST_PORT}"
@@ -192,6 +196,10 @@ up() {
   base="http://127.0.0.1:${API_HOST_PORT}"
   flipkart=false
   [ "$profile" = e2e ] && flipkart=true
+  for key in photo_views_enabled photo_match_enabled; do
+    if has_setting "$key"; then photo_switches="$photo_switches $(printf '%s' "$key" | tr '[:lower:]' '[:upper:]')=true"; fi
+  done
+  photo_switches="${photo_switches# }"
 
   {
     echo "STACK_DIR=$STACK_DIR"
@@ -213,9 +221,10 @@ up() {
     echo "FLIPKART_TOKEN_URL=$fake/flipkart/token"
     echo "AMAZON_SPAPI_ENDPOINT=$fake"
     if has_setting flipkart_api_base; then echo "FLIPKART_API_BASE=$fake/flipkart/sellers"; fi  # the fake's FK_BASE, as `make dev`
+    for key in $photo_switches; do echo "$key"; done
     if [ "$profile" = e2e ]; then
       local overrides="COMPOSE_PROJECT_NAME=$COMPOSE_PROJECT_NAME PG_HOST_PORT=$PG_HOST_PORT API_HOST_PORT=$API_HOST_PORT"
-      echo "WORKER_START='mkdir -p $STACK_DIR/e2e; env $overrides DATABASE_URL=$app_dsn ALEMBIC_DATABASE_URL=$migrator_dsn S3_ENDPOINT_URL=$s3 APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker nohup uv run --frozen python -m app.workers.main >$STACK_DIR/logs/worker.log 2>&1 & echo \$! >$STACK_DIR/e2e/worker.pid'"
+      echo "WORKER_START='mkdir -p $STACK_DIR/e2e; env $overrides DATABASE_URL=$app_dsn ALEMBIC_DATABASE_URL=$migrator_dsn S3_ENDPOINT_URL=$s3${photo_switches:+ $photo_switches} APP_ROLE=worker APP_NAME=marketplace-os-worker OTEL_SERVICE_NAME=marketplace-os-worker nohup uv run --frozen python -m app.workers.main >$STACK_DIR/logs/worker.log 2>&1 & echo \$! >$STACK_DIR/e2e/worker.pid'"
       echo "WORKER_STOP='pid=\$(cat $STACK_DIR/e2e/worker.pid); kill -TERM \$pid; for _ in \$(seq 1 30); do kill -0 \$pid 2>/dev/null || break; sleep 1; done; ! kill -0 \$pid 2>/dev/null && rm -f $STACK_DIR/e2e/worker.pid'"
       echo "TEMPLATES_LOAD='env ALEMBIC_DATABASE_URL=$migrator_dsn uv run --frozen python -m app.cli templates load --file \"\$1\"'"
       echo "ERRORS_LOAD='env ALEMBIC_DATABASE_URL=$migrator_dsn uv run --frozen python -m app.cli errors load --file \"\$1\"'"
