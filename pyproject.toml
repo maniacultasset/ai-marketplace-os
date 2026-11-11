@@ -106,6 +106,7 @@ markers = [
   "endpoint(op_id, case, variant=None): one case of an /api/v1 operation's test matrix (S3 AC9; tests/endpoint_cases.py)",
   "security: the S26 security suites (apps/api/tests/security); run in api-tests",
   "drill: the restore drill (make drill-restore); never in api-tests",
+  "package_warnings: keeps item 15's Amazon package warnings in the marketplace check (integration tests leave them out by default)",
 ]
 
 [tool.coverage.run]
