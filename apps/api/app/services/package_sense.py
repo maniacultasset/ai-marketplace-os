@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from types import MappingProxyType
 from typing import Final
 
@@ -45,9 +45,18 @@ RANGES: Final[Mapping[str, PackageRange]] = MappingProxyType(
 )
 
 
-def _num(value: Decimal) -> str:
-    """12, 12.5, 0.25: no trailing zeros, no exponent."""
-    return format(value.quantize(Decimal("0.01")).normalize(), "f")
+def _num(value: Decimal | int) -> str:
+    """12, 12.5, 0.25, 1,234.57, 1,00,000: at most two decimals, no trailing zeros, no exponent,
+    digits grouped the Indian way, as the web form writes them (`toLocaleString('en-IN')`)."""
+    text = format(Decimal(value).quantize(Decimal("0.01"), ROUND_HALF_UP).normalize(), "f")
+    whole, dot, frac = text.partition(".")
+    if len(whole) > 3:
+        head, groups = whole[:-3], [whole[-3:]]
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        whole = ",".join([head, *groups])
+    return f"{whole}{dot}{frac}"
 
 
 def _for(noun: str | None) -> str:
@@ -60,11 +69,14 @@ def _weight(grams: int, r: PackageRange) -> str | None:
     if grams > r.max_g:
         kg = Decimal(grams) / 1000
         if grams % 1000 == 0 and r.min_g <= grams // 1000 <= r.max_g:
-            return f"This box weighs {_num(kg)} kg. Did you mean {grams // 1000} g?"
+            return f"This box weighs {_num(kg)} kg. Did you mean {_num(grams // 1000)} g?"
         return f"This box weighs {_num(kg)} kg, which is heavy{_for(r.noun)}. Check the weight."
     if r.min_g <= grams * 1000 <= r.max_g:
-        return f"This box weighs {grams} g. Did you mean {grams} kg ({grams * 1000} g)?"
-    return f"This box weighs only {grams} g, which is light{_for(r.noun)}. Check the weight."
+        return (
+            f"This box weighs {_num(grams)} g. "
+            f"Did you mean {_num(grams)} kg ({_num(grams * 1000)} g)?"
+        )
+    return f"This box weighs only {_num(grams)} g, which is light{_for(r.noun)}. Check the weight."
 
 
 def _sides(sides: Sequence[Decimal], r: PackageRange) -> str | None:

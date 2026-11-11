@@ -9,7 +9,7 @@ from decimal import Decimal
 
 import pytest
 from app.services.imports.row_model import normalize_row, validate_row
-from app.services.package_sense import package_warnings
+from app.services.package_sense import _num, package_warnings
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Severity
 
@@ -46,14 +46,32 @@ def test_grams_typed_as_kilograms_names_the_likely_value() -> None:
 
 def test_kilograms_typed_as_grams_names_the_likely_value() -> None:
     out = package_warnings("home_decor_lamps", None, 3)
-    assert out == {"package_weight": "This box weighs 3 g. Did you mean 3 kg (3000 g)?"}
+    assert out == {"package_weight": "This box weighs 3 g. Did you mean 3 kg (3,000 g)?"}
 
 
 def test_an_absurd_weight_with_no_likely_slip_asks_to_check() -> None:
     (message,) = package_warnings("tshirts", None, 1_234_567).values()
-    assert message == "This box weighs 1234.57 kg, which is heavy for clothing. Check the weight."
+    assert message == "This box weighs 1,234.57 kg, which is heavy for clothing. Check the weight."
     (light,) = package_warnings("home_decor_lamps", None, 40).values()
     assert light == "This box weighs only 40 g, which is light for a lamp. Check the weight."
+
+
+@pytest.mark.parametrize(
+    ("value", "text"),
+    [
+        (D("12.50"), "12.5"),
+        (D("0.255"), "0.26"),
+        (999, "999"),
+        (3_000, "3,000"),
+        (D("1234.567"), "1,234.57"),
+        (D("123456.789"), "1,23,456.79"),
+        (12_345_678, "1,23,45,678"),
+    ],
+)
+def test_numbers_read_as_the_web_form_writes_them(value: Decimal | int, text: str) -> None:
+    """`toLocaleString('en-IN', {maximumFractionDigits: 2})`: the same box reads the same in a
+    CSV row warning and in the form."""
+    assert _num(value) == text
 
 
 def test_millimetres_typed_as_centimetres() -> None:
@@ -69,7 +87,8 @@ def test_metres_typed_as_centimetres() -> None:
 def test_an_absurd_side_asks_to_check() -> None:
     (message,) = package_warnings("tshirts", [D("99999.99"), D(20), D(2)], None).values()
     assert (
-        message == "A 99999.99 cm side is 1000 m long, which is large for clothing. Check the size."
+        message
+        == "A 99,999.99 cm side is 1,000 m long, which is large for clothing. Check the size."
     )
 
 
