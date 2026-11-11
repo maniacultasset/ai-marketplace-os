@@ -1,5 +1,6 @@
 """The tenant's brand profile (S16 T14; DATABASE.md:216-229): `app_rw` may UPDATE only `name`,
-`tone`, `guidelines` and `glossary`, so this repository writes nothing else."""
+`tone`, `guidelines`, `glossary` and (0030, ADR-0031) `owner_self_approval`, so this repository
+writes nothing else."""
 
 from __future__ import annotations
 
@@ -12,6 +13,9 @@ from app.db.models.tenancy import Tenant
 from app.repositories.base import TenantScopedRepository
 
 PROFILE_FIELDS: Final = frozenset({"name", "tone", "guidelines", "glossary"})
+# ADR-0031: the brand's approval setting; only an owner changes it (services/tenants.py)
+SETTING_FIELDS: Final = frozenset({"owner_self_approval"})
+WRITABLE_FIELDS: Final = PROFILE_FIELDS | SETTING_FIELDS
 
 
 class TenantProfileRepository(TenantScopedRepository[Tenant]):
@@ -24,8 +28,14 @@ class TenantProfileRepository(TenantScopedRepository[Tenant]):
         stmt = self._select().with_for_update().execution_options(populate_existing=True)
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def owner_self_approval(self) -> bool:
+        """ADR-0031: whether an owner may approve its own work in this tenant (false when the
+        row is not visible, so a missing row never grants anything)."""
+        stmt = self._select().with_only_columns(Tenant.owner_self_approval)
+        return bool((await self.db.execute(stmt)).scalar_one_or_none())
+
     async def update_profile(self, fields: dict[str, Any]) -> Tenant:
-        bad = sorted(set(fields) - PROFILE_FIELDS)
+        bad = sorted(set(fields) - WRITABLE_FIELDS)
         if bad or not fields:
             raise ValueError(f"update_profile refuses column(s) {bad}")
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:

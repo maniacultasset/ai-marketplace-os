@@ -14,7 +14,12 @@ and by an import that names a parent, DATABASE.md:785), never `contributor_chain
   the same answer, which checks the database's chain walk against the shadow on every origin.
 
 After every step: `approved` ⇒ the approved version is the current one, and its approver is
-outside the shadow set. Partial regenerations and imports have no v1 route; the test writes them
+outside the shadow set.
+
+ADR-0031 legs 3 and 4 replay both legs with the tenant's `owner_self_approval` on: the oracle then
+lets the owner (only the owner) approve inside the shadow set, and every approval's
+`listing_versions.self_approved` (set by `lv_guard`) must equal "the approver is in the shadow
+set". Partial regenerations and imports have no v1 route; the test writes them
 as rows (admin login), with a passed run carrying the parent's pins.
 """
 
@@ -57,10 +62,20 @@ def _steps() -> st.SearchStrategy[tuple[str, list[Step]]]:
     return st.tuples(member, st.lists(step, min_size=1, max_size=8))
 
 
+OWNER = "owner@acme.test"
+
+
 class Machine:
-    def __init__(self, world: GenWorld, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, world: GenWorld, loop: asyncio.AbstractEventLoop, *, self_approval: bool = False
+    ) -> None:
         self.world = world
         self.loop = loop
+        self.self_approval = self_approval
+
+    def may_self_approve(self, approver: uuid.UUID) -> bool:
+        """ADR-0031: only the owner, and only while the setting is on."""
+        return self.self_approval and approver == self.world.user(OWNER)
 
     def run(self, coro: Any) -> Any:
         return self.loop.run_until_complete(coro)
@@ -214,7 +229,8 @@ class Machine:
         if decision == "reject" or not reachable:
             assert outcome.http_status != 403 or not reachable
             return
-        maker = principal.user_id in shadow.makers or email not in APPROVERS
+        own = principal.user_id in shadow.makers
+        maker = (own and not self.may_self_approve(principal.user_id)) or email not in APPROVERS
         code = None if outcome.error is None else outcome.error.error_code
         if maker:
             assert (outcome.http_status, code and code.value) == (403, "MAKER_CHECKER_VIOLATION")
@@ -225,7 +241,12 @@ class Machine:
             approver = self.world.scalar(
                 "SELECT approved_by_user_id FROM listing_versions WHERE id = %s", [version]
             )
-            assert approver == principal.user_id and approver not in shadow.makers
+            assert approver == principal.user_id
+            assert approver not in shadow.makers or self.may_self_approve(approver)
+            flag = self.world.scalar(
+                "SELECT self_approved FROM listing_versions WHERE id = %s", [version]
+            )
+            assert flag is own
 
     def invariant(self, shadow: Shadow) -> None:
         row = self.row(shadow)
@@ -235,7 +256,8 @@ class Machine:
                 "SELECT approved_by_user_id FROM listing_versions WHERE id = %s",
                 [row["approved_version_id"]],
             )
-            assert approver is not None and approver not in shadow.makers
+            assert approver is not None
+            assert approver not in shadow.makers or self.may_self_approve(approver)
 
     def play(self, first: str, steps: list[Step]) -> Shadow:
         shadow = self.generate(first)
@@ -253,14 +275,18 @@ class Machine:
         return shadow
 
 
-def _machine_test(world: GenWorld) -> None:
+def _machine_test(world: GenWorld, *, self_approval: bool = False) -> None:
     from app.db.session import dispose_engine
 
+    if self_approval:
+        world.conn.execute(
+            "UPDATE tenants SET owner_self_approval = true WHERE id = %s", [world.tenant("acme")]
+        )
     loop = asyncio.new_event_loop()
-    machine = Machine(world, loop)
+    machine = Machine(world, loop, self_approval=self_approval)
 
     @settings(
-        max_examples=EXAMPLES,
+        max_examples=EXAMPLES // 2 if self_approval else EXAMPLES,
         deadline=None,
         derandomize=True,
         suppress_health_check=[HealthCheck.too_slow, HealthCheck.data_too_large],
@@ -293,3 +319,23 @@ def test_maker_checker_property_guard_agrees(
         review, "approve_block", lambda caller, **kw: real(caller, **{**kw, "chain": frozenset()})
     )
     _machine_test(gen_world)
+
+
+def test_maker_checker_property_owner_self_approval(gen_world: GenWorld) -> None:
+    """Leg 3 (ADR-0031): the setting on; the API lets the owner, and only the owner, approve its
+    own work, and marks exactly those approvals."""
+    _machine_test(gen_world, self_approval=True)
+
+
+def test_maker_checker_property_owner_self_approval_guard_agrees(
+    gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Leg 4 (ADR-0031): the setting on and the API's chain check patched out; `lv_guard` must
+    still refuse the reviewer's own work and let the owner's through."""
+    import app.services.review as review
+    from app.services.maker_checker import approve_block as real
+
+    monkeypatch.setattr(
+        review, "approve_block", lambda caller, **kw: real(caller, **{**kw, "chain": frozenset()})
+    )
+    _machine_test(gen_world, self_approval=True)

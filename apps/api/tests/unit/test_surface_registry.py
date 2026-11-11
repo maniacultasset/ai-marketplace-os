@@ -372,6 +372,9 @@ STEP_UP = {
 # ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
 # dropped it (still platform-admin only) and the window is 30 minutes
 NO_STEP_UP = {"admin_signup_requests_approve", "admin_signup_requests_reject"}
+# ADR-0031: the step-up for one field only (`owner_self_approval`), checked in the route, so the op
+# carries no `step_up` and declares the two codes through `extra_codes`
+FIELD_STEP_UP = {"tenants_me_update"}
 
 
 def test_step_up_window_is_30_minutes() -> None:
@@ -400,8 +403,12 @@ def test_step_up_ops_declare_403_codes() -> None:
     for op_id in STEP_UP:
         codes = OPS[op_id].error_codes[403]
         assert codes[-2:] == (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED), op_id
+    for op_id in FIELD_STEP_UP:
+        assert OPS[op_id].step_up is None, op_id
+        codes = OPS[op_id].error_codes[403]
+        assert codes == (E.PERMISSION_DENIED, E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED)
     for op in OPS.values():
-        if op.op_id not in STEP_UP:
+        if op.op_id not in STEP_UP and op.op_id not in FIELD_STEP_UP:
             assert E.MFA_ENROLLMENT_REQUIRED not in op.error_codes.get(403, ()), op.op_id
 
 
@@ -547,7 +554,12 @@ def test_error_codes_per_d2() -> None:
             assert codes[401] == (E.UNAUTHENTICATED,), op.op_id
         else:
             assert 401 not in codes, op.op_id
-        step_up = (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED) if op.step_up else ()
+        field_step_up = op.op_id in FIELD_STEP_UP  # ADR-0031: one field's step-up
+        step_up = (
+            (E.MFA_STEP_UP_REQUIRED, E.MFA_ENROLLMENT_REQUIRED)
+            if op.step_up or field_step_up
+            else ()
+        )
         if op.op_id == "listings_approve":
             assert codes[403] == (E.PERMISSION_DENIED, E.MAKER_CHECKER_VIOLATION)
         elif op.op_id in ("auth_mfa_totp_enroll", "auth_mfa_totp_confirm"):

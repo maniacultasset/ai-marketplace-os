@@ -2312,6 +2312,8 @@ export interface paths {
          * Update the brand profile (If-Match: the ETag from GET)
          * @description Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409
          *     `STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.
+         *     `owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a
+         *     step-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).
          */
         patch: operations["tenants_me_update"];
         trace?: never;
@@ -2583,7 +2585,7 @@ export interface components {
             reason?: string | null;
             /** Request Id */
             request_id?: string | null;
-            /** @description For `listing.approved` and `listing.rejected`: the version decided on and the reason code (never the free-text feedback). Null for other events. */
+            /** @description For `listing.approved` and `listing.rejected`: the version decided on, the reason code (never the free-text feedback) and whether the approval was a self-approval. Null for other events (a `listing.self_approved` event, ADR-0031, sits beside its `listing.approved`). */
             review?: components["schemas"]["AuditReviewOut"] | null;
         };
         /**
@@ -2598,6 +2600,12 @@ export interface components {
              * @description The reject reason. The reviewer's free-text feedback is never sent here.
              */
             reason_code?: string | null;
+            /**
+             * Self Approval
+             * @description ADR-0031: an owner approved its own work under the brand's `owner_self_approval`.
+             * @default false
+             */
+            self_approval: boolean;
             /**
              * Version
              * @description The version's number.
@@ -3969,9 +3977,9 @@ export interface components {
         ListingDetail: {
             /**
              * Approve Hint
-             * @description Why `can_approve` is false: `own_work` (you made or edited this version), `no_other_approver` (and nobody else in the brand can approve it yet) or `not_approver` (your role does not approve).
+             * @description Why `can_approve` is false: `own_work` (you made or edited this version), `no_other_approver` (and nobody else in the brand can approve it yet), `owner_can_enable` (the same, and you are an owner: turning on the brand's `owner_self_approval` lets you approve your own work, ADR-0031) or `not_approver` (your role does not approve).
              */
-            approve_hint?: ("own_work" | "no_other_approver" | "not_approver") | null;
+            approve_hint?: ("own_work" | "no_other_approver" | "not_approver" | "owner_can_enable") | null;
             /** Approved Version Id */
             approved_version_id?: string | null;
             /**
@@ -4023,6 +4031,11 @@ export interface components {
             product_id: string;
             /** @description SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran. */
             remote_check?: components["schemas"]["RemoteCheckOut"] | null;
+            /**
+             * Self Approval
+             * @description ADR-0031: true when `can_approve` is true and you made or edited this version (an owner under the brand's `owner_self_approval`): the approval is recorded as a self-approval. Null when `can_approve` is null.
+             */
+            self_approval?: boolean | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Status Changed At
@@ -5965,6 +5978,12 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Owner Self Approval
+             * @description ADR-0031: owners may approve listings they generated or edited (off by default). Reviewers never approve their own work, and operators and admins never approve. Every self-approval is recorded in the listing history.
+             * @default false
+             */
+            owner_self_approval: boolean;
             /** Slug */
             slug: string;
             /**
@@ -5983,8 +6002,11 @@ export interface components {
         /**
          * TenantPatch
          * @description A partial update of the brand profile: at least one field. `tone: null` clears the tone;
-         *     `name`, `guidelines` and `glossary` cannot be null (send `[]` or `{}` to clear a list or map).
-         *     `glossary` maps a term to avoid to the preferred term (`{"kurta outfit": "kurta set"}`).
+         *     `name`, `guidelines`, `glossary` and `owner_self_approval` cannot be null (send `[]` or `{}`
+         *     to clear a list or map). `glossary` maps a term to avoid to the preferred term
+         *     (`{"kurta outfit": "kurta set"}`). `owner_self_approval` (ADR-0031) is changed by an owner
+         *     only (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes
+         *     under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).
          */
         TenantPatch: {
             /** Glossary */
@@ -5995,6 +6017,11 @@ export interface components {
             guidelines?: string[] | null;
             /** Name */
             name?: string | null;
+            /**
+             * Owner Self Approval
+             * @description Owners may approve their own listings (owner only, with a recent code).
+             */
+            owner_self_approval?: boolean | null;
             /** Tone */
             tone?: string | null;
         };
@@ -44566,7 +44593,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`. */
             403: {
                 headers: {
                     [name: string]: unknown;

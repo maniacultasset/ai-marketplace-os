@@ -9094,3 +9094,8 @@ POST /api/v1/tasks/{task_id}/close added the new `category_review` enum value to
 # V1 delegation, packages/schemas/CHANGELOG.md): SI11's unreleased NextStepOut.kind gains the
 # seller action edit_content. Remove this line once main carries it.
 GET /api/v1/listings/{listing_id}/resolution added the new `edit_content` enum value to the `next_step/kind` response property for the response status `200`
+# Contract 2.1.0 (ADR-0031, owner decision 2026-11-11; a recorded one-time out-of-window MAJOR
+# exception, packages/schemas/CHANGELOG.md): ListingDetail.approve_hint gains owner_can_enable.
+# Remove these lines once main carries it.
+GET /api/v1/listings/{listing_id} added the new `owner_can_enable` enum value to the `approve_hint/anyOf[subschema #1]/` response property for the response status `200`
+PATCH /api/v1/listings/{listing_id}/content added the new `owner_can_enable` enum value to the `approve_hint/anyOf[subschema #1]/` response property for the response status `200`
