@@ -36,6 +36,7 @@ def full_set(**over: Any) -> pv.ViewInputs:
         ),
         "chart_sizes": ("S", "M", "L"),
         "variant_sizes": ("S", "M", "L"),
+        "sized": True,
     }
     base.update(over)
     return pv.ViewInputs(**base)
@@ -243,7 +244,7 @@ def test_size_chart_check() -> None:
     lamp = pv.size_chart_check(LAMPS, pv.ViewInputs())
     assert lamp is not None and not lamp.required
     flagged = pv.size_chart_check(
-        TEES, pv.ViewInputs(chart_sizes=("S", "M"), variant_sizes=("M", "L"))
+        TEES, pv.ViewInputs(chart_sizes=("S", "M"), variant_sizes=("M", "L"), sized=True)
     )
     assert flagged == pv.SizeChartCheck(
         required=True, saved=True, missing_sizes=("L",), unused_sizes=("S",)
@@ -337,7 +338,9 @@ def test_recommended_size_chart() -> None:
     assert [(i.raw_code, i.severity) for i in none] == [("photo_view:size_chart", Severity.WARNING)]
     with_photo = pv.ViewInputs(images=(photo("main"), photo("size_chart")))
     assert pv.findings(AMAZON, "kurtas", with_photo, data) == ()
-    mismatch = pv.ViewInputs(images=(photo("main"),), chart_sizes=("S",), variant_sizes=("M",))
+    mismatch = pv.ViewInputs(
+        images=(photo("main"),), chart_sizes=("S",), variant_sizes=("M",), sized=True
+    )
     severities = {i.raw_code: i.severity for i in pv.findings(AMAZON, "kurtas", mismatch, data)}
     assert severities == {
         "size_chart:size_missing": Severity.WARNING,
@@ -346,7 +349,9 @@ def test_recommended_size_chart() -> None:
 
 
 def test_findings_are_deterministic() -> None:
-    inputs = pv.ViewInputs(images=(photo("secondary"),), chart_sizes=("S",), variant_sizes=("M",))
+    inputs = pv.ViewInputs(
+        images=(photo("secondary"),), chart_sizes=("S",), variant_sizes=("M",), sized=True
+    )
     assert pv.findings(AMAZON, KURTA, inputs) == pv.findings(AMAZON, KURTA, inputs)
 
 
@@ -435,3 +440,28 @@ async def test_listing_findings_reads_the_product(monkeypatch: pytest.MonkeyPatc
         "photo_view:close_up",
         "photo_view:size_chart",
     }
+
+
+def test_standalone_and_colour_styles_match_no_sizes() -> None:
+    """Only a style split by size has sizes to match; a standalone or a colour-only style with a
+    saved chart is complete."""
+    unsized = full_set(variant_sizes=(), sized=False)
+    assert pv.findings(AMAZON, KURTA, unsized) == ()
+    check = pv.size_chart_check(KURTA, unsized)
+    assert check == pv.SizeChartCheck(required=True, saved=True, missing_sizes=(), unused_sizes=())
+
+
+@pytest.mark.parametrize(
+    ("parent", "theme", "sized"),
+    [(None, "size", True), (None, "size_color", True), (None, "color", False), (None, None, False)],
+)
+def test_inputs_of_marks_size_styles(parent: Any, theme: str | None, sized: bool) -> None:
+    row = type(
+        "Row", (), {"parent_product_id": parent, "variation_theme": theme, "attributes": {}}
+    )()
+    assert pv.inputs_of(row, [], ["M"]).sized is sized
+    child = type(
+        "Row", (), {"parent_product_id": uuid.uuid4(), "variation_theme": theme, "attributes": {}}
+    )()
+    got = pv.inputs_of(child, [], [])
+    assert got.is_variant and not got.sized and got.chart_sizes is None

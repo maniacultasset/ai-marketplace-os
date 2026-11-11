@@ -28,8 +28,8 @@ Pure, apart from `load_inputs` (the product's images, saved chart and variant si
 - `findings(marketplace, category, inputs)`: the approval findings. A missing `required` view is
   an ERROR, a missing `recommended` one a WARNING, an `optional` one nothing. Where the size chart
   is required, the seller's saved chart is what counts (a photo alone is a suggestion source, never
-  a fact): none saved is an ERROR, a variant size the chart lacks an ERROR, a chart size no variant
-  has a WARNING. A variant has no size chart of its own (it is the style's).
+  a fact): none saved is an ERROR; on a style split by size, a variant size the chart lacks is an
+  ERROR and a chart size no variant has a WARNING. A variant has no size chart of its own (it is the style's).
 
 Every finding is deterministic (invariant 2) and uses existing codes and paths, so no wire
 contract changes: a missing view is `IMAGE_NON_COMPLIANT` at `listing` with
@@ -114,6 +114,7 @@ RANK: Final[Mapping[Requirement, int]] = {"optional": 0, "recommended": 1, "requ
 SIZE_CHART_FIELD: Final = "facts.size_measurements"
 SIZE_CHART_KEY: Final = "size_measurements"
 VIEW_RAW_PREFIX: Final = "photo_view:"
+SIZED_THEMES: Final = frozenset({"size", "size_color"})
 _MISSING_MESSAGE: Final[Mapping[PhotoView, str]] = {
     "front": "Add a front photo.",
     "back": "Add a back photo.",
@@ -189,12 +190,14 @@ class PhotoInput:
 @dataclass(frozen=True, slots=True)
 class ViewInputs:
     """What the checks read for one product: its live photos, the seller's saved chart sizes
-    (None when no chart is saved) and its variants' sizes (a style's; empty otherwise)."""
+    (None when no chart is saved) and, for a style split by size, its variants' sizes."""
 
     images: tuple[PhotoInput, ...] = ()
     chart_sizes: tuple[str, ...] | None = None
     variant_sizes: tuple[str, ...] = ()
     is_variant: bool = False
+    # a style split by size (`size`, `size_color`): only its chart is matched against its sizes
+    sized: bool = False
 
 
 Key = tuple[Marketplace | None, str | None]
@@ -405,6 +408,8 @@ def _size_chart_items(
                 suggestion=rule.why,
             )
         ]
+    if not inputs.sized:
+        return []  # a standalone or a colour-only style has no sizes to match
     lacking, unused = size_flags(inputs.chart_sizes, inputs.variant_sizes)
     out: list[ErrorItem] = []
     if lacking:
@@ -481,6 +486,8 @@ def size_chart_check(
     required = any(size_chart_required(m, category, data) for m in Marketplace)
     if inputs.chart_sizes is None:
         return SizeChartCheck(required=required, saved=False, missing_sizes=(), unused_sizes=())
+    if not inputs.sized:
+        return SizeChartCheck(required=required, saved=True, missing_sizes=(), unused_sizes=())
     lacking, unused = size_flags(inputs.chart_sizes, inputs.variant_sizes)
     return SizeChartCheck(
         required=required, saved=True, missing_sizes=tuple(lacking), unused_sizes=tuple(unused)
@@ -507,12 +514,13 @@ def inputs_of(row: Any, details: Iterable[Any], sizes: Sequence[str]) -> ViewInp
         chart_sizes=None if is_variant else saved_chart_sizes(row.attributes),
         variant_sizes=tuple(sizes),
         is_variant=is_variant,
+        sized=not is_variant and row.variation_theme in SIZED_THEMES,
     )
 
 
 async def variant_sizes(uow: Any, row: Any) -> list[str]:
     """A style's live variants' sizes; `[]` for a standalone or a variant."""
-    if row.parent_product_id is not None or row.variation_theme is None:
+    if row.parent_product_id is not None or row.variation_theme not in SIZED_THEMES:
         return []
     found: list[str] = await uow.products.child_sizes(row.id)
     return found
