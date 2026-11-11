@@ -95,3 +95,15 @@ def test_product_image_fixes_vocabulary() -> None:
         ProductImageOut.model_validate({**base, "fixes": ["lifestyle"]})
     with pytest.raises(ValidationError):
         ProductImageOut.model_validate({**base, "origin": "ai"})
+
+
+def test_create_answer_names_the_applied_image_only_when_given() -> None:
+    plain = ImageCandidateAccepted.model_validate(
+        {"candidate_id": str(uuid4()), "status": "queued", "job_id": str(uuid4()), "poll_url": "/x"}
+    )
+    assert plain.accepted_image_id is None  # a stored answer from before the field still parses
+    image = uuid4()
+    applied = ImageCandidateAccepted(
+        candidate_id=uuid4(), status="accepted", accepted_image_id=image
+    )
+    assert applied.model_dump(mode="json")["accepted_image_id"] == str(image)

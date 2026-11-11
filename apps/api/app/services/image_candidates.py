@@ -1,7 +1,9 @@
 """Image candidates (SI7, ADR-0030 proposed): the pieces the create API and the candidate job
 share.
 
-- The cache key of a candidate is (product, kind, `source_hash`, `generator_key`):
+- The cache key of a candidate is (product, kind, `source_hash`, `generator_key`), over every
+  row but the retryable failures and the accepted rows (an accepted row answers "already
+  applied" only while its image is still the asking colourway's live main, `_still_applied`):
   `source_hash` is the source photo's `clean_content_hash`, or the sha256 of the size chart and
   fabric as the product read shows them; `generator_key` names what makes the image (the fix or
   render version, or the edit model and prompt version), so a new model or version is a new
@@ -128,12 +130,33 @@ class CandidateRequest:
 
 def _accepted(row: ImageCandidate, *, with_job: bool) -> dict[str, Any]:
     job = row.job_id if with_job else None
+    applied = row.accepted_image_id if row.status == "accepted" else None
     return {
         "candidate_id": str(row.id),
         "status": row.status,
         "job_id": None if job is None else str(job),
         "poll_url": None if job is None else f"{API_V1}/jobs/{job}",
+        "accepted_image_id": None if applied is None else str(applied),
     }
+
+
+async def _still_applied(
+    uow: TenantUnitOfWork, row: ImageCandidate | None, colourway_id: uuid.UUID | None
+) -> ImageCandidate | None:
+    """ADR-0030 amendment (2026-11-11): an accepted candidate answers a create as "already
+    applied" only while its image is live and still the main of the asking product and
+    colourway. Otherwise it is provenance only and the create makes a new candidate."""
+    if row is None or row.status != "accepted" or row.accepted_image_id is None:
+        return None
+    image = await uow.images.get_live(row.accepted_image_id)
+    if (
+        image is None
+        or image.slot != "main"
+        or image.product_id != row.product_id
+        or image.colourway_id != colourway_id
+    ):
+        return None
+    return row
 
 
 # a cached row still open for a decision: it answers only for its own live source
@@ -152,7 +175,8 @@ def _other_source(row: ImageCandidate, body: CandidateRequest) -> bool:
 
 async def _cache_answer(uow: TenantUnitOfWork, row: ImageCandidate) -> dict[str, Any] | None:
     """A row the cache index holds answers the create (CP-D17): a `queued` one with its own
-    job, a `rejected` one reopened, any other covered row as it is. None: not a cache answer."""
+    job, a `rejected` one reopened, any other covered row as it is. None: not a cache answer.
+    An accepted row is never in the index (0030): `_still_applied` decides for it."""
     if row.status == "queued":
         return _accepted(row, with_job=row.job_id is not None)
     if row.status == "rejected":
@@ -160,7 +184,7 @@ async def _cache_answer(uow: TenantUnitOfWork, row: ImageCandidate) -> dict[str,
         fresh = await uow.image_candidates.get(row.id)
         assert fresh is not None  # noqa: S101 - locked under the product lock
         return _accepted(fresh, with_job=False)
-    if row.status in ("ready", "accepted") or row.failure_reason in CACHED_FAILURES:
+    if row.status == "ready" or row.failure_reason in CACHED_FAILURES:
         return _accepted(row, with_job=False)
     return None
 
@@ -189,8 +213,10 @@ class _Key:
 
 async def _resolve_key(
     uow: TenantUnitOfWork, product_id: uuid.UUID, body: CandidateRequest
-) -> _Key:
-    """The product (404), the source or the chart (404/422), and the cache key."""
+) -> _Key | ImageCandidate:
+    """The product (404), the source or the chart (404/422), and the cache key. A source that
+    is no longer the main because a candidate of this kind made from it took its place (a
+    click on a page read before the accept) answers that accepted candidate instead of 404."""
     settings = get_settings()
     product = await uow.products.get_by_id(product_id)
     if product is None:
@@ -208,8 +234,14 @@ async def _resolve_key(
         return _Key(None, source.source_hash, SIZE_CHART_GENERATOR)
     assert body.source_image_id is not None  # noqa: S101 - ImageCandidateIn
     image = await uow.images.get_live(body.source_image_id)
-    if image is None or image.product_id != product_id or image.slot != "main":
+    if image is None or image.product_id != product_id:
         raise NotFoundError("source_image_id")
+    if image.slot != "main":
+        made = await uow.image_candidates.latest_accepted_from(image.id, body.kind)
+        applied = await _still_applied(uow, made, image.colourway_id)
+        if applied is None:
+            raise NotFoundError("source_image_id")
+        return applied
     if image.clean_content_hash is None:
         raise InputError(ErrorCode.VALIDATION_FAILED, "source_image_id")
     generator = (
@@ -256,6 +288,8 @@ async def create_candidate(
         await uow.images.lock_tenant_image_jobs()
         await uow.images.lock_product_images(product_id)
         key = await _resolve_key(uow, product_id, body)
+        if isinstance(key, ImageCandidate):  # already applied: no new job, no cost
+            return 202, _accepted(key, with_job=False)
         cached = await uow.image_candidates.find_cached(
             product_id, body.kind, key.source_hash, key.generator_key
         )
@@ -336,6 +370,7 @@ async def create_candidate(
             "status": "queued",
             "job_id": str(enqueued.job.id),
             "poll_url": f"{API_V1}/jobs/{enqueued.job.id}",
+            "accepted_image_id": None,
         }
 
     _status, answer = await idempotent(principal, idem_key, "POST", path, payload, handler)

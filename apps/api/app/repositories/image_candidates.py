@@ -1,7 +1,7 @@
 """`ImageCandidateRepository` (SI7 T9, ADR-0030 proposed): the tenant's proposed images.
 
 The cache is the partial unique index `uq_image_candidates_cache` over (tenant, product, kind,
-source hash, generator key), outside the retryable failures. `create_or_get` inserts against it
+source hash, generator key), outside the retryable failures and the accepted rows (0030). `create_or_get` inserts against it
 and reads the winner, so two concurrent creates make one row and exactly one `created=True`;
 only that caller enqueues. Every outcome write is fenced on the job that owns the row
 (`job_id`) and on `status = 'queued'`, so a stale job can never overwrite a newer one, and
@@ -20,9 +20,11 @@ from decimal import Decimal
 from typing import Any, Final
 from uuid import UUID
 
+from mkos_schemas.codes import ErrorCode
 from sqlalchemy import delete, exists, func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
+from app.core.errors import ConflictError
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.catalog_assets import (
     CANDIDATE_CACHE_WHERE,
@@ -81,9 +83,12 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
 
     # ---- create ----
 
-    async def create_or_get(self, new: NewCandidate) -> tuple[ImageCandidate, bool]:
+    async def create_or_get(
+        self, new: NewCandidate, *, _retries: int = 1
+    ) -> tuple[ImageCandidate, bool]:
         """INSERT … ON CONFLICT on the cache index DO NOTHING, then the winner. `created` is True
-        only for this call's own insert."""
+        only for this call's own insert. A winner that is gone again is retried once, then 409
+        (never a loop)."""
         self._own_session()
         stmt = (
             pg_insert(ImageCandidate)
@@ -121,7 +126,9 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
             new.product_id, new.kind, new.source_hash, new.generator_key
         )
         if winner is None:  # the winner was rolled back between the insert and the read: retry
-            return await self.create_or_get(new)
+            if _retries <= 0:
+                raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "image_candidates")
+            return await self.create_or_get(new, _retries=_retries - 1)
         return winner, False
 
     # ---- reads ----
@@ -140,6 +147,20 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
                 text(CANDIDATE_CACHE_WHERE),
             )
             .execution_options(populate_existing=True)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def latest_accepted_from(self, source_image_id: UUID, kind: str) -> ImageCandidate | None:
+        """The newest accepted row of this kind made from this image (it was the main then)."""
+        stmt = (
+            self._select()
+            .where(
+                ImageCandidate.source_image_id == _uuid("source_image_id", source_image_id),
+                ImageCandidate.kind == kind,
+                ImageCandidate.status == "accepted",
+            )
+            .order_by(ImageCandidate.decided_at.desc().nulls_last(), ImageCandidate.id.desc())
+            .limit(1)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 

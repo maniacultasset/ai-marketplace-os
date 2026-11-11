@@ -61,6 +61,12 @@ class ImageCandidateAccepted(WireModel):
     status: CandidateStatus
     job_id: UUID | None = Field(default=None, description="Null when no new job was needed.")
     poll_url: NonBlankStr | None = None
+    accepted_image_id: UUID | None = Field(
+        default=None,
+        description="Set only with status `accepted`: this source was already replaced by "
+        "the candidate's image, which is still the live main of the same product and "
+        "colourway. No new job was started.",
+    )
 
 
 class FidelityOut(WireModel):
