@@ -322,3 +322,106 @@ def test_read_only_roles_never_see_the_handle(admin_conn: Conn) -> None:
                 [role, column],
             ).fetchone()
             assert row == (False,), (role, column)
+
+
+# ---- 0033 (client item 2): the admin's one question and the applicant's one reply ----
+
+QUESTION = "Which marketplaces do you sell on today?"
+
+
+def _info_refusal(info: pytest.ExceptionInfo[psycopg.Error]) -> None:
+    assert info.value.sqlstate == "GRD01"
+
+
+def _ask(conn: Conn, request: UUID, question: str = QUESTION) -> int:
+    return conn.execute(
+        "UPDATE signup_requests SET info_question = %s, info_asked_at = now() WHERE id = %s",
+        [question, request],
+    ).rowcount
+
+
+def _reply(conn: Conn, digest: bytes, text: str) -> str:
+    row = conn.execute("SELECT public.app_reply_signup_info(%s, %s)", [digest, text]).fetchone()
+    assert row is not None
+    return str(row[0])
+
+
+def _as(conn: Conn, user: UUID | None, tenant: UUID | None = None) -> None:
+    conn.execute("SELECT set_config('app.user_id', %s, true)", [str(user) if user else ""])
+    conn.execute("SELECT set_config('app.tenant_id', %s, true)", [str(tenant) if tenant else ""])
+
+
+def test_only_a_platform_admin_asks_and_only_once(app_conn: Conn, world: SignupWorld) -> None:
+    with as_user(app_conn, world.applicant_a):
+        assert _ask(app_conn, world.request_a) == 0  # the applicant updates nothing (RLS)
+    with as_user(app_conn, world.member, world.tenant):
+        assert _ask(app_conn, world.request_a) == 0
+    with as_user(app_conn, world.admin, world.tenant):
+        assert _ask(app_conn, world.request_a) == 1
+        with pytest.raises(psycopg.Error) as info, app_conn.transaction():
+            _ask(app_conn, world.request_a, "A second question?")
+        _info_refusal(info)
+
+
+def test_admin_cannot_ask_a_decided_request(app_conn: Conn, world: SignupWorld) -> None:
+    with as_user(app_conn, world.admin, world.tenant):
+        app_conn.execute(
+            "UPDATE signup_requests SET status = 'rejected', reason = 'no', decided_at = now() "
+            "WHERE id = %s",
+            [world.request_b],
+        )
+        with pytest.raises(psycopg.Error) as info, app_conn.transaction():
+            _ask(app_conn, world.request_b)
+        _info_refusal(info)
+
+
+def test_app_rw_cannot_write_the_reply_or_insert_info(app_conn: Conn, world: SignupWorld) -> None:
+    for user in (world.applicant_a, world.admin):
+        with (
+            as_user(app_conn, user, world.tenant if user == world.admin else None),
+            pytest.raises(psycopg.errors.InsufficientPrivilege),
+        ):
+            app_conn.execute(
+                "UPDATE signup_requests SET info_reply = 'x', info_replied_at = now() "
+                "WHERE id = %s",
+                [world.request_a],
+            )
+    with as_user(app_conn, world.admin, world.tenant), pytest.raises(psycopg.Error) as info:
+        app_conn.execute(
+            "INSERT INTO signup_requests (user_id, brand_name, owner_name, info_question, "
+            "info_asked_at) VALUES (%s, 'C', 'O', 'q', now())",
+            [world.member],
+        )
+    _info_refusal(info)
+
+
+def test_reply_by_handle_once(app_conn: Conn, world: SignupWorld) -> None:
+    with as_user(app_conn, world.applicant_a):
+        assert _issue(app_conn, world.request_a, HANDLE_A) is True
+        _as(app_conn, None)
+        assert _reply(app_conn, HANDLE_A, "Early.") == "conflict"  # no question yet
+        _as(app_conn, world.admin, world.tenant)
+        assert _ask(app_conn, world.request_a) == 1
+        _as(app_conn, None)  # the browser holds only the handle
+        assert _reply(app_conn, HANDLE_B, "Not mine.") == "not_found"
+        assert _reply(app_conn, b"short", "Bad hash.") == "not_found"
+        assert _reply(app_conn, HANDLE_A, "Amazon India.") == "replied"
+        assert _reply(app_conn, HANDLE_A, "Amazon India.") == "same"
+        assert _reply(app_conn, HANDLE_A, "Something else.") == "conflict"
+        _as(app_conn, world.applicant_a)
+        row = app_conn.execute(
+            "SELECT status, info_question, info_reply, info_replied_at IS NOT NULL "
+            "FROM signup_requests WHERE id = %s",
+            [world.request_a],
+        ).fetchone()
+        assert row == ("pending", QUESTION, "Amazon India.", True)
+
+
+def test_read_only_roles_never_see_the_question_or_reply(admin_conn: Conn) -> None:
+    for role in ("app_ro", "app_platform_ro"):
+        for column in ("info_question", "info_asked_at", "info_reply", "info_replied_at"):
+            row = admin_conn.execute(
+                "SELECT has_column_privilege(%s, 'public.signup_requests', %s, 'SELECT')",
+                [role, column],
+            ).fetchone()
+            assert row == (False,), (role, column)

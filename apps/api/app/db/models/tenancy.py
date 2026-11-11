@@ -359,6 +359,13 @@ class SignupRequest(Base):
     # written only by `app_set_signup_status_handle`; never granted to the read-only roles
     status_handle_hash: Mapped[bytes | None] = deferred(mapped_column(LargeBinary))
     status_handle_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0033 (ADR-0019 amendment, client item 2): one question a platform admin asks while the
+    # request stays pending, and the applicant's one reply (written only by
+    # `app_reply_signup_info`); never granted to the read-only roles
+    info_question: Mapped[str | None] = mapped_column(Text)
+    info_asked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    info_reply: Mapped[str | None] = mapped_column(Text)
+    info_replied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class LoginFlow(Base):

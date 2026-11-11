@@ -135,3 +135,50 @@ no token, membership or tenant. Instead:
   can read the decision for 30 days; the browser drops it once it acts on the decision. No email
   on a decision yet (still waits for ADR-0006 decision 6).
 
+
+## Amendment (11 Nov 2026): one question, one reply, and the sign-in after approval
+
+Client feedback item 2: a reviewer could only approve or reject, so a request that needed one
+more detail was rejected and sent again; and the approved card's next step did not say why the
+applicant has to sign in once more. Decisions 2, 3, 5 and 8 and the status-handle amendment stay
+as they are. In particular a pending applicant still has no token, membership or tenant, and the
+status handle still signs nobody in.
+
+- **No new status.** Asking a question keeps the request `pending`. The status vocabulary
+  (`pending | approved | rejected`), `ck_signup_requests_status`, the one-pending index, the
+  login's 401, the Google `pending` outcome, the staff CLI refusal of decision 10 and the backlog
+  count all read the request exactly as before, and no pinned consumer meets an unknown value
+  (docs/RULES.md §11). "Waiting for the applicant" is a pending request with a question and no
+  reply; "back with the admin" is one with a reply.
+- **The question.** `POST /admin/signup-requests/{request_id}/ask` `{question}` (platform admins,
+  1-1000 characters). One question per request: the same question again answers the stored row,
+  a different second question or any question on a decided request is 409
+  `INVALID_STATUS_TRANSITION`, an unknown id is 404. Audited `signup.info_requested` as `staff`
+  with the admin's email and the question as the reason. Approve and reject stay open
+  throughout. The admin queue shows the question and the reply on the row.
+- **The reply.** The poll answers `question`, `asked_at`, `reply` and `replied_at` while the
+  request is pending (null once decided), and nothing else new. `POST /signup/status/reply`
+  `{status_handle, reply}` stores the applicant's one reply (1-1000 characters), authorised by
+  the status handle alone, in the body, never in a URL: whoever may read the request through the
+  handle may answer its one question, and nothing more. The answer is the poll's shape. An
+  unknown, replaced or expired handle is the poll's 404; no open question, a decided request or a
+  second, different reply is 409 (the same reply again answers it). Rate limit: the login rate
+  per `sha256(ip|handle)` and 20 times that per `sha256(ip)`, on top of the public per-IP limit.
+  Audited `signup.info_replied` as `system`, without the reply's text.
+- **The database (revision `0033_signup_info_request`).** Four nullable columns on
+  `signup_requests` with `ck_signup_requests_info` (each text with its time, a reply only after
+  a question, 1-1000 characters). app_rw may UPDATE only the two question columns, and only a
+  platform admin reaches a row to update through `sr_admin`; `signup_requests_info_guard`
+  refuses (GRD01) an insert that sets any of them, and a question written by a non-admin, on a
+  request that is not pending, or over an existing question. The reply is written only by the
+  SECURITY DEFINER `app_reply_signup_info(bytea, text)`, for the row whose live handle hash it
+  is given. The read-only roles read none of the four columns.
+- **After approval.** The poll still signs nobody in: turning a read-only handle into a session
+  would make the handle a credential, outside the login's lockout, MFA and Kuinn code. The
+  approved card therefore offers the one sign-in directly and says why: a Google applicant gets
+  the Google button with the intended page kept, a password applicant goes to the sign-in with the
+  email filled in when this page knows it (carried in the browser's history state, never in the
+  URL or local storage), and the copy says that this page only shows the status and that signing
+  in once opens the workspace.
+- **Follow-ups.** `redact_user()` does not yet clear `info_reply` (as for `owner_name` and
+  `phone` in Consequences). One round only: a second question waits for a real need.

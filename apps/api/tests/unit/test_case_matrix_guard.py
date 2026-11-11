@@ -118,9 +118,11 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "signup_create",
         "signup_status",
         "signup_status_poll",
+        "signup_status_reply",  # client item 2
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",
+        "admin_signup_requests_ask",  # client item 2
         # SI10
         "admin_ai_credit_get",
         "admin_ai_credit_resume",

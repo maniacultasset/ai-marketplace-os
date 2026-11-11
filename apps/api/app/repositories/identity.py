@@ -831,17 +831,27 @@ class SignupRow:
     created_at: datetime
     # 0012 (ADR-0020): `google` when Google verified the applicant's email
     verified_via: str | None = None
+    # 0033 (client item 2): the admin's one question and the applicant's one reply
+    info_question: str | None = None
+    info_asked_at: datetime | None = None
+    info_reply: str | None = None
+    info_replied_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class SignupPollRow:
-    """What a status handle may read (ADR-0019 amendment): no ids, email, phone or tenant."""
+    """What a status handle may read (ADR-0019 amendment): no ids, email, phone or tenant;
+    since 0033 also the admin's question and the applicant's own reply."""
 
     status: str
     brand_name: str
     requested_at: datetime
     decided_at: datetime | None
     reason: str | None
+    info_question: str | None = None
+    info_asked_at: datetime | None = None
+    info_reply: str | None = None
+    info_replied_at: datetime | None = None
 
 
 def _signup_select() -> Any:
@@ -859,6 +869,10 @@ def _signup_select() -> Any:
         SignupRequest.decided_at,
         SignupRequest.created_at,
         SignupRequest.verified_via,
+        SignupRequest.info_question,
+        SignupRequest.info_asked_at,
+        SignupRequest.info_reply,
+        SignupRequest.info_replied_at,
     ).join(User, User.id == SignupRequest.user_id)
 
 
@@ -965,6 +979,10 @@ class SignupRepository:
                 SignupRequest.created_at,
                 SignupRequest.decided_at,
                 SignupRequest.reason,
+                SignupRequest.info_question,
+                SignupRequest.info_asked_at,
+                SignupRequest.info_reply,
+                SignupRequest.info_replied_at,
             ).where(
                 SignupRequest.status_handle_hash == handle_hash,
                 SignupRequest.status_handle_expires_at > func.now(),
@@ -972,6 +990,26 @@ class SignupRepository:
         )
         row = (await self.db.execute(stmt)).one_or_none()
         return None if row is None else SignupPollRow(*row)
+
+    async def handle_user_id(self, handle_hash: bytes) -> uuid.UUID | None:
+        """The applicant a live handle names, for the audit row of a reply (`sr_handle_select`)."""
+        await set_gucs(self.db, token_hash=handle_hash)
+        stmt = identity_scope(
+            select(SignupRequest.user_id).where(
+                SignupRequest.status_handle_hash == handle_hash,
+                SignupRequest.status_handle_expires_at > func.now(),
+            )
+        )
+        found = (await self.db.execute(stmt)).scalar_one_or_none()
+        return found if isinstance(found, uuid.UUID) else None
+
+    async def reply_info(self, handle_hash: bytes, reply: str) -> str:
+        """0033 `app_reply_signup_info`: the applicant's one reply on the request a live handle
+        names. `replied`, `same` (the same reply again), `conflict` (no open question, decided, or
+        a different reply) or `not_found`."""
+        stmt = text("SELECT public.app_reply_signup_info(:h, :r)")
+        found = (await self.db.execute(stmt, {"h": handle_hash, "r": reply})).scalar_one()
+        return str(found)
 
     async def page(
         self,
@@ -1022,6 +1060,22 @@ class SignupRepository:
                 decided_at=func.now(),
                 created_tenant_id=created_tenant_id,
             )
+        ).execution_options(synchronize_session=False)
+        result = await self.db.execute(stmt)
+        if _rowcount(result) != 1:
+            raise RowCountError(1, _rowcount(result))
+
+    async def ask(self, request_id: uuid.UUID, *, question: str) -> None:
+        """Put the one question on a pending request with none yet; exactly one row (the 0033
+        guard refuses anything else in the database too)."""
+        stmt = identity_scope(
+            update(SignupRequest)
+            .where(
+                SignupRequest.id == request_id,
+                SignupRequest.status == "pending",
+                SignupRequest.info_question.is_(None),
+            )
+            .values(info_question=question, info_asked_at=func.now())
         ).execution_options(synchronize_session=False)
         result = await self.db.execute(stmt)
         if _rowcount(result) != 1:

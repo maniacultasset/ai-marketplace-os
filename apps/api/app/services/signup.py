@@ -31,6 +31,15 @@
   409 `INVALID_STATUS_TRANSITION`. Client item 1: approve also copies the applicant's website (both
   sign-up paths store it on the request) to the new brand's `brand_profiles.website_url`; a
   website that does not fit the column is left out, never blocking the approval.
+- `ask()` and `reply()` (client item 2, ADR-0019 amendment): instead of deciding, a platform admin
+  may ask the applicant one question; the request stays `pending` (no new status, so every
+  reader of the status is unchanged). The applicant reads it through `poll_status()` and sends one
+  reply authorised by the same status handle (`app_reply_signup_info`, the only writer of the
+  reply). Asking the same question again, or sending the same reply again, answers the stored
+  row; a second, different one, or either on a decided request, is 409
+  `INVALID_STATUS_TRANSITION`. Both are audited (`signup.info_requested` as `staff` with the
+  admin's email and the question as the reason; `signup.info_replied` as `system`, without the
+  reply's text). The admin may still approve or reject at any time.
 """
 
 from __future__ import annotations
@@ -83,6 +92,8 @@ __all__ = [
     "SignupRow",
     "StatusRead",
     "approve",
+    "ask",
+    "ask_outcome",
     "decision_outcome",
     "is_platform_admin",
     "issue_status_handle",
@@ -90,6 +101,7 @@ __all__ = [
     "new_status_handle",
     "poll_status",
     "reject",
+    "reply",
     "signup",
     "signup_status",
     "slug_base",
@@ -137,6 +149,16 @@ def decision_outcome(status: str, decision: Decision) -> Outcome:
     if (status, decision) in (("approved", "approve"), ("rejected", "reject")):
         return "same"
     return "conflict"
+
+
+def ask_outcome(status: str, current: str | None, question: str) -> Outcome:
+    """What asking `question` does to a request: one question per pending request; the same
+    question again answers the stored row; any other crossing is a conflict."""
+    if status != "pending":
+        return "conflict"
+    if current is None:
+        return "apply"
+    return "same" if current == question else "conflict"
 
 
 def new_status_handle() -> str:
@@ -454,3 +476,63 @@ async def reject(principal: Principal, request_id: uuid.UUID, *, reason: str) ->
     if decided is None:
         raise RuntimeError("a rejected sign-up is not readable")
     return decided
+
+
+# ---- one question and one reply (client item 2) ----
+
+
+async def ask(principal: Principal, request_id: uuid.UUID, *, question: str) -> SignupRow:
+    async with identity_session() as session:
+        await set_gucs(session, user_id=principal.user_id)
+        requests = SignupRepository(session)
+        row = await requests.lock(request_id)
+        if row is None:
+            raise NotFoundError("signup_request")
+        outcome = ask_outcome(row.status, row.info_question, question)
+        if outcome == "same":
+            return row
+        if outcome == "conflict":
+            raise _conflict()
+        await requests.ask(request_id, question=question)
+        await AuditRepository(session).write(
+            tenant_id=None,
+            actor_type="staff",
+            actor_user_id=None,
+            action="signup.info_requested",
+            entity_type="user",
+            entity_id=row.user_id,
+            reason=question,
+            actor_email=principal.email,
+        )
+        asked = await requests.lock(request_id)
+    if asked is None:
+        raise RuntimeError("an asked sign-up is not readable")
+    return asked
+
+
+async def reply(raw: str, text: str, *, ip: str | None = None) -> SignupPollRow | None:
+    """The applicant's one reply on the request a live handle names; None for an unknown or
+    expired handle (the poll's one 404). Raises the 409 for no open question, a decided request
+    or a second, different reply."""
+    digest = status_handle_hash(raw)
+    async with identity_session() as session:
+        requests = SignupRepository(session)
+        outcome = await requests.reply_info(digest, text)
+        if outcome == "not_found":
+            return None
+        if outcome == "conflict":
+            raise _conflict()
+        if outcome == "replied":
+            user_id = await requests.handle_user_id(digest)
+            if user_id is None:  # pragma: no cover - the handle was live a statement ago
+                raise RuntimeError("a replied sign-up has no applicant")
+            await AuditRepository(session).write(
+                tenant_id=None,
+                actor_type="system",
+                actor_user_id=None,
+                action="signup.info_replied",
+                entity_type="user",
+                entity_id=user_id,
+                ip=inet(ip),
+            )
+        return await requests.by_status_handle(digest)

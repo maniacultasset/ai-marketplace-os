@@ -202,6 +202,7 @@ DEFINERS = frozenset(
         "app_create_google_invitee(text,text,text)",  # 0017
         "app_ai_credit_auto_clear(numeric)",  # 0021 (SI10 D3)
         "app_set_signup_status_handle(uuid,bytea)",  # 0030 (ADR-0019 amendment)
+        "app_reply_signup_info(bytea,text)",  # 0033 (client item 2)
     }
 )
 
