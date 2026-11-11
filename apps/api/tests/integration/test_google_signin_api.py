@@ -14,7 +14,7 @@ import httpx
 import jwt
 import pytest
 
-from .auth_support import PASSWORD, World, audit_rows, bearer, tokens_for
+from .auth_support import PASSWORD, PREFIX, World, audit_rows, bearer, tokens_for
 from .conftest import LOCAL_HOSTS
 from .google_support import (
     CFG,
@@ -124,7 +124,7 @@ async def test_start_redirects_to_google_with_pkce(
     assert query["prompt"] == "select_account" and query["state"] and query["nonce"]
     # only hashes are stored: never the state, the nonce or the browser's binding secret
     row = gw.conn.execute(
-        "SELECT phase, flow_hash, binding_hash, nonce_hash, expires_at - now() " "FROM login_flows"
+        "SELECT phase, flow_hash, binding_hash, nonce_hash, expires_at - now() FROM login_flows"
     ).fetchone()
     assert row is not None
     assert row[0] == "authorize"
@@ -733,24 +733,190 @@ async def _generic_failure(response: httpx.Response) -> None:
     assert (error["type"], error["message"]) == ("UNAUTHENTICATED", GENERIC)
 
 
-async def test_platform_admin_never_uses_google(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
-    gw.conn.execute("UPDATE users SET is_platform_admin = true WHERE email = %s", [OWNER])
-    await _generic_failure(
-        await GoogleBrowser(gapi, gw).sign_in(**{"as": OWNER, "hd": "acme.test"})
-    )
-    assert [r[-1] for r in audit_rows(gw.conn, "auth.login_failed")] == ["google_admin"]
+# ---- platform admins: Google, then always the Kuinn code (ADR-0020 amendment, 11 Nov 2026) ----
 
 
-async def test_linked_admin_never_uses_google(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
+def _make_admin(gw: GoogleWorld, *, linked: bool) -> None:
     from tests.support.fake_google import sub_for
 
-    gw.conn.execute(
-        "UPDATE users SET is_platform_admin = true, google_sub = %s WHERE email = %s",
-        [sub_for(OWNER), OWNER],
+    gw.conn.execute("UPDATE users SET is_platform_admin = true WHERE email = %s", [OWNER])
+    if linked:
+        gw.conn.execute(
+            "UPDATE users SET google_sub = %s WHERE email = %s", [sub_for(OWNER), OWNER]
+        )
+
+
+async def test_linked_admin_signs_in_with_google_then_the_code(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """A platform admin found by the linked Google account gets the code step (no trusted
+    browser is offered on it) and the session the password path gives: their tenant, `amr`
+    of Kuinn's code only, `auth.login` with reason `google`."""
+    mfa_on(monkeypatch)
+    _make_admin(gw, linked=False)
+    admin = await enrol(gapi, gw.conn, OWNER, clock)
+    _make_admin(gw, linked=True)
+    browser = GoogleBrowser(gapi, gw)
+    done = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert done["outcome"] == "sign_in", done
+    login = done["login"]
+    assert login["status"] == "mfa_required" and login["access_token"] is None
+    assert login["device_trust_days"] is None  # never trusted after Google, for an admin
+    code = await gapi.post(
+        LOGIN_MFA,
+        json={
+            "challenge_token": login["challenge_token"],
+            "code": clock.next_code(admin.secret),
+            "trust_device": True,
+        },
     )
+    assert code.status_code == 200, code.text
+    body = code.json()
+    assert body["status"] == "signed_in" and body["device_token"] is None
+    claims = _payload(body["access_token"])
+    assert claims["amr"] == ["otp"] and claims["tid"] == str(gw.world.tenant("acme"))
+    assert gw.conn.execute(
+        "SELECT count(*) FROM trusted_devices t JOIN users u ON u.id = t.user_id "
+        "WHERE u.email = %s",
+        [OWNER],
+    ).fetchone() == (0,)
+    assert [r[-1] for r in audit_rows(gw.conn, "auth.login")][-1] == "google"
+    me = (await gapi.get(f"{PREFIX}/auth/me", headers=bearer(body["access_token"]))).json()
+    assert me["is_platform_admin"] is True
+
+
+async def test_admin_trusted_browser_never_skips_the_code_after_google(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """A browser the admin trusted on the password path (7 days, ADR-0023) still skips the code
+    there, but never on a Google sign-in: the code is asked, and the token is not rotated."""
+    from tests.support.rate_limits import reset_rate_limits
+
+    from .mfa_support import LOGIN
+    from .mfa_support import login as password_login
+
+    mfa_on(monkeypatch)
+    _make_admin(gw, linked=False)
+    admin = await enrol(gapi, gw.conn, OWNER, clock)
+    first = (await password_login(gapi, OWNER)).json()
+    assert first["status"] == "mfa_required" and first["device_trust_days"] == 7
+    trusted = await gapi.post(
+        LOGIN_MFA,
+        json={
+            "challenge_token": first["challenge_token"],
+            "code": clock.next_code(admin.secret),
+            "trust_device": True,
+        },
+    )
+    assert trusted.status_code == 200, trusted.text
+    token = trusted.json()["device_token"]
+    assert token
+    _make_admin(gw, linked=True)
+
+    browser = GoogleBrowser(gapi, gw)
+    handle = await browser.handle(**{"as": OWNER, "hd": "acme.test"})
+    done = await gapi.post(
+        COMPLETE, json={"handle": handle, "binding": browser.secret, "device_tokens": [token]}
+    )
+    assert done.status_code == 200, done.text
+    login = done.json()["login"]
+    assert login["status"] == "mfa_required" and login["access_token"] is None
+    assert login["device_token"] is None and login["device_trust_days"] is None
+    reasons = [r[-1] for r in audit_rows(gw.conn, "auth.login")]
+    assert "google_trusted_device" not in reasons
+
+    # the password path is unchanged: the same token still stands in for the code there
+    reset_rate_limits(gw.conn)
+    again = await gapi.post(
+        LOGIN, json={"email": OWNER, "password": PASSWORD, "device_token": token}
+    )
+    assert again.status_code == 200, again.text
+    assert again.json()["status"] == "signed_in"
+
+
+async def test_admin_without_a_factor_enrols_after_google(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """No factor yet: the enrolment, as on the password path (admins never get a grace)."""
+    from datetime import UTC, datetime, timedelta
+
+    gw.conn.execute(
+        "UPDATE users SET last_login_at = now() - interval '1 day' WHERE email = %s", [OWNER]
+    )
+    mfa_on(monkeypatch, grace=datetime.now(UTC) + timedelta(days=5))
+    _make_admin(gw, linked=True)
+    signed = await _enrol_google(GoogleBrowser(gapi, gw), clock, **{"as": OWNER, "hd": "acme.test"})
+    assert signed["status"] == "signed_in" and signed["device_token"] is None
+    assert _payload(signed["access_token"])["amr"] == ["otp"]
+
+
+async def test_unlinked_admin_links_with_password_then_code(
+    gapi: httpx.AsyncClient,
+    gw: GoogleWorld,
+    monkeypatch: pytest.MonkeyPatch,
+    clock: TotpClock,  # noqa: F811
+) -> None:
+    """No email-only link for an admin: the Kuinn password (counted), then the code, and only
+    then is the Google account linked (0029 lets the definer link an admin)."""
+    mfa_on(monkeypatch)
+    _make_admin(gw, linked=False)
+    admin = await enrol(gapi, gw.conn, OWNER, clock)
+    browser = GoogleBrowser(gapi, gw)
+    done = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert done["outcome"] == "link_required", done
+    link = done["link"]["link_handle"]
+    wrong = await gapi.post(
+        LINK, json={"link_handle": link, "binding": browser.secret, "password": "wrong-password"}
+    )
+    assert wrong.status_code == 401
+    assert lock_state(gw.conn, OWNER) == (1, False)
+    password = await gapi.post(
+        LINK, json={"link_handle": link, "binding": browser.secret, "password": PASSWORD}
+    )
+    assert password.status_code == 200, password.text
+    step = password.json()
+    assert step["status"] == "mfa_required"
+    assert google_sub_of(gw.conn, OWNER) is None
+    code = await gapi.post(
+        LOGIN_MFA,
+        json={"challenge_token": step["challenge_token"], "code": clock.next_code(admin.secret)},
+    )
+    assert code.status_code == 200, code.text
+    assert _payload(code.json()["access_token"])["amr"] == ["pwd", "otp"]
+    assert google_sub_of(gw.conn, OWNER) is not None
+    assert len(audit_rows(gw.conn, "auth.google_linked")) == 1
+    again = (await browser.sign_in(**{"as": OWNER, "hd": "acme.test"})).json()
+    assert again["outcome"] == "sign_in" and again["login"]["status"] == "mfa_required"
+
+
+async def test_admin_google_refused_with_mfa_off(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
+    """`MFA_ENFORCEMENT=off` has no code step, so an admin's Google sign-in is refused."""
+    _make_admin(gw, linked=True)
     await _generic_failure(
         await GoogleBrowser(gapi, gw).sign_in(**{"as": OWNER, "hd": "acme.test"})
     )
+    assert [r[-1] for r in audit_rows(gw.conn, "auth.login_failed")] == ["google_admin_mfa_off"]
+
+
+async def test_inactive_admin_refused(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mfa_on(monkeypatch)
+    _make_admin(gw, linked=True)
+    gw.conn.execute("UPDATE users SET is_active = false WHERE email = %s", [OWNER])
+    await _generic_failure(
+        await GoogleBrowser(gapi, gw).sign_in(**{"as": OWNER, "hd": "acme.test"})
+    )
+    assert [r[-1] for r in audit_rows(gw.conn, "auth.login_failed")] == ["inactive_user"]
 
 
 async def test_locked_account_refused_uncounted(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
