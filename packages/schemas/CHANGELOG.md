@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- White background "already in use" (client tester, 11 Nov 2026; ADR-0030 amendment; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
+  - **Contract (MINOR).** `ImageCandidateAccepted.accepted_image_id?` (default null) on `image_candidates_create`: set only with status `accepted`.
+  - **Behaviour.** A create answers `accepted` only when the candidate's image is still the live main of the same product and colourway (a click from a page read before the accept). A size chart answers `accepted` while its image is still the product's size-chart image. An accepted candidate whose image was deleted or replaced, or the same photo as another colourway's main, no longer answers: a new candidate and job are made. A second click while one is queued still answers the same job. Migration `0030_candidate_cache_accepted` takes accepted rows out of `uq_image_candidates_cache`.
+  - **FE notice.** On `accepted`, say the photo is already on a white background and is the main photo, and show `accepted_image_id`; never a dead end.
+
 - Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
   - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
   - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.

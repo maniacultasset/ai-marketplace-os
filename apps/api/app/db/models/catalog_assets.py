@@ -195,8 +195,12 @@ class Image(TenantScoped, Base):
 # is a source that changed or went away before the candidate could be made or accepted: a state,
 # not a verdict on the pixels, so the same photo asked for again is a new candidate.
 RETRYABLE_FAILURES = ("model_failed", "credit_used_up", "budget", "source_changed")
+# An accepted row is provenance, not a cache entry (0030, ADR-0030 amendment 2026-11-11): it
+# answers a create only while its image is still the live main it became (the service checks),
+# so the same pixels asked for again after that image was replaced or deleted, or for another
+# colourway, get a new candidate.
 CANDIDATE_CACHE_WHERE = (
-    "NOT (status = 'failed' AND failure_reason IN "
+    "status <> 'accepted' AND NOT (status = 'failed' AND failure_reason IN "
     "('model_failed', 'credit_used_up', 'budget', 'source_changed'))"
 )
 
