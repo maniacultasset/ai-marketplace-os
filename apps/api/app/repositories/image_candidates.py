@@ -150,6 +150,24 @@ class ImageCandidateRepository(TenantScopedRepository[ImageCandidate]):
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
 
+    async def latest_accepted(
+        self, product_id: UUID, kind: str, source_hash: str, generator_key: str
+    ) -> ImageCandidate | None:
+        """The newest accepted row for this cache key (accepted rows are outside the index)."""
+        stmt = (
+            self._select()
+            .where(
+                ImageCandidate.product_id == _uuid("product_id", product_id),
+                ImageCandidate.kind == kind,
+                ImageCandidate.source_hash == source_hash,
+                ImageCandidate.generator_key == generator_key,
+                ImageCandidate.status == "accepted",
+            )
+            .order_by(ImageCandidate.decided_at.desc().nulls_last(), ImageCandidate.id.desc())
+            .limit(1)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def latest_accepted_from(self, source_image_id: UUID, kind: str) -> ImageCandidate | None:
         """The newest accepted row of this kind made from this image (it was the main then)."""
         stmt = (

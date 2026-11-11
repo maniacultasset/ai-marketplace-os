@@ -1076,3 +1076,30 @@ async def test_same_photo_as_another_colours_main_is_a_new_job(
     )
     assert stale_red.json()["status"] == "accepted"
     assert stale_red.json()["accepted_image_id"] == used.json()["image_id"]
+
+
+@pytest.mark.parametrize("gone", [False, True])
+async def test_size_chart_answers_applied_only_while_its_image_is_the_chart(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, gone: bool
+) -> None:
+    """The same chart asked again: already applied while its image is the product's size-chart
+    image; a new candidate once that image was deleted."""
+    from datetime import UTC, datetime
+
+    candidate, p, _ = await _ready(api, images_db, store, kind="size_chart")
+    used = await _decide(api, images_db, candidate, "accept")
+    assert used.status_code == 202, used.text
+    chart_image = used.json()["image_id"]
+    if gone:
+        images_db.conn.execute(
+            "UPDATE images SET deleted_at = %s WHERE id = %s", [datetime.now(UTC), chart_image]
+        )
+    again = await _create(api, images_db, p, {"kind": "size_chart"})
+    assert again.status_code == 202, again.text
+    if gone:
+        assert again.json()["candidate_id"] != str(candidate)
+        assert again.json()["status"] == "queued" and again.json()["job_id"] is not None
+    else:
+        assert again.json()["candidate_id"] == str(candidate)
+        assert again.json()["status"] == "accepted" and again.json()["job_id"] is None
+        assert again.json()["accepted_image_id"] == chart_image

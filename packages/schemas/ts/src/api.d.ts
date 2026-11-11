@@ -3372,7 +3372,7 @@ export interface components {
         ImageCandidateAccepted: {
             /**
              * Accepted Image Id
-             * @description Set only with status `accepted`: this source was already replaced by the candidate's image, which is still the live main of the same product and colourway. No new job was started.
+             * @description Set only with status `accepted`: the candidate's image already took this place and still holds it (the live main of the same product and colourway, or the product's size-chart image for a size chart). No new job was started.
              */
             accepted_image_id?: string | null;
             /**

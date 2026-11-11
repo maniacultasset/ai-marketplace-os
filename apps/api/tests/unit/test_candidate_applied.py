@@ -31,6 +31,7 @@ def _candidate(made: Any, **over: Any) -> Any:
         "id": uuid.uuid4(),
         "product_id": PRODUCT,
         "status": "accepted",
+        "kind": "white_background",
         "accepted_image_id": None if made is None else made.id,
         "job_id": uuid.uuid4(),
     }
@@ -121,3 +122,13 @@ async def test_a_demoted_source_with_nothing_applied_is_404(applied: bool) -> No
     body = svc.CandidateRequest(kind="fix", source_image_id=old.id)
     with pytest.raises(NotFoundError):
         await svc._resolve_key(uow, PRODUCT, body)
+
+
+@pytest.mark.parametrize(("slot", "applied"), [("size_chart", True), ("main", False)])
+async def test_a_size_chart_is_applied_while_its_image_is_the_chart(
+    slot: str, applied: bool
+) -> None:
+    made = _image(slot=slot, colourway_id=None)
+    row = _candidate(made, kind="size_chart")
+    uow: Any = _Uow([made])
+    assert (await svc._still_applied(uow, row, None) is row) is applied

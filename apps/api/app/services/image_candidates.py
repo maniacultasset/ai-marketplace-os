@@ -144,14 +144,16 @@ async def _still_applied(
     uow: TenantUnitOfWork, row: ImageCandidate | None, colourway_id: uuid.UUID | None
 ) -> ImageCandidate | None:
     """ADR-0030 amendment (2026-11-11): an accepted candidate answers a create as "already
-    applied" only while its image is live and still the main of the asking product and
-    colourway. Otherwise it is provenance only and the create makes a new candidate."""
+    applied" only while its image is live and still holds the place it took: the main of the
+    asking product and colourway (the product's size-chart image for a size chart). Otherwise
+    it is provenance only and the create makes a new candidate."""
     if row is None or row.status != "accepted" or row.accepted_image_id is None:
         return None
     image = await uow.images.get_live(row.accepted_image_id)
+    slot = "size_chart" if row.kind == "size_chart" else "main"
     if (
         image is None
-        or image.slot != "main"
+        or image.slot != slot
         or image.product_id != row.product_id
         or image.colourway_id != colourway_id
     ):
@@ -301,6 +303,16 @@ async def create_candidate(
             answer = await _cache_answer(uow, cached)
             if answer is not None:
                 return 202, answer
+        if body.kind == "size_chart":  # the same chart, still the product's chart image
+            applied = await _still_applied(
+                uow,
+                await uow.image_candidates.latest_accepted(
+                    product_id, body.kind, key.source_hash, key.generator_key
+                ),
+                None,
+            )
+            if applied is not None:
+                return 202, _accepted(applied, with_job=False)
         new = NewCandidate(
             id=uuid.uuid4(),
             product_id=product_id,

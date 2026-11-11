@@ -84,7 +84,8 @@ The rule now:
 2. A create answers "already applied" (status `accepted`, with the new optional
    `accepted_image_id`, no job) only while the accepted image is live and still the main of the same
    product and colourway that asks. In practice that is a click from a page read before the accept:
-   the old main, now an extra image, asks again.
+   the old main, now an extra image, asks again. A size chart follows the same rule: the same
+   chart answers "already applied" while its image is still the product's size-chart image.
 3. In every other case the create makes a new candidate and job: the applied image was deleted, a
    new main replaced it, or the same photo is the main of another colourway. Each pays for its own
    edit within the daily limits.
