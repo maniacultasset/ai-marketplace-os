@@ -51,6 +51,20 @@ def _versioned(conn: Any, tenant: uuid.UUID, **columns: Any) -> tuple[uuid.UUID,
     return listing, version
 
 
+def _live(conn: Any, tenant: uuid.UUID) -> uuid.UUID:
+    """A published listing the marketplace confirmed live, with what `ck_published` and
+    `ck_live_minimum` need."""
+    listing, version = _versioned(conn, tenant)
+    conn.execute(
+        "UPDATE listings SET status = 'published', marketplace_state = 'live',"
+        " published_version_id = %s, live_version_id = %s, first_published_at = now(),"
+        " last_published_at = now(), live_confirmed_at = now(), last_synced_at = now()"
+        " WHERE id = %s",
+        [version, version, listing],
+    )
+    return listing
+
+
 def connected(world: GenWorld, slug: str, status: str = "active") -> None:
     """An Amazon and a Flipkart account in `slug` with `status` (made once, then updated), so
     approved listings can be sent there."""
@@ -62,11 +76,16 @@ def connected(world: GenWorld, slug: str, status: str = "active") -> None:
             " AND status <> 'revoked'",
             [tenant, market],
         )
+        since = datetime.now(UTC) if status == "needs_reconnect" else None
         if found is None:
-            f.marketplace_account(conn, tenant, marketplace=market, status=status)
+            f.marketplace_account(
+                conn, tenant, marketplace=market, status=status, needs_reconnect_since=since
+            )
         else:
             conn.execute(
-                "UPDATE marketplace_accounts SET status = %s WHERE id = %s", [status, found]
+                "UPDATE marketplace_accounts SET status = %s, needs_reconnect_since = %s"
+                " WHERE id = %s",
+                [status, since, found],
             )
     conn.commit()
 
@@ -82,7 +101,7 @@ def scenario(world: GenWorld, slug: str) -> HomeScenario:
     owner = world.user(f"owner@{slug}.test")
     conn.execute("SET session_replication_role = replica")
     try:
-        f.listing(conn, tenant, marketplace_state="live", status="published")
+        _live(conn, tenant)
         f.listing(conn, tenant, status="generating")
         f.listing(conn, tenant, status="created")
         f.listing(conn, tenant, status="approved")  # amazon: paused when publishing is off
@@ -98,7 +117,9 @@ def scenario(world: GenWorld, slug: str) -> HomeScenario:
             conn, tenant, blocked, listing_version_id=version, plain_message=PLAIN
         )
         # blocked on an answer only: its open error waits on an open question
-        q_listing, q_version = _versioned(conn, tenant, status="blocked")
+        q_listing, q_version = _versioned(
+            conn, tenant, status="blocked", status_reason="human_task_open"
+        )
         product = world.scalar("SELECT product_id FROM listings WHERE id = %s", [q_listing])
         question = f.human_task(conn, tenant, product_id=product)
         f.listing_issue(
@@ -125,7 +146,7 @@ def scenario(world: GenWorld, slug: str) -> HomeScenario:
         # a question that holds nothing back
         f.human_task(conn, tenant)
         # a fix Kuinn made itself, the newest action
-        fixed, _ = _versioned(conn, tenant, marketplace_state="live", status="published")
+        fixed = _live(conn, tenant)
         f.listing_issue(
             conn, tenant, fixed, status="auto_fixed", resolution="deterministic_fix",
             resolved_at=LATER, action_taken="Shortened the title.",
