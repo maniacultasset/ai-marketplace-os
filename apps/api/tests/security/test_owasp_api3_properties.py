@@ -125,8 +125,15 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
         "device_token": False,
         "details_handle": False,
         "link_handle": False,
+        # ADR-0019 amendment: the pending outcome's status handle, under `signup`
+        "status_handle": False,
     },
     "auth_google_link": _LOGIN_RESULT_TOP,
+    # ADR-0019 amendment: the applicant's read-only status handle, kept by their browser for
+    # `signup_status_poll` (only its sha256 is stored)
+    "signup_create": {"status_handle": True},
+    "signup_status": {"status_handle": True},
+    "signup_google": {"status_handle": True},
     # ADR-0020: a boolean (no password on a Google-only account), not a secret
     "auth_security": {"has_password": True},
     # SI7: the candidate list signs 10-minute previews (nested under `items`, never stored or

@@ -34,9 +34,11 @@ REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_ori
 # shown to the seller as "Needed" (key None: every category). `identifier`: a barcode or the GTIN
 # exemption (SI5, `services/product_identifier.py`); `gender`: the Kurta set and T-shirt product
 # types send target_gender, department and age_range_description from it (SI8).
+# Package (client item 15, 2026-11-11): the packed box as shipped, which Amazon uses for
+# shipping and fees; asked of every category, sent on sellable items when given.
 EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
     {
-        None: ("identifier",),
+        None: ("identifier", "package_dimensions", "package_weight"),
         "tshirts": ("gender",),
         "ethnic_wear_kurta_sets": ("gender",),
     }
@@ -50,6 +52,18 @@ EXEMPTION_ATTRIBUTE: Final = "supplier_declared_has_product_identifier_exemption
 IDENTIFIER_TYPES: Final[Mapping[str, str]] = MappingProxyType(
     {"ean": "ean", "upc": "upc", "gtin": "gtin"}
 )
+
+# Client item 15 (2026-11-11): the packed box as shipped, on a sellable item only (a parent is
+# never shipped). `item_package_dimensions` is one entry of `length`, `width` and `height`, each
+# `{value, unit}` (the same shape as the stored LAMP `item_dimensions`); our breadth is Amazon's
+# width. `item_package_weight` is `{value, unit}`, the measurement shape the tshirts template
+# already sends for `item_weight`. Sent only with all three sides; the weight on its own. Units
+# are fixed: the products table stores cm and g. Believed until `templates diff` runs on the real
+# LISTING definitions (DL-A); `drift.sellable_names` lists both.
+PACKAGE_DIMENSIONS: Final = "item_package_dimensions"
+PACKAGE_WEIGHT: Final = "item_package_weight"
+PACKAGE_LENGTH_UNIT: Final = "centimeters"
+PACKAGE_WEIGHT_UNIT: Final = "grams"
 
 # SI8 T3: the identity attributes. Believed (names, entry shapes and the audience values) until
 # the real LISTING definitions are stored and `templates diff` checks them (SI8 DL-A).

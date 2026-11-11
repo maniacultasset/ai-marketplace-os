@@ -16,3 +16,8 @@ also declare `target_gender` (enum `female|male|unisex`, no `language_tag`, requ
 `department` and `age_range_description` (text enums). These names, shapes and values are
 **believed**; DL-A (the real LISTING definitions stored by `templates refresh`, then
 `templates diff`) replaces them.
+
+Item 15 (2026-11-11): the `LISTING` fixtures also declare `item_package_dimensions` (one entry of
+`length`, `width`, `height`, each `{value, unit}`, unit `centimeters` among others) and
+`item_package_weight` (`{value, unit}`, unit `grams` among others), the packed box a sellable item
+sends. The shapes follow the LAMP fixture's `item_dimensions`; they are **believed** until DL-A.

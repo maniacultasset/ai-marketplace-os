@@ -78,7 +78,11 @@ async def test_amazon_partial_result() -> None:
     result = await amazon_adapter(app).create_listing(sent)
     assert result.status == "partially_published"
     statuses = _fields(result)
-    # SI2: the seller facts (price, MRP, country, manufacturer, composition) are sent too
+    # SI2: the seller facts (price, MRP, country, manufacturer, composition) are sent too;
+    # item 15: this item has no package, so the box paths are skipped
+    assert {statuses.pop(p) for p in ("facts.package_dimensions", "facts.package_weight")} == {
+        "skipped"
+    }
     assert sorted(statuses.values()) == ["failed", "failed"] + ["succeeded"] * (len(statuses) - 2)
     failed = {f.field: f.error for f in result.fields if f.status == "failed"}
     assert set(failed) == {"attributes.color", "attributes.fabric_type"}

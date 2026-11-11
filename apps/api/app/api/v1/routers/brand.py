@@ -100,14 +100,16 @@ async def brand_documents_delete(document_id: UUID, principal: CurrentPrincipal)
 
 def _profile_out(view: brand_profile.BrandProfileView) -> BrandProfileOut:
     return BrandProfileOut.model_construct(
-        default_manufacturer=party_out(view.default_manufacturer), updated_at=view.updated_at
+        default_manufacturer=party_out(view.default_manufacturer),
+        website_url=view.website_url,
+        updated_at=view.updated_at,
     )
 
 
 @route(router, OPS["brand_profile_get"])
 async def brand_profile_get(principal: CurrentPrincipal, response: Response) -> BrandProfileOut:
-    """The brand profile (the default manufacturer every product inherits), with its `ETag`. A
-    brand that never saved one reads as the empty profile."""
+    """The brand profile (the default manufacturer every product inherits, and the brand's
+    website), with its `ETag`. A brand that never saved one reads as the empty profile."""
     view = await brand_profile.get_brand_profile(principal)
     response.headers["ETag"] = view.etag
     return _profile_out(view)
@@ -117,12 +119,14 @@ async def brand_profile_get(principal: CurrentPrincipal, response: Response) -> 
 async def brand_profile_update(
     body: BrandProfileIn, if_match: IfMatch, principal: CurrentPrincipal, response: Response
 ) -> BrandProfileOut:
-    """Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
-    (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears."""
-    fields: dict[str, PartyInput | None] = {}
+    """Set or clear the default manufacturer or the website (owner, admin). `If-Match` is the
+    `ETag` from GET (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears."""
+    fields: dict[str, PartyInput | str | None] = {}
     if "default_manufacturer" in body.model_fields_set:
         party = body.default_manufacturer
         fields["default_manufacturer"] = None if party is None else PartyInput(**party.model_dump())
+    if "website_url" in body.model_fields_set:
+        fields["website_url"] = body.website_url
     view = await brand_profile.update_brand_profile(principal, fields, if_match)
     response.headers["ETag"] = view.etag
     return _profile_out(view)

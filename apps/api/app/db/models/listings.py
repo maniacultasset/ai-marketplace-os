@@ -13,6 +13,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKeyConstraint,
     Index,
@@ -243,6 +244,8 @@ class ListingVersion(TenantScoped, Base):
     edited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     approved_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0030 (ADR-0031): set by lv_guard alone, with the approval: the approver was in the chain
+    self_approved: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     origin: Mapped[str] = mapped_column(Text)
     parent_version_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     changed_paths: Mapped[list[str] | None] = mapped_column(ARRAY(Text))

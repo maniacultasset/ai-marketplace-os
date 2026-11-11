@@ -222,3 +222,37 @@ def test_edge_ip_forged_on_run_app(ci_env: dict[str, str], monkeypatch: pytest.M
     login_buckets = [b for b in seen if b.startswith("login:")]
     assert len(login_buckets) == 2
     assert login_buckets[0] == login_buckets[1]
+
+
+def test_signup_form_takes_the_per_email_login_limit(
+    ci_env: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-0019 amendment: the form checks an existing email's password like the status read, so
+    it is refused by the per-email bucket even from a fresh address, before any lookup."""
+    from app.api.rate_limit import login_email_bucket
+    from app.core.config import get_settings
+    from app.main import create_app
+    from app.services import rate_limit
+    from fastapi.testclient import TestClient
+
+    get_settings.cache_clear()
+    seen: list[str] = []
+
+    async def fake_hit(bucket: str, limit: int) -> int:
+        seen.append(bucket)
+        return limit + 1 if bucket.startswith("login-email:") else 1
+
+    monkeypatch.setattr(rate_limit, "hit", fake_hit)
+    response = TestClient(create_app()).post(
+        "/api/v1/signup",
+        json={
+            "brand_name": "Acme",
+            "owner_name": "Asha Rao",
+            "email": "a@example.com",
+            "password": "Lantern-Rotate-42x",
+        },
+    )
+    assert response.status_code == 429, response.text
+    assert response.json()["error"]["type"] == "RATE_LIMITED"
+    assert any(b.startswith("signup:") for b in seen)
+    assert login_email_bucket("a@example.com") in seen

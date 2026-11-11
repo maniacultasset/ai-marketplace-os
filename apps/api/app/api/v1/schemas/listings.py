@@ -91,12 +91,24 @@ class ListingDetail(ListingOut):
             "still checks the rest (permission, stale checks, images)."
         ),
     )
-    approve_hint: Literal["own_work", "no_other_approver", "not_approver"] | None = Field(
+    approve_hint: (
+        Literal["own_work", "no_other_approver", "not_approver", "owner_can_enable"] | None
+    ) = Field(
         default=None,
         description=(
             "Why `can_approve` is false: `own_work` (you made or edited this version), "
-            "`no_other_approver` (and nobody else in the brand can approve it yet) or "
-            "`not_approver` (your role does not approve)."
+            "`no_other_approver` (and nobody else in the brand can approve it yet), "
+            "`owner_can_enable` (the same, and you are an owner: turning on the brand's "
+            "`owner_self_approval` lets you approve your own work, ADR-0031) or `not_approver` "
+            "(your role does not approve)."
+        ),
+    )
+    self_approval: bool | None = Field(
+        default=None,
+        description=(
+            "ADR-0031: true when `can_approve` is true and you made or edited this version (an "
+            "owner under the brand's `owner_self_approval`): the approval is recorded as a "
+            "self-approval. Null when `can_approve` is null."
         ),
     )
 
@@ -113,6 +125,12 @@ class AuditReviewOut(WireModel):
     reason_code: str | None = Field(
         default=None,
         description="The reject reason. The reviewer's free-text feedback is never sent here.",
+    )
+    self_approval: bool = Field(
+        default=False,
+        description=(
+            "ADR-0031: an owner approved its own work under the brand's `owner_self_approval`."
+        ),
     )
 
 
@@ -135,8 +153,10 @@ class AuditEventOut(WireModel):
     review: AuditReviewOut | None = Field(
         default=None,
         description=(
-            "For `listing.approved` and `listing.rejected`: the version decided on and the "
-            "reason code (never the free-text feedback). Null for other events."
+            "For `listing.approved` and `listing.rejected`: the version decided on, the "
+            "reason code (never the free-text feedback) and whether the approval was a "
+            "self-approval. Null for other events (a `listing.self_approved` event, ADR-0031, "
+            "sits beside its `listing.approved`)."
         ),
     )
 

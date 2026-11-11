@@ -12,6 +12,7 @@ fix this file, and any stale source, in the same PR. Live status: `docs/STATE.md
    One exception (ADR-0028, user-approved 2026-11-08): a non-content adapter repair of a current approval may resend on its own, at most 3 cycles.
 2. The Rules Engine is deterministic code, never a model call. It is the final arbiter.
 3. Human approval is mandatory, with maker-checker: whoever generated or edited a listing cannot approve it.
+   One exception (ADR-0031, owner decision 2026-11-11): while a brand's `owner_self_approval` setting is on, an active owner may approve its own work; every such approval is recorded.
 4. Marketplace logic stays inside adapters. The canonical listing has no marketplace-specific fields.
 5. Every query is scoped by `tenant_id`, enforced at the repository base class, with no exceptions.
 6. Marketplace credentials never enter a model prompt, and are KMS-encrypted at rest.
