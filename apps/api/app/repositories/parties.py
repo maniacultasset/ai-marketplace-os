@@ -48,6 +48,7 @@ class PartyFields:
 # the columns only the brand profile route may update on a dedupe match (decision 16)
 MATCH_UPDATABLE: Final = ("address_line2", "city", "state_code", "gstin")
 MANUFACTURER_KEY: Final = "manufacturer"
+DESCRIPTION_KEY: Final = "brand_description"
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,6 +257,45 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
             update(BrandProfile)
             .where(self._tenant_criterion(include_platform=False), column.is_distinct_from(url))
             .values({column: url})
+        ).returning(BrandProfile.tenant_id)
+        return (await self.db.execute(stmt)).first() is not None
+
+    async def set_description(self, value: str | None, fact: Mapping[str, Any]) -> bool:
+        """Item 19: write `brand_description` and `provenance.brand_description` (the value-less
+        seller Fact), or clear both with `value=None`. True when a row was written."""
+        column = BrandProfile.brand_description
+        if value is None:
+            changed = or_(column.is_not(None), BrandProfile.provenance.has_key(DESCRIPTION_KEY))
+            provenance = BrandProfile.provenance.op("-")(DESCRIPTION_KEY)
+        else:
+            new = cast(literal(json.dumps(dict(fact))), JSONB)
+            changed = or_(
+                column.is_distinct_from(value),
+                BrandProfile.provenance[DESCRIPTION_KEY]["source"].is_distinct_from(new["source"]),
+            )
+            provenance = BrandProfile.provenance.op("||")(
+                func.jsonb_build_object(DESCRIPTION_KEY, new)
+            )
+        stmt = self._scoped_write(
+            update(BrandProfile)
+            .where(self._tenant_criterion(include_platform=False), changed)
+            .values({column: value, BrandProfile.provenance: provenance})
+        ).returning(BrandProfile.tenant_id)
+        return (await self.db.execute(stmt)).first() is not None
+
+    async def set_voice(self, voice: Mapping[str, Any] | None) -> bool:
+        """Item 19: replace `brand_voice` (None clears it). True when the stored value moved."""
+        column = BrandProfile.brand_voice
+        if voice is None:
+            changed: ColumnElement[bool] = column.is_not(None)
+            value: Any = None
+        else:
+            value = cast(literal(json.dumps(dict(voice), sort_keys=True)), JSONB)
+            changed = column.is_distinct_from(value)
+        stmt = self._scoped_write(
+            update(BrandProfile)
+            .where(self._tenant_criterion(include_platform=False), changed)
+            .values({column: value})
         ).returning(BrandProfile.tenant_id)
         return (await self.db.execute(stmt)).first() is not None
 

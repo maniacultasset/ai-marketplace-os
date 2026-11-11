@@ -119,6 +119,8 @@ class BrandProfile(TenantScoped, Base):
     brand_owner_type: Mapped[str | None] = mapped_column(Text)
     website_url: Mapped[str | None] = mapped_column(Text)
     brand_description: Mapped[str | None] = mapped_column(Text)
+    # 0030: the seller's brand voice answers (`services.brand_voice.BrandVoice`), never a fact
+    brand_voice: Mapped[dict[str, Any] | None] = mapped_column(JSONB(none_as_null=True))
     logo_storage_key: Mapped[str | None] = mapped_column(Text)
     legal_entity_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     default_manufacturer_party_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
