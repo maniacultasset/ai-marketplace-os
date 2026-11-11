@@ -105,7 +105,9 @@ async def test_free_taken_variant_and_deleted(images_db: JobWorld, api: httpx.As
 
 
 @pytest.mark.endpoint("skus_availability", case="validation")
-@pytest.mark.parametrize("params", [{"sku": "has space"}, {"sku": "a]b"}, {"sku": "x" * 65}, {}])
+@pytest.mark.parametrize(
+    "params", [{"sku": "has space"}, {"sku": "a]b"}, {"sku": "x" * 65}, {"sku": "A\x00B"}, {}]
+)
 async def test_bad_sku_422(
     images_db: JobWorld, api: httpx.AsyncClient, params: dict[str, str]
 ) -> None:

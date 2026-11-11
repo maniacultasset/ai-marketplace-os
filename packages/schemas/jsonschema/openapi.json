@@ -50945,7 +50945,7 @@
                 "ACME-KUR-0007"
               ],
               "maxLength": 64,
-              "pattern": "^[^\\]\\s]{1,64}$",
+              "pattern": "^[^\\]\\s\\x00]{1,64}$",
               "title": "Sku",
               "type": "string"
             }

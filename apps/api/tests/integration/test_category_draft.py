@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -335,13 +335,14 @@ async def test_same_draft_after_it_answered_is_200_with_no_new_call(
 
 
 async def test_same_draft_after_a_day_or_a_failure_asks_again(
-    images_db: JobWorld, api: httpx.AsyncClient
+    images_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from app.services import category_draft
+
     job = await _asked(api, images_db)
     await run_image_job(job)
-    images_db.conn.execute(
-        "UPDATE job_runs SET queued_at = queued_at - interval '25 hours' WHERE id = %s", [job]
-    )
+    # a finished job row never changes (job_runs_guard): shrink the window instead of ageing it
+    monkeypatch.setattr(category_draft, "REUSE_WINDOW", timedelta(0))
     later = await _ask(api, images_db)
     assert later.status_code == 202 and later.json()["suggestion_id"] != str(job)
     failed = await _asked(api, images_db, "Tee [badrecord]")

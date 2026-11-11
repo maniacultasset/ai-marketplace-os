@@ -16,8 +16,9 @@ from app.services import sku_help
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
+# a NUL can never be stored (PostgreSQL text), so it is refused here rather than at the query
 SkuQuery = Annotated[
-    str, Query(pattern=r"^[^\]\s]{1,64}$", max_length=64, examples=["ACME-KUR-0007"])
+    str, Query(pattern=r"^[^\]\s\x00]{1,64}$", max_length=64, examples=["ACME-KUR-0007"])
 ]
 
 
