@@ -78,6 +78,7 @@ from app.services.maker_checker import (
     approve_block,
     contributor_chain,
 )
+from app.services.photo_views import listing_findings
 
 log = get_logger(__name__)
 
@@ -224,9 +225,14 @@ def _version_images(listing: Any, version: Any) -> list[uuid.UUID]:
     return [] if canonical is None else [ref.image_id for ref in canonical.images]
 
 
-def _image_gate(ctx: _Ctx, listing: Any, version: Any) -> None:
+async def _image_gate(ctx: _Ctx, listing: Any, version: Any) -> None:
+    """S17b's gate over the version's images, plus (feedback 7 and 8) the product's missing
+    required photo views and size chart, which block even a listing with no image."""
     canonical = previous_listing(listing, version)
-    if canonical is None or not canonical.images:
+    if canonical is None:
+        return
+    views = await listing_findings(ctx.uow, canonical)
+    if not canonical.images and not views:
         return
     market = canonical.marketplace
     stored = {
@@ -235,7 +241,7 @@ def _image_gate(ctx: _Ctx, listing: Any, version: Any) -> None:
         if market in reports
     }
     pipeline = [ImageReport.model_validate(r) for r in (version.image_reports_json or [])]
-    result = evaluate_image_gate(canonical, stored, pipeline)
+    result = evaluate_image_gate(canonical, stored, pipeline, views)
     if result.blocking:
         report = ErrorReport(
             status="failed",
@@ -383,7 +389,7 @@ async def _approve_one(ctx: _Ctx, listing: Any, item: ReviewItem) -> ItemOutcome
     if version.approved_by_user_id is not None:
         raise Refused(ErrorCode.INVALID_STATUS_TRANSITION)  # CP-D4: ALREADY_APPROVED
     bulk_check(ctx.multi, listing.status)
-    _image_gate(ctx, listing, version)
+    await _image_gate(ctx, listing, version)
     await _adapter_gate(ctx, listing)
     await _preview_gate(ctx, listing)
     digest = await _pins_digest(ctx, listing, version)

@@ -265,6 +265,11 @@ class Settings(BaseSettings):
     # only at the next generation. Off: no read is queued on upload, a read already queued ends
     # `skipped` with no call, and photos are read at generation as before.
     photo_read_on_upload_enabled: bool = False
+    # Client feedback 7 and 8: the photo view checklist per category and marketplace
+    # (`services/photo_views.py`) and the size chart check. Off: the product read and
+    # `GET /catalog/requirements` list no views (the dashboard shows its four fixed tiles), and no
+    # missing view or size chart finding is raised at generation, validate or approval.
+    photo_views_enabled: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None

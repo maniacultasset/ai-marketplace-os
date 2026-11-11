@@ -11,7 +11,9 @@
   warning. These carry `source=rules_engine` and the issue code as `raw_code` (T84);
 - the pipeline's reports for that image and marketplace add a warning item for each failed
   `vision` check, whatever their `pass` (C8: vision results never block in v1). Their
-  deterministic checks are ignored: the stored report is the authority.
+  deterministic checks are ignored: the stored report is the authority;
+- feedback 7 and 8: `views`, the photo view and size chart findings (`photo_views.findings`,
+  empty while `PHOTO_VIEWS_ENABLED` is off), each kept at its own severity.
 
 Every blocking item is `Severity.ERROR` and every warning `Severity.WARNING`, so an `ErrorReport`
 built from both keeps only the gate's blocking items in `.blocking`. S19's `approve_batch` calls
@@ -75,6 +77,7 @@ def evaluate_image_gate(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
     pipeline_reports: Sequence[ImageReport],
+    views: Sequence[ErrorItem] = (),
 ) -> ImageGateResult:
     blocking: list[ErrorItem] = []
     warnings: list[ErrorItem] = []
@@ -108,6 +111,8 @@ def evaluate_image_gate(
                           message=f"vision check failed: {check.check}", listing=listing,
                           issue=issues.get(check.check))
                 )  # fmt: skip
+    for item in views:
+        (blocking if item.severity is Severity.ERROR else warnings).append(item)
     return ImageGateResult(blocking=tuple(blocking), warnings=tuple(warnings))
 
 
@@ -115,11 +120,12 @@ def image_issue_report(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
     pipeline_reports: Sequence[ImageReport],
+    views: Sequence[ErrorItem] = (),
 ) -> ErrorReport:
     """SI4 A14 (CP-D1): the gate's items the issue inbox syncs as source `vision_model`. The
     "not checked yet" item (`source=system`) is dropped: a pending check is not a seller issue.
     The approve gate keeps calling `evaluate_image_gate` unchanged."""
-    gate = evaluate_image_gate(listing, stored, pipeline_reports)
+    gate = evaluate_image_gate(listing, stored, pipeline_reports, views)
     items = [e for e in (*gate.blocking, *gate.warnings) if e.source is not ErrorSource.SYSTEM]
     failed = any(e.severity is Severity.ERROR for e in items)
     return ErrorReport(

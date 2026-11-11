@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "checklists": [
+    {
+      "marketplace": null,
+      "category": null,
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first."},
+        {"view": "back", "requirement": "optional", "why": "Shows what the front cannot."},
+        {"view": "close_up", "requirement": "optional", "why": "Shows the material and finish up close."},
+        {"view": "size_chart", "requirement": "optional", "why": "Sizes and measurements can be read from it."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The product in use."},
+        {"view": "packaging_label", "requirement": "optional", "why": "The label's details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "ethnic_wear_kurta_sets",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour, pattern and neckline are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back design, like a print, yoke or tie."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric, print and embroidery up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The set as it is worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "tshirts",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour, print and neckline are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows a back print or the plain back."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric, print and stitching up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The T-shirt as it is worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "home_decor_lamps",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the shade, base and switch up close."},
+        {"view": "lifestyle", "requirement": "recommended", "why": "The lamp lit in a room shows its size and light."},
+        {"view": "back", "requirement": "optional", "why": "Shows the cable and the back of the base."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Wattage and maker details are read from it. It is never published."}
+      ]
+    }
+  ]
+}

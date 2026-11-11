@@ -156,6 +156,9 @@ PRODUCT_FIELDS = frozenset(
         # V1.1: a style's axes and size keys (the size run from the size chart)
         "variation_theme",
         "size_run",
+        # feedback 7 and 8: the photo view checklist and the size chart check (empty while off)
+        "photo_views",
+        "size_chart_check",
     }
 )
 OTHER_SECRET = "s12_not_the_ci_secret_at_least_32_characters"
