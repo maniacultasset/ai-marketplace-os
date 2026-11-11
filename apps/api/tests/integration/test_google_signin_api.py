@@ -202,7 +202,21 @@ async def test_config_reports_the_flag(
     assert (await gapi.get(CONFIG)).json() == {"enabled": False}
 
 
-async def test_start_rate_limited_per_ip(gapi: httpx.AsyncClient, gw: GoogleWorld) -> None:
+def _pin_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hold the limiter's clock inside one fixed one-minute window: eleven starts can cross a
+    minute boundary on a slow runner, and the new window would reset the count."""
+    from datetime import UTC, datetime
+
+    from app.services import rate_limit
+
+    moment = datetime.now(UTC).replace(second=1, microsecond=0)
+    monkeypatch.setattr(rate_limit, "now", lambda: moment)
+
+
+async def test_start_rate_limited_per_ip(
+    gapi: httpx.AsyncClient, gw: GoogleWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _pin_window(monkeypatch)
     browser = GoogleBrowser(gapi, gw)
     statuses = [(await browser.start()).status_code for _ in range(11)]
     assert statuses[:10] == [302] * 10
@@ -216,6 +230,7 @@ async def test_start_limit_is_per_browser_not_per_shared_ip(
     hitting its limit never locks out another; the per-IP ceiling still caps a flow rotator."""
     from app.api import rate_limit
 
+    _pin_window(monkeypatch)
     noisy, other = GoogleBrowser(gapi, gw), GoogleBrowser(gapi, gw)
     assert [(await noisy.start()).status_code for _ in range(11)][-1] == 429
     assert (await other.start()).status_code == 302
