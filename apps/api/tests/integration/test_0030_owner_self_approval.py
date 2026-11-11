@@ -295,12 +295,17 @@ def test_downgrade_refused_while_a_self_approval_is_recorded(
     cfg = alembic_env(None)
     command.upgrade(cfg, REVISION)
     with psycopg.connect(scratch_db.libpq) as conn:
+        # a scratch database has no dictionary: the fact guard is off for this set-up only (the
+        # approval itself still goes through lv_guard)
+        conn.execute("ALTER TABLE products DISABLE TRIGGER facts_guard")
         tenant = f.tenant(conn)
         listing = f.listing(conn, tenant)
         owner = f.member(conn, tenant, role="owner")
         version = next_version(conn, tenant, listing, None, "generation", owner)
         _setting(conn, tenant, True)
         _approves(conn, version, owner)
+        conn.commit()
+        conn.execute("ALTER TABLE products ENABLE TRIGGER facts_guard")
         conn.commit()
     with pytest.raises(Exception, match="0030 downgrade refused"):
         command.downgrade(cfg, PREVIOUS)

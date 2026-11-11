@@ -44,7 +44,8 @@ def test_lv_app_rw_insert_grant_is_every_column_but_approval(db: Conn) -> None:
         "WHERE table_schema = 'public' AND table_name = 'listing_versions'"
     ).fetchall()
     denied = {name for name, ok in rows if not ok}
-    assert denied == {"approved_by_user_id", "approved_at"}
+    # 0030 (ADR-0031): `self_approved` is part of the approval, written only by lv_guard
+    assert denied == {"approved_by_user_id", "approved_at", "self_approved"}
 
 
 # ---- DELETE allow-tests fail closed for every GUC shape ----
