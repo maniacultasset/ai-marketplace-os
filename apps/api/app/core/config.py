@@ -201,7 +201,8 @@ class Settings(BaseSettings):
     kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/oauth-token-key
     mfa_kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/mfa-secret-key
     kms_local_dev_key: str = Field(
-        default="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=", repr=False  # LocalKmsStub only
+        default="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=",
+        repr=False,  # LocalKmsStub only
     )
     secret_manager_enabled: bool = False
     git_sha: str = "dev"
@@ -270,6 +271,11 @@ class Settings(BaseSettings):
     # `GET /catalog/requirements` list no views (the dashboard shows its four fixed tiles), and no
     # missing view or size chart finding is raised at generation, validate or approval.
     photo_views_enabled: bool = False
+    # V1.1 (client feedback item 9): after a product photo passes its upload checks, one vision
+    # call checks that it shows this product in its colour (`photo_match`); a mismatch or an
+    # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
+    # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
+    photo_match_enabled: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None

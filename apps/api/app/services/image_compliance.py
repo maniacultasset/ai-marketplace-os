@@ -18,7 +18,9 @@
 6. Another short unit of work: one UPDATE writes the reports, the worst-of status, the meta
    columns, `content_hash` = sha256 of the bytes read and the clean copy's hash and type.
 7. V1.1: when the clean copy was stored, `queue_photo_read` (its own short unit of work) may
-   queue the product's photo read on upload (a front, back or close-up photo, switch on).
+   queue the product's photo read on upload (a front, back or close-up photo, switch on), and
+   `queue_photo_match` (another) the photo's match against its product and colour (a product
+   photo that passed, switch on).
 
 No model client and no `agent_runs` row (invariant 7). Logs carry ids and the status only.
 """
@@ -48,6 +50,7 @@ from app.repositories.uow import tenant_uow
 from app.services import image_runner
 from app.services.category_gate import rules_category
 from app.services.image_keys import CLEAN_NAMES, derived_key, parse_image_key
+from app.services.photo_match import queue_photo_match
 from app.services.photo_read_upload import queue_photo_read
 from app.services.rules_loader import RuleLoadError, load_rules
 from app.workers.errors import JobFailed, RetryableJobError, system_report
@@ -168,4 +171,17 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
             read_job = None
         if read_job is not None:
             result["photo_read_job_id"] = str(read_job)
+        if status == "passed":  # V1.1: does the photo show this product in its colour
+            try:
+                async with tenant_uow(ctx.tenant_id) as uow:
+                    match_job = await queue_photo_match(uow, image_id)
+            except Exception as error:
+                # The photo check is stored; a failed queue never fails it. The photo is then
+                # simply not matched (the approval gate judges only a stored verdict).
+                log.warning(
+                    "photo_match.queue_failed", image_id=str(image_id), error=type(error).__name__
+                )
+                match_job = None
+            if match_job is not None:
+                result["photo_match_job_id"] = str(match_job)
     return Outcome("succeeded", result)

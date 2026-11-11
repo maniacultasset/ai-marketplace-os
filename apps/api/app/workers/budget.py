@@ -88,6 +88,9 @@ COLUMN_MAP_RESERVATION_USD: Final = Decimal("0.002")
 # V1.1: one photo-facts read on upload (up to 4 photos at low detail, about USD 0.004); the same
 # hold as a generation. It counts toward the brand and platform daily caps.
 PHOTO_READ_RESERVATION_USD: Final = Decimal("0.02")
+# V1.1 (client feedback item 9): one photo match (the photo and the product's main photo at low
+# detail, about USD 0.001). It counts toward the brand and platform daily caps.
+PHOTO_MATCH_RESERVATION_USD: Final = Decimal("0.01")
 ImageScope = Literal["image_tenant", "image_global"]
 Scope = Literal["tenant", "global", "credit", "image_tenant", "image_global"]
 

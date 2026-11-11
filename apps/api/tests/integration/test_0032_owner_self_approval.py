@@ -314,7 +314,7 @@ def test_approval_in_flight_holds_the_toggle(
 # ---- the chain and the round trip ----
 
 
-def test_single_head_on_0031() -> None:
+def test_chained_on_0031() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

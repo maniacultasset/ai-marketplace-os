@@ -93,6 +93,9 @@ COLUMN_MAP_ENTITY: Final = "column_map"
 # V1.1: a photo read on upload is an `image_compliance` job about a `photo_facts_read` (entity =
 # the product); it takes the same per-tenant AI lock, so one AI image call runs per brand.
 PHOTO_FACTS_READ_ENTITY: Final = "photo_facts_read"
+# V1.1 (client feedback item 9): a photo match is an `image_compliance` job about a `photo_match`
+# (entity = the image); it takes the same per-tenant AI lock.
+PHOTO_MATCH_ENTITY: Final = "photo_match"
 TENANT_LOCKED_ENTITIES: Final = frozenset(
     {
         CANDIDATE_ENTITY,
@@ -100,6 +103,7 @@ TENANT_LOCKED_ENTITIES: Final = frozenset(
         CATEGORY_SUGGESTION_ENTITY,
         COLUMN_MAP_ENTITY,
         PHOTO_FACTS_READ_ENTITY,
+        PHOTO_MATCH_ENTITY,
     }
 )
 

@@ -64,6 +64,7 @@ from app.services.category_confirm import settle_on_category_write
 from app.services.intake_values import PartyInput
 from app.services.listing_validate import validate_listing
 from app.services.photo_facts import V1_KEYS
+from app.services.photo_match import queue_product_photo_matches
 from app.services.product_facts import (
     SIZE_CHART_KEY,
     SIZE_CHART_LEVELS,
@@ -620,6 +621,10 @@ async def _update_product(
                 reason="photo_value_rejected " + ",".join(closed),
             )
         await uow.session.refresh(row)
+        if "color" in change.attrs_set or "color" in change.attrs_clear:
+            # V1.1: the photos are checked against the new colour (the old verdict was for the
+            # old one); a no-op while PHOTO_MATCH_ENABLED is off
+            await queue_product_photo_matches(uow, row.id)
         if rejected:
             # SI9 B5 (D8): the listings that may still use the rejected value are re-checked in
             # this request (after the refresh, so the check reads the facts as written), and the

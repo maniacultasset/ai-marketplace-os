@@ -2668,6 +2668,24 @@ def test_si14_switches_reach_both_roles(toolkit: Path, tmp_path: Path) -> None:
     assert "PHOTO_QA_ENABLED must be true or false" in result.stderr
 
 
+def test_photo_match_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """V1.1 (client feedback item 9): PHOTO_MATCH_ENABLED is off unless the env file sets it, one
+    value reaches the api (product read, approve gate) and the worker (the check), and a bad
+    value stops the deploy."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_MATCH_ENABLED"] == "false"
+    assert _worker_container(out)[0]["PHOTO_MATCH_ENABLED"] == "false"
+    env_file = toolkit / "staging.env"  # the committed env files do not name the switch yet
+    env_file.write_text(env_file.read_text(encoding="utf-8") + "PHOTO_MATCH_ENABLED=true\n")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_MATCH_ENABLED"] == "true"
+    assert _worker_container(out)[0]["PHOTO_MATCH_ENABLED"] == "true"
+    _set_env(toolkit, "staging", PHOTO_MATCH_ENABLED="on")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "PHOTO_MATCH_ENABLED must be true or false" in result.stderr
+
+
 # ---- V1 hardening #9: the worker's size and its parallel image check children ----
 
 

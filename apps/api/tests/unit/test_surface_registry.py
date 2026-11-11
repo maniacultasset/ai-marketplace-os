@@ -162,6 +162,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
+    # V1.1 (client feedback item 9): keep a photo the photo match questioned
+    ("images_photo_match_keep", "POST", "/images/{image_id}/photo-match/keep"),
     ("analytics_quality", "GET", "/analytics/quality"),
     ("admin_quality", "GET", "/admin/quality"),
     # client feedback 11 Nov 2026, item 6: the Home summary
@@ -308,6 +310,7 @@ D9_IDEMPOTENT = {
     "products_size_run_create",  # V1.1
     "catalog_category_suggest",  # client feedback 11 Nov
     "skus_suggest",  # client feedback 11 Nov
+    "images_photo_match_keep",  # V1.1
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -487,7 +490,8 @@ def test_operation_count() -> None:
     # FB6 (client feedback item 6) adds the Home summary; the client feedback of 11 Nov adds the
     # category list, the draft suggestion and its read, and the SKU check and suggestion
     # FB20 (client feedback item 20) adds the listing issue history
-    assert len(OPS) == 119
+    # V1.1 adds the photo match keep
+    assert len(OPS) == 120
 
 
 def test_error_codes_per_d2() -> None:
@@ -511,6 +515,8 @@ def test_error_codes_per_d2() -> None:
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        # V1.1: no question on the photo
+        "images_photo_match_keep": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
             E.IDEMPOTENCY_KEY_REUSED,
             E.INVALID_STATUS_TRANSITION,

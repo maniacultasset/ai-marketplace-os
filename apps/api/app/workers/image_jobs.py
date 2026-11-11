@@ -6,7 +6,8 @@
 `run_image_candidate`, SI12's `size_chart_read` payload to `run_size_chart_read`, SI14's
 `category_suggestion` payload to `run_category_suggestion` (a `category_draft` one, the
 suggestion before a product is saved, to `run_category_draft`) and `column_map` to `run_column_map`,
-V1.1's `photo_facts_read` (the photo read on upload) to `run_photo_facts_read`,
+V1.1's `photo_facts_read` (the photo read on upload) to `run_photo_facts_read`, its
+`photo_match` (client feedback item 9) to `run_photo_match`,
 every other payload to the upload
 checks (`run_image_compliance`). The
 dispatcher lives in `app.workers` because the candidate body is the one that may reach the AI
@@ -21,6 +22,7 @@ from app.workers.category_suggestion import run_category_suggestion
 from app.workers.column_map import run_column_map
 from app.workers.image_candidate import run_image_candidate
 from app.workers.photo_facts_read import run_photo_facts_read
+from app.workers.photo_match import run_photo_match
 from app.workers.policy import CATEGORY_DRAFT_PAYLOAD
 from app.workers.registry import JobContext, Outcome
 from app.workers.size_chart_read import run_size_chart_read
@@ -35,6 +37,8 @@ async def run_image_job(ctx: JobContext) -> Outcome:
         return await run_column_map(ctx)
     if "photo_facts_read" in ctx.payload:
         return await run_photo_facts_read(ctx)
+    if "photo_match" in ctx.payload:
+        return await run_photo_match(ctx)
     if "size_chart_read" in ctx.payload:
         return await run_size_chart_read(ctx)
     if "candidate_id" in ctx.payload:
