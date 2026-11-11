@@ -977,8 +977,11 @@ export interface paths {
          *     marketplace's required facts, the category template's required attributes and a reviewed
          *     extras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN
          *     exemption, and the audience for Kurta sets and T-shirts). Shown as "Needed"; the extras are
-         *     never sent. An unknown category answers the facts and extras only. `photo_views` is the
-         *     category's photo checklist (each view required, recommended or optional, and why).
+         *     never sent. An unknown category answers the facts and extras only, with empty levels.
+         *     `photo_views` is the category's photo checklist (each view required, recommended or optional,
+         *     and why). `levels` gives each marketplace template's requirement level per attribute
+         *     (`required`, `conditional`, `recommended`, `optional`, `unsupported`); a missing
+         *     `recommended` one is a non-blocking warning on review.
          */
         get: operations["catalog_requirements_get"];
         put?: never;
@@ -6196,11 +6199,28 @@ export interface components {
             version_id: string;
         };
         /**
+         * RequirementLevelsOut
+         * @description Feedback item 10: each marketplace's current category template, as the requirement level
+         *     of every attribute it names (`required`, `conditional`, `recommended`, `optional`,
+         *     `unsupported`). Empty when the category has no template (or is switched off).
+         */
+        RequirementLevelsOut: {
+            /** Amazon */
+            amazon?: {
+                [key: string]: "required" | "conditional" | "recommended" | "optional" | "unsupported";
+            };
+            /** Flipkart */
+            flipkart?: {
+                [key: string]: "required" | "conditional" | "recommended" | "optional" | "unsupported";
+            };
+        };
+        /**
          * RequirementsOut
          * @description Each list is the sorted dictionary keys the marketplace needs before it accepts a listing
          *     of this category: its required facts, the category template's required attributes and a
          *     reviewed extras table (with `PHOTO_VIEWS_ENABLED` on, `size_measurements` where the size
-         *     chart is required). Shown to the seller; the extras are never sent.
+         *     chart is required). Shown to the seller; the extras are never sent. `levels` is the
+         *     template's own requirement level per attribute.
          */
         RequirementsOut: {
             /** Amazon */
@@ -6209,6 +6229,7 @@ export interface components {
             category: string;
             /** Flipkart */
             flipkart?: string[];
+            levels?: components["schemas"]["RequirementLevelsOut"];
             /**
              * Photo Views
              * @description Feedback 7: the category's photo view checklist, in display order; empty while the checklist is switched off (show the fixed Front, Back, Close-up and Size chart tiles then).
@@ -21361,7 +21382,36 @@ export interface operations {
                      *         "package_dimensions",
                      *         "package_weight",
                      *         "selling_price"
-                     *       ]
+                     *       ],
+                     *       "levels": {
+                     *         "amazon": {
+                     *           "color": "required",
+                     *           "country_of_origin": "optional",
+                     *           "fabric_type": "required",
+                     *           "fiber_composition": "optional",
+                     *           "fit": "recommended",
+                     *           "manufacturer": "optional",
+                     *           "neckline": "recommended",
+                     *           "number_of_pieces": "optional",
+                     *           "pattern": "recommended",
+                     *           "product_weight": "optional",
+                     *           "size": "optional",
+                     *           "sleeve_length": "recommended"
+                     *         },
+                     *         "flipkart": {
+                     *           "color": "required",
+                     *           "country_of_origin": "optional",
+                     *           "fabric_type": "required",
+                     *           "fiber_composition": "optional",
+                     *           "fit": "recommended",
+                     *           "manufacturer": "optional",
+                     *           "neckline": "recommended",
+                     *           "number_of_pieces": "optional",
+                     *           "pattern": "recommended",
+                     *           "size": "optional",
+                     *           "sleeve_length": "recommended"
+                     *         }
+                     *       }
                      *     }
                      */
                     "application/json": components["schemas"]["RequirementsOut"];
