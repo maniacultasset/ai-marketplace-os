@@ -188,6 +188,17 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
             stmt = stmt.where(is_preview if channel == "preview" else not_(is_preview))
         return builtins.list((await self.db.execute(stmt)).scalars())
 
+    async def open_warning_keys(self, listing_id: uuid.UUID, source: str) -> set[str]:
+        """Feedback 7: the dedupe keys of this listing's open `warning` rows of `source`, so a
+        photo check can tell a warning the photos no longer raise (a recommended view added)."""
+        stmt = self._select().where(
+            ListingIssue.listing_id == listing_id,
+            ListingIssue.status == OPEN,
+            ListingIssue.severity == "warning",
+            ListingIssue.source == source,
+        )
+        return {row.dedupe_key for row in (await self.db.execute(stmt)).scalars()}
+
     async def open_error_counts(
         self, versions: Sequence[tuple[uuid.UUID, uuid.UUID | None]]
     ) -> dict[uuid.UUID, int]:

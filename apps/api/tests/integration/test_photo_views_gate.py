@@ -105,6 +105,19 @@ async def test_front_and_saved_chart_approve_with_warnings_only(
     assert gen_world.listing(made.listing_id)["status"] == "approved"
 
 
+async def test_front_uploaded_after_the_draft_still_blocks(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """Approval judges the version's own photos (maker-checker): a front photo uploaded after
+    generation is not in what would be sent until a regenerate."""
+    made = await generated(gen_world)
+    await _main(gen_world, made)
+    _save_chart(gen_world, _product(gen_world, made))
+    result = only_item(await post_approve(api, gen_world, REVIEWER, [item(made)]))
+    assert (result["http_status"], result["error"]["error_code"]) == (422, "IMAGE_NON_COMPLIANT")
+    assert _codes(result)["photo_view:front"] == "error"
+
+
 async def test_product_read_lists_views_and_the_size_chart_check(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:

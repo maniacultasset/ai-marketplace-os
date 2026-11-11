@@ -11,8 +11,8 @@ import pytest
 from app.services import photo_views as pv
 from app.services.image_gate import evaluate_image_gate, image_issue_report
 from mkos_schemas.codes import ErrorCode
-from mkos_schemas.enums import ErrorSource, Marketplace, Severity
-from mkos_schemas.listing import CanonicalListing
+from mkos_schemas.enums import ErrorSource, ImageSlot, Marketplace, Severity
+from mkos_schemas.listing import CanonicalListing, ImageRef
 from pydantic import ValidationError
 
 AMAZON = Marketplace.AMAZON
@@ -426,6 +426,11 @@ async def test_listing_findings_reads_the_product(monkeypatch: pytest.MonkeyPatc
 
     uow = type("Uow", (), {"products": _Products(), "images": _Images()})()
     monkeypatch.setattr(pv, "enabled", lambda: True)
+    # a front photo uploaded after the draft is not in the version: approval still lacks it
+    assert "photo_view:front" in by_raw(await pv.listing_findings(uow, listing))
+    listing = listing.model_copy(
+        update={"images": [ImageRef(image_id=detail.image_id, slot=ImageSlot.MAIN)]}
+    )
     items = by_raw(await pv.listing_findings(uow, listing))
     assert set(items) == {
         "photo_view:back",
@@ -440,6 +445,15 @@ async def test_listing_findings_reads_the_product(monkeypatch: pytest.MonkeyPatc
         "photo_view:close_up",
         "photo_view:size_chart",
     }
+
+
+def test_version_inputs_keep_only_the_version_photos() -> None:
+    inputs = full_set()
+    front, back = inputs.images[0], inputs.images[1]
+    kept = pv.version_inputs(inputs, [front.image_id, back.image_id, uuid.uuid4()])
+    assert kept.images == (front, back)
+    assert kept.chart_sizes == inputs.chart_sizes
+    assert pv.version_inputs(inputs, []).images == ()
 
 
 def test_standalone_and_colour_styles_match_no_sizes() -> None:
@@ -465,3 +479,38 @@ def test_inputs_of_marks_size_styles(parent: Any, theme: str | None, sized: bool
     )()
     got = pv.inputs_of(child, [], [])
     assert got.is_variant and not got.sized and got.chart_sizes is None
+
+
+async def test_validate_resyncs_when_a_recommended_view_is_added() -> None:
+    """`photos_changed`: an open photo warning the photos no longer raise (the back photo was
+    added) re-syncs on a validate with equal pins; a raised warning with no open row (dismissed)
+    does not."""
+    from app.services.issues import dedupe_key
+    from app.services.listing_validate import photos_changed
+
+    listing = _listing()
+    missing_back = pv.findings(AMAZON, KURTA, full_set(images=full_set().images[::2]))
+    assert {i.raw_code for i in missing_back} == {"photo_view:back"}
+    back_key = dedupe_key("vision_model", missing_back[0])
+
+    class _Issues:
+        def __init__(self, warnings: set[str]) -> None:
+            self.warnings = warnings
+
+        async def open_errors(self, listing_id: uuid.UUID, sources: list[str]) -> list[Any]:
+            return []
+
+        async def open_warning_keys(self, listing_id: uuid.UUID, source: str) -> set[str]:
+            return self.warnings
+
+    row = type("Listing", (), {"id": uuid.uuid4()})()
+
+    def uow(warnings: set[str]) -> Any:
+        return type("Uow", (), {"listing_issues": _Issues(warnings)})()
+
+    complete = image_issue_report(listing, {}, [], pv.findings(AMAZON, KURTA, full_set()))
+    still_missing = image_issue_report(listing, {}, [], missing_back)
+    assert await photos_changed(uow({back_key}), row, complete) is True
+    assert await photos_changed(uow({back_key}), row, still_missing) is False
+    assert await photos_changed(uow(set()), row, still_missing) is False
+    assert await photos_changed(uow(set()), row, complete) is False

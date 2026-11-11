@@ -42,7 +42,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Final, Literal
@@ -536,10 +536,19 @@ async def load_inputs(uow: Any, product_id: UUID) -> ViewInputs:
     return inputs_of(product, details, await variant_sizes(uow, product))
 
 
+def version_inputs(inputs: ViewInputs, image_ids: Iterable[UUID]) -> ViewInputs:
+    """`inputs` with only the live photos the version carries: approval judges what would be sent
+    (maker-checker), so a photo added after the draft does not meet a view until a regenerate.
+    The saved size chart is a product fact (it is never sent), so it stays as it is."""
+    keep = set(image_ids)
+    return replace(inputs, images=tuple(i for i in inputs.images if i.image_id in keep))
+
+
 async def listing_findings(uow: Any, listing: Any) -> tuple[ErrorItem, ...]:
-    """The findings for a canonical listing's product, marketplace and category; `()` while the
-    switch is off."""
+    """The findings for a canonical listing's product, marketplace and category, judged on the
+    listing's own photos; `()` while the switch is off."""
     if not enabled():
         return ()
     inputs = await load_inputs(uow, listing.product_id)
+    inputs = version_inputs(inputs, (ref.image_id for ref in listing.images))
     return findings(listing.marketplace, listing.category, inputs)

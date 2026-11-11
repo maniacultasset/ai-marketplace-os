@@ -182,12 +182,18 @@ async def photo_report(uow: TenantUnitOfWork, canonical: Any, version: Any) -> E
 
 
 async def photos_changed(uow: TenantUnitOfWork, listing: Any, photos: ErrorReport) -> bool:
-    """The stored photo checks' blocking items differ from the open `vision_model` error rows."""
+    """The stored photo checks' blocking items differ from the open `vision_model` error rows, or
+    an open `vision_model` warning is no longer raised (feedback 7: a recommended view added).
+    A raised warning with no open row is not a change: the seller may have dismissed it, and a
+    dismissal stands until a check that re-syncs for another reason."""
     wanted = {dedupe_key("vision_model", item) for item in photos.blocking}
     held = {
         row.dedupe_key for row in await uow.listing_issues.open_errors(listing.id, ["vision_model"])
     }
-    return wanted != held
+    if wanted != held:
+        return True
+    raised = {dedupe_key("vision_model", item) for item in photos.errors}
+    return bool(await uow.listing_issues.open_warning_keys(listing.id, "vision_model") - raised)
 
 
 async def _sync_photos(
