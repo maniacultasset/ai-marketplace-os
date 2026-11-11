@@ -829,7 +829,8 @@ def test_0021_is_the_single_head() -> None:
     # the budget indexes (V1 hardening #10), the invitee email flag (#12), and the brief-gap
     # proposals (SI13) on top of that (re-chained from 0023 at the 2026-11-09 merge), and the
     # V1.1 assist tables (SI14) on top of them, the photo read on upload (V1.1) on top, and the
-    # sign-up status handle (ADR-0019 amendment) on top of that
+    # admin Google link (ADR-0020 amendment) on top of that, and the sign-up status handle
+    # (ADR-0019 amendment) on top of it
     assert revisions - parents == {"0030_signup_status_handle"}
 
 

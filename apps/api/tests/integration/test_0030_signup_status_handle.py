@@ -22,7 +22,7 @@ pytestmark = pytest.mark.allow_hosts(["localhost", "127.0.0.1", "::1"])
 Conn = psycopg.Connection[tuple[Any, ...]]
 MakeConfig = Callable[[Path | None], Config]
 
-PREVIOUS = "0028_photo_read_on_upload"
+PREVIOUS = "0029_admin_google_link"
 REVISION = "0030_signup_status_handle"
 
 
@@ -55,7 +55,7 @@ def _shape(conn: Conn) -> tuple[Any, ...]:
     return (columns, check, index, policy, definer)
 
 
-def test_single_head_on_0028() -> None:
+def test_single_head_on_0029() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

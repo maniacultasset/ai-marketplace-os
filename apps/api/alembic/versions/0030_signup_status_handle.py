@@ -23,7 +23,7 @@ Downgrade (local and CI only, RULES.md "No prod downgrade") drops the index, the
 policy, the CHECK and the two columns.
 
 Revision ID: 0030_signup_status_handle
-Revises: 0028_photo_read_on_upload
+Revises: 0029_admin_google_link
 Create Date: 2026-11-11
 
 """
@@ -35,9 +35,9 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "0030_signup_status_handle"
-# The single head on main (0028_photo_read_on_upload); re-chained onto 0029_admin_google_link
-# if that lands first.
-down_revision: str | Sequence[str] | None = "0028_photo_read_on_upload"
+# The single head on main after #155 (0029_admin_google_link); first written on
+# 0028_photo_read_on_upload and re-chained at the 2026-11-11 merge of main.
+down_revision: str | Sequence[str] | None = "0029_admin_google_link"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -22,6 +22,9 @@ pages alike: the browser remembers which page it came from only to choose its co
      proves the account with their Kuinn password (`link()`), then their code, and only then is
      the Google account linked (`_sign_in`'s `link_sub`).
    - anything else: the one generic failure (no account oracle), audited with its reason.
+   A platform admin follows the same table (ADR-0020 amendment, owner decision 11 Nov 2026) and
+   always enters the Kuinn code afterwards: no trusted browser stands in for it, and with
+   `MFA_ENFORCEMENT=off` (no code step exists) an admin's Google sign-in is refused.
 4. `link(link_handle, binding, password)`: the password sign-in with the link riding on it.
 5. `signup_details(details_handle, binding, form)`: a new user with no password, Google's `sub`
    and a verified email, and a pending sign-up request marked `verified_via = google`. A platform
@@ -198,6 +201,8 @@ class Situation:
     has_membership: bool = False
     has_request: bool = False
     has_suspended: bool = False  # SI10: an active membership in a suspended brand
+    # `MFA_ENFORCEMENT=all`: a platform admin signs in with Google only when the code is asked
+    mfa_enforced: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -207,20 +212,25 @@ class Decision:
 
 
 def decide(s: Situation) -> Decision:
-    """The decision table (ADR-0020 §6-§7), checked in order. Every refusal is
-    the same generic failure to the browser; only the audit row says which."""
+    """The decision table (ADR-0020 §6-§7 and its 11 Nov 2026 amendment), checked in order.
+    Every refusal is the same generic failure to the browser; only the audit row says which.
+    A platform admin goes through the same rows as anyone (a linked account signs in, an unlinked
+    one links with the Kuinn password and code), but only while MFA is enforced: the code step
+    that follows is what makes Google acceptable for an admin."""
     if not s.exists:
         return Decision("needs_details")
-    if s.is_platform_admin:
-        return Decision(None, "google_admin")
     if not s.is_active:
         return Decision(None, "inactive_user")
+    if s.is_platform_admin and not s.mfa_enforced:
+        return Decision(None, "google_admin_mfa_off")
     if s.by_sub:
         if s.has_membership:
             return Decision("sign_in")
         if s.has_suspended:  # SI10 (AC13): a verified identity whose brands are all suspended
             return Decision(None, "tenant_suspended")
-        if s.has_request:
+        # an admin with no membership lands where the password path does (the generic 401),
+        # never on a sign-up request's status
+        if s.has_request and not s.is_platform_admin:
             return Decision("pending")
         return Decision(None, "no_active_membership")
     if s.linked_to_other:
@@ -229,7 +239,7 @@ def decide(s: Situation) -> Decision:
         if s.has_password:
             return Decision("link_required")
         return Decision(None, "google_link_refused")
-    if s.has_request:
+    if s.has_request and not s.is_platform_admin:
         return Decision("pending")
     return Decision(None, "google_unvetted_conflict")
 
@@ -575,6 +585,7 @@ async def _situation(
         has_membership=bool(memberships),
         has_request=latest is not None,
         has_suspended=not memberships and await members.has_suspended(user.id),
+        mfa_enforced=auth.enforcing(),
     )
 
 

@@ -438,7 +438,8 @@ class UserRepository:
 
     async def link_google_sub(self, user_id: uuid.UUID, sub: str) -> bool:
         """Link a Google account to the caller's own row (`app.user_id` = `user_id`); False when
-        the user is an admin, has no password, already has one, or the account is taken."""
+        the user has no password, already has one, or the account is taken (0029: a platform
+        admin links too, ADR-0020 amendment)."""
         stmt = text("SELECT public.app_link_google_sub(:u, :s)")
         return bool((await self.db.execute(stmt, {"u": user_id, "s": sub})).scalar_one())
 
