@@ -201,7 +201,8 @@ class Settings(BaseSettings):
     kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/oauth-token-key
     mfa_kms_key_uri: str | None = None  # .../keyRings/marketplace-os/cryptoKeys/mfa-secret-key
     kms_local_dev_key: str = Field(
-        default="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=", repr=False  # LocalKmsStub only
+        default="bG9jYWxfZGV2X29ubHlfMzJfYnl0ZV9rZXlfMDAwMDA=",
+        repr=False,  # LocalKmsStub only
     )
     secret_manager_enabled: bool = False
     git_sha: str = "dev"
@@ -328,6 +329,10 @@ class Settings(BaseSettings):
     # (listing PUT, PATCH, the VALIDATION_PREVIEW dry run) reaches Amazon and no publish job is
     # enqueued; reads stay allowed. On in code for dev and tests; production pins it in prod.env.
     amazon_publish_enabled: bool = True
+    # The owner's one-off dry run (2026-11-12; docs/runbooks/AMAZON-PREVIEW-ONEOFF.md): only the
+    # staff job `deploy.sh amazon-preview` sets it, as the shell role. `app.workers.amazon_preview`
+    # refuses to run without it; any other role refuses to boot with it set.
+    amazon_preview_oneoff: bool = False
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None
@@ -888,6 +893,11 @@ def _ptd_errors(s: Settings) -> list[str]:
     ):
         errors.append(
             f"APP_ROLE={s.app_role} refuses AMAZON_PLATFORM_REFRESH_TOKEN (the CLI job alone uses it)"
+        )
+    if s.amazon_preview_oneoff and s.app_role != "shell":
+        # the one-off dry run is a staff job: an api, worker, migrate or seed process never runs it
+        errors.append(
+            f"APP_ROLE={s.app_role} refuses AMAZON_PREVIEW_ONEOFF (the one-off staff job alone)"
         )
     return errors
 

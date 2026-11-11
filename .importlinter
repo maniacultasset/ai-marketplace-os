@@ -393,6 +393,25 @@ forbidden_modules =
     app.adapters.fake
 allow_indirect_imports = True
 
+# The owner's one-off dry run (2026-11-12; docs/runbooks/AMAZON-PREVIEW-ONEOFF.md): it opens its
+# adapter only behind its preview-only transport and wrapper, and never imports a publish, resend
+# or resolution path itself (it runs the preview job body, never the kind's terminal hook).
+[importlinter:contract:amazon-preview-oneoff-never-publishes]
+name = the one-off Amazon dry run imports no publish, resend or resolution module
+type = forbidden
+source_modules =
+    app.workers.amazon_preview
+forbidden_modules =
+    app.workers.publish
+    app.workers.auto_fix_job
+    app.services.publish
+    app.services.publish_outcome
+    app.services.resolution
+    app.adapters.amazon.adapter
+    app.adapters.amazon.client
+    app.adapters.fake
+allow_indirect_imports = True
+
 # SI11 T11: the resolution planner is pure (no database, adapter, web or worker layer).
 [importlinter:contract:resolution-plan-pure]
 name = the resolution planner does no I/O

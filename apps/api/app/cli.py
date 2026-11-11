@@ -159,6 +159,20 @@ the exit code (0 no step failed, 1 a step failed).
 | bad arguments (argparse)             | stderr | 2    |
 | no such tenant, or a seller id that matches no tenant or more than one | stderr | 4 |
 
+`ops amazon-preview --tenant-slug S --listing-id L --staff-email E [--precheck]` is the owner's
+one-off Amazon dry run (2026-11-12; docs/runbooks/AMAZON-PREVIEW-ONEOFF.md): it resolves the slug
+as `ops amazon-check` does and replaces this process with `python -m app.workers.amazon_preview
+--tenant-id ... --listing-id ...` (`os.execv`). The worker entrypoint holds every guard (it
+refuses unless `AMAZON_PREVIEW_ONEOFF` is set) and sets the exit code (0 done, 3 refused, 4 not
+eligible, 5 STOP).
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| handed over to the worker            | -      | the worker's |
+| any failure before the hand-over     | stderr | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| no such tenant                       | stderr | 4    |
+
 `images recheck (--tenant ID | --tenant-slug S | --seller-id ID) [--staff-email E]` queues the
 photo checks again for the tenant's live photos judged by the old photo rules, at most the free
 per-brand job cap per run (`DATABASE_URL`, tenant scope). The slug and the seller id resolve as in
@@ -740,6 +754,7 @@ _EAN_RE: Final = re.compile(r"[0-9]{8,14}", re.ASCII)
 _ASIN_RE: Final = re.compile(r"[A-Z0-9]{10}", re.ASCII)
 _SELLER_RE: Final = re.compile(r"[A-Z0-9]{6,32}", re.ASCII)
 AMAZON_CHECK_MODULE: Final = "app.workers.amazon_check"
+AMAZON_PREVIEW_MODULE: Final = "app.workers.amazon_preview"
 
 
 def _ean(value: str) -> str:
@@ -867,6 +882,27 @@ def run_amazon_check(args: argparse.Namespace) -> int:
     if isinstance(tenant_id, int):
         return tenant_id
     argv = amazon_check_argv(args, tenant_id)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    EXEC(argv[0], argv)
+    return EXIT_OK
+
+
+def amazon_preview_argv(args: argparse.Namespace, tenant_id: uuid.UUID) -> list[str]:
+    """The one-off dry run's command line (flags only from the validated arguments)."""
+    argv = [sys.executable, "-m", AMAZON_PREVIEW_MODULE, "--tenant-id", str(tenant_id)]
+    argv += ["--listing-id", str(args.listing_id), "--staff-email", args.staff_email]
+    if args.precheck:
+        argv.append("--precheck")
+    return argv
+
+
+def run_amazon_preview(args: argparse.Namespace) -> int:
+    """Resolve the tenant by slug, then hand the process over to the worker's one-off dry run."""
+    tenant_id = resolve_tenant("amazon preview", args.tenant_slug, None)
+    if isinstance(tenant_id, int):
+        return tenant_id
+    argv = amazon_preview_argv(args, tenant_id)
     sys.stdout.flush()
     sys.stderr.flush()
     EXEC(argv[0], argv)
@@ -1930,6 +1966,16 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument("--staff-email", type=_staff_email, required=True)
     check.add_argument("--ean", type=_ean, default=None, help="the EAN to search the catalog by")
     check.add_argument("--asin", type=_asin, default=None, help="the ASIN to read restrictions of")
+    preview = ops_commands.add_parser(
+        "amazon-preview",
+        help="the owner's one-off Amazon dry run of one listing (VALIDATION_PREVIEW, saves nothing)",
+    )
+    preview.add_argument("--tenant-slug", type=_slug, required=True)
+    preview.add_argument("--listing-id", type=uuid.UUID, required=True)
+    preview.add_argument("--staff-email", type=_staff_email, required=True)
+    preview.add_argument(
+        "--precheck", action="store_true", help="also the catalog and restriction pre-check"
+    )
     _add_onboarding(groups)
     return parser
 
@@ -2002,6 +2048,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return asyncio.run(run_seed(args.profile, reset=args.reset))
     if args.group == "ops" and args.command == "amazon-check":
         return run_amazon_check(args)
+    if args.group == "ops" and args.command == "amazon-preview":
+        return run_amazon_preview(args)
     if args.group == "ops":
         return asyncio.run(run_photo_accuracy(args.days))
     return run_migrate(alembic_config())
