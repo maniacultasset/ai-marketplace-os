@@ -53,7 +53,7 @@ from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
-from app.services.photo_match import read_state
+from app.services.photo_match import live_jobs, read_state
 from app.services.product_facts import (
     SIZE_CHART_KEY,
     STANDALONE,
@@ -583,10 +583,13 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
     details = await image_views.with_views(row.tenant_id, row.id, details)
     if get_settings().photo_match_enabled:  # V1.1: the stored photo match of each photo
         now = datetime.now(UTC)
+        live = await live_jobs(uow, [d.photo_match_raw for d in details])
         details = tuple(
             replace(
                 d,
-                photo_match=read_state(d.photo_match_raw, clean_hash=d.clean_content_hash, now=now),
+                photo_match=read_state(
+                    d.photo_match_raw, clean_hash=d.clean_content_hash, now=now, live=live
+                ),
             )
             for d in details
         )

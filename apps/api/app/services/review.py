@@ -521,17 +521,19 @@ async def _one(ctx: _Ctx, listings: Mapping[uuid.UUID, Any], item: ReviewItem) -
 
 
 async def _photo_matches(uow: TenantUnitOfWork, image_ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
-    """V1.1: the unresolved photo matches of these images, read only while `PHOTO_MATCH_ENABLED`
-    is on (off: nothing blocks or warns)."""
+    """V1.1: what the gate says of these images' photo matches (`photo_match.unresolved`), read
+    only while `PHOTO_MATCH_ENABLED` is on (off: nothing blocks or warns)."""
     from app.core.config import get_settings
-    from app.services.photo_match import read_state, unresolved
+    from app.services.photo_match import live_jobs, read_state, unresolved
 
     if not image_ids or not get_settings().photo_match_enabled:
         return {}
     now = datetime.now(UTC)
     found: dict[uuid.UUID, str] = {}
-    for image_id, (raw, clean) in (await uow.images.photo_matches_for_images(image_ids)).items():
-        verdict = unresolved(read_state(raw, clean_hash=clean, now=now))
+    stored = await uow.images.photo_matches_for_images(image_ids)
+    live = await live_jobs(uow, [raw for raw, _clean in stored.values()])
+    for image_id, (raw, clean) in stored.items():
+        verdict = unresolved(read_state(raw, clean_hash=clean, now=now, live=live))
         if verdict is not None:
             found[image_id] = verdict
     return found

@@ -11,7 +11,12 @@ stored a photo's clean copy (`app.services.image_compliance`). It queues at most
 - its match key (the image, its clean copy's hash and the colour it is checked against) is not
   the one already stored on it: one image content and colour is checked once (invariant 10). A
   check that ended with no call (`retry`: the switch went off, no entry point, a budget refusal)
-  may be queued again.
+  may be queued again. A key whose job already ended (the colour changed back) takes a fresh job
+  key derived from that job.
+
+Besides the upload, `queue_product_photo_matches` queues a product's due checks when the seller
+edits the colour fact and when a listing is generated or regenerated: a check left with no call,
+a changed colour, and a photo uploaded before the switch went on are checked then.
 
 The colour is the photo's colourway colour; on a product without colourways, the product's own
 colour fact; a photo shared by every colour of a colour style is checked for the product only.
@@ -22,7 +27,8 @@ The verdict (`match`, `mismatch` or `unsure`) comes from the pipeline's fixed sc
 `mismatch` or `unsure` the photo carries a question for the seller ("Is this photo the Green
 Cotton Kurta?"); the seller keeps the photo (`POST /images/{image_id}/photo-match/keep`, recorded
 with who and when, and audited) or removes it. At approval an unresolved `mismatch` blocks and an
-unresolved `unsure` warns (`app.services.image_gate`).
+unresolved `unsure`, a check still running and a kept `mismatch` warn (`app.services.image_gate`).
+A `checking` match reads by its job (`live_jobs`): running while the job is queued or running.
 
 Pure helpers here read and shape the stored value; nothing here calls a model.
 """
@@ -43,7 +49,7 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
-from app.repositories.jobs import EnqueueSpec
+from app.repositories.jobs import TERMINAL, EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.workers.policy import PHOTO_MATCH_ENTITY, lock_for
 
@@ -51,13 +57,17 @@ __all__ = [
     "ASKS",
     "CHECKING_STALE",
     "MATCH_SLOTS",
+    "GateVerdict",
     "MatchStatus",
     "PhotoMatchState",
     "colour_of",
+    "job_of",
     "keep_photo",
+    "live_jobs",
     "match_key",
     "question_for",
     "queue_photo_match",
+    "queue_product_photo_matches",
     "read_state",
     "state_fields",
     "unresolved",
@@ -70,9 +80,13 @@ MatchStatus = Literal["checking", "match", "mismatch", "unsure", "failed"]
 STATUSES: Final[frozenset[str]] = frozenset({"checking", "match", "mismatch", "unsure", "failed"})
 # The verdicts that ask the seller.
 ASKS: Final = frozenset({"mismatch", "unsure"})
-# A check still `checking` after this long ended without storing a verdict (a dead-lettered job,
-# a lost worker): the read shows it as not checked, never as running forever.
-CHECKING_STALE: Final = timedelta(minutes=15)
+# A `checking` match reads by its job: running while the job is `queued` or `running`, not checked
+# once the job ended without storing a verdict (dead-lettered, cancelled). A reader that did not
+# look the job up falls back to this clock: a check still `checking` after this long reads as not
+# checked, never as running forever. Long past the per-brand AI lock's queue and the job's tries.
+CHECKING_STALE: Final = timedelta(hours=6)
+# How many already-finished jobs one queue walks past for a fresh job key (a colour changed back)
+FRESH_KEY_TRIES: Final = 8
 TITLE_WORDS: Final = 60
 
 
@@ -152,10 +166,27 @@ def _user(value: Any) -> uuid.UUID | None:
         return None
 
 
-def read_state(raw: Any, *, clean_hash: str | None, now: datetime) -> PhotoMatchState | None:
+def job_of(raw: Any) -> uuid.UUID | None:
+    """The job id a stored `checking` match waits on, else None."""
+    if not isinstance(raw, Mapping) or raw.get("status") != "checking":
+        return None
+    return _user(raw.get("job_id"))
+
+
+async def live_jobs(uow: TenantUnitOfWork, raws: Any) -> set[uuid.UUID]:
+    """The jobs still `queued` or `running` among those the stored `checking` matches wait on."""
+    ids = [job for raw in raws if (job := job_of(raw)) is not None]
+    return await uow.job_runs.live_among(ids) if ids else set()
+
+
+def read_state(
+    raw: Any, *, clean_hash: str | None, now: datetime, live: set[uuid.UUID] | None = None
+) -> PhotoMatchState | None:
     """The stored `metadata.photo_match` of an image, or None when there is none, it is malformed,
     or it was made for other pixels (`source_hash` is not the image's clean hash). A `checking`
-    left for `CHECKING_STALE` reads `failed` (not checked)."""
+    reads by its job when `live` (the live job ids, `live_jobs`) is given: still `checking` while
+    the job is live, `failed` (not checked) once it ended; without `live`, a `checking` left for
+    `CHECKING_STALE` reads `failed`."""
     if not isinstance(raw, Mapping):
         return None
     found = raw.get("status")
@@ -163,9 +194,14 @@ def read_state(raw: Any, *, clean_hash: str | None, now: datetime) -> PhotoMatch
         return None
     status: MatchStatus = found
     if status == "checking":
-        queued = _when(raw.get("queued_at"))
-        if queued is None or now - queued > CHECKING_STALE:
-            status = "failed"
+        if live is not None:
+            job = job_of(raw)
+            if job is None or job not in live:
+                status = "failed"
+        else:
+            queued = _when(raw.get("queued_at"))
+            if queued is None or now - queued > CHECKING_STALE:
+                status = "failed"
     kept_at = _when(raw.get("kept_at")) if status in ASKS else None
     return PhotoMatchState(
         status=status,
@@ -181,10 +217,21 @@ def read_state(raw: Any, *, clean_hash: str | None, now: datetime) -> PhotoMatch
     )
 
 
-def unresolved(state: PhotoMatchState | None) -> Literal["mismatch", "unsure"] | None:
-    """The verdict the approval gate judges: an unkept `mismatch` (blocks) or `unsure` (warns)."""
-    if state is None or state.kept or state.status not in ASKS:
+GateVerdict = Literal["mismatch", "unsure", "checking", "kept_mismatch"]
+
+
+def unresolved(state: PhotoMatchState | None) -> GateVerdict | None:
+    """What the approval gate judges: an unkept `mismatch` (blocks); an unkept `unsure`, a check
+    still running, or a `mismatch` the seller kept (each warns: the approver sees the photo was
+    questioned and kept, maker-checker). None when there is nothing to say."""
+    if state is None:
         return None
+    if state.status == "checking":
+        return "checking"
+    if state.status not in ASKS:
+        return None
+    if state.kept:
+        return "kept_mismatch" if state.status == "mismatch" else None
     return "mismatch" if state.status == "mismatch" else "unsure"
 
 
@@ -224,17 +271,26 @@ async def queue_photo_match(uow: TenantUnitOfWork, image_id: uuid.UUID) -> uuid.
         # under a job key of its own
         job_key = hashlib.sha256(f"{key}\n{current.get('job_id')}".encode()).hexdigest()
     tenant = uow.products.tenant_id
-    enqueued = await uow.job_runs.enqueue(
-        EnqueueSpec(
-            kind=JobKind.IMAGE_COMPLIANCE,
-            entity_type=PHOTO_MATCH_ENTITY,
-            entity_id=image.id,
-            created_by=None,
-            payload={"photo_match": True, "image_id": str(image.id), "match_key": key},
-            lock=lock_for(JobKind.IMAGE_COMPLIANCE, PHOTO_MATCH_ENTITY, tenant),
-            job_key=job_key,
+    for _ in range(FRESH_KEY_TRIES):
+        enqueued = await uow.job_runs.enqueue(
+            EnqueueSpec(
+                kind=JobKind.IMAGE_COMPLIANCE,
+                entity_type=PHOTO_MATCH_ENTITY,
+                entity_id=image.id,
+                created_by=None,
+                payload={"photo_match": True, "image_id": str(image.id), "match_key": key},
+                lock=lock_for(JobKind.IMAGE_COMPLIANCE, PHOTO_MATCH_ENTITY, tenant),
+                job_key=job_key,
+            )
         )
-    )
+        if enqueued.created or enqueued.job.status not in TERMINAL:
+            break
+        # the key names a job that already ended (the colour changed back): that job never runs
+        # again, so the check takes a key of its own, derived from the ended job
+        job_key = hashlib.sha256(f"{key}\n{enqueued.job.id}".encode()).hexdigest()
+    else:
+        log.warning("photo_match.no_fresh_key", image_id=str(image.id))
+        return None
     await uow.images.write_photo_match(
         image.id,
         {
@@ -254,6 +310,29 @@ async def queue_photo_match(uow: TenantUnitOfWork, image_id: uuid.UUID) -> uuid.
         created=enqueued.created,
     )
     return enqueued.job.id
+
+
+async def queue_product_photo_matches(uow: TenantUnitOfWork, product_id: uuid.UUID) -> int:
+    """Queue the due checks of a product's live photos (`queue_photo_match` decides each): a
+    colour fact that changed, a check that ended with no call (`retry`), or a photo uploaded
+    before the switch went on. Called when the seller edits the colour and when a listing is
+    generated or regenerated. Each photo in its own savepoint: a failed queue never fails the
+    caller. The number of checks queued or already queued."""
+    if not get_settings().photo_match_enabled:
+        return 0
+    queued = 0
+    for row in await uow.images.listing_set(product_id):
+        if row.slot not in MATCH_SLOTS:
+            continue
+        try:
+            async with uow.session.begin_nested():
+                if await queue_photo_match(uow, row.image_id) is not None:
+                    queued += 1
+        except Exception as error:
+            log.warning(
+                "photo_match.queue_failed", image_id=str(row.image_id), error=type(error).__name__
+            )
+    return queued
 
 
 def state_fields(state: PhotoMatchState) -> dict[str, Any]:

@@ -12,10 +12,12 @@
 - the pipeline's reports for that image and marketplace add a warning item for each failed
   `vision` check, whatever their `pass` (C8: vision results never block in v1). Their
   deterministic checks are ignored: the stored report is the authority;
-- V1.1 (client feedback item 9): `matches` names the images whose photo match the seller has not
-  resolved: an unresolved `mismatch` (the photo may not show this product in this colour) adds a
-  blocking item, an unresolved `unsure` a warning (`source=vision_model`). The seller resolves
-  it by keeping the photo (recorded and audited) or removing it.
+- V1.1 (client feedback item 9): `matches` names what the photo match says of an image
+  (`photo_match.unresolved`): an unresolved `mismatch` (the photo may not show this product in
+  this colour) adds a blocking item; an unresolved `unsure`, a check still running and a
+  `mismatch` the seller kept each add a warning (`source=vision_model`), so the approver sees a
+  questioned photo the seller kept (maker-checker). The seller resolves a question by keeping the
+  photo (recorded and audited) or removing it.
 
 Every blocking item is `Severity.ERROR` and every warning `Severity.WARNING`, so an `ErrorReport`
 built from both keeps only the gate's blocking items in `.blocking`. S19's `approve_batch` calls
@@ -39,6 +41,8 @@ NOT_CHECKED: Final = "image not checked yet"
 MATCH_MESSAGES: Final = {
     "mismatch": "This photo may not show this product in this colour. Keep it or remove it.",
     "unsure": "We could not tell if this photo shows this product in this colour.",
+    "checking": "We are still checking that this photo shows this product in this colour.",
+    "kept_mismatch": "The seller kept this photo after the colour check questioned it.",
 }
 
 

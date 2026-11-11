@@ -14,6 +14,7 @@ from app.services.image_gate import MATCH_MESSAGES, evaluate_image_gate
 from app.services.photo_match import (
     CHECKING_STALE,
     colour_of,
+    job_of,
     match_key,
     question_for,
     read_state,
@@ -128,6 +129,31 @@ def test_a_check_left_running_reads_as_not_checked() -> None:
     )
 
 
+def test_a_check_reads_by_its_job_when_the_job_was_looked_up() -> None:
+    running = _stored(status="checking", question=None)
+    # queued far longer than the clock fallback: still running while its job is live
+    late = NOW + CHECKING_STALE * 3
+    state = read_state(running, clean_hash=HASH, now=late, live={JOB})
+    assert state is not None and state.status == "checking"
+    # the job ended without storing a verdict (dead-lettered, cancelled): not checked, at once
+    state = read_state(running, clean_hash=HASH, now=NOW, live=set())
+    assert state is not None and state.status == "failed"
+    state = read_state(running, clean_hash=HASH, now=NOW, live={uuid.uuid4()})
+    assert state is not None and state.status == "failed"
+    # no job id on the stored check: not checked
+    state = read_state(_stored(status="checking", job_id="x"), clean_hash=HASH, now=NOW, live={JOB})
+    assert state is not None and state.status == "failed"
+    # a verdict is never touched by the job lookup
+    assert read_state(_stored(), clean_hash=HASH, now=NOW, live=set()).status == "mismatch"  # type: ignore[union-attr]
+
+
+def test_job_of_names_only_a_running_check() -> None:
+    assert job_of(_stored(status="checking")) == JOB
+    assert job_of(_stored(status="match")) is None
+    assert job_of(_stored(status="checking", job_id=None)) is None
+    assert job_of(None) is None
+
+
 def test_out_of_range_scores_and_odd_text_are_dropped() -> None:
     state = read_state(
         _stored(product_match=1.4, colour_match=True, reason=7, seen_colour=""),
@@ -164,11 +190,11 @@ def test_kept_records_who_and_when() -> None:
     [
         ("mismatch", False, "mismatch"),
         ("unsure", False, "unsure"),
-        ("mismatch", True, None),
+        ("mismatch", True, "kept_mismatch"),
         ("unsure", True, None),
         ("match", False, None),
         ("failed", False, None),
-        ("checking", False, None),
+        ("checking", False, "checking"),
     ],
 )
 def test_unresolved(status: str, kept: bool, want: str | None) -> None:
@@ -215,6 +241,18 @@ def test_an_unresolved_mismatch_blocks_and_unsure_warns() -> None:
     assert result.blocking[0].source is ErrorSource.VISION_MODEL
     assert result.blocking[0].message == MATCH_MESSAGES["mismatch"]
     assert result.warnings[0].message == MATCH_MESSAGES["unsure"]
+
+
+def test_a_running_check_and_a_kept_mismatch_warn_and_never_block() -> None:
+    a, b, c = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    stored = {i: _passed(i) for i in (a, b, c)}
+    result = evaluate_image_gate(_listing(a, b, c), stored, [], {b: "checking", c: "kept_mismatch"})
+    assert result.blocking == ()
+    assert [(i.field, i.message, i.source) for i in result.warnings] == [
+        ("images[1]", MATCH_MESSAGES["checking"], ErrorSource.VISION_MODEL),
+        ("images[2]", MATCH_MESSAGES["kept_mismatch"], ErrorSource.VISION_MODEL),
+    ]
+    assert all(i.severity is Severity.WARNING for i in result.warnings)
 
 
 def test_without_matches_the_gate_is_unchanged() -> None:
@@ -387,3 +425,17 @@ def test_the_request_mirrors_the_pipeline_contract() -> None:
         "agent_runs",
         "error",
     }
+
+
+# ---- the staff requeue ----
+
+
+async def test_staff_cannot_requeue_a_photo_match_job() -> None:
+    from types import SimpleNamespace
+
+    from app.repositories.jobs import NotEligibleError
+    from app.services.image_candidate_hooks import on_image_requeue
+
+    old = SimpleNamespace(entity_type="photo_match", id=JOB)
+    with pytest.raises(NotEligibleError):
+        await on_image_requeue(None, old, old)  # type: ignore[arg-type]

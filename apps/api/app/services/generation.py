@@ -17,6 +17,9 @@ batch of one), each in its own SAVEPOINT, in order:
    `{"user_instructions"}` only, D3), deferred in the same transaction;
 6. the move `created → generating` (event `generate`, the user as actor).
 
+V1.1: beside each generate and regenerate job, `queue_product_photo_matches` queues the product's
+due photo matches (a no-op while `PHOTO_MATCH_ENABLED` is off; each photo in its own savepoint).
+
 `accept_generate` and `accept_regenerate` run, after the budget pre-check, the per-tenant live
 cap: at most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate` jobs `queued|running`, counted
 under the tenant's enqueue lock, else 429 `RATE_LIMITED` (`enforce_live_generate_cap`). Claiming
@@ -52,6 +55,7 @@ from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.category_gate import category_enabled
+from app.services.photo_match import queue_product_photo_matches
 
 log = get_logger(__name__)
 
@@ -135,6 +139,7 @@ async def _regenerate_locked(
     if listing.status == CREATED:
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
     job_id = await enqueue_generate(uow, principal, http_key, listing.id, instructions)
+    await queue_product_photo_matches(uow, listing.product_id)  # V1.1: the due photo checks
     await uow.review_decisions.insert_regenerate_requested(
         listing.id, listing.current_version_id, instructions, job_id
     )
@@ -195,6 +200,7 @@ async def _generate_one(
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
         return await _regenerate_locked(uow, principal, http_key, listing, item.user_instructions)
     job_id = await enqueue_generate(uow, principal, http_key, listing.id, item.user_instructions)
+    await queue_product_photo_matches(uow, product.id)  # V1.1: the due photo checks
     await uow.listings.move(
         listing, to=GENERATING, event="generate", actor=UserActor(principal.user_id)
     )

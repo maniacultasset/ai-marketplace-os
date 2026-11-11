@@ -20,6 +20,10 @@
 - SI14: a column-map job (`entity_type='column_map'`, entity = the map) that ended other than
   `succeeded` settles a map still `mapping` to `failed` with its deterministic mappings, so the
   seller maps the rest; its staff requeue is refused alike.
+- V1.1: a photo match job (`entity_type='photo_match'`) is never requeued by staff: the stored
+  check names its job, so a copy would end `superseded`; the photo is checked again on its next
+  upload, colour edit or generate (`app.services.photo_match`). A match job that ended without a
+  verdict reads as not checked by its job's status.
 """
 
 from __future__ import annotations
@@ -38,6 +42,7 @@ from app.workers.policy import (
     CANDIDATE_ENTITY,
     CATEGORY_SUGGESTION_ENTITY,
     COLUMN_MAP_ENTITY,
+    PHOTO_MATCH_ENTITY,
     SIZE_CHART_READ_ENTITY,
 )
 from app.workers.registry import Outcome
@@ -142,6 +147,10 @@ async def on_image_requeue(session: Any, old: JobRun, new: JobRun) -> None:
     if old.entity_type == SIZE_CHART_READ_ENTITY:
         log.info("size_chart_read.requeue_refused", job_run_id=str(old.id))
         raise NotEligibleError("ask for the size-chart read again through the API")
+    if old.entity_type == PHOTO_MATCH_ENTITY:
+        # the stored check names its own job: a requeued copy would end `superseded`
+        log.info("photo_match.requeue_refused", job_run_id=str(old.id))
+        raise NotEligibleError("the photo is checked again on its next upload or generate")
     if old.entity_type != CANDIDATE_ENTITY:
         return
     log.info("image_candidate.requeue_refused", job_run_id=str(old.id))

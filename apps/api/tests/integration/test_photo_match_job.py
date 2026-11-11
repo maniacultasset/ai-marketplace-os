@@ -1,7 +1,8 @@
 """V1.1 (client feedback item 9): the variant photo match, as app_rw through the real wrapper and the
 stub pipeline. A product photo that passed its checks queues one check per image content and
 colour; the verdict lands on the image; a mismatch or an unsure photo asks the seller; the
-seller's keep is recorded; an unresolved mismatch blocks approval and an unsure one warns."""
+seller's keep is recorded; an unresolved mismatch blocks approval and an unsure one warns. A check
+reads as running while its job is live, and a colour edit or a generate queues the due checks."""
 
 from __future__ import annotations
 
@@ -15,7 +16,15 @@ from mkos_schemas.codes import ErrorCode
 from psycopg.types.json import Jsonb
 
 from .conftest import LOCAL_HOSTS
-from .photo_support import OPERATOR, PhotoWorld, approve, build_photo_world, generate
+from .photo_support import (
+    OPERATOR,
+    PhotoWorld,
+    approve,
+    build_photo_world,
+    generate,
+    seller_fact,
+    seller_patch,
+)
 
 pytestmark = pytest.mark.allow_hosts(LOCAL_HOSTS)
 
@@ -61,6 +70,13 @@ def _stored(pw: PhotoWorld, image_id: uuid.UUID) -> dict[str, Any] | None:
     assert row is not None
     found = (row[0] or {}).get("photo_match")
     return found if isinstance(found, dict) else None
+
+
+def _queued(pw: PhotoWorld, image_id: uuid.UUID) -> uuid.UUID:
+    """The job a stored `checking` match waits on (queued by a generate or a colour edit)."""
+    stored = _stored(pw, image_id)
+    assert stored is not None and stored["status"] == "checking", stored
+    return uuid.UUID(stored["job_id"])
 
 
 def _title(pw: PhotoWorld, title: str) -> None:
@@ -128,11 +144,10 @@ async def test_the_main_photo_is_checked_by_its_title(pw: PhotoWorld) -> None:
 
 
 async def test_a_mismatch_asks_the_seller_blocks_approval_until_kept(pw: PhotoWorld) -> None:
-    accepted = await generate(pw, None)
+    accepted = await generate(pw, None)  # the generate queued the photos' checks
     _title(pw, "Cotton Kurta [photo-mismatch]")
-    jobs = [await _queue(pw, pw.images[slot]) for slot in ("main", "secondary", "lifestyle")]
+    jobs = [_queued(pw, pw.images[slot]) for slot in ("main", "secondary", "lifestyle")]
     for job in jobs:
-        assert job is not None
         await _run(job)
     for slot in ("main", "secondary", "lifestyle"):
         state = await _read(pw, pw.images[slot])
@@ -154,11 +169,69 @@ async def test_unsure_only_warns(pw: PhotoWorld) -> None:
     accepted = await generate(pw, None)
     _title(pw, "Cotton Kurta [photo-unsure]")
     for slot in ("main", "secondary", "lifestyle"):
-        job = await _queue(pw, pw.images[slot])
-        assert job is not None
-        await _run(job)
+        await _run(_queued(pw, pw.images[slot]))
         assert (await _read(pw, pw.images[slot])).status == "unsure"
     assert (await approve(pw, accepted.listing_id)).http_status == 200
+
+
+async def test_a_check_waiting_in_the_queue_reads_as_running_and_only_warns(
+    pw: PhotoWorld,
+) -> None:
+    accepted = await generate(pw, None)
+    image = pw.images["secondary"]
+    job = _queued(pw, image)
+    # queued for longer than any clock would allow (the per-brand AI lock): its job is live
+    pw.conn.execute(
+        "UPDATE images SET metadata = jsonb_set(metadata, '{photo_match,queued_at}', %s::jsonb) "
+        "WHERE id = %s",
+        [Jsonb("2026-01-01T00:00:00+00:00"), image],
+    )
+    assert (await _read(pw, image)).status == "checking"
+    assert (await approve(pw, accepted.listing_id)).http_status == 200  # a warning, never a block
+    await _run(job)
+    assert (await _read(pw, image)).status == "match"
+
+
+async def test_a_check_whose_job_ended_reads_as_not_checked(pw: PhotoWorld) -> None:
+    image = pw.images["secondary"]
+    job = await _queue(pw, image)
+    assert job is not None
+    pw.conn.execute("UPDATE job_runs SET status = 'dead_letter' WHERE id = %s", [job])
+    assert (await _read(pw, image)).status == "failed"
+
+
+async def test_a_colour_edit_queues_the_check_for_the_new_colour(pw: PhotoWorld) -> None:
+    accepted = await generate(pw, None)
+    _title(pw, "Cotton Kurta [photo-mismatch]")
+    for slot in ("main", "secondary", "lifestyle"):
+        await _run(_queued(pw, pw.images[slot]))
+    assert (await approve(pw, accepted.listing_id)).http_status == 422
+    _title(pw, "Cotton Kurta")
+    await seller_patch(pw, {"attributes": {"color": "Mustard Yellow"}})
+    for slot in ("main", "secondary", "lifestyle"):
+        stored = _stored(pw, pw.images[slot])
+        assert stored is not None and stored["colour"] == "Mustard Yellow"
+        assert (await _read(pw, pw.images[slot])).status == "checking"  # the old verdict is gone
+        await _run(_queued(pw, pw.images[slot]))
+        assert (await _read(pw, pw.images[slot])).status == "match"
+
+
+async def test_a_colour_changed_back_gets_a_job_of_its_own(pw: PhotoWorld) -> None:
+    image = pw.images["secondary"]
+    first = await _queue(pw, image)
+    assert first is not None
+    await _run(first)
+    original = (pw.attributes().get("color") or {}).get("value")
+    pw.put_fact("color", seller_fact("Mustard Yellow"))
+    second = await _queue(pw, image)
+    assert second is not None
+    await _run(second)
+    pw.put_fact("color", seller_fact(original))
+    third = await _queue(pw, image)
+    assert third is not None and third not in (first, second)  # the first job never runs again
+    await _run(third)
+    stored = _stored(pw, image)
+    assert stored is not None and stored["status"] == "match" and stored["colour"] == original
 
 
 async def test_a_new_colour_is_a_new_check(pw: PhotoWorld) -> None:
