@@ -78,7 +78,11 @@ async def tenants_me_update(
 # ADR-0032: the 403 messages say which rule refused (one code, PERMISSION_DENIED)
 REFUSALS: dict[tenant_create.Refusal, str] = {
     "not_owner": "Only an owner of this brand can add another brand.",
-    "suspended": "One of your brands is suspended. Contact support to add a brand.",
+    "suspended": "A brand you own is suspended. Contact support to add a brand.",
+    "trial_cap_reached": (
+        f"On a trial you can own up to {tenant_create.TRIAL_MAX_OWNED} brands. "
+        "Contact support to add more."
+    ),
     "cap_reached": "You own the most brands allowed. Contact support to add more.",
 }
 
@@ -92,9 +96,10 @@ async def tenants_create(
     response: Response,
 ) -> TenantCreated:
     """Add another brand without a new sign-up review (ADR-0032). The caller must own the brand
-    the token names (an admin there is 403), hold no suspended brand, and own fewer live brands
-    than the cap (403 `PERMISSION_DENIED`, the message says which). The new brand is a `trial`
-    made as an approved sign-up is, with the caller as its owner; `website` goes on its brand
+    the token names (an admin there is 403), own no suspended brand, and own fewer live brands
+    than the cap, 3 while none they own is `active` (403 `PERMISSION_DENIED`, the message says
+    which). The new brand is a `trial` made as an approved sign-up is, with the caller as its
+    owner; its trial ends with the owner's own trial while they are on one; `website` goes on its brand
     profile. Then switch to it with `POST /auth/switch-tenant`. 501 while the switch
     (`TENANT_CREATE_ENABLED`) is off. Limited per user."""
     if not get_settings().tenant_create_enabled:

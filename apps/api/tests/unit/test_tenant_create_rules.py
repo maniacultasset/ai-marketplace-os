@@ -3,23 +3,35 @@ and the switch's default."""
 
 from __future__ import annotations
 
-import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from app.api.v1.schemas.tenant_create import TenantCreate
 from app.api.v1.surface import OPS
-from app.repositories.identity import MembershipRow
-from app.services.tenant_create import owned_live, refusal
+from app.services.tenant_create import (
+    TRIAL_MAX_OWNED,
+    OwnedBrand,
+    on_trial,
+    refusal,
+    trial_end,
+)
 from mkos_schemas.codes import ErrorCode
 from pydantic import ValidationError
+
+NOW = datetime(2026, 11, 11, tzinfo=UTC)
+ACTIVE: OwnedBrand = ("active", None)
+
+
+def _trial(days: int) -> OwnedBrand:
+    return ("trial", NOW + timedelta(days=days))
 
 
 def _rule(**overrides: object) -> object:
     args: dict[str, object] = {
         "role": "owner",
-        "owned_live": 1,
+        "owned": [ACTIVE],
         "max_owned": 10,
-        "suspended_elsewhere": False,
+        "suspended_owned": False,
     }
     args.update(overrides)
     return refusal(**args)  # type: ignore[arg-type]
@@ -27,7 +39,9 @@ def _rule(**overrides: object) -> object:
 
 def test_an_owner_of_a_live_brand_may_add_one() -> None:
     assert _rule() is None
-    assert _rule(owned_live=9) is None
+    assert _rule(owned=[ACTIVE] * 9) is None
+    assert _rule(owned=[_trial(5)]) is None
+    assert _rule(owned=[_trial(5)] * (TRIAL_MAX_OWNED - 1)) is None
 
 
 @pytest.mark.parametrize("role", ["admin", "operator", "reviewer", "staff", ""])
@@ -36,33 +50,43 @@ def test_only_an_owner(role: str) -> None:
 
 
 def test_a_suspended_brand_refuses_before_the_cap() -> None:
-    assert _rule(suspended_elsewhere=True) == "suspended"
-    assert _rule(suspended_elsewhere=True, owned_live=10) == "suspended"
-    assert _rule(role="admin", suspended_elsewhere=True) == "not_owner"
+    assert _rule(suspended_owned=True) == "suspended"
+    assert _rule(suspended_owned=True, owned=[ACTIVE] * 10) == "suspended"
+    assert _rule(role="admin", suspended_owned=True) == "not_owner"
 
 
 def test_the_cap_counts_the_current_brand() -> None:
-    assert _rule(owned_live=10) == "cap_reached"
-    assert _rule(owned_live=11) == "cap_reached"
-    assert _rule(owned_live=1, max_owned=1) == "cap_reached"
+    assert _rule(owned=[ACTIVE] * 10) == "cap_reached"
+    assert _rule(owned=[ACTIVE] * 11) == "cap_reached"
+    assert _rule(owned=[ACTIVE], max_owned=1) == "cap_reached"
 
 
-def _member(role: str) -> MembershipRow:
-    return MembershipRow(
-        tenant_id=uuid.uuid4(),
-        tenant_name="Brand",
-        user_id=uuid.uuid4(),
-        email="a@b.co",
-        display_name=None,
-        role=role,
-        last_used_at=None,
-    )
+def test_an_owner_on_trial_has_the_smaller_cap() -> None:
+    assert TRIAL_MAX_OWNED * 2.5 < 12  # the tenant and platform AI budgets' defaults
+    assert _rule(owned=[_trial(5)] * TRIAL_MAX_OWNED) == "trial_cap_reached"
+    # one active brand lifts it
+    assert _rule(owned=[ACTIVE] + [_trial(5)] * TRIAL_MAX_OWNED) is None
+    # a cap below the trial cap is the plain cap
+    assert _rule(owned=[_trial(5)] * 2, max_owned=2) == "cap_reached"
+    assert _rule(owned=[_trial(5)] * TRIAL_MAX_OWNED, max_owned=TRIAL_MAX_OWNED) == "cap_reached"
 
 
-def test_owned_live_counts_owner_rows_only() -> None:
-    rows = [_member("owner"), _member("operator"), _member("owner"), _member("admin")]
-    assert owned_live(rows) == 2
-    assert owned_live([]) == 0
+def test_on_trial_until_one_brand_is_active() -> None:
+    assert on_trial([_trial(1)]) and on_trial([])
+    assert not on_trial([_trial(1), ACTIVE])
+
+
+def test_a_trial_owner_keeps_their_latest_trial_end() -> None:
+    assert trial_end([_trial(1)]) == NOW + timedelta(days=1)
+    assert trial_end([_trial(1), _trial(20), _trial(3)]) == NOW + timedelta(days=20)
+    assert trial_end([("trial", None), _trial(2)]) == NOW + timedelta(days=2)
+
+
+def test_a_fresh_trial_only_without_an_owned_trial_end_or_with_an_active_brand() -> None:
+    assert trial_end([ACTIVE]) is None
+    assert trial_end([ACTIVE, _trial(1)]) is None
+    assert trial_end([("trial", None)]) is None
+    assert trial_end([]) is None
 
 
 def test_body_is_strict_and_validated() -> None:

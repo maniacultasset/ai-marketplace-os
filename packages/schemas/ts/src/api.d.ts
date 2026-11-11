@@ -2303,9 +2303,10 @@ export interface paths {
         /**
          * Add another brand: a new trial brand the caller owns (no sign-up review)
          * @description Add another brand without a new sign-up review (ADR-0032). The caller must own the brand
-         *     the token names (an admin there is 403), hold no suspended brand, and own fewer live brands
-         *     than the cap (403 `PERMISSION_DENIED`, the message says which). The new brand is a `trial`
-         *     made as an approved sign-up is, with the caller as its owner; `website` goes on its brand
+         *     the token names (an admin there is 403), own no suspended brand, and own fewer live brands
+         *     than the cap, 3 while none they own is `active` (403 `PERMISSION_DENIED`, the message says
+         *     which). The new brand is a `trial` made as an approved sign-up is, with the caller as its
+         *     owner; its trial ends with the owner's own trial while they are on one; `website` goes on its brand
          *     profile. Then switch to it with `POST /auth/switch-tenant`. 501 while the switch
          *     (`TENANT_CREATE_ENABLED`) is off. Limited per user.
          */

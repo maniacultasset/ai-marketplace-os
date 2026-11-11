@@ -3,12 +3,15 @@
 `POST /tenants` (settings:manage, step-up, Idempotency-Key, per-user limit). The caller must own
 the brand its token names: the probe has already proved that brand live (`trial` or `active`)
 and the membership active, and the platform admin approved the caller when that brand was made.
-They must hold no membership in a suspended brand (a suspended trial cannot be escaped by adding
-a fresh one), and own fewer than `TENANT_CREATE_MAX_OWNED` live brands.
+They must own no suspended brand (a suspended trial cannot be escaped by adding a fresh one), and
+own fewer than `TENANT_CREATE_MAX_OWNED` live brands; an owner with no `active` brand (still on
+trial) owns at most `TRIAL_MAX_OWNED`, which keeps one trial's AI spend under the platform budget.
 
 The new tenant is made exactly as an approved sign-up makes it (`signup.approve`): the same slug
-rule, `trial` with `DEFAULT_TRIAL_DAYS`, the staff CLI's own statements through
-`SignupRepository.create_tenant`, with the caller as its one owner. The audit rows (`tenant.created`,
+rule, `trial`, the staff CLI's own statements through
+`SignupRepository.create_tenant`, with the caller as its one owner. The trial clock is not reset:
+an owner still on trial gives the new brand their latest trial end; an owner of an `active` brand
+gets `DEFAULT_TRIAL_DAYS`. The audit rows (`tenant.created`,
 `membership.created`, `tenant.added_by_owner`) are `user` rows naming the caller, in the new
 tenant. A website given goes on the new brand profile (`website_url`).
 
@@ -22,7 +25,9 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Final, Literal
 
 from app.core.config import get_settings
@@ -30,7 +35,6 @@ from app.core.rbac import Principal
 from app.repositories.identity import (
     AuditRepository,
     MembershipRepository,
-    MembershipRow,
     SignupRepository,
     SlugTakenError,
     TenantAdminRepository,
@@ -41,9 +45,23 @@ from app.services.idempotency import idempotent
 from app.services.signup import DEFAULT_TRIAL_DAYS, slug_candidates
 
 METHOD: Final = "POST"
-Refusal = Literal["not_owner", "suspended", "cap_reached"]
+# owned brands while on trial: 3 x LLM_TENANT_DAILY_BUDGET_USD (2.5) stays under the platform's
+# LLM_DAILY_BUDGET_USD (12), so one unpaid owner cannot spend the day's AI budget for everyone
+TRIAL_MAX_OWNED: Final = 3
+Refusal = Literal["not_owner", "suspended", "trial_cap_reached", "cap_reached"]
+OwnedBrand = tuple[str, datetime | None]  # (status, trial_ends_at) of a live brand the caller owns
 
-__all__ = ["METHOD", "Refusal", "TenantCreateRefusedError", "create_tenant", "refusal"]
+__all__ = [
+    "METHOD",
+    "TRIAL_MAX_OWNED",
+    "OwnedBrand",
+    "Refusal",
+    "TenantCreateRefusedError",
+    "create_tenant",
+    "on_trial",
+    "refusal",
+    "trial_end",
+]
 
 
 class TenantCreateRefusedError(Exception):
@@ -54,23 +72,34 @@ class TenantCreateRefusedError(Exception):
         self.reason: Refusal = reason
 
 
+def on_trial(owned: Sequence[OwnedBrand]) -> bool:
+    """No brand the caller owns is `active` (paid or activated by a platform admin)."""
+    return not any(status == "active" for status, _ in owned)
+
+
 def refusal(
-    *, role: str, owned_live: int, max_owned: int, suspended_elsewhere: bool
+    *, role: str, owned: Sequence[OwnedBrand], max_owned: int, suspended_owned: bool
 ) -> Refusal | None:
     """Why the caller may not add a brand, or None. `role` is the caller's role in the token's
-    (live) brand; `owned_live` counts the live brands they own, that one included."""
+    (live) brand; `owned` lists the live brands they own, that one included."""
     if role != "owner":
         return "not_owner"
-    if suspended_elsewhere:
+    if suspended_owned:
         return "suspended"
-    if owned_live >= max_owned:
-        return "cap_reached"
+    limit = min(max_owned, TRIAL_MAX_OWNED) if on_trial(owned) else max_owned
+    if len(owned) >= limit:
+        return "trial_cap_reached" if limit < max_owned else "cap_reached"
     return None
 
 
-def owned_live(memberships: list[MembershipRow]) -> int:
-    """The live brands the caller owns (`list_active_for_user` lists only live tenants)."""
-    return sum(1 for m in memberships if m.role == "owner")
+def trial_end(owned: Sequence[OwnedBrand]) -> datetime | None:
+    """The new brand's trial end: the latest trial end among the owned brands while the caller is
+    on trial, so adding a brand never restarts the clock. None (a fresh `DEFAULT_TRIAL_DAYS`) for
+    an owner of an `active` brand, or when no owned trial has an end."""
+    if not on_trial(owned):
+        return None
+    ends = [end for status, end in owned if status == "trial" and end is not None]
+    return max(ends) if ends else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,12 +129,12 @@ async def _create(session: Any, principal: Principal, request: _Request) -> dict
     await set_gucs(session, user_id=principal.user_id)
     memberships = MembershipRepository(session)
     await memberships.lock_brand_creation(principal.user_id)
-    listed = await memberships.list_active_for_user(principal.user_id)
+    owned = await memberships.owned_live(principal.user_id)
     reason = refusal(
         role=principal.role,
-        owned_live=owned_live(listed),
+        owned=owned,
         max_owned=get_settings().tenant_create_max_owned,
-        suspended_elsewhere=await memberships.has_suspended(principal.user_id),
+        suspended_owned=await memberships.has_suspended(principal.user_id, owner_only=True),
     )
     if reason is not None:
         raise TenantCreateRefusedError(reason)
@@ -123,6 +152,7 @@ async def _create(session: Any, principal: Principal, request: _Request) -> dict
                     owner_id=principal.user_id,
                     staff_email=None,
                     actor_user_id=principal.user_id,
+                    trial_ends_at=trial_end(owned),
                 )
                 break
             except SlugTakenError:

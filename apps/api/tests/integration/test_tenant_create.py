@@ -1,7 +1,8 @@
 """ADR-0032: an owner adds another brand without a new sign-up review, through the real app as
 app_rw: the new trial tenant and owner membership, the audit rows, the website on the brand
-profile, the switch into it and its isolation, the refusals (an admin, a suspended brand, the cap,
-an applicant with no brand), the switch, the step-up, the limiter and the idempotency key."""
+profile, the switch into it and its isolation, the trial clock, the refusals (an admin, a suspended owned
+brand, the trial and owned-brand caps, an applicant with no brand), the switch, the step-up, the limiter and the idempotency key.
+"""
 
 from __future__ import annotations
 
@@ -228,6 +229,57 @@ async def test_an_owner_with_a_suspended_brand_is_refused(
     response = await _create(api, world)
     assert response.status_code == 403
     assert "suspended" in response.json()["error"]["message"]
+    assert _tenant_count(auth_db) == before
+
+
+async def test_a_suspended_brand_they_do_not_own_does_not_refuse(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    client = add_tenant(auth_db, "client", status="suspended")
+    add_member(auth_db, client, world.user("owner@acme.test"), "operator")
+    response = await _create(api, world)
+    assert response.status_code == 201, response.text
+
+
+def _trial_owner(world: World, conn: Conn) -> str:
+    tenant = add_tenant(conn, "trialco", status="trial")
+    email = "owner@trialco.test"
+    world.tenants["trialco"] = tenant
+    world.users[email] = add_user(conn, email)
+    add_member(conn, tenant, world.users[email], "owner")
+    return email
+
+
+async def test_a_brand_added_on_trial_keeps_the_owners_trial_end(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    caller = _trial_owner(world, auth_db)
+    response = await _create(api, world, caller=caller)
+    assert response.status_code == 201, response.text
+    rows = auth_db.execute(
+        "SELECT t.trial_ends_at = own.trial_ends_at, t.status FROM tenants t, tenants own "
+        "WHERE t.id = %s AND own.id = %s",
+        [response.json()["id"], world.tenant("trialco")],
+    ).fetchone()
+    assert rows == (True, "trial")
+
+
+async def test_an_owner_on_trial_owns_at_most_three(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    from tests.support.rate_limits import reset_rate_limits
+
+    caller = _trial_owner(world, auth_db)
+    made = [
+        (await _create(api, world, caller=caller, body={"name": f"Trial {n}"})).status_code
+        for n in range(2)
+    ]
+    assert made == [201, 201]
+    reset_rate_limits(auth_db)
+    before = _tenant_count(auth_db)
+    over = await _create(api, world, caller=caller, body={"name": "Trial 3"})
+    assert over.status_code == 403
+    assert "On a trial" in over.json()["error"]["message"]
     assert _tenant_count(auth_db) == before
 
 

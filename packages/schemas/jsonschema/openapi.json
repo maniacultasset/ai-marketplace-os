@@ -50922,7 +50922,7 @@
     },
     "/api/v1/tenants": {
       "post": {
-        "description": "Add another brand without a new sign-up review (ADR-0032). The caller must own the brand\nthe token names (an admin there is 403), hold no suspended brand, and own fewer live brands\nthan the cap (403 `PERMISSION_DENIED`, the message says which). The new brand is a `trial`\nmade as an approved sign-up is, with the caller as its owner; `website` goes on its brand\nprofile. Then switch to it with `POST /auth/switch-tenant`. 501 while the switch\n(`TENANT_CREATE_ENABLED`) is off. Limited per user.",
+        "description": "Add another brand without a new sign-up review (ADR-0032). The caller must own the brand\nthe token names (an admin there is 403), own no suspended brand, and own fewer live brands\nthan the cap, 3 while none they own is `active` (403 `PERMISSION_DENIED`, the message says\nwhich). The new brand is a `trial` made as an approved sign-up is, with the caller as its\nowner; its trial ends with the owner's own trial while they are on one; `website` goes on its brand\nprofile. Then switch to it with `POST /auth/switch-tenant`. 501 while the switch\n(`TENANT_CREATE_ENABLED`) is off. Limited per user.",
         "operationId": "tenants_create",
         "parameters": [
           {

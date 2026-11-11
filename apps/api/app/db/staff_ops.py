@@ -190,14 +190,18 @@ async def insert_tenant(
     trial_days: int | None,
     request_id: str,
     actor_user_id: uuid.UUID | None = None,
+    trial_ends_at: datetime | None = None,
 ) -> None:
     """The tenant row and its `tenant.created` audit row, on a connection whose
     `app.tenant_id` is already `tenant_id`. `SlugTakenError` (nothing written) when the slug is
     used. Shared by `tenant create`, the platform admin's sign-up approval (ADR-0019) and an
     owner adding another brand (ADR-0032, audited as that `user`), so all three create a tenant
-    the same way."""
+    the same way. `trial_ends_at` (with `trial_days` set) fixes the trial end instead of
+    `trial_days` from now (ADR-0032: an added brand keeps its owner's trial end)."""
     status = "active" if trial_days is None else "trial"
     trial_ends = None if trial_days is None else datetime.now(UTC) + timedelta(days=trial_days)
+    if trial_days is not None and trial_ends_at is not None:
+        trial_ends = trial_ends_at
     inserted = (
         await conn.execute(
             text(
