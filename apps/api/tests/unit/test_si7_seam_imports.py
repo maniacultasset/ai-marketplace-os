@@ -41,6 +41,7 @@ def test_only_three_modules_reach_the_pipeline() -> None:
         "workers/generation.py",
         "workers/image_edit_seam.py",
         "workers/photo_facts_seam.py",  # V1.1: `read_photo_facts`
+        "workers/photo_match_seam.py",  # V1.1: `photo_match` (client feedback item 9)
         "workers/size_chart_seam.py",
     ]
 
@@ -54,6 +55,7 @@ def test_only_three_modules_reach_the_pipeline() -> None:
         "classify_seam.py",
         "column_map_seam.py",
         "photo_facts_seam.py",
+        "photo_match_seam.py",
     ],
 )
 def test_the_seam_imports_lazily(seam: str) -> None:

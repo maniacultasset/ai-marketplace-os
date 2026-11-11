@@ -19,6 +19,7 @@ from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
+from app.api.v1.schemas.images import PhotoMatchOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
     CategorySuggestionOut,
@@ -50,6 +51,7 @@ from app.services import product_edit, product_recategorize, products
 from app.services.images import CreateUpload
 from app.services.imports import upload
 from app.services.intake_values import PartyInput
+from app.services.photo_match import state_fields
 
 router = APIRouter()
 
@@ -91,6 +93,8 @@ def _image_out(detail: Any) -> ProductImageOut:
     """The wire fields only (SI7: the stored report and border stay server-side)."""
     fields = {name: getattr(detail, name) for name in ProductImageOut.model_fields}
     fields["fixes"] = list(detail.fixes)
+    match = detail.photo_match
+    fields["photo_match"] = None if match is None else PhotoMatchOut(**state_fields(match))
     return ProductImageOut.model_construct(**fields)
 
 

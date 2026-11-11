@@ -965,6 +965,22 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "images_photo_match_keep": {  # V1.1 (client feedback item 9)
+            "image_id": IMAGE,
+            "photo_match": {
+                "status": "mismatch",
+                "colour": "Green",
+                "product_match": 0.93,
+                "colour_match": 0.08,
+                "seen_colour": "red",
+                "reason": "Same kurta design, but the photo shows a red kurta.",
+                "question": "Is this photo the Green Cotton Kurta?",
+                "checked_at": T1,
+                "kept": True,
+                "kept_at": T1,
+                "kept_by_user_id": USER,
+            },
+        },
         "image_candidates_create": {
             "candidate_id": CANDIDATE,
             "status": "queued",

@@ -41,6 +41,7 @@ from pydantic_core import PydanticCustomError
 from app.api.pagination import Page
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
 from app.api.v1.schemas.common import StorageKey
+from app.api.v1.schemas.images import PhotoMatchOut
 from app.services.intake_values import (
     MAX_DIMENSION,
     MAX_GRAMS,
@@ -472,6 +473,13 @@ class ProductImageOut(WireModel):
     )
     view_expires_at: AwareDatetime | None = Field(
         default=None, description="When to fetch a fresh `view_url`; null with it."
+    )
+    photo_match: PhotoMatchOut | None = Field(
+        default=None,
+        description=(
+            "V1.1: does the photo show this product in its colour; null when it is not checked "
+            "(the check is off, or the photo is not a product photo that passed its checks)."
+        ),
     )
 
 

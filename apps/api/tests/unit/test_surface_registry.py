@@ -151,6 +151,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
+    # V1.1 (client feedback item 9): keep a photo the photo match questioned
+    ("images_photo_match_keep", "POST", "/images/{image_id}/photo-match/keep"),
     ("analytics_quality", "GET", "/analytics/quality"),
     ("admin_quality", "GET", "/admin/quality"),
 )
@@ -293,6 +295,7 @@ D9_IDEMPOTENT = {
     "imports_column_map_create",  # SI14
     "imports_column_map_confirm",  # SI14
     "products_size_run_create",  # V1.1
+    "images_photo_match_keep",  # V1.1
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
@@ -467,9 +470,9 @@ def test_login_response_is_login_result() -> None:
 
 def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
-    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
-    # the ADR-0019 amendment adds the sign-up status poll
-    assert len(OPS) == 112
+    # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run and
+    # the photo match keep; the ADR-0019 amendment adds the sign-up status poll
+    assert len(OPS) == 113
 
 
 def test_error_codes_per_d2() -> None:
@@ -493,6 +496,8 @@ def test_error_codes_per_d2() -> None:
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        # V1.1: no question on the photo
+        "images_photo_match_keep": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
             E.IDEMPOTENCY_KEY_REUSED,
             E.INVALID_STATUS_TRANSITION,

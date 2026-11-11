@@ -64,6 +64,7 @@ ENTITY_TYPES: Final = frozenset(
         "category_suggestion",
         "column_map",
         "photo_facts_read",
+        "photo_match",
     }
 )
 

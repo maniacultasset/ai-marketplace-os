@@ -56,7 +56,7 @@ def _definer(libpq: str) -> tuple[Any, ...]:
     return tuple(row)
 
 
-def test_single_head_on_0028() -> None:
+def test_chained_on_0028() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

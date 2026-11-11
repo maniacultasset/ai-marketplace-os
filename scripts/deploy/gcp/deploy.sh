@@ -269,7 +269,10 @@ esac
 # SI14: the V1.1 assist switches (docs/runbooks/V1-1-SWITCHES.md), each off by default and live
 # only after its gate: the classifier, the column mapper's AI step, the lamps category and the
 # photo QA warnings. One value on the api and the worker, so the ask and the job agree.
-for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED; do
+# V1.1 (client feedback item 9): PHOTO_MATCH_ENABLED, the variant photo match (queue and gate on
+# the api, the check on the worker).
+for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED \
+  PHOTO_MATCH_ENABLED; do
   value="${!switch:-false}"
   case "$value" in
     true | false) ;;
@@ -1120,6 +1123,9 @@ app_env() {
         "$CATEGORY_SUGGEST_ENABLED" "$COLUMN_MAP_AI_ENABLED"
       printf 'CATEGORY_LAMPS_ENABLED\t%s\nPHOTO_QA_ENABLED\t%s\n' \
         "$CATEGORY_LAMPS_ENABLED" "$PHOTO_QA_ENABLED"
+      # V1.1: the variant photo match, so the api's product read and approve gate and the
+      # worker's check agree
+      printf 'PHOTO_MATCH_ENABLED\t%s\n' "$PHOTO_MATCH_ENABLED"
       printf 'CATEGORY_SUGGEST_MODEL\t%s\n' "$CATEGORY_SUGGEST_MODEL"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||

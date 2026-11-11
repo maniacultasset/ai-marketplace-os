@@ -14,7 +14,8 @@
    `validated|needs_review`, or the version already approved once (CP-D4) → 409
    `INVALID_STATUS_TRANSITION`; a multi-item batch and not `validated` → 409
    `BULK_APPROVE_REQUIRES_VALIDATED`; a blocking image finding → 422 `IMAGE_NON_COMPLIANT`
-   (S17b's gate: an unchecked image blocks, vision only warns); a blocking marketplace check on
+   (S17b's gate: an unchecked image blocks, vision only warns; V1.1: an unresolved photo match
+   `mismatch` blocks and `unsure` warns); a blocking marketplace check on
    the version (SI9 B4, `adapter_check`: mapping and the stored definition) → 422
    `VALIDATION_FAILED` with its items, so a stale verdict never approves what the adapter would
    refuse; no passed `rules_engine` run
@@ -44,7 +45,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final
 
@@ -193,6 +194,8 @@ class _Ctx:
     versions: Mapping[uuid.UUID, Any]
     image_reports: Mapping[uuid.UUID, Mapping[Any, ImageReport]]
     regenerate_refusal: Refusal | None = None
+    # V1.1 (client feedback item 9): the unresolved photo matches (`mismatch` or `unsure`)
+    photo_matches: Mapping[uuid.UUID, str] = field(default_factory=dict)
 
 
 def _gate(listing: Any | None, item: ReviewItem) -> Any:
@@ -235,7 +238,7 @@ def _image_gate(ctx: _Ctx, listing: Any, version: Any) -> None:
         if market in reports
     }
     pipeline = [ImageReport.model_validate(r) for r in (version.image_reports_json or [])]
-    result = evaluate_image_gate(canonical, stored, pipeline)
+    result = evaluate_image_gate(canonical, stored, pipeline, ctx.photo_matches)
     if result.blocking:
         report = ErrorReport(
             status="failed",
@@ -517,6 +520,23 @@ async def _one(ctx: _Ctx, listings: Mapping[uuid.UUID, Any], item: ReviewItem) -
         return ItemOutcome(item.listing_id, mapped.status, status, error=mapped.report)
 
 
+async def _photo_matches(uow: TenantUnitOfWork, image_ids: list[uuid.UUID]) -> dict[uuid.UUID, str]:
+    """V1.1: the unresolved photo matches of these images, read only while `PHOTO_MATCH_ENABLED`
+    is on (off: nothing blocks or warns)."""
+    from app.core.config import get_settings
+    from app.services.photo_match import read_state, unresolved
+
+    if not image_ids or not get_settings().photo_match_enabled:
+        return {}
+    now = datetime.now(UTC)
+    found: dict[uuid.UUID, str] = {}
+    for image_id, (raw, clean) in (await uow.images.photo_matches_for_images(image_ids)).items():
+        verdict = unresolved(read_state(raw, clean_hash=clean, now=now))
+        if verdict is not None:
+            found[image_id] = verdict
+    return found
+
+
 async def approve_batch(
     uow: TenantUnitOfWork,
     principal: Principal,
@@ -546,6 +566,7 @@ async def approve_batch(
         for image_id in _version_images(lst, v)
     ]
     reports = await uow.images.live_reports_for_images(image_ids) if image_ids else {}
+    matches = await _photo_matches(uow, image_ids)
     ctx = _Ctx(
         uow=uow,
         principal=principal,
@@ -555,6 +576,7 @@ async def approve_batch(
         versions=versions,
         image_reports=reports,
         regenerate_refusal=regenerate_refusal,
+        photo_matches=matches,
     )
     return BatchOutcome(batch.id, [await _one(ctx, listings, item) for item in items])
 

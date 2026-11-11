@@ -11,7 +11,11 @@
   warning. These carry `source=rules_engine` and the issue code as `raw_code` (T84);
 - the pipeline's reports for that image and marketplace add a warning item for each failed
   `vision` check, whatever their `pass` (C8: vision results never block in v1). Their
-  deterministic checks are ignored: the stored report is the authority.
+  deterministic checks are ignored: the stored report is the authority;
+- V1.1 (client feedback item 9): `matches` names the images whose photo match the seller has not
+  resolved: an unresolved `mismatch` (the photo may not show this product in this colour) adds a
+  blocking item, an unresolved `unsure` a warning (`source=vision_model`). The seller resolves
+  it by keeping the photo (recorded and audited) or removing it.
 
 Every blocking item is `Severity.ERROR` and every warning `Severity.WARNING`, so an `ErrorReport`
 built from both keeps only the gate's blocking items in `.blocking`. S19's `approve_batch` calls
@@ -32,6 +36,10 @@ from mkos_schemas.images import ImageIssue, ImageReport
 from mkos_schemas.listing import CanonicalListing
 
 NOT_CHECKED: Final = "image not checked yet"
+MATCH_MESSAGES: Final = {
+    "mismatch": "This photo may not show this product in this colour. Keep it or remove it.",
+    "unsure": "We could not tell if this photo shows this product in this colour.",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +83,7 @@ def evaluate_image_gate(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
     pipeline_reports: Sequence[ImageReport],
+    matches: Mapping[UUID, str] | None = None,
 ) -> ImageGateResult:
     blocking: list[ErrorItem] = []
     warnings: list[ErrorItem] = []
@@ -108,6 +117,13 @@ def evaluate_image_gate(
                           message=f"vision check failed: {check.check}", listing=listing,
                           issue=issues.get(check.check))
                 )  # fmt: skip
+        verdict = (matches or {}).get(ref.image_id)
+        if verdict in MATCH_MESSAGES:
+            severity = Severity.ERROR if verdict == "mismatch" else Severity.WARNING
+            (blocking if severity is Severity.ERROR else warnings).append(
+                _item(path, severity=severity, source=ErrorSource.VISION_MODEL,
+                      message=MATCH_MESSAGES[verdict], listing=listing)
+            )  # fmt: skip
     return ImageGateResult(blocking=tuple(blocking), warnings=tuple(warnings))
 
 

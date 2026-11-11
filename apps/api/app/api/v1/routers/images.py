@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageRole, ImageSlot, Marketplace
@@ -20,12 +20,13 @@ from app.api.v1.schemas.images import (
     ImageAccepted,
     ImageReportOut,
     ImageReports,
+    PhotoMatchKeptOut,
     UploadUrlOut,
     UploadUrlRequest,
 )
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
-from app.services import images
+from app.services import images, photo_match
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -120,3 +121,18 @@ async def images_delete(
     same 404."""
     await images.delete_image(principal, image_id)
     return Response(status_code=204)
+
+
+@route(router, OPS["images_photo_match_keep"])
+async def images_photo_match_keep(
+    image_id: Annotated[UUID, PathParam()],
+    idempotency_key: IdempotencyKey,
+    principal: CurrentPrincipal,
+    request: Request,
+) -> PhotoMatchKeptOut:
+    """Keep a photo the photo match questioned (`photo_match.status` `mismatch` or `unsure`): the
+    seller confirms it is the right photo. Who and when are recorded on the match and audited; an
+    unkept `mismatch` blocks approval. The same keep again is 200; a photo with no question is
+    409 INVALID_STATUS_TRANSITION."""
+    stored = await photo_match.keep_photo(principal, idempotency_key, request.url.path, image_id)
+    return PhotoMatchKeptOut.model_validate(stored)

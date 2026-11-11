@@ -80,7 +80,12 @@ from app.api.v1.schemas.image_candidates import (
     ImageCandidateOut,
     ImageCandidatePage,
 )
-from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
+from app.api.v1.schemas.images import (
+    ImageAccepted,
+    ImageReportOut,
+    PhotoMatchKeptOut,
+    UploadUrlOut,
+)
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.invites import (
     InviteAccepted,
@@ -930,6 +935,11 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)})),
     # ---- SI14: the quality dashboard ----
+    # ---- V1.1 (client feedback item 9): the variant photo match ----
+    Operation("images_photo_match_keep", "POST", "/images/{image_id}/photo-match/keep", 200,
+              PhotoMatchKeptOut, "images", "Keep a photo the photo match questioned", "SI14",
+              path_id="image_id", idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT),
     Operation("analytics_quality", "GET", "/analytics/quality", 200, QualitySummary, "analytics",
               "First-pass, blocked and edit rates and cost per listing", "SI14",
               query=("from", "to"), action=A.ANALYTICS_READ),
