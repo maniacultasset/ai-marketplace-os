@@ -98,6 +98,8 @@ ADR-0020. Off by default. The redirect URI is not a variable: the API derives it
 | `GOOGLE_JWKS_URL` | `https://www.googleapis.com/oauth2/v3/certs` | local .env | optional | Google's constant; same rule. The keys are cached for an hour, refetched at most once a minute on an unknown `kid`. |
 | `GOOGLE_ISSUER` | `https://accounts.google.com` | local .env | optional | Google's constant; same rule. `accounts.google.com` (no scheme) is accepted as the same issuer, as Google documents. |
 | `AUTH_GOOGLE_RATE_LIMIT_PER_MIN` | `10` | local .env | optional | Per IP on `/auth/google/start` and `/callback`, and with the login limiter (per IP + email, per email) on `/auth/google/complete`, `/auth/google/link` and `/signup/google`. |
+| `TENANT_CREATE_ENABLED` | `false` | local .env | optional | ADR-0032: `POST /tenants`, an owner adding another brand without a new sign-up review (step-up, idempotency key, per-user limit, audited). Off: the route answers 501 and `capabilities.tenant_create_enabled` is false, so the dashboard hides "Add another brand". `.env.example` turns it on. `deploy.sh` forwards it to the api (default `false`). |
+| `TENANT_CREATE_MAX_OWNED` | `10` | local .env | optional | ADR-0032: the most live brands one user may own before `POST /tenants` refuses (403 `PERMISSION_DENIED`), 1-100. An owner with no `active` brand owns at most 3 whatever this says (the AI cost bound in ADR-0032). `deploy.sh` forwards it to the api when set. |
 
 ## LLM
 

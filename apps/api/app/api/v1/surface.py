@@ -8,8 +8,8 @@ and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up 
 routes (ADR-0021), 72 with Google sign-in's config, start, callback, complete, link, unlink and
 sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023), 80
 with SI1's and SI3's product and task routes, 91 with SI5's invites, reset links and the platform
-admin's tenant list, activate and extend-trial (ADR-0029); no dead-letter path,
-which is staff tooling per T82). It
+admin's tenant list, activate and extend-trial (ADR-0029), 112 with ADR-0032's brand create; no
+dead-letter path, which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
 required tests cannot drift apart.
@@ -130,6 +130,7 @@ from app.api.v1.schemas.size_run import SizeRunOut
 from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
+from app.api.v1.schemas.tenant_create import TenantCreated
 from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
 from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, roles_for
 
@@ -647,6 +648,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Update the brand profile (If-Match: the ETag from GET)", "S16", has_body=True,
               if_match=True, conflict_code=E.STALE_VERSION, etag=True,
               action=A.SETTINGS_MANAGE, extra_codes={403: STEP_UP_CODES}),
+    # ADR-0032: an owner adds another brand without a new sign-up review (403 for an admin, a
+    # brand owner with a suspended brand, or the owned-brand cap; 501 while the switch is off)
+    Operation("tenants_create", "POST", "/tenants", 201, TenantCreated, "tenants",
+              "Add another brand: a new trial brand the caller owns (no sign-up review)",
+              "ADR-0032", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE,
+              step_up="any", extra_codes=_501),
     Operation("brand_documents_upload", "POST", "/brand/documents", 202, JobAccepted, "brand",
               "Upload a brand document for chunking", "S16", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE),
     Operation("brand_documents_list", "GET", "/brand/documents", 200, BrandDocumentPage,

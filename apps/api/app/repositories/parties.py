@@ -184,6 +184,17 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         )
         return (await self.db.execute(stmt)).first() is not None
 
+    async def create_with_website(self, website_url: str) -> None:
+        """ADR-0032: a new brand's profile row holding the website its owner gave (the brand
+        page shows it; no AI step reads it). A row that already exists is left as it is."""
+        if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
+            raise CrossTenantQueryError("brand_profiles write for another tenant's unit of work")
+        await self.db.execute(
+            pg_insert(BrandProfile)
+            .values(tenant_id=self.tenant_id, website_url=website_url)
+            .on_conflict_do_nothing(index_elements=[BrandProfile.__table__.c.tenant_id])
+        )
+
     async def get(self) -> BrandProfile | None:
         """This tenant's profile row, or None (a tenant may lack it)."""
         row: BrandProfile | None = (await self.db.execute(self._select())).scalar_one_or_none()

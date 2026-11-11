@@ -1203,6 +1203,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "tenant_id": TENANT,
             "decided_at": T1,
         },
+        "tenants_create": {
+            "id": "0b1c2d3e-0000-4000-8000-000000000002",
+            "name": "Kalakar Home",
+            "slug": "kalakar-home",
+            "status": "trial",
+            "trial_ends_at": "2026-11-04T09:31:00Z",
+            "role": "owner",
+        },
         "admin_tenants_list": _page([_TENANT_ADMIN]),
         "admin_tenants_activate": {**_TENANT_ADMIN, "status": "active"},
         "admin_tenants_extend_trial": {

@@ -114,6 +114,7 @@ CAPABILITY_ENV = {
     "category_lamps_enabled": "CATEGORY_LAMPS_ENABLED",
     "size_chart_read_enabled": "SIZE_CHART_READ_ENABLED",
     "image_edit_enabled": "IMAGE_EDIT_ENABLED",
+    "tenant_create_enabled": "TENANT_CREATE_ENABLED",
 }
 
 

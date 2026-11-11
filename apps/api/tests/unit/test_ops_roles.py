@@ -95,6 +95,7 @@ Q7: dict[str, str] = {
     "products_category_suggest": "product:import",  # SI14
     "products_size_run_create": "product:import",  # V1.1
     "images_photo_match_keep": "product:import",  # V1.1
+    "tenants_create": "settings:manage",  # ADR-0032 (the service also needs owner)
     "imports_column_map_create": "product:import",  # SI14
     "imports_column_map_get": "tenant:read",  # SI14
     "imports_column_map_confirm": "product:import",  # SI14

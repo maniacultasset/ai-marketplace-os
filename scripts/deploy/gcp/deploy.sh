@@ -208,6 +208,18 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
   esac
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
+# ADR-0032: an owner adds another brand (POST /tenants) without a new sign-up review. Off by
+# default; the cap on live brands one user owns is the Settings default (10) unless set.
+TENANT_CREATE_ENABLED="${TENANT_CREATE_ENABLED:-false}"
+TENANT_CREATE_MAX_OWNED="${TENANT_CREATE_MAX_OWNED-}"
+case "$TENANT_CREATE_ENABLED" in
+  true | false) ;;
+  *) die "TENANT_CREATE_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
+case "$TENANT_CREATE_MAX_OWNED" in
+  '' | [1-9] | [1-9][0-9] | 100) ;;
+  *) die "TENANT_CREATE_MAX_OWNED must be 1-100 or blank (in $ENV_NAME.env)" ;;
+esac
 
 # ---- the Amazon publish kill switch, refused before any gcloud call ----
 # true | false, set explicitly in the env file: a missing or misspelt value never deploys (the
@@ -1143,6 +1155,12 @@ app_env() {
   # URI is derived from DASHBOARD_BASE_URL by the api itself)
   [ "$role" != "api" ] || printf 'GOOGLE_OAUTH_ENABLED\t%s\nGOOGLE_OAUTH_CLIENT_ID\t%s\n' \
     "$GOOGLE_OAUTH_ENABLED" "$GOOGLE_OAUTH_CLIENT_ID"
+  # ADR-0032: the add-another-brand switch and its cap, on the api only
+  if [ "$role" = "api" ]; then
+    printf 'TENANT_CREATE_ENABLED\t%s\n' "$TENANT_CREATE_ENABLED"
+    [ -z "$TENANT_CREATE_MAX_OWNED" ] ||
+      printf 'TENANT_CREATE_MAX_OWNED\t%s\n' "$TENANT_CREATE_MAX_OWNED"
+  fi
   # The Amazon SP-API app's public ids and consent page, on the api (connect) and the worker
   # (token refresh), only while AMAZON_APP_ID is set
   if [ -n "$AMAZON_APP_ID" ]; then

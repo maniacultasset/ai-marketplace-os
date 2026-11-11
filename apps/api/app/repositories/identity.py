@@ -509,10 +509,11 @@ class MembershipRepository:
         )
         return [_membership_row(row) for row in (await self.db.execute(stmt)).all()]
 
-    async def has_suspended(self, user_id: uuid.UUID) -> bool:
+    async def has_suspended(self, user_id: uuid.UUID, *, owner_only: bool = False) -> bool:
         """SI10: an active membership of this user in a `suspended` tenant (the sign-in then says
-        so, after a verified password). Needs `app.user_id` = `user_id`, as the list does."""
-        stmt = identity_scope(
+        so, after a verified password). `owner_only` (ADR-0032) counts only the brands the user
+        owns. Needs `app.user_id` = `user_id`, as the list does."""
+        stmt = (
             select(TenantMembership.tenant_id)
             .join(Tenant, Tenant.id == TenantMembership.tenant_id)
             .where(
@@ -522,7 +523,24 @@ class MembershipRepository:
             )
             .limit(1)
         )
-        return (await self.db.execute(stmt)).first() is not None
+        if owner_only:
+            stmt = stmt.where(TenantMembership.role == "owner")
+        return (await self.db.execute(identity_scope(stmt))).first() is not None
+
+    async def owned_live(self, user_id: uuid.UUID) -> builtins.list[tuple[str, datetime | None]]:
+        """ADR-0032: `(status, trial_ends_at)` of each live tenant this user actively owns.
+        Needs `app.user_id` = `user_id`, as the list does."""
+        stmt = identity_scope(
+            select(Tenant.status, Tenant.trial_ends_at)
+            .join(TenantMembership, TenantMembership.tenant_id == Tenant.id)
+            .where(
+                TenantMembership.user_id == user_id,
+                TenantMembership.is_active.is_(True),
+                TenantMembership.role == "owner",
+                Tenant.status.in_(LIVE_TENANT_STATUSES),
+            )
+        )
+        return [(str(r[0]), r[1]) for r in (await self.db.execute(stmt)).all()]
 
     async def every_for_user(
         self, user_id: uuid.UUID
@@ -546,6 +564,15 @@ class MembershipRepository:
         )
         row = (await self.db.execute(stmt)).one_or_none()
         return None if row is None else _membership_row(row)
+
+    async def lock_brand_creation(self, user_id: uuid.UUID) -> None:
+        """ADR-0032: a transaction-scoped advisory lock per user, so two parallel "add a brand"
+        calls (different idempotency keys) count the owned brands one after the other and the
+        cap holds."""
+        await self.db.execute(
+            text("SELECT pg_advisory_xact_lock(hashtextextended('tenant-create:' || :u, 0))"),
+            {"u": str(user_id)},
+        )
 
     async def touch_last_used(self, tenant_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """`last_used_at = now()`; needs `app.tenant_id` = `tenant_id` (the UPDATE policy)."""
@@ -1035,12 +1062,17 @@ class SignupRepository:
         slug: str,
         trial_days: int,
         owner_id: uuid.UUID,
-        staff_email: str,
+        staff_email: str | None,
+        actor_user_id: uuid.UUID | None = None,
+        trial_ends_at: datetime | None = None,
     ) -> None:
         """The tenant and its owner membership through the staff CLI's own statements
         (`staff_ops.insert_tenant` and `add_owner`), on this session's connection as app_rw.
         The caller has set `app.tenant_id` = `tenant_id` (the t_tenant policies). A used slug is
-        `SlugTakenError` with nothing written, so the caller may try another."""
+        `SlugTakenError` with nothing written, so the caller may try another. The audit rows
+        name the approving admin (`staff_email`), or (ADR-0032) the owner who added the brand
+        (`actor_user_id`). `trial_ends_at` replaces the `trial_days` clock (ADR-0032: an added brand
+        keeps the owner's own trial end)."""
         conn = await self.db.connection()
         request_id = current_request_id() or "-"
         await staff_ops.insert_tenant(
@@ -1051,6 +1083,8 @@ class SignupRepository:
             staff_email=staff_email,
             trial_days=trial_days,
             request_id=request_id,
+            actor_user_id=actor_user_id,
+            trial_ends_at=trial_ends_at,
         )
         await staff_ops.add_owner(
             conn,
@@ -1058,7 +1092,17 @@ class SignupRepository:
             user_id=owner_id,
             staff_email=staff_email,
             request_id=request_id,
+            actor_user_id=actor_user_id,
         )
+        if actor_user_id is not None:
+            await staff_ops.audit_tenant_created(
+                conn,
+                tenant_id=tenant_id,
+                name=name,
+                staff_email=None,
+                request_id=request_id,
+                actor_user_id=actor_user_id,
+            )
 
 
 @dataclass(frozen=True, slots=True)
