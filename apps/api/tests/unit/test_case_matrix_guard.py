@@ -118,6 +118,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         # ADR-0019
         "signup_create",
         "signup_status",
+        "signup_status_poll",
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",

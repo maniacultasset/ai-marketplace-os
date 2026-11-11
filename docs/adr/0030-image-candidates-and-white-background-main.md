@@ -68,3 +68,24 @@ platform and USD 1 per brand. The backend never imports a model SDK, and the AI 
   purged tenant are removed with its prefix (KNOWN-ISSUES).
 - Gemini Flash Image output is about 1024 px. Compositing keeps the seller's resolution for the product, and
   `google/gemini-3.1-flash-image` (2K, about twice the price) is a setting change after an eval.
+
+## Amendment (11 Nov 2026)
+
+A client tester clicked "Make white background" on a Front photo and got "Already in use." with no
+image and no way forward. The cache index held accepted candidates, so an accepted one answered every
+later create of the same pixels, even after its image was deleted or replaced, or when the same photo
+became the Front of another colour.
+
+The rule now:
+
+1. An accepted candidate is provenance, not a cache entry. Migration `0030_candidate_cache_accepted`
+   takes accepted rows out of `uq_image_candidates_cache`. The cost rule in §5 still holds for every
+   open row: a second click while a candidate is queued answers the same job.
+2. A create answers "already applied" (status `accepted`, with the new optional
+   `accepted_image_id`, no job) only while the accepted image is live and still the main of the same
+   product and colourway that asks. In practice that is a click from a page read before the accept:
+   the old main, now an extra image, asks again. A size chart follows the same rule: the same
+   chart answers "already applied" while its image is still the product's size-chart image.
+3. In every other case the create makes a new candidate and job: the applied image was deleted, a
+   new main replaced it, or the same photo is the main of another colourway. Each pays for its own
+   edit within the daily limits.

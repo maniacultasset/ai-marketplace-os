@@ -824,9 +824,9 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * The brand profile: the default manufacturer every product inherits
-         * @description The brand profile (the default manufacturer every product inherits), with its `ETag`. A
-         *     brand that never saved one reads as the empty profile.
+         * The brand profile: the default manufacturer and the website
+         * @description The brand profile (the default manufacturer every product inherits, and the brand's
+         *     website), with its `ETag`. A brand that never saved one reads as the empty profile.
          */
         get: operations["brand_profile_get"];
         put?: never;
@@ -836,8 +836,8 @@ export interface paths {
         head?: never;
         /**
          * Update the brand profile (If-Match: the ETag from GET)
-         * @description Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET
-         *     (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
+         * @description Set or clear the default manufacturer or the website (owner, admin). `If-Match` is the
+         *     `ETag` from GET (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.
          */
         patch: operations["brand_profile_update"];
         trace?: never;
@@ -2019,8 +2019,11 @@ export interface paths {
          *     image editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or
          *     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
          *     image until it is accepted. The same source asked again answers the same candidate; 202 names
-         *     its job only when a new one started (poll `poll_url`). A new AI edit while AI is paused
-         *     for every brand is 503 with the pause's code and no `Retry-After` (SI10).
+         *     its job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`
+         *     means it is already applied: that image is still this colourway's live main. An accepted
+         *     candidate whose image was replaced or deleted no longer answers: a new one is made. A new
+         *     AI edit while AI is paused for every brand is 503 with the pause's code and no
+         *     `Retry-After` (SI10).
          */
         post: operations["image_candidates_create"];
         delete?: never;
@@ -2171,7 +2174,8 @@ export interface paths {
          *     characters with an upper-case letter, a lower-case letter, a digit and a symbol, and must
          *     not contain the owner name or the first part of the email: otherwise 422 with each broken
          *     rule in `details`. The `request_id` is not stable for an email that already has an account:
-         *     do not store or compare it.
+         *     do not store or compare it. `status_handle` reads the request's status with
+         *     `POST /signup/status/poll` (keep it in the browser's storage, never in a URL).
          */
         post: operations["signup_create"];
         delete?: never;
@@ -2218,8 +2222,33 @@ export interface paths {
          * @description The caller's newest sign-up request: `pending` (show "waiting for approval"),
          *     `rejected` (with the admin's `reason`; the brand may sign up again) or `approved` (log in).
          *     Every refusal (unknown email, wrong password, no request) is the same 401 as the login.
+         *     A pending answer carries a new `status_handle` for `POST /signup/status/poll`.
          */
         post: operations["signup_status"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/signup/status/poll": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A sign-up request's status by its status handle (no password; read only)
+         * @description The status of the one sign-up request a `status_handle` names (the waiting page polls it
+         *     every 15 s while visible): `pending`, `approved` (continue to sign in) or `rejected` (with
+         *     the admin's `reason`). Read only, with no password: it answers only the status, the brand
+         *     name, when it was requested and decided, and the reason. An unknown, replaced or expired
+         *     handle is the same 404. The handle travels only in this body, never in a URL.
+         */
+        post: operations["signup_status_poll"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2338,6 +2367,8 @@ export interface paths {
          * Update the brand profile (If-Match: the ETag from GET)
          * @description Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409
          *     `STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.
+         *     `owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a
+         *     step-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).
          */
         patch: operations["tenants_me_update"];
         trace?: never;
@@ -2609,7 +2640,7 @@ export interface components {
             reason?: string | null;
             /** Request Id */
             request_id?: string | null;
-            /** @description For `listing.approved` and `listing.rejected`: the version decided on and the reason code (never the free-text feedback). Null for other events. */
+            /** @description For `listing.approved` and `listing.rejected`: the version decided on, the reason code (never the free-text feedback) and whether the approval was a self-approval. Null for other events (a `listing.self_approved` event, ADR-0031, sits beside its `listing.approved`). */
             review?: components["schemas"]["AuditReviewOut"] | null;
         };
         /**
@@ -2624,6 +2655,12 @@ export interface components {
              * @description The reject reason. The reviewer's free-text feedback is never sent here.
              */
             reason_code?: string | null;
+            /**
+             * Self Approval
+             * @description ADR-0031: an owner approved its own work under the brand's `owner_self_approval`.
+             * @default false
+             */
+            self_approval: boolean;
             /**
              * Version
              * @description The version's number.
@@ -2753,12 +2790,19 @@ export interface components {
         BrandProfileIn: {
             /** @description Absent leaves it unchanged; null clears it. */
             default_manufacturer?: components["schemas"]["PartyIn"] | null;
+            /**
+             * Website Url
+             * @description Optional. Absent leaves it unchanged; null clears it. Never sent to a model.
+             */
+            website_url?: string | null;
         };
         /** BrandProfileOut */
         BrandProfileOut: {
             default_manufacturer?: components["schemas"]["PartyOut"] | null;
             /** Updated At */
             updated_at?: string | null;
+            /** Website Url */
+            website_url?: string | null;
         };
         /** CanonicalListing */
         CanonicalListing: {
@@ -3394,6 +3438,11 @@ export interface components {
         /** ImageCandidateAccepted */
         ImageCandidateAccepted: {
             /**
+             * Accepted Image Id
+             * @description Set only with status `accepted`: the candidate's image already took this place and still holds it (the live main of the same product and colourway, or the product's size-chart image for a size chart). No new job was started.
+             */
+            accepted_image_id?: string | null;
+            /**
              * Candidate Id
              * Format: uuid
              */
@@ -3995,9 +4044,9 @@ export interface components {
         ListingDetail: {
             /**
              * Approve Hint
-             * @description Why `can_approve` is false: `own_work` (you made or edited this version), `no_other_approver` (and nobody else in the brand can approve it yet) or `not_approver` (your role does not approve).
+             * @description Why `can_approve` is false: `own_work` (you made or edited this version), `no_other_approver` (and nobody else in the brand can approve it yet), `owner_can_enable` (the same, and you are an owner: turning on the brand's `owner_self_approval` lets you approve your own work, ADR-0031) or `not_approver` (your role does not approve).
              */
-            approve_hint?: ("own_work" | "no_other_approver" | "not_approver") | null;
+            approve_hint?: ("own_work" | "no_other_approver" | "not_approver" | "owner_can_enable") | null;
             /** Approved Version Id */
             approved_version_id?: string | null;
             /**
@@ -4049,6 +4098,11 @@ export interface components {
             product_id: string;
             /** @description SI11: the marketplace's dry-run check of a version before approval (Amazon VALIDATION_PREVIEW): pending, clean, issues or failed. Null when none ran. */
             remote_check?: components["schemas"]["RemoteCheckOut"] | null;
+            /**
+             * Self Approval
+             * @description ADR-0031: true when `can_approve` is true and you made or edited this version (an owner under the brand's `owner_self_approval`): the approval is recorded as a self-approval. Null when `can_approve` is null.
+             */
+            self_approval?: boolean | null;
             status: components["schemas"]["ListingStatus"];
             /**
              * Status Changed At
@@ -5381,6 +5435,11 @@ export interface components {
              * @constant
              */
             status: "pending";
+            /**
+             * Status Handle
+             * @description ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Always set; like `request_id`, a handle for an email that already had an account may name nothing (the poll then answers 404).
+             */
+            status_handle?: string | null;
         };
         /** SignupApprove */
         SignupApprove: {
@@ -5407,6 +5466,39 @@ export interface components {
             phone?: string | null;
             /** Website */
             website?: string | null;
+        };
+        /**
+         * SignupPollOut
+         * @description The one request a status handle names, and nothing else: no ids, email or tenant.
+         */
+        SignupPollOut: {
+            /** Brand Name */
+            brand_name: string;
+            /** Decided At */
+            decided_at?: string | null;
+            /**
+             * Reason
+             * @description The admin's reason, when `rejected`.
+             */
+            reason?: string | null;
+            /**
+             * Requested At
+             * Format: date-time
+             */
+            requested_at: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+        };
+        /** SignupPollRequest */
+        SignupPollRequest: {
+            /**
+             * Status Handle
+             * @description The `status_handle` a sign-up answer returned (43 base64url characters). Never log it or put it in a URL.
+             */
+            status_handle: string;
         };
         /** SignupReject */
         SignupReject: {
@@ -5489,6 +5581,11 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
+            /**
+             * Status Handle
+             * @description ADR-0019 amendment (11 Nov 2026): an opaque read-only handle (43 base64url characters) for `POST /signup/status/poll`, valid 30 days; a newer one for the same request replaces it. Keep it in the browser's storage only: never put it in a URL, a log or analytics. Set only while the request is `pending`.
+             */
+            status_handle?: string | null;
             /** Tenant Id */
             tenant_id?: string | null;
         };
@@ -6035,6 +6132,12 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /**
+             * Owner Self Approval
+             * @description ADR-0031: owners may approve listings they generated or edited (off by default). Reviewers never approve their own work, and operators and admins never approve. Every self-approval is recorded in the listing history.
+             * @default false
+             */
+            owner_self_approval: boolean;
             /** Slug */
             slug: string;
             /**
@@ -6053,8 +6156,11 @@ export interface components {
         /**
          * TenantPatch
          * @description A partial update of the brand profile: at least one field. `tone: null` clears the tone;
-         *     `name`, `guidelines` and `glossary` cannot be null (send `[]` or `{}` to clear a list or map).
-         *     `glossary` maps a term to avoid to the preferred term (`{"kurta outfit": "kurta set"}`).
+         *     `name`, `guidelines`, `glossary` and `owner_self_approval` cannot be null (send `[]` or `{}`
+         *     to clear a list or map). `glossary` maps a term to avoid to the preferred term
+         *     (`{"kurta outfit": "kurta set"}`). `owner_self_approval` (ADR-0031) is changed by an owner
+         *     only (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes
+         *     under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).
          */
         TenantPatch: {
             /** Glossary */
@@ -6065,6 +6171,11 @@ export interface components {
             guidelines?: string[] | null;
             /** Name */
             name?: string | null;
+            /**
+             * Owner Self Approval
+             * @description Owners may approve their own listings (owner only, with a recent code).
+             */
+            owner_self_approval?: boolean | null;
             /** Tone */
             tone?: string | null;
         };
@@ -17670,7 +17781,8 @@ export interface operations {
                      *         "postal_code": "560001",
                      *         "state_code": "KA"
                      *       },
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "website_url": "https://fabindia.example"
                      *     }
                      */
                     "application/json": components["schemas"]["BrandProfileOut"];
@@ -17918,7 +18030,8 @@ export interface operations {
                      *         "postal_code": "560001",
                      *         "state_code": "KA"
                      *       },
-                     *       "updated_at": "2026-10-05T09:30:00Z"
+                     *       "updated_at": "2026-10-05T09:30:00Z",
+                     *       "website_url": "https://fabindia.example"
                      *     }
                      */
                     "application/json": components["schemas"]["BrandProfileOut"];
@@ -42313,7 +42426,8 @@ export interface operations {
                     /**
                      * @example {
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupAccepted"];
@@ -42554,7 +42668,8 @@ export interface operations {
                      *       "brand_name": "Acme Naturals",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupStatusOut"];
@@ -42873,7 +42988,8 @@ export interface operations {
                      *       "brand_name": "Kalakar Weaves",
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "request_id": "0b1c2d3e-0000-4000-8000-000000001501",
-                     *       "status": "pending"
+                     *       "status": "pending",
+                     *       "status_handle": "sh_ExampleOnly_0123456789abcdefghijklmnopqr"
                      *     }
                      */
                     "application/json": components["schemas"]["SignupStatusOut"];
@@ -42951,6 +43067,285 @@ export interface operations {
                      *         "message": "Authentication required.",
                      *         "status": 401,
                      *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    signup_status_poll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupPollRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "brand_name": "Kalakar Weaves",
+                     *       "requested_at": "2026-10-05T09:30:00Z",
+                     *       "status": "pending"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SignupPollOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
                      *       }
                      *     }
                      */
@@ -45038,7 +45433,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`, `MFA_STEP_UP_REQUIRED`, `MFA_ENROLLMENT_REQUIRED`. */
             403: {
                 headers: {
                     [name: string]: unknown;

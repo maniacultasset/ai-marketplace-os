@@ -962,3 +962,144 @@ async def test_white_background_on_one_pooled_connection(
     response = await _create(api, images_db, p, body)
     assert response.status_code == 202, response.text
     assert response.json()["status"] == "queued"
+
+
+# ---- ADR-0030 amendment (2026-11-11): an accepted candidate answers only while applied ----
+
+
+async def _accepted_main(
+    api: httpx.AsyncClient, jw: JobWorld, store: FakeStorage, *, kind: str = "fix"
+) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID]:
+    """A candidate made and used through the API: (candidate, product, old source, new main)."""
+    candidate, p, src = await _ready(api, jw, store, kind=kind)
+    used = await _decide(api, jw, candidate, "accept")
+    assert used.status_code == 202, used.text
+    return candidate, p, src, uuid.UUID(used.json()["image_id"])
+
+
+async def test_click_on_a_stale_page_answers_already_applied(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """The page still shows the old main: the create answers the applied candidate and its
+    image, with no new job and no AI cost."""
+    candidate, p, src, new_main = await _accepted_main(
+        api, images_db, store, kind="white_background"
+    )
+    jobs_before = count(images_db.conn, "SELECT count(*) FROM job_runs", [])
+    again = await _create(
+        api, images_db, p, {"kind": "white_background", "source_image_id": str(src)}
+    )
+    assert again.status_code == 202, again.text
+    assert again.json() == {
+        "candidate_id": str(candidate),
+        "status": "accepted",
+        "job_id": None,
+        "poll_url": None,
+        "accepted_image_id": str(new_main),
+    }
+    assert count(images_db.conn, "SELECT count(*) FROM job_runs", []) == jobs_before
+
+
+async def test_another_kind_on_the_demoted_source_is_still_404(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, edit_on: pytest.MonkeyPatch
+) -> None:
+    """Only a candidate of the asked kind made from this source answers for it."""
+    _, p, src, _ = await _accepted_main(api, images_db, store, kind="fix")
+    other = await _create(
+        api, images_db, p, {"kind": "white_background", "source_image_id": str(src)}
+    )
+    assert other.status_code == 404
+    assert other.json()["error"]["message"] == "source_image_id not found."
+
+
+@pytest.mark.parametrize("case", ["deleted", "replaced"])
+async def test_same_photo_after_the_applied_image_is_gone_is_a_new_job(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, case: str
+) -> None:
+    """The applied image was deleted, or replaced by another main: the same pixels as a new
+    main get a fresh candidate and job; a second click while it is queued is the same job."""
+    from datetime import UTC, datetime
+
+    candidate, p, src, new_main = await _accepted_main(api, images_db, store)
+    if case == "deleted":
+        images_db.conn.execute(
+            "UPDATE images SET deleted_at = %s WHERE id = ANY(%s)",
+            [datetime.now(UTC), [new_main, src]],
+        )
+    else:
+        images_db.conn.execute("UPDATE images SET slot = 'secondary' WHERE id = %s", [new_main])
+    stale = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(src)})
+    assert stale.status_code == 404  # the old source no longer leads to a live main
+    _, again_src, _ = source_main(images_db.conn, store, images_db.tenant("acme"), product_id=p)
+    first = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(again_src)})
+    assert first.status_code == 202, first.text
+    made = first.json()
+    assert made["candidate_id"] != str(candidate)
+    assert made["status"] == "queued" and made["job_id"] is not None
+    assert made["accepted_image_id"] is None
+    second = await _create(api, images_db, p, {"kind": "fix", "source_image_id": str(again_src)})
+    assert second.status_code == 202
+    assert (second.json()["candidate_id"], second.json()["job_id"]) == (
+        made["candidate_id"],
+        made["job_id"],
+    )
+    assert _jobs_for(images_db, made["candidate_id"]) == 1
+    assert candidate_row(images_db.conn, candidate)["status"] == "accepted"  # provenance kept
+
+
+async def test_same_photo_as_another_colours_main_is_a_new_job(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    """The red Front was fixed and used; the same photo as the blue Front gets its own job."""
+    tenant = images_db.tenant("acme")
+    style = product(images_db.conn, tenant, "style")
+    red = f.colourway(images_db.conn, tenant, style)
+    blue = f.colourway(images_db.conn, tenant, style, position=2)
+    _, red_src, digest = source_main(
+        images_db.conn, store, tenant, product_id=style, colourway_id=red
+    )
+    made = await _create(api, images_db, style, {"kind": "fix", "source_image_id": str(red_src)})
+    assert made.status_code == 202, made.text
+    await run_image_job(uuid.UUID(made.json()["job_id"]))
+    used = await _decide(api, images_db, made.json()["candidate_id"], "accept")
+    assert used.status_code == 202, used.text
+    _, blue_src, blue_digest = source_main(
+        images_db.conn, store, tenant, product_id=style, colourway_id=blue
+    )
+    assert blue_digest == digest
+    again = await _create(api, images_db, style, {"kind": "fix", "source_image_id": str(blue_src)})
+    assert again.status_code == 202, again.text
+    assert again.json()["candidate_id"] != made.json()["candidate_id"]
+    assert again.json()["status"] == "queued" and again.json()["job_id"] is not None
+    stale_red = await _create(
+        api, images_db, style, {"kind": "fix", "source_image_id": str(red_src)}
+    )
+    assert stale_red.json()["status"] == "accepted"
+    assert stale_red.json()["accepted_image_id"] == used.json()["image_id"]
+
+
+@pytest.mark.parametrize("gone", [False, True])
+async def test_size_chart_answers_applied_only_while_its_image_is_the_chart(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage, gone: bool
+) -> None:
+    """The same chart asked again: already applied while its image is the product's size-chart
+    image; a new candidate once that image was deleted."""
+    from datetime import UTC, datetime
+
+    candidate, p, _ = await _ready(api, images_db, store, kind="size_chart")
+    used = await _decide(api, images_db, candidate, "accept")
+    assert used.status_code == 202, used.text
+    chart_image = used.json()["image_id"]
+    if gone:
+        images_db.conn.execute(
+            "UPDATE images SET deleted_at = %s WHERE id = %s", [datetime.now(UTC), chart_image]
+        )
+    again = await _create(api, images_db, p, {"kind": "size_chart"})
+    assert again.status_code == 202, again.text
+    if gone:
+        assert again.json()["candidate_id"] != str(candidate)
+        assert again.json()["status"] == "queued" and again.json()["job_id"] is not None
+    else:
+        assert again.json()["candidate_id"] == str(candidate)
+        assert again.json()["status"] == "accepted" and again.json()["job_id"] is None
+        assert again.json()["accepted_image_id"] == chart_image

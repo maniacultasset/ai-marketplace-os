@@ -13,6 +13,14 @@
   counts, a locked account answers None whatever the password, and a success does not clear the
   counter. A pending applicant has no membership, so the login keeps answering 401 and no token,
   tenant or tenant data exists for them.
+- Status handles (ADR-0019 amendment, 11 Nov 2026): every answer that observes a pending request
+  (the form, the status read, the Google `pending` outcome and the Google sign-up) carries a
+  fresh opaque handle, 32 random bytes in base64url. Only its sha256 is stored on the request,
+  with a 30-day expiry set by the database (`app_set_signup_status_handle`, only for the
+  caller's own pending request); a newer handle replaces the older one. `poll_status()` reads
+  the one request a live handle names, and only its status, brand name, request and decision
+  times and the reject reason. A blank answer of the form (an existing email, a race) carries a
+  random handle that names nothing, so its shape never differs.
 - `is_platform_admin()`, `list_requests()`, `approve()`, `reject()`: the platform admin's queue.
   The admin is a normal principal (a member of some tenant, e.g. the staff tenant) whose own
   `users.is_platform_admin` is true; RLS on `signup_requests` checks the same flag
@@ -20,16 +28,19 @@
   Approve creates the tenant (`trial`, `trial_days` default 30, ADR-0029) and its owner membership through
   the staff CLI's own statements, and audits as `staff` with the admin's email. Approving an
   approved request, or rejecting a rejected one, answers the stored row; the other crossing is
-  409 `INVALID_STATUS_TRANSITION`.
+  409 `INVALID_STATUS_TRANSITION`. Client item 1: approve also copies the applicant's website (both
+  sign-up paths store it on the request) to the new brand's `brand_profiles.website_url`; a
+  website that does not fit the column is left out, never blocking the approval.
 """
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import unicodedata
 import uuid
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final, Literal
 
@@ -39,15 +50,18 @@ from app.core import password_policy
 from app.core.errors import ConflictError, NotFoundError
 from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
+from app.core.website import profile_website
 from app.repositories.identity import (
     AuditRepository,
     AuthState,
+    SignupPollRow,
     SignupRepository,
     SignupRow,
     SlugTakenError,
     UserRepository,
     UserRow,
 )
+from app.repositories.parties import BrandProfileRepository
 from app.repositories.transactions import identity_session, set_gucs
 from app.services import auth_events
 from app.services.auth import dummy_hash, inet
@@ -57,22 +71,30 @@ DEFAULT_TRIAL_DAYS: Final = 30  # ADR-0029 (was 14, ADR-0019)
 SLUG_BASE_MAX: Final = 32  # leaves room for "-xxxx" within ck_tenants_slug's 40
 SLUG_ATTEMPTS: Final = 8
 SLUG_FALLBACK: Final = "brand"
+STATUS_HANDLE_BYTES: Final = 32  # 43 base64url characters
 Decision = Literal["approve", "reject"]
+
 Outcome = Literal["apply", "same", "conflict"]
 
 __all__ = [
     "DEFAULT_TRIAL_DAYS",
     "SignupAccepted",
+    "SignupPollRow",
     "SignupRow",
+    "StatusRead",
     "approve",
     "decision_outcome",
     "is_platform_admin",
+    "issue_status_handle",
     "list_requests",
+    "new_status_handle",
+    "poll_status",
     "reject",
     "signup",
     "signup_status",
     "slug_base",
     "slug_candidates",
+    "status_handle_hash",
     "verify_existing_user",
 ]
 
@@ -117,6 +139,34 @@ def decision_outcome(status: str, decision: Decision) -> Outcome:
     return "conflict"
 
 
+def new_status_handle() -> str:
+    """A fresh opaque status handle: 32 random bytes, base64url without padding."""
+    return secrets.token_urlsafe(STATUS_HANDLE_BYTES)
+
+
+def status_handle_hash(raw: str) -> bytes:
+    """The only form of a status handle the database keeps or is asked about."""
+    return hashlib.sha256(raw.encode("ascii")).digest()
+
+
+# ---- status handles ----
+
+
+async def issue_status_handle(session: Any, request_id: uuid.UUID) -> str | None:
+    """A new handle for the caller's own pending request (`app.user_id` set), replacing any
+    older one; None when the request is not the caller's or not pending."""
+    raw = new_status_handle()
+    if await SignupRepository(session).set_status_handle(request_id, status_handle_hash(raw)):
+        return raw
+    return None
+
+
+async def poll_status(raw: str) -> SignupPollRow | None:
+    """The request a live handle names; None for an unknown or expired handle (one answer)."""
+    async with identity_session() as session:
+        return await SignupRepository(session).by_status_handle(status_handle_hash(raw))
+
+
 # ---- the public form ----
 
 
@@ -124,6 +174,8 @@ def decision_outcome(status: str, decision: Decision) -> Outcome:
 class SignupAccepted:
     request_id: uuid.UUID
     status: Literal["pending"] = "pending"
+    # a blank answer gets a random handle that names nothing: the same shape every time
+    status_handle: str = field(default_factory=new_status_handle)
 
 
 async def signup(
@@ -164,11 +216,23 @@ async def signup(
             # every answer for an existing email is a fresh id (right, wrong or locked password)
             if await verify_existing_user(session, user, password, ip=ip):
                 await set_gucs(session, user_id=user.id)
-                if await requests.latest_for(user.id, pending_only=True) is None:
-                    await _request(session, user.id, brand_name, owner_name, phone, website, ip)
+                pending = await requests.latest_for(user.id, pending_only=True)
+                pending_id = (
+                    pending.id
+                    if pending is not None
+                    else await _request(
+                        session, user.id, brand_name, owner_name, phone, website, ip
+                    )
+                )
+                handle = await issue_status_handle(session, pending_id)
+                if handle is not None:
+                    return SignupAccepted(uuid.uuid4(), status_handle=handle)
             return SignupAccepted(uuid.uuid4())
         request_id = await _request(session, user_id, brand_name, owner_name, phone, website, ip)
-    return SignupAccepted(request_id)
+        handle = await issue_status_handle(session, request_id)
+    if handle is None:  # pragma: no cover - the request was just written for this user
+        raise RuntimeError("no status handle for a new pending sign-up")
+    return SignupAccepted(request_id, status_handle=handle)
 
 
 async def verify_existing_user(
@@ -228,9 +292,18 @@ async def _request(
     return request_id
 
 
-async def signup_status(email: str, password: str, *, ip: str | None = None) -> SignupRow | None:
-    """The applicant's newest request; None for an unknown email, a wrong password, a locked
-    account, an inactive user or no request (one argon2 verify each)."""
+@dataclass(frozen=True, slots=True)
+class StatusRead:
+    """The applicant's newest request, and a new status handle while it is pending."""
+
+    row: SignupRow
+    status_handle: str | None = None
+
+
+async def signup_status(email: str, password: str, *, ip: str | None = None) -> StatusRead | None:
+    """The applicant's newest request (with a new status handle while pending); None for an
+    unknown email, a wrong password, a locked account, an inactive user or no request (one
+    argon2 verify each)."""
     async with identity_session() as session:
         await set_gucs(session, login_email=email)
         users = UserRepository(session)
@@ -243,7 +316,11 @@ async def signup_status(email: str, password: str, *, ip: str | None = None) -> 
             return None
         if not await verify_existing_user(session, user, password, ip=ip):
             return None
-        return await SignupRepository(session).latest_for(user.id)
+        row = await SignupRepository(session).latest_for(user.id)
+        if row is None:
+            return None
+        handle = await issue_status_handle(session, row.id) if row.status == "pending" else None
+        return StatusRead(row, handle)
 
 
 # ---- the platform admin's queue ----
@@ -272,6 +349,18 @@ async def list_requests(
         await set_gucs(session, user_id=principal.user_id)
         rows = await SignupRepository(session).page(status=status, limit=limit, after=after)
     return RequestPage(rows[:limit], len(rows) > limit)
+
+
+async def _copy_website(session: Any, tenant_id: uuid.UUID, website: str | None) -> None:
+    """Client item 1: the applicant's website onto the new brand's profile row (created the way
+    `PATCH /brand-profile` creates it). No website writes
+    nothing. The session's tenant GUC is already the new tenant."""
+    url = profile_website(website)
+    if url is None:
+        return
+    profiles = BrandProfileRepository(session, tenant_id)
+    await profiles.ensure()
+    await profiles.set_website(url)
 
 
 def _conflict() -> ConflictError:
@@ -309,6 +398,7 @@ async def approve(
                 continue
         else:
             raise RuntimeError("no free tenant slug for the brand name")
+        await _copy_website(session, tenant_id, row.website)
         await requests.decide(
             request_id,
             status="approved",

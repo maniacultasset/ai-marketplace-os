@@ -199,3 +199,131 @@ def test_approve_block_matches_the_approve_path(
     chain = frozenset(others | ({caller} if in_chain else set()))
     today = approver_refusal(caller, chain) is None and active and role in APPROVER_ROLES
     assert (approve_block(caller, role=role, active=active, chain=chain) is None) is today
+
+
+# ---- ADR-0031 (owner decision 2026-11-11): owners may approve their own work, per brand ----
+
+from app.services.maker_checker import (  # noqa: E402
+    SELF_APPROVER_ROLES,
+    is_self_approval,
+    may_self_approve,
+)
+
+
+def test_self_approver_roles_are_owner_only() -> None:
+    assert frozenset({"owner"}) == SELF_APPROVER_ROLES
+    assert SELF_APPROVER_ROLES <= APPROVER_ROLES
+
+
+def test_owner_own_work_allowed_with_the_setting_on() -> None:
+    caller = uuid.uuid4()
+    chain = frozenset({caller})
+    assert (
+        approve_block(caller, role="owner", active=True, chain=chain, owner_self_approval=True)
+        is None
+    )
+    assert is_self_approval(caller, chain)
+
+
+def test_owner_own_work_blocked_with_the_setting_off() -> None:
+    caller = uuid.uuid4()
+    chain = frozenset({caller})
+    assert approve_block(
+        caller, role="owner", active=True, chain=chain, owner_self_approval=False
+    ) == ("own_work")
+    # the default is off: a caller that forgets the setting never grants a self-approval
+    assert approve_block(caller, role="owner", active=True, chain=chain) == "own_work"
+
+
+def test_owner_earlier_contributor_allowed_with_the_setting_on() -> None:
+    gen = _v("generation", A)
+    edit = _v("edit", A, gen, editor=B, paths=("content",))
+    chain = _chain(gen, edit)
+    assert (
+        approve_block(A, role="owner", active=True, chain=chain, owner_self_approval=True) is None
+    )
+    assert is_self_approval(A, chain)
+
+
+@pytest.mark.parametrize("setting", [True, False])
+def test_reviewer_never_self_approves(setting: bool) -> None:
+    caller = uuid.uuid4()
+    assert (
+        approve_block(
+            caller,
+            role="reviewer",
+            active=True,
+            chain=frozenset({caller}),
+            owner_self_approval=setting,
+        )
+        == "own_work"
+    )
+
+
+@pytest.mark.parametrize("role", ["operator", "admin", None, "superowner"])
+@pytest.mark.parametrize("in_chain", [True, False])
+def test_non_approvers_never_approve_under_the_setting(role: str | None, in_chain: bool) -> None:
+    caller = uuid.uuid4()
+    chain = frozenset({caller}) if in_chain else frozenset()
+    assert (
+        approve_block(caller, role=role, active=True, chain=chain, owner_self_approval=True)
+        == "not_approver"
+    )
+
+
+def test_inactive_owner_never_self_approves() -> None:
+    caller = uuid.uuid4()
+    assert (
+        approve_block(
+            caller, role="owner", active=False, chain=frozenset({caller}), owner_self_approval=True
+        )
+        == "not_approver"
+    )
+
+
+@pytest.mark.parametrize("role", ["owner", "reviewer"])
+@pytest.mark.parametrize("setting", [True, False])
+def test_other_approver_path_unchanged(role: str, setting: bool) -> None:
+    caller = uuid.uuid4()
+    chain = frozenset({uuid.uuid4()})
+    assert (
+        approve_block(caller, role=role, active=True, chain=chain, owner_self_approval=setting)
+        is None
+    )
+    assert not is_self_approval(caller, chain)
+
+
+def test_may_self_approve_truth_table() -> None:
+    assert may_self_approve("owner", owner_self_approval=True)
+    for role in ("owner", "reviewer", "operator", "admin", None):
+        assert not may_self_approve(role, owner_self_approval=False)
+    for role in ("reviewer", "operator", "admin", None):
+        assert not may_self_approve(role, owner_self_approval=True)
+
+
+@given(
+    in_chain=st.booleans(),
+    others=st.sets(st.uuids(), max_size=3),
+    role=st.one_of(st.none(), st.sampled_from(ROLES)),
+    active=st.booleans(),
+    setting=st.booleans(),
+)
+def test_approve_block_self_approval_rule(
+    in_chain: bool, others: set[uuid.UUID], role: str | None, active: bool, setting: bool
+) -> None:
+    """The ADR-0031 oracle, written out: allowed exactly when an active reviewer or owner is
+    outside the chain, or an active owner is in it while the setting is on."""
+    caller = uuid.uuid4()
+    chain = frozenset(others | ({caller} if in_chain else set()))
+    eligible = active and role in ("owner", "reviewer")
+    expected = eligible and (not in_chain or (role == "owner" and setting))
+    block = approve_block(
+        caller, role=role, active=active, chain=chain, owner_self_approval=setting
+    )
+    assert (block is None) is expected
+    if block is None:
+        assert is_self_approval(caller, chain) is in_chain
+    elif not eligible:
+        assert block == "not_approver"
+    else:
+        assert block == "own_work"

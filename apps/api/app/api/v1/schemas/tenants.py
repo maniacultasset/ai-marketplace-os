@@ -7,7 +7,14 @@ from typing import Annotated, Any, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from pydantic import AfterValidator, AwareDatetime, Field, StrictInt, model_validator
+from pydantic import (
+    AfterValidator,
+    AwareDatetime,
+    Field,
+    StrictBool,
+    StrictInt,
+    model_validator,
+)
 from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
@@ -88,23 +95,38 @@ class TenantOut(WireModel):
         default_factory=TenantCapabilitiesOut,
         description="This deployment's feature switches, so screens never promise what is off.",
     )
+    owner_self_approval: bool = Field(
+        default=False,
+        description=(
+            "ADR-0031: owners may approve listings they generated or edited (off by default). "
+            "Reviewers never approve their own work, and operators and admins never approve. "
+            "Every self-approval is recorded in the listing history."
+        ),
+    )
 
 
 class TenantPatch(StrictModel):
     """A partial update of the brand profile: at least one field. `tone: null` clears the tone;
-    `name`, `guidelines` and `glossary` cannot be null (send `[]` or `{}` to clear a list or map).
-    `glossary` maps a term to avoid to the preferred term (`{"kurta outfit": "kurta set"}`)."""
+    `name`, `guidelines`, `glossary` and `owner_self_approval` cannot be null (send `[]` or `{}`
+    to clear a list or map). `glossary` maps a term to avoid to the preferred term
+    (`{"kurta outfit": "kurta set"}`). `owner_self_approval` (ADR-0031) is changed by an owner
+    only (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes
+    under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`)."""
 
     name: ProfileName | None = None
     tone: Tone | None = None
     guidelines: Annotated[list[Guideline], Field(max_length=GUIDELINES_MAX)] | None = None
     glossary: Annotated[dict[Term, Term], Field(max_length=GLOSSARY_MAX)] | None = None
+    owner_self_approval: StrictBool | None = Field(
+        default=None,
+        description="Owners may approve their own listings (owner only, with a recent code).",
+    )
 
     @model_validator(mode="before")
     @classmethod
     def _nulls(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            for key in ("name", "guidelines", "glossary"):
+            for key in ("name", "guidelines", "glossary", "owner_self_approval"):
                 if key in data and data[key] is None:
                     raise PydanticCustomError("mkos_invalid", "Only tone may be null.")
         return data

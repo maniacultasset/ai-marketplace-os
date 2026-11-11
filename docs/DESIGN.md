@@ -90,7 +90,7 @@ Source: `docs/architecture/BACKEND-ARCHITECTURE.md:1670-1864` (§8); `docs/archi
 - `listings.status` has 9 values: `created|generating|validated|needs_review|approved|publishing|published|blocked|failed` [Decided]. Open: T12 (the BRD's 14 statuses become a display only).
 - **Path:** `created → generating → validated|needs_review → approved → publishing → published`. The side exits are `blocked` and `failed`. An edit voids the approval.
 - **Published vs live:** `published` means the marketplace accepted the listing. Open: T13 (when it counts as live).
-- **Maker-checker** [Site L6620]: whoever generated or edited a version cannot approve it. The API and a DB trigger both check this. Open: T10, T15.
+- **Maker-checker** [Site L6620]: whoever generated or edited a version cannot approve it. The API and a DB trigger both check this. Open: T10, T15. One exception (ADR-0031): while a brand's `owner_self_approval` is on, an active owner may approve its own work; `lv_guard` marks the version `self_approved` and the audit log records `listing.self_approved`.
 
 Source: `docs/canon/CANON.md:53-54`; `docs/architecture/DATABASE.md:1373` (§6.1), `:1565` (§7.1); `docs/architecture/BACKEND-ARCHITECTURE.md:2038` (§9.3).
 

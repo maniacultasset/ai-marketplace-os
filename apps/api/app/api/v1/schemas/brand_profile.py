@@ -3,6 +3,7 @@
 `PartyIn` mirrors the `business_parties` CHECKs of revision 0001 (`0001_core_tenancy.py`), plus
 the fixed list of 36 Indian state codes and no NUL in any string, so a refused value is a 422 and
 never a CHECK's 500. Email and phone are accepted on write but never returned on product reads.
+Client item 1: `website_url` follows the sign-up form's pattern, cut to the column CHECK's 2000.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from pydantic import AfterValidator, AwareDatetime, Field, model_validator
 from pydantic_core import PydanticCustomError
 
 from app.core.india import STATE_CODES
+from app.core.website import WEBSITE_MAX, WEBSITE_PATTERN
 
 __all__ = ["BrandProfileIn", "BrandProfileOut", "PartyIn", "PartyOut"]
 
@@ -45,6 +47,23 @@ Email = Annotated[
     str, Field(pattern=r"^[^@\s]+@[^@\s]+$", max_length=254), AfterValidator(_email_octets)
 ]
 Phone = Annotated[str, Field(pattern=r"^[+]?[0-9][0-9 -]{5,19}$")]
+
+
+def _no_nul(value: str) -> str:
+    if "\x00" in value:
+        raise PydanticCustomError("mkos_invalid", "Text must not contain NUL.")
+    return value
+
+
+Website = Annotated[
+    str,
+    Field(
+        max_length=WEBSITE_MAX,
+        pattern=WEBSITE_PATTERN,
+        description="The brand's website, an http(s) link (the sign-up form's rule).",
+    ),
+    AfterValidator(_no_nul),
+]
 
 
 class PartyIn(StrictModel):
@@ -86,8 +105,13 @@ class BrandProfileIn(StrictModel):
     default_manufacturer: PartyIn | None = Field(
         default=None, description="Absent leaves it unchanged; null clears it."
     )
+    website_url: Website | None = Field(
+        default=None,
+        description="Optional. Absent leaves it unchanged; null clears it. Never sent to a model.",
+    )
 
 
 class BrandProfileOut(WireModel):
     default_manufacturer: PartyOut | None = None
+    website_url: str | None = None
     updated_at: AwareDatetime | None = None

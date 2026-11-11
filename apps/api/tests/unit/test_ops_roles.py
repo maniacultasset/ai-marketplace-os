@@ -113,6 +113,7 @@ Q7: dict[str, str] = {
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)
     "signup_create": PUBLIC,
     "signup_status": PUBLIC,
+    "signup_status_poll": PUBLIC,
     "signup_google": PUBLIC,
     "admin_signup_requests_list": PLATFORM_ADMIN,
     "admin_signup_requests_approve": PLATFORM_ADMIN,

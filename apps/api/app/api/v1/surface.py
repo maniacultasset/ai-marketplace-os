@@ -109,6 +109,7 @@ from app.api.v1.schemas.resolution import ResolutionOut
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.signup import (
     SignupAccepted,
+    SignupPollOut,
     SignupRequestOut,
     SignupRequestPage,
     SignupStatusOut,
@@ -629,10 +630,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
     # ---- tenants and brand (S16) ----
     Operation("tenants_me", "GET", "/tenants/me", 200, TenantOut, "tenants",
               "The brand profile", "S16", etag=True, action=A.TENANT_READ),
+    # ADR-0031: `owner_self_approval` is owner only and needs a step-up (checked in the route,
+    # for that field only, so a profile edit never asks for a code)
     Operation("tenants_me_update", "PATCH", "/tenants/me", 200, TenantOut, "tenants",
               "Update the brand profile (If-Match: the ETag from GET)", "S16", has_body=True,
               if_match=True, conflict_code=E.STALE_VERSION, etag=True,
-              action=A.SETTINGS_MANAGE),
+              action=A.SETTINGS_MANAGE, extra_codes={403: STEP_UP_CODES}),
     # ADR-0032: an owner adds another brand without a new sign-up review (403 for an admin, a
     # brand owner with a suspended brand, or the owned-brand cap; 501 while the switch is off)
     Operation("tenants_create", "POST", "/tenants", 201, TenantCreated, "tenants",
@@ -649,7 +652,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="document_id", action=A.SETTINGS_MANAGE),
     # ---- brand (SI1) ----
     Operation("brand_profile_get", "GET", "/brand-profile", 200, BrandProfileOut, "brand",
-              "The brand profile: the default manufacturer every product inherits", "SI1",
+              "The brand profile: the default manufacturer and the website", "SI1",
               etag=True, action=A.TENANT_READ),
     Operation("brand_profile_update", "PATCH", "/brand-profile", 200, BrandProfileOut, "brand",
               "Update the brand profile (If-Match: the ETag from GET)", "SI1", has_body=True,
@@ -857,6 +860,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("signup_status", "POST", "/signup/status", 200, SignupStatusOut, "signup",
               "The caller's latest sign-up request (email and password)", "ADR-0019",
               public=True, has_body=True, extra_codes=_401),
+    Operation("signup_status_poll", "POST", "/signup/status/poll", 200, SignupPollOut, "signup",
+              "A sign-up request's status by its status handle (no password; read only)",
+              "ADR-0019", public=True, has_body=True, extra_codes=_404),
     Operation("signup_google", "POST", "/signup/google", 202, SignupStatusOut, "signup",
               "Sign up with the Google identity: a pending request a platform admin approves",
               "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),

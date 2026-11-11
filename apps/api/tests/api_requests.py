@@ -80,6 +80,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
         "password": COMPLIANT_PASSWORD,
     },
     "signup_status": {"email": "founder@kalakar.example", "password": "pw"},
+    "signup_status_poll": {"status_handle": "S" * 43},
     "admin_signup_requests_approve": {"trial_days": 14},
     "admin_signup_requests_reject": {"reason": "Could not verify the brand."},
     # ADR-0020
