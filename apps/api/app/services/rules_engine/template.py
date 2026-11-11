@@ -6,13 +6,23 @@ Required keys (``required_attributes`` plus specs with ``requirement="required"`
 value outside ``allowed_values`` and the ``value_map`` keys (either alone is the vocabulary:
 DATABASE.md:526 "enum not mappable") gives ``VALUE_NOT_ALLOWED``. Items
 carry ``rule_id`` None, error severity, and come in sorted key order.
+
+Client feedback item 10: a ``recommended_attributes`` key that is neither required nor
+conditional and is missing gives ``MISSING_ATTRIBUTE`` at **warning** severity, the one template
+warning (``is_recommendation``). It never blocks: the status, issue and question paths skip it,
+and the pipeline never sees it (``without_recommendations``), so nothing is filled without a fact.
+
+``requirement_levels`` names the level of every template key: ``required``, ``conditional``,
+``recommended`` (an optional key the template recommends), ``optional`` or ``unsupported``.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import ErrorSource, Severity
+from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import CategoryTemplate
 
 from .report import Draft
@@ -27,8 +37,79 @@ def _present(ctx: Ctx, key: str) -> tuple[bool, object]:
     return found and is_present(value), value
 
 
-def _missing(key: str) -> Draft:
-    return Draft(f"attributes.{key}", ErrorCode.MISSING_ATTRIBUTE, None, {"attribute": key}, None)
+RequirementLevel = Literal["required", "conditional", "recommended", "optional", "unsupported"]
+
+
+def _missing(key: str, severity: Severity = Severity.ERROR) -> Draft:
+    return Draft(
+        f"attributes.{key}", ErrorCode.MISSING_ATTRIBUTE, None, {"attribute": key}, None, severity
+    )
+
+
+def _required_keys(template: CategoryTemplate) -> set[str]:
+    keys = set(template.required_attributes)
+    return keys | {k for k, s in template.specs.items() if s.requirement == "required"}
+
+
+def _conditional_keys(template: CategoryTemplate) -> set[str]:
+    keys = set(template.conditional_attributes)
+    return keys | {k for k, s in template.specs.items() if s.requirement == "conditional"}
+
+
+def _unsupported_keys(template: CategoryTemplate) -> set[str]:
+    keys = set(template.unsupported_attributes)
+    return keys | {k for k, s in template.specs.items() if s.requirement == "unsupported"}
+
+
+def requirement_levels(template: CategoryTemplate) -> dict[str, RequirementLevel]:
+    """The level of every key the template names, in sorted key order (module docstring)."""
+    required = _required_keys(template)
+    conditional = _conditional_keys(template) - required
+    unsupported = _unsupported_keys(template)
+    recommended = set(template.recommended_attributes)
+    keys = {*template.optional_attributes, *template.specs, *required, *conditional}
+    keys |= unsupported | recommended
+    levels: dict[str, RequirementLevel] = {}
+    for key in sorted(keys):
+        if key in required:
+            levels[key] = "required"
+        elif key in conditional:
+            levels[key] = "conditional"
+        elif key in unsupported:
+            levels[key] = "unsupported"
+        elif key in recommended:
+            levels[key] = "recommended"
+        else:
+            levels[key] = "optional"
+    return levels
+
+
+def is_recommendation(item: ErrorItem) -> bool:
+    """A missing recommended attribute: the template's own (no rule) warning MISSING_ATTRIBUTE."""
+    return (
+        item.error_code is ErrorCode.MISSING_ATTRIBUTE
+        and item.severity is Severity.WARNING
+        and item.rule_id is None
+        and item.source is ErrorSource.RULES_ENGINE
+    )
+
+
+def warning_count(report: ErrorReport) -> int:
+    """The warnings that need a look: the non-blocking items minus the recommendations, so a
+    validation run never counts a missing recommended attribute as a warning (item 10)."""
+    return sum(
+        1
+        for item in report.errors
+        if item.severity is not Severity.ERROR and not is_recommendation(item)
+    )
+
+
+def without_recommendations(report: ErrorReport) -> ErrorReport:
+    """The report minus its recommendations; the status is unchanged (they never block)."""
+    kept = [item for item in report.errors if not is_recommendation(item)]
+    if len(kept) == len(report.errors):
+        return report
+    return report.model_copy(update={"errors": kept})
 
 
 def template_allowed(template: CategoryTemplate | None, attribute: str) -> list[str] | None:
@@ -47,13 +128,11 @@ def template_checks(ctx: Ctx) -> list[Draft]:
         return []
     specs = template.specs
     drafts: list[Draft] = []
-    required = set(template.required_attributes)
-    required |= {k for k, s in specs.items() if s.requirement == "required"}
+    required = _required_keys(template)
     for key in sorted(required):
         if not _present(ctx, key)[0]:
             drafts.append(_missing(key))
-    conditional = set(template.conditional_attributes)
-    conditional |= {k for k, s in specs.items() if s.requirement == "conditional"}
+    conditional = _conditional_keys(template)
     for key in sorted(conditional - required):
         when = specs[key].when if key in specs else []
         holds = bool(when) and all(
@@ -61,6 +140,11 @@ def template_checks(ctx: Ctx) -> list[Draft]:
         )
         if holds and not _present(ctx, key)[0]:
             drafts.append(_missing(key))
+    recommended = set(template.recommended_attributes) - required - conditional
+    recommended -= _unsupported_keys(template)
+    for key in sorted(recommended):
+        if not _present(ctx, key)[0]:
+            drafts.append(_missing(key, Severity.WARNING))
     for key in sorted(specs):
         allowed = template_allowed(template, key)
         if specs[key].value_type != "enum" or allowed is None:

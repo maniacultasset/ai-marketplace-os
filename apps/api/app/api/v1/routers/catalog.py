@@ -25,6 +25,7 @@ from app.api.v1.schemas.catalog import (
     CategoryOut,
     MarketplaceCategoryOut,
     PhotoViewRuleOut,
+    RequirementLevelsOut,
     RequirementsOut,
 )
 from app.api.v1.surface import OPS, route
@@ -63,8 +64,11 @@ async def catalog_requirements_get(
     marketplace's required facts, the category template's required attributes and a reviewed
     extras table (Flipkart: HSN, package size and weight; Amazon: a barcode or the GTIN
     exemption, and the audience for Kurta sets and T-shirts). Shown as "Needed"; the extras are
-    never sent. An unknown category answers the facts and extras only. `photo_views` is the
-    category's photo checklist (each view required, recommended or optional, and why)."""
+    never sent. An unknown category answers the facts and extras only, with empty levels.
+    `photo_views` is the category's photo checklist (each view required, recommended or optional,
+    and why). `levels` gives each marketplace template's requirement level per attribute
+    (`required`, `conditional`, `recommended`, `optional`, `unsupported`); a missing
+    `recommended` one is a non-blocking warning on review."""
     found = await get_requirements(principal, category)
     return RequirementsOut(
         category=found.category,
@@ -73,6 +77,9 @@ async def catalog_requirements_get(
         photo_views=[
             PhotoViewRuleOut.model_construct(**photo_view_fields(r)) for r in found.photo_views
         ],
+        levels=RequirementLevelsOut.model_validate(
+            {m.value: dict(v) for m, v in found.levels.items()}
+        ),
     )
 
 

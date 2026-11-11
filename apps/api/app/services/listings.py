@@ -27,6 +27,7 @@ from app.repositories.uow import TenantUnitOfWork
 from app.services.generation_persist import Pins
 from app.services.generation_result import recheck
 from app.services.listing_display import display_fields
+from app.services.rules_engine import is_recommendation, warning_count
 from app.services.rules_loader import load_rules
 from app.services.seller_facts import seller_overlay
 
@@ -136,7 +137,9 @@ def human_move(report: ErrorReport, adapter: ErrorReport | None = None) -> tuple
     a Rules block does; its warnings change nothing (CP-D3)."""
     if report.blocking or (adapter is not None and adapter.blocking):
         return "blocked", BLOCKED_REASON
-    if report.errors:
+    # feedback item 10: a missing recommended attribute alone never moves (or un-approves) a
+    # listing; the review screen lists it under "Recommended to add"
+    if any(not is_recommendation(item) for item in report.errors):
         return "needs_review", None
     return "validated", None
 
@@ -171,6 +174,7 @@ async def insert_run(
         template_version=check.pins.template_version,
         facts_digest=check.pins.facts_digest,
         request_id=request_id,
+        warnings=warning_count(check.report),
     )
     if cause is not None:
         from app.services.issues import sync_issues

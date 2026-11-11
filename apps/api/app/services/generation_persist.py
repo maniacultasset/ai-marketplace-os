@@ -70,6 +70,7 @@ from app.services.photo_facts_store import apply_photo_decision
 from app.services.photo_views import listing_findings
 from app.services.pipeline_deps import RulesCall
 from app.services.remote_preview import request_preview
+from app.services.rules_engine import warning_count
 
 log = get_logger(__name__)
 GENERATING: Final = "generating"
@@ -163,6 +164,7 @@ async def _insert_runs(
             template_version=pins.template_version,
             facts_digest=pins.facts_digest,
             request_id=plan.request_id,
+            warnings=warning_count(call.report),
         )
     if version_id is None or plan.recheck is None:
         return None
@@ -172,6 +174,7 @@ async def _insert_runs(
         template_version=pins.template_version,
         facts_digest=pins.facts_digest if recheck_pin is None else recheck_pin,
         request_id=plan.request_id,
+        warnings=warning_count(plan.recheck),
     )
 
 

@@ -7,7 +7,8 @@ sent):
 
 1. each `ErrorItem` keyed `source|field|error_code|COALESCE(rule_id, raw_code, 'template:'+key, '')`
    (`key` is the template attribute of a `rules_engine` item with no rule, `attributes.<key>`);
-   class, retry class and fix action from the item, else `ERROR_CODE_META` (else `unknown`);
+   class, retry class and fix action from the item, else `ERROR_CODE_META` (else `unknown`); a
+   missing recommended attribute (`is_recommendation`, feedback item 10) is never a row;
 2. upserted on the open-issue index (a repeat counts an occurrence; a fresh row links the
    latest closed row with the same key as its `recurrence_of_id`);
 3. the open rows of this listing and source whose key the report no longer has are closed, with
@@ -44,6 +45,7 @@ from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.auto_fix.fixers import FixRecord
 from app.services.auto_fix.policy import override_reason
+from app.services.rules_engine import is_recommendation
 
 log = get_logger(__name__)
 
@@ -177,6 +179,26 @@ def _issue(
 RECLASSIFIED_SOURCES: Final = frozenset({"vision_model"})
 
 
+def issue_items(
+    report: ErrorReport,
+    source: str,
+    *,
+    scope_fields: Sequence[str] | None = None,
+    channel: Channel = "live",
+) -> dict[str, ErrorItem]:
+    """The report's items that become issue rows, by dedupe key (the first item of a key wins):
+    the ones in `scope_fields` when given, never a recommendation (feedback item 10: shown on
+    review, never an Inbox issue, so never a question)."""
+    items: dict[str, ErrorItem] = {}
+    for item in report.errors:
+        if scope_fields is not None and item.field not in scope_fields:
+            continue
+        if is_recommendation(item):
+            continue
+        items.setdefault(dedupe_key(source, item, channel=channel), item)
+    return items
+
+
 async def sync_issues(
     uow: TenantUnitOfWork,
     listing: Any,
@@ -200,11 +222,7 @@ async def sync_issues(
     only preview rows, and a live sync never closes one."""
     if source not in ISSUE_SOURCES:
         raise ValueError(f"{source} is not an issue source")
-    items: dict[str, ErrorItem] = {}
-    for item in report.errors:
-        if scope_fields is not None and item.field not in scope_fields:
-            continue
-        items.setdefault(dedupe_key(source, item, channel=channel), item)
+    items = issue_items(report, source, scope_fields=scope_fields, channel=channel)
     opened = repeated = closed_now = 0
     for key, item in items.items():
         new = _issue(

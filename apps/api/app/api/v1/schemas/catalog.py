@@ -32,11 +32,24 @@ class PhotoViewRuleOut(WireModel):
     flipkart: PhotoViewRequirement | None = None
 
 
+RequirementLevel = Literal["required", "conditional", "recommended", "optional", "unsupported"]
+
+
+class RequirementLevelsOut(WireModel):
+    """Feedback item 10: each marketplace's current category template, as the requirement level
+    of every attribute it names (`required`, `conditional`, `recommended`, `optional`,
+    `unsupported`). Empty when the category has no template (or is switched off)."""
+
+    amazon: dict[str, RequirementLevel] = Field(default_factory=dict)
+    flipkart: dict[str, RequirementLevel] = Field(default_factory=dict)
+
+
 class RequirementsOut(WireModel):
     """Each list is the sorted dictionary keys the marketplace needs before it accepts a listing
     of this category: its required facts, the category template's required attributes and a
     reviewed extras table (with `PHOTO_VIEWS_ENABLED` on, `size_measurements` where the size
-    chart is required). Shown to the seller; the extras are never sent."""
+    chart is required). Shown to the seller; the extras are never sent. `levels` is the
+    template's own requirement level per attribute."""
 
     category: Slug
     amazon: list[str] = Field(default_factory=list)
@@ -49,6 +62,7 @@ class RequirementsOut(WireModel):
             "tiles then)."
         ),
     )
+    levels: RequirementLevelsOut = Field(default_factory=RequirementLevelsOut)
 
 
 # ---- client feedback 11 Nov (item 5): the category picker ----

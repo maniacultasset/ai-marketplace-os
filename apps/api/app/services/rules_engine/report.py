@@ -16,7 +16,8 @@ falls back to the unrendered template.
 
 Template checks (``rule_id`` None) use fixed English messages:
 
-- ``MISSING_ATTRIBUTE``: "Required attribute {attribute} is missing".
+- ``MISSING_ATTRIBUTE``: "Required attribute {attribute} is missing"; at warning severity (a
+  recommended key) "Recommended attribute {attribute} is missing", with a fixed suggestion.
 - ``VALUE_NOT_ALLOWED``: "Value {value} is not allowed for {attribute}; allowed: {allowed_values}".
 """
 
@@ -42,6 +43,10 @@ TEMPLATE_MESSAGES: Final[Mapping[ErrorCode, str]] = {
         "Value {value} is not allowed for {attribute}; allowed: {allowed_values}"
     ),
 }
+RECOMMENDED_MESSAGE: Final = "Recommended attribute {attribute} is missing"
+RECOMMENDED_SUGGESTION: Final = (
+    "Add it on the product if you know it; shoppers use it to search and filter. Never guess it."
+)
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
 
 
@@ -112,6 +117,9 @@ def _render(draft: Draft) -> _Rendered:
     rule = draft.rule
     meta = ERROR_CODE_META[draft.code]
     if rule is None:
+        if draft.code is ErrorCode.MISSING_ATTRIBUTE and draft.severity is Severity.WARNING:
+            message = render_text(RECOMMENDED_MESSAGE, draft.placeholders)
+            return _Rendered(message, RECOMMENDED_SUGGESTION, meta.error_class, meta.retry_class)
         message = render_text(TEMPLATE_MESSAGES[draft.code], draft.placeholders)
         return _Rendered(message, None, meta.error_class, meta.retry_class)
     rule_def = rule.rule_def

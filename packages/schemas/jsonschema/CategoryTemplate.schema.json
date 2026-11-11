@@ -220,6 +220,14 @@
       "title": "Optional Attributes",
       "type": "array"
     },
+    "recommended_attributes": {
+      "items": {
+        "pattern": "^[a-z0-9_]{1,64}$",
+        "type": "string"
+      },
+      "title": "Recommended Attributes",
+      "type": "array"
+    },
     "required_attributes": {
       "items": {
         "pattern": "^[a-z0-9_]{1,64}$",
