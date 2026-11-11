@@ -15,6 +15,8 @@ from app.services.google_signin import (
 )
 
 VETTED = {"exists": True, "has_membership": True}
+ADMIN = {**VETTED, "is_platform_admin": True, "mfa_enforced": True}
+ADMIN_MFA_OFF = {**VETTED, "is_platform_admin": True, "mfa_enforced": False}
 
 
 @pytest.mark.parametrize(
@@ -26,11 +28,25 @@ VETTED = {"exists": True, "has_membership": True}
         (Situation(by_sub=True, **VETTED), Decision("sign_in")),
         (Situation(by_sub=True, exists=True, has_request=True), Decision("pending")),
         (Situation(by_sub=True, exists=True), Decision(None, "no_active_membership")),
-        (Situation(by_sub=True, is_platform_admin=True, **VETTED), Decision(None, "google_admin")),
+        # a platform admin (ADR-0020 amendment, 11 Nov 2026): the same rows, then always the
+        # code (sign_in_policy), and only while MFA is enforced
+        (Situation(by_sub=True, **ADMIN), Decision("sign_in")),
+        (Situation(by_sub=True, **ADMIN_MFA_OFF), Decision(None, "google_admin_mfa_off")),
+        (Situation(by_sub=True, is_active=False, **ADMIN), Decision(None, "inactive_user")),
+        (
+            Situation(by_sub=True, exists=True, is_platform_admin=True, mfa_enforced=True),
+            Decision(None, "no_active_membership"),
+        ),
         (Situation(by_sub=True, is_active=False, **VETTED), Decision(None, "inactive_user")),
         # found by email (no Google account linked yet): link after the password and code (§7)
         (Situation(by_sub=False, **VETTED), Decision("link_required")),
-        (Situation(by_sub=False, is_platform_admin=True, **VETTED), Decision(None, "google_admin")),
+        (Situation(by_sub=False, **ADMIN), Decision("link_required")),
+        (Situation(by_sub=False, **ADMIN_MFA_OFF), Decision(None, "google_admin_mfa_off")),
+        (Situation(by_sub=False, is_active=False, **ADMIN), Decision(None, "inactive_user")),
+        (
+            Situation(by_sub=False, linked_to_other=True, **ADMIN),
+            Decision(None, "google_link_refused"),
+        ),
         (
             Situation(by_sub=False, linked_to_other=True, **VETTED),
             Decision(None, "google_link_refused"),

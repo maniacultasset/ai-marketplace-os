@@ -81,7 +81,7 @@ The browser binding lives in one origin's sessionStorage and the callback goes t
 | Event | Audit action (reason) |
 |---|---|
 | A refused Google identity at the callback | `auth.login_failed` (`google_not_authoritative`, `google_token_invalid`, `google_exchange_failed`, `state_invalid`) |
-| A refused `complete` | `auth.login_failed` (`google_admin`, `inactive_user`, `google_link_refused`, `google_unvetted_conflict`, `no_active_membership`, `locked`, `busy`) |
+| A refused `complete` | `auth.login_failed` (`google_admin_mfa_off`, `inactive_user`, `google_link_refused`, `google_unvetted_conflict`, `no_active_membership`, `locked`, `busy`) |
 | A Google sign-in that ends with tokens | `auth.login` (`google`) |
 | A Google account linked after the password and code | `auth.google_linked` |
 | A link removed in settings | `auth.google_unlinked` |
@@ -89,6 +89,19 @@ The browser binding lives in one origin's sessionStorage and the callback goes t
 
 The daily maintenance job deletes expired `login_flows` rows and warns (log and Sentry,
 `signup.pending_backlog`) when more than 200 sign-up requests wait for approval.
+
+Platform admins (ADR-0020 amendment, 11 Nov 2026) sign in with Google like anyone else, but
+always enter their Kuinn code afterwards:
+
+| Admin case | What happens |
+|---|---|
+| Google account linked | The code step, every time (or the authenticator setup when no factor is enrolled). A trusted browser never skips it and none is offered or created on this path. |
+| Not linked yet | `link_required`: the Kuinn password (counted toward the lockout), then the code; only then is the Google account linked (`auth.google_linked`). Never linked by email alone. |
+| `MFA_ENFORCEMENT=off` | Refused: there is no code step to follow Google (`google_admin_mfa_off`). |
+| Inactive, or linked to another Google account, or no live membership | The same refusal as for anyone (`inactive_user`, `google_link_refused`, `no_active_membership`), the same 401 the password path gives. |
+
+Before this amendment every admin was refused with `google_admin`; that reason is no longer
+written, but older audit rows keep it.
 
 ## 7. Troubleshooting
 

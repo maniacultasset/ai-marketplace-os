@@ -488,7 +488,7 @@ def _link(conn: Conn, user_id: UUID, sub: str, *, as_user: UUID | None = None) -
         return bool(scalar(conn, "SELECT app_link_google_sub(%s, %s)", (user_id, sub)))
 
 
-def test_link_only_self_with_password_not_admin(db: Conn) -> None:
+def test_link_only_self_with_password(db: Conn) -> None:
     user_id = f.user(db)
     other = f.user(db)
     assert _link(db, user_id, "sub-1", as_user=other) is False
@@ -496,7 +496,8 @@ def test_link_only_self_with_password_not_admin(db: Conn) -> None:
     assert scalar(db, "SELECT google_sub FROM users WHERE id = %s", (user_id,)) == "sub-1"
     assert _link(db, user_id, "sub-2") is False  # already linked: never replaced
     admin = f.user(db, is_platform_admin=True)
-    assert _link(db, admin, "sub-3") is False
+    # 0029 (ADR-0020 amendment): an admin links too; 0012's refusal is checked in test_0029
+    assert _link(db, admin, "sub-3") is True
     no_password = f.user(db, hashed_password=None, auth_provider="google")
     assert _link(db, no_password, "sub-4") is False
     inactive = f.user(db, is_active=False)

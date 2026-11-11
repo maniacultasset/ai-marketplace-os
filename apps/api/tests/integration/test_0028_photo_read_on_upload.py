@@ -40,7 +40,8 @@ def test_single_head_on_0027() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # 0029_admin_google_link sits on top (`test_0029_admin_google_link.py`)
+    assert REVISION in {r.revision for r in script.walk_revisions()}
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 
