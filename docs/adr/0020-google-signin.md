@@ -86,7 +86,8 @@ dashboard's `/api/*` proxy, sets no cookies and keeps tokens in memory.
   as anyone: a linked Google account signs in, an unlinked one gets `link_required` (§7: the Kuinn
   password, counted toward the lockout, then the code; never by email alone), and inactive users,
   an email linked to another Google account and no live membership keep their refusals (the last
-  is the same 401 the admin's password sign-in gives).
+  is the same 401 the admin's password sign-in gives; an admin with no membership never sees a
+  sign-up request's status, `pending`, which the password path never shows either).
 - **The code is always asked.** A sign-in that began with Google for a platform admin
   (`sign_in_policy.admin_by_google`) always needs the Kuinn code, or the enrolment when no factor
   exists: a trusted browser (ADR-0023) never stands in for it, none is offered or created on that

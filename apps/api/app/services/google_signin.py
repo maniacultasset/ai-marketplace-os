@@ -227,7 +227,9 @@ def decide(s: Situation) -> Decision:
             return Decision("sign_in")
         if s.has_suspended:  # SI10 (AC13): a verified identity whose brands are all suspended
             return Decision(None, "tenant_suspended")
-        if s.has_request:
+        # an admin with no membership lands where the password path does (the generic 401),
+        # never on a sign-up request's status
+        if s.has_request and not s.is_platform_admin:
             return Decision("pending")
         return Decision(None, "no_active_membership")
     if s.linked_to_other:
@@ -236,7 +238,7 @@ def decide(s: Situation) -> Decision:
         if s.has_password:
             return Decision("link_required")
         return Decision(None, "google_link_refused")
-    if s.has_request:
+    if s.has_request and not s.is_platform_admin:
         return Decision("pending")
     return Decision(None, "google_unvetted_conflict")
 

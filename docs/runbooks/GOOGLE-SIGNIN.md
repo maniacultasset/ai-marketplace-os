@@ -98,7 +98,7 @@ always enter their Kuinn code afterwards:
 | Google account linked | The code step, every time (or the authenticator setup when no factor is enrolled). A trusted browser never skips it and none is offered or created on this path. |
 | Not linked yet | `link_required`: the Kuinn password (counted toward the lockout), then the code; only then is the Google account linked (`auth.google_linked`). Never linked by email alone. |
 | `MFA_ENFORCEMENT=off` | Refused: there is no code step to follow Google (`google_admin_mfa_off`). |
-| Inactive, or linked to another Google account, or no live membership | The same refusal as for anyone (`inactive_user`, `google_link_refused`, `no_active_membership`), the same 401 the password path gives. |
+| Inactive, or linked to another Google account, or no live membership | The same refusal as for anyone (`inactive_user`, `google_link_refused`, `no_active_membership`), the same 401 the password path gives; never the `pending` request status, even when the admin has a sign-up request. |
 
 Before this amendment every admin was refused with `google_admin`; that reason is no longer
 written, but older audit rows keep it.

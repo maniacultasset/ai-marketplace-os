@@ -37,6 +37,27 @@ ADMIN_MFA_OFF = {**VETTED, "is_platform_admin": True, "mfa_enforced": False}
             Situation(by_sub=True, exists=True, is_platform_admin=True, mfa_enforced=True),
             Decision(None, "no_active_membership"),
         ),
+        # an admin with no membership: the password path's generic 401, never a request status
+        (
+            Situation(
+                by_sub=True,
+                exists=True,
+                is_platform_admin=True,
+                mfa_enforced=True,
+                has_request=True,
+            ),
+            Decision(None, "no_active_membership"),
+        ),
+        (
+            Situation(
+                by_sub=False,
+                exists=True,
+                is_platform_admin=True,
+                mfa_enforced=True,
+                has_request=True,
+            ),
+            Decision(None, "google_unvetted_conflict"),
+        ),
         (Situation(by_sub=True, is_active=False, **VETTED), Decision(None, "inactive_user")),
         # found by email (no Google account linked yet): link after the password and code (§7)
         (Situation(by_sub=False, **VETTED), Decision("link_required")),
