@@ -140,8 +140,8 @@ async def test_child_env_has_no_secrets(
     """The env holds only the allow-list (it is not a credential sandbox: CP6)."""
     from app.core.config import get_settings
 
-    # the canaries below are not valid settings: load them first, in case an earlier test (in
-    # random order) cleared the cache and the runner's semaphore reads them fresh
+    # the run's semaphore reads Settings; build them before the canaries (random order can
+    # reach here right after a test that cleared the cache, and a canary is not a valid secret)
     get_settings()
     for name in (
         "DATABASE_URL",

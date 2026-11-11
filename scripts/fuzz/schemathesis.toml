@@ -1,0 +1,8 @@
+# `make fuzz` (scripts/fuzz/run.sh --config-file). The fuzz stack keeps MFA_ENFORCEMENT=off, the
+# committed default and the production mode (ADR-0021 D6): every MFA route then answers its
+# documented 501 NOT_IMPLEMENTED "MFA is not enabled" (surface.py `_MFA_PUBLIC`/`_MFA_BEARER`),
+# which `not_a_server_error` would count. Only that 501 is accepted, and only on these eight
+# routes; a 500 (or any other 5xx) still fails the run. Google sign-in runs on (run.sh env).
+[[operations]]
+include-path-regex = '^/api/v1/auth/(login/mfa|login/mfa/enroll|login/mfa/confirm|password/expired|mfa/totp/enroll|mfa/totp/confirm|mfa/recovery-codes|mfa/step-up)$'
+checks.not_a_server_error.expected-statuses = ["2xx", "3xx", "4xx", "501"]
