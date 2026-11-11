@@ -138,6 +138,11 @@ async def test_child_env_has_no_secrets(
     fake_child: pytest.MonkeyPatch,
 ) -> None:
     """The env holds only the allow-list (it is not a credential sandbox: CP6)."""
+    from app.core.config import get_settings
+
+    # the canaries below are not valid settings: load them first, in case an earlier test (in
+    # random order) cleared the cache and the runner's semaphore reads them fresh
+    get_settings()
     for name in (
         "DATABASE_URL",
         "JWT_SECRET",
