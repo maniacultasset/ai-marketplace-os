@@ -12,10 +12,20 @@ The ask follows the product path (`category_suggest.request_suggestion`):
    `unavailable`: no job, no admission, no spend, nothing stored.
 3. The SI10 admission, outside any unit of work: AI paused is 503 with the pause's code, a daily
    cap 429 `BUDGET_EXCEEDED`. Nothing is written on a refusal.
-4. One `image_compliance` job (entity `category_suggestion`, under the tenant AI lock) whose
-   payload names `category_draft` with the draft text, capped exactly as a product's
-   (`classify_text`). The entity id is a fresh id: a draft has no product row. The job body is
+4. The same draft asked again (the same capped text and the same offered categories, so the same
+   `input_digest`) answers the earlier suggestion instead of paying for another call: 202 with
+   its id while it runs, 200 with its candidates when it was `suggested` within the last day.
+   Checked before the admission, and again under the tenant AI lock inside the key.
+5. Else one `image_compliance` job (entity `category_suggestion`, under the tenant AI lock)
+   whose payload names `category_draft` with the draft text, capped exactly as a product's
+   (`classify_text`) and then fitted to `PAYLOAD_BUDGET` encoded bytes (attribute values are
+   dropped from the end, then the description is cut), plus its digest. A draft has no product
+   row: the entity id is derived from the digest (`draft_entity_id`), so the same draft maps to
+   one entity and its newest job is the indexed `latest_for_entity`. The job body is
    `app.workers.category_draft`; its answer is the job's `result_json`.
+
+The draft text in the payload is the text the seller is about to save on the product (the same
+title, description, brand and attribute values), which the read-only roles can read there too.
 
 The read answers `queued` while the job is live, the stored answer once it succeeded, and
 `failed` when it failed or was cancelled. Another tenant's suggestion, a product suggestion's
@@ -26,9 +36,9 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 from mkos_schemas.classify import CLASSIFY_CONFIDENCE_TASK_THRESHOLD
@@ -38,8 +48,9 @@ from app.core.config import get_settings
 from app.core.errors import NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
+from app.db.models.ops import JobRun
 from app.repositories.jobs import EnqueueSpec
-from app.repositories.uow import repositories_on, tenant_uow
+from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.budget import admit, refuse
 from app.services.catalog_categories import category_label
 from app.services.category_gate import category_offers
@@ -48,6 +59,7 @@ from app.services.category_suggest import (
     MAX_ATTRIBUTES,
     TEXT_CHARS,
     TITLE_CHARS,
+    compute_digest,
     peek_replay,
 )
 from app.services.idempotency import idempotent
@@ -57,9 +69,15 @@ from app.workers.policy import CATEGORY_SUGGESTION_ENTITY, lock_for
 
 __all__ = [
     "DRAFT_KEY",
+    "PAYLOAD_BUDGET",
+    "REUSE_WINDOW",
     "Draft",
     "answer_from_job",
+    "draft_digest",
+    "draft_entity_id",
     "draft_text",
+    "encoded_bytes",
+    "fit_text",
     "read_draft_suggestion",
     "request_draft_suggestion",
 ]
@@ -68,6 +86,12 @@ log = get_logger(__name__)
 METHOD: Final = "POST"
 LIVE: Final = frozenset({"queued", "running"})
 ANSWERS: Final = frozenset({"suggested", "unavailable", "failed"})
+# The job payload's limit is 64 KiB (`repositories.jobs.MAX_PAYLOAD_BYTES`, ASCII-escaped JSON:
+# a character outside the BMP costs 12 bytes). The capped text can pass it (about 10,700
+# characters), so it is fitted to this budget, with room left for the payload's keys.
+PAYLOAD_BUDGET: Final = 48 * 1024
+REUSE_WINDOW: Final = timedelta(days=1)
+_DRAFT_NAMESPACE: Final = uuid.UUID("7c1d0a52-5d55-4f1e-9a9b-2f7d3c6b8e10")
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +128,36 @@ def draft_text(draft: Draft) -> dict[str, Any]:
         "seller_category": None,
         "attributes": attributes,
     }
+
+
+def encoded_bytes(value: object) -> int:
+    """The size `JobRunRepository.enqueue` measures (pure): compact, ASCII-escaped JSON."""
+    return len(json.dumps(value, separators=(",", ":"), sort_keys=True).encode("utf-8"))
+
+
+def fit_text(text: Mapping[str, Any], budget: int = PAYLOAD_BUDGET) -> dict[str, Any]:
+    """The draft text within `budget` encoded bytes (pure): attribute values are dropped from the
+    last key back, then the description is cut by halves. The title (500 characters) and the
+    brand (200) always fit. A text already within the budget comes back unchanged."""
+    fitted: dict[str, Any] = {**text, "attributes": dict(text.get("attributes") or {})}
+    attributes: dict[str, str] = fitted["attributes"]
+    while encoded_bytes(fitted) > budget and attributes:
+        attributes.pop(sorted(attributes)[-1])
+    while encoded_bytes(fitted) > budget and fitted.get("description"):
+        description = str(fitted["description"])
+        fitted["description"] = description[: len(description) // 2].rstrip() or None
+    return fitted
+
+
+def draft_digest(text: Mapping[str, Any], categories: Sequence[str]) -> str:
+    """The digest of the fitted text and the offered categories (pure), as a product's
+    `input_digest` with no photos."""
+    return compute_digest(text, [], categories)
+
+
+def draft_entity_id(digest: str) -> uuid.UUID:
+    """The job's entity id for a draft (pure): the same digest maps to the same id."""
+    return uuid.uuid5(_DRAFT_NAMESPACE, digest)
 
 
 def _body(
@@ -152,12 +206,34 @@ def answer_from_job(
     return _body(str(answer), job_id, _candidates(stored) if answer == "suggested" else [])
 
 
+async def _earlier(
+    uow: TenantUnitOfWork, digest: str, now: datetime
+) -> tuple[int, dict[str, Any]] | None:
+    """The newest suggestion of this draft when it can answer again: 202 while its job is live,
+    200 with its candidates when it was `suggested` within `REUSE_WINDOW`; else None (a failed or
+    unavailable one is asked again)."""
+    job: JobRun | None = await uow.job_runs.latest_for_entity(
+        CATEGORY_SUGGESTION_ENTITY, draft_entity_id(digest)
+    )
+    if job is None or not isinstance(job.payload_json, Mapping):
+        return None
+    stored = job.payload_json.get(DRAFT_KEY)
+    if not isinstance(stored, Mapping) or stored.get("digest") != digest:
+        return None
+    if job.status in LIVE:
+        return 202, _body("queued", job.id)
+    if job.status != "succeeded" or job.queued_at < now - REUSE_WINDOW:
+        return None
+    answer = answer_from_job(job.id, job.status, job.result_json)
+    return (200, answer) if answer["status"] == "suggested" else None
+
+
 async def request_draft_suggestion(
     principal: Principal, idem_key: str, path: str, draft: Draft
 ) -> tuple[int, dict[str, Any]]:
     tenant = principal.tenant_id
     settings = get_settings()
-    text = draft_text(draft)
+    text = fit_text(draft_text(draft))
     payload = json.dumps(text, sort_keys=True, ensure_ascii=False).encode()
     replay = await peek_replay(principal, idem_key, path, payload)
     if replay is not None:
@@ -165,22 +241,31 @@ async def request_draft_suggestion(
     if not settings.category_suggest_enabled:
         log.info("category_draft.disabled", tenant_id=str(tenant))
         return 200, _body("unavailable")
+    now = datetime.now(UTC)
     async with tenant_uow(tenant, user_id=principal.user_id) as uow:
         offers = await category_offers(uow, settings)
+        digest = draft_digest(text, [offer.category for offer in offers])
+        fast = await _earlier(uow, digest, now) if offers else None
     if not offers:
         return 200, _body("unavailable")
-    now = datetime.now(UTC)
+    if fast is not None:
+        log.info("category_draft.reused", tenant_id=str(tenant), job_id=fast[1]["suggestion_id"])
+        return fast
     refuse(await admit(tenant, now, amount=classify_reservation_usd(settings)), now)
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, tenant)
+        await uow.images.lock_tenant_image_jobs()
+        again = await _earlier(uow, digest, now)
+        if again is not None:
+            return again
         enqueued = await uow.job_runs.enqueue(
             EnqueueSpec(
                 kind=JobKind.IMAGE_COMPLIANCE,
                 entity_type=CATEGORY_SUGGESTION_ENTITY,
-                entity_id=uuid.uuid4(),
+                entity_id=draft_entity_id(digest),
                 created_by=principal.user_id,
-                payload={DRAFT_KEY: {"text": text}},
+                payload={DRAFT_KEY: {"text": text, "digest": digest}},
                 lock=lock_for(JobKind.IMAGE_COMPLIANCE, CATEGORY_SUGGESTION_ENTITY, tenant),
             )
         )

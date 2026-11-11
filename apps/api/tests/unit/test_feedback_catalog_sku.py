@@ -4,12 +4,24 @@ suggestion before save and the SKU help."""
 from __future__ import annotations
 
 import uuid
+from typing import Any
 
 import pytest
 from app.core.config import Settings
+from app.repositories.jobs import MAX_PAYLOAD_BYTES
 from app.repositories.templates import CurrentMapping
 from app.services.catalog_categories import build_categories, category_label, type_name
-from app.services.category_draft import Draft, answer_from_job, draft_text
+from app.services.category_draft import (
+    DRAFT_KEY,
+    PAYLOAD_BUDGET,
+    Draft,
+    answer_from_job,
+    draft_digest,
+    draft_entity_id,
+    draft_text,
+    encoded_bytes,
+    fit_text,
+)
 from app.services.sku_help import brand_prefix, category_code, format_sku
 
 # ---- SKU help ----
@@ -128,6 +140,51 @@ def test_draft_text_caps_and_drops_empty_values() -> None:
 
 def test_draft_text_blank_title_is_untitled() -> None:
     assert draft_text(Draft(title="   "))["title"] == "untitled"
+
+
+def test_fit_text_keeps_a_normal_draft_unchanged() -> None:
+    text = draft_text(Draft(title="Tee", description="Soft", attributes={"color": "Navy"}))
+    assert fit_text(text) == text
+
+
+@pytest.mark.parametrize("char", ["\U0001f600", "\u0915", "a"])
+def test_fit_text_worst_case_fits_the_job_payload(char: str) -> None:
+    # the widest draft the request allows, all in one character (an emoji costs 12 bytes)
+    attributes = {f"k{i:02d}": char * 200 for i in range(60)}
+    text = draft_text(
+        Draft(title=char * 500, description=char * 5000, brand=char * 200, attributes=attributes)
+    )
+    fitted = fit_text(text)
+    payload = {DRAFT_KEY: {"text": fitted, "digest": "0" * 64}}
+    assert encoded_bytes(fitted) <= PAYLOAD_BUDGET
+    assert encoded_bytes(payload) <= MAX_PAYLOAD_BYTES
+    assert fitted["title"] == text["title"] and fitted["brand"] == text["brand"]
+    # attributes go from the last key back; the first ones stay as they were
+    kept = sorted(fitted["attributes"])
+    assert kept == sorted(text["attributes"])[: len(kept)]
+    if char == "a":
+        assert fitted == text
+
+
+def test_fit_text_cuts_the_description_last() -> None:
+    text: dict[str, Any] = {
+        "title": "t",
+        "description": "\U0001f600" * 2000,
+        "brand": None,
+        "attributes": {},
+    }
+    fitted = fit_text(text, budget=12_000)
+    assert encoded_bytes(fitted) <= 12_000
+    assert 0 < len(fitted["description"]) < 2000
+
+
+def test_draft_digest_and_entity_follow_the_text_and_the_offer() -> None:
+    text = draft_text(Draft(title="Tee"))
+    same = draft_digest(text, ["shirts", "tshirts"])
+    assert same == draft_digest(dict(text), ["shirts", "tshirts"])
+    assert same != draft_digest(text, ["shirts"])
+    assert same != draft_digest(draft_text(Draft(title="Tee 2")), ["shirts", "tshirts"])
+    assert draft_entity_id(same) == draft_entity_id(same) != draft_entity_id("0" * 64)
 
 
 JOB = uuid.uuid4()

@@ -1,8 +1,9 @@
 """The draft classification job body (client feedback 11 Nov, item 5): `run_category_draft(ctx)`.
 
-A draft classification is an `image_compliance` job (`entity_type='category_suggestion'`, a
-fresh entity id: a draft has no product row) whose payload names `category_draft` with the draft
-text (`app.services.category_draft`; `app.workers.image_jobs` dispatches). Its answer is the
+A draft classification is an `image_compliance` job (`entity_type='category_suggestion'`, an
+entity id derived from the draft's digest: a draft has no product row) whose payload names
+`category_draft` with the draft text and its digest (`app.services.category_draft`;
+`app.workers.image_jobs` dispatches). Its answer is the
 job's `result_json`: `{status, candidates, calibration_version}`. It writes no product, fact,
 provenance, task or listing: the seller picks a candidate on the add form.
 

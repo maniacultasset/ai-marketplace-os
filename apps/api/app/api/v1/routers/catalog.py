@@ -88,8 +88,10 @@ async def catalog_category_suggest(
     """Suggest up to 3 categories from what the seller typed so far (the name, and the
     description, brand and attribute values when given), before the product is saved. 202 names
     the suggestion to read with `GET /catalog/category-suggestions/{suggestion_id}`. Nothing is
-    set or saved: the seller picks the category. While the suggestion is switched off (or no
-    category can be offered) it is 200 `unavailable` with nothing spent. While AI is paused for
+    set or saved: the seller picks the category. The same draft asked again answers the earlier
+    suggestion with nothing spent: 202 while it runs, 200 with its candidates within a day.
+    While the suggestion is switched off (or no category can be offered) it is 200
+    `unavailable` with nothing spent. While AI is paused for
     every brand it is 503 with the pause's code (SI10); past the daily cap 429."""
     draft = category_draft.Draft(
         title=body.title,

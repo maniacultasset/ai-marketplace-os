@@ -303,6 +303,72 @@ async def test_parallel_asks_under_one_key_make_one_job(
     assert _jobs(images_db) == 1
 
 
+# ---- the same draft asked again ----
+
+
+async def test_same_draft_again_answers_the_live_job(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    first = await _ask(api, images_db)
+    second = await _ask(api, images_db)
+    assert first.status_code == second.status_code == 202
+    assert second.json() == first.json()
+    assert _jobs(images_db) == 1
+    changed = await _ask(api, images_db, {**DRAFT, "title": "Linen crew tee"})
+    assert changed.status_code == 202
+    assert changed.json()["suggestion_id"] != first.json()["suggestion_id"]
+    assert _jobs(images_db) == 2
+
+
+async def test_same_draft_after_it_answered_is_200_with_no_new_call(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    job = await _asked(api, images_db)
+    await run_image_job(job)
+    stub.LAST_REQUEST = None
+    again = await _ask(api, images_db)
+    assert again.status_code == 200, again.text
+    assert again.json() == (await _read(api, images_db, job)).json()
+    assert again.json()["status"] == "suggested" and again.json()["candidates"]
+    assert _jobs(images_db) == 1 and stub.LAST_REQUEST is None
+    assert len(_runs(images_db, job)) == 1
+
+
+async def test_same_draft_after_a_day_or_a_failure_asks_again(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    job = await _asked(api, images_db)
+    await run_image_job(job)
+    images_db.conn.execute(
+        "UPDATE job_runs SET queued_at = queued_at - interval '25 hours' WHERE id = %s", [job]
+    )
+    later = await _ask(api, images_db)
+    assert later.status_code == 202 and later.json()["suggestion_id"] != str(job)
+    failed = await _asked(api, images_db, "Tee [badrecord]")
+    await run_image_job(failed)
+    retried = await _ask(api, images_db, {**DRAFT, "title": "Tee [badrecord]"})
+    assert retried.status_code == 202 and retried.json()["suggestion_id"] != str(failed)
+    assert _jobs(images_db) == 4
+
+
+async def test_widest_draft_fits_the_job_payload(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    emoji = "\U0001f600"
+    body = {
+        "title": emoji * 500,
+        "description": emoji * 5000,
+        "brand": emoji * 200,
+        "attributes": {f"k{i:02d}": emoji * 200 for i in range(60)},
+    }
+    response = await _ask(api, images_db, body)
+    assert response.status_code == 202, response.text
+    payload = job_row(images_db.conn, uuid.UUID(response.json()["suggestion_id"]))["payload_json"]
+    text = payload["category_draft"]["text"]
+    assert text["title"] == emoji * 500 and 0 < len(text["attributes"]) < 40
+    assert len(payload["category_draft"]["digest"]) == 64
+
+
 @pytest.mark.endpoint("catalog_category_suggestion_get", case="validation")
 async def test_read_bad_id_422(images_db: JobWorld, api: httpx.AsyncClient) -> None:
     response = await api.get(f"{URL}/not-a-uuid", headers=as_member(images_db, "owner@acme.test"))

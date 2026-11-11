@@ -12,7 +12,9 @@
 The brand prefix is the first word of the brand name (the body's, else the tenant's), ASCII
 letters and digits only, upper-cased, at most 4 characters (a word shorter than 3 takes the next
 words too); `SKU` when nothing is left. The category code is the seeded category's short code, or
-the first 3 letters of the slug's last word; `GEN` without a category. Variant SKUs keep deriving
+the first 3 letters of the slug's last word; `GEN` without a category. A category that has no
+current template or is switched off (lamps while `CATEGORY_LAMPS_ENABLED` is off) is 422
+`VALIDATION_FAILED` at `category`, before the key is stored: no counter is made for it. Variant SKUs keep deriving
 from the base (`<base>-<COLOUR>-<SIZE>`, services/size_run.py and the variants form).
 """
 
@@ -25,12 +27,17 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
+from mkos_schemas.codes import ErrorCode
+
+from app.core.config import get_settings
+from app.core.errors import InputError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.products import ProductRepository
 from app.repositories.sku_counters import SkuCounterRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.uow import tenant_uow
+from app.services.category_gate import pickable
 from app.services.idempotency import idempotent
 
 __all__ = [
@@ -129,6 +136,11 @@ async def suggest_sku(
     brand_name: str | None,
 ) -> tuple[int, dict[str, Any]]:
     tenant = principal.tenant_id
+    if category is not None:
+        async with tenant_uow(tenant, user_id=principal.user_id) as uow:
+            known = await pickable(uow, category, get_settings())
+        if not known:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "category")
     payload = json.dumps(
         {"category": category, "brand_name": brand_name}, sort_keys=True, ensure_ascii=False
     ).encode()

@@ -55,7 +55,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "products_size_run_create": {"sizes": ["M"]},  # V1.1
     # client feedback 11 Nov
     "catalog_category_suggest": {"title": "Cotton kurta set with dupatta"},
-    "skus_suggest": {"category": "tshirts"},
+    "skus_suggest": {"brand_name": "Acme"},  # a category needs a current template
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},

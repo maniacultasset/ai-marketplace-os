@@ -12,6 +12,7 @@ import httpx
 import pytest
 
 from . import factories as f
+from .assist_support import seed_templates
 from .conftest import LOCAL_HOSTS
 from .images_support import headers, images_db
 from .jobs_support import JobWorld, as_member, bad_token, count
@@ -41,6 +42,11 @@ async def _suggest(
         json={"category": "tshirts"} if body is None else body,
         headers=headers(jw, email, key),
     )
+
+
+@pytest.fixture(autouse=True)
+def _templates(images_db: JobWorld) -> None:
+    seed_templates(images_db.conn, "tshirts", "ethnic_wear_kurta_sets", "home_decor_lamps")
 
 
 def _code(response: httpx.Response) -> str:
@@ -197,6 +203,18 @@ async def test_bad_body_422(
     images_db: JobWorld, api: httpx.AsyncClient, body: dict[str, Any]
 ) -> None:
     assert (await _suggest(api, images_db, body)).status_code == 422
+
+
+@pytest.mark.parametrize("category", ["sarees", "home_decor_lamps", "uncategorized"])
+async def test_unknown_or_switched_off_category_422_makes_no_counter(
+    images_db: JobWorld, api: httpx.AsyncClient, category: str
+) -> None:
+    # sarees has no current template; lamps is off while CATEGORY_LAMPS_ENABLED is off
+    response = await _suggest(api, images_db, {"category": category})
+    assert response.status_code == 422, response.text
+    assert _code(response) == "VALIDATION_FAILED"
+    assert count(images_db.conn, "SELECT count(*) FROM sku_counters") == 0
+    assert count(images_db.conn, "SELECT count(*) FROM idempotency_keys") == 0
 
 
 async def test_missing_key_422(images_db: JobWorld, api: httpx.AsyncClient) -> None:

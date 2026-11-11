@@ -24799,7 +24799,7 @@
     },
     "/api/v1/catalog/category-suggestions": {
       "post": {
-        "description": "Suggest up to 3 categories from what the seller typed so far (the name, and the\ndescription, brand and attribute values when given), before the product is saved. 202 names\nthe suggestion to read with `GET /catalog/category-suggestions/{suggestion_id}`. Nothing is\nset or saved: the seller picks the category. While the suggestion is switched off (or no\ncategory can be offered) it is 200 `unavailable` with nothing spent. While AI is paused for\nevery brand it is 503 with the pause's code (SI10); past the daily cap 429.",
+        "description": "Suggest up to 3 categories from what the seller typed so far (the name, and the\ndescription, brand and attribute values when given), before the product is saved. 202 names\nthe suggestion to read with `GET /catalog/category-suggestions/{suggestion_id}`. Nothing is\nset or saved: the seller picks the category. The same draft asked again answers the earlier\nsuggestion with nothing spent: 202 while it runs, 200 with its candidates within a day.\nWhile the suggestion is switched off (or no category can be offered) it is 200\n`unavailable` with nothing spent. While AI is paused for\nevery brand it is 503 with the pause's code (SI10); past the daily cap 429.",
         "operationId": "catalog_category_suggest",
         "parameters": [
           {
