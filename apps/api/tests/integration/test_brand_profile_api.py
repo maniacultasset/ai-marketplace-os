@@ -344,5 +344,5 @@ async def test_website_audit_after_is_value_less(
 ) -> None:
     assert (await _put(api, fresh, {"website_url": SITE})).status_code == 200
     after = _audits(auth_db)[-1][7]
-    assert after == {"website_url": "set"}
+    assert set(after) == {"provenance"} and set(after["provenance"]) == {"website_url"}
     assert "kalakar" not in json.dumps(after)

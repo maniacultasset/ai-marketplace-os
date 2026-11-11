@@ -92,7 +92,9 @@ def test_no_package_sends_neither_and_is_no_error() -> None:
     item = _one(SELLER_FACTS)
     assert c.PACKAGE_DIMENSIONS not in _attrs(item)
     assert c.PACKAGE_WEIGHT not in _attrs(item)
-    assert not {"facts.package_dimensions", "facts.package_weight"} & set(item.paths)
+    # still answered for (a live update's scope carries them), reported skipped
+    assert not set(PACKAGE_PATHS) & set(item.submitted)
+    assert set(PACKAGE_PATHS) <= set(item.skipped)
 
 
 def test_a_zero_side_is_not_sent() -> None:
