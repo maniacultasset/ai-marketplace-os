@@ -562,7 +562,7 @@
       "source": "public-integrator-docs",
       "doc": "https://www.godatafeed.com/disapproval/amazon-8550-gtin-exemption-needed",
       "observed": false,
-      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning rests on one public integrator guide (GoDataFeed), kept generic until Amazon returns it."
     },
     "enabled": true
   },
@@ -584,7 +584,7 @@
       "source": "public-integrator-docs",
       "doc": "https://helpcenter.channable.com/list-advertise/amazon/list-items-on-amazon/how-to-solve-common-amazon-errors",
       "observed": false,
-      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic."
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning rests on one public integrator guide (Channable), kept generic until Amazon returns it."
     },
     "enabled": true
   },
