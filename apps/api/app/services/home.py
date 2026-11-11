@@ -19,18 +19,28 @@ lands in exactly one, so the buckets sum to `total`):
 - `inactive`: `published` and now inactive or removed at the marketplace.
 - `draft`: `created`, not written yet.
 
-Needs you (the caller's work; `total = blocked + questions + ready_to_approve +
-ready_to_publish`):
+Needs you (the caller's work, only what the caller's role can act on; `total = blocked +
+questions + ready_to_approve + ready_to_publish`):
 
 - `questions`: open questions an open blocking issue waits on (`TaskOut.blocking`, so the Inbox
-  shows the same number). Other open questions are `improve`: answering improves a listing.
-- `blocked`: `problem` listings that wait on a fix. A listing whose every open blocking issue
-  waits on an open question is the question's, and is not counted twice.
-- `ready_to_approve`: only for a role that approves (`listing:approve`).
+  shows the same number), for a role that answers (`product:import`, as `tasks_answer`). Other
+  open questions are `improve`: answering improves a listing.
+- `blocked`: `problem` listings that wait on a fix, for a role that fixes (`listing:edit` or
+  `listing:regenerate`). A listing whose every open blocking issue waits on an open question is
+  the question's, and is not counted twice. `blocked_without_issue` is the part with no open
+  blocking issue (a failed step, a marketplace rejection): the Inbox has no row for it, the
+  Products list does.
+- `ready_to_approve`: only for a role that approves (`listing:approve`), and only listings
+  maker-checker lets the caller approve (invariant 3). A listing whose contributor chain names
+  the caller (`app.services.maker_checker`, walked in SQL) is `own_work`: said, never counted.
 - `ready_to_publish`: only for a role that publishes (`listing:publish`), and only on a
-  marketplace whose publishing is on (`app.core.flags.publish_enabled`). The approved listings
-  of a paused marketplace are `publishing_paused`, for a role that approves or publishes: said,
-  never counted, since nobody can send them.
+  marketplace whose publishing is on (`app.core.flags.publish_enabled`) and whose account is
+  connected. The approved listings of a paused marketplace are `publishing_paused`, those of a
+  marketplace to connect or reconnect are `waiting_on_account`, for a role that approves or
+  publishes: said, never counted, since nobody can send them now.
+
+The tiles (`listings`, `by_marketplace`) stay tenant-wide whatever the role. The web's Products
+list filters by these same listing buckets (`?listing=`), so each tile opens the listings it counts.
 
 `needs_you_items`: at most 5 things to do, in this order: blocked listings (with the newest open
 blocking issue in the seller's words), blocking questions, listings to approve, listings to
@@ -41,7 +51,8 @@ marketplace's account and its one next step.
 
 The read first re-checks the review queue (`recheck_queue`, as the Inbox reads do), so a stale
 "ready to approve" opens its issues before it is counted; then every count runs in one READ ONLY
-transaction under a 5 s budget.
+transaction under a 5 s budget. A read past the budget raises `AnalyticsBudgetError` (no driver
+text), which the route answers as the analytics reads do.
 """
 
 from __future__ import annotations
@@ -52,10 +63,12 @@ from datetime import UTC, datetime
 from typing import Any, Final, Literal
 
 from mkos_schemas.enums import Marketplace
+from sqlalchemy.exc import DBAPIError
 
 from app.core.config import get_settings
 from app.core.flags import marketplace_enabled, publish_enabled
 from app.core.rbac import Action, Principal, allows
+from app.repositories.analytics import _budget_error
 from app.repositories.home import (
     NEEDS_YOU_STATUSES,
     REVIEWABLE,
@@ -124,11 +137,15 @@ class Tally:
     counts: dict[str, int] = field(default_factory=lambda: dict.fromkeys(BUCKETS, 0))
     blocked: int = 0
     """`problem` listings that wait on a fix (not only on an answer)."""
+    blocked_without_issue: int = 0
+    """Of `blocked`, those with no open blocking issue (no Inbox row)."""
 
-    def add(self, bucket: Bucket, n: int, *, question_only: bool) -> None:
+    def add(self, bucket: Bucket, n: int, *, question_only: bool, has_error: bool = True) -> None:
         self.counts[bucket] += n
         if bucket == "problem" and not question_only:
             self.blocked += n
+            if not has_error:
+                self.blocked_without_issue += n
 
     @property
     def total(self) -> int:
@@ -141,19 +158,42 @@ def tally(groups: Iterable[BucketGroup]) -> tuple[Tally, dict[str, Tally]]:
     per: dict[str, Tally] = {m.value: Tally() for m in Marketplace}
     for g in groups:
         bucket = listing_bucket(g.status, g.marketplace_state, g.has_error)
-        whole.add(bucket, g.n, question_only=g.question_only)
-        per.setdefault(g.marketplace, Tally()).add(bucket, g.n, question_only=g.question_only)
+        flags = {"question_only": g.question_only, "has_error": g.has_error}
+        whole.add(bucket, g.n, **flags)
+        per.setdefault(g.marketplace, Tally()).add(bucket, g.n, **flags)
     return whole, per
 
 
 @dataclass(frozen=True, slots=True)
 class Permissions:
+    """What the caller's role can act on (`app.core.rbac`; the actions the routes check)."""
+
+    answer: bool
+    fix: bool
     approve: bool
     publish: bool
 
     @classmethod
     def of(cls, role: str) -> Permissions:
-        return cls(allows(role, Action.LISTING_APPROVE), allows(role, Action.LISTING_PUBLISH))
+        return cls(
+            answer=allows(role, Action.PRODUCT_IMPORT),  # tasks_answer
+            fix=allows(role, Action.LISTING_EDIT) or allows(role, Action.LISTING_REGENERATE),
+            approve=allows(role, Action.LISTING_APPROVE),
+            publish=allows(role, Action.LISTING_PUBLISH),
+        )
+
+
+SendState = Literal["open", "paused", "account"]
+
+
+def send_state(publishing: bool, account: str | None) -> SendState:
+    """Whether an approved listing on a marketplace can be sent now: publishing is on and the
+    account is connected (`open`), publishing is off (`paused`), else the account comes first."""
+    if not publishing:
+        return "paused"
+    if account is None or account == "needs_reconnect":
+        return "account"
+    return "open"
 
 
 def needs_you_counts(
@@ -161,23 +201,34 @@ def needs_you_counts(
     questions: int,
     improve: int,
     can: Permissions,
-    publishing: Mapping[str, bool],
+    sending: Mapping[str, SendState],
+    own_work: int = 0,
 ) -> dict[str, int]:
-    blocked = sum(t.blocked for t in per.values())
-    approve = sum(t.counts["ready_to_approve"] for t in per.values()) if can.approve else 0
-    open_ = sum(t.counts["ready_to_publish"] for m, t in per.items() if publishing.get(m, True))
-    paused = sum(
-        t.counts["ready_to_publish"] for m, t in per.items() if not publishing.get(m, True)
-    )
-    publish = open_ if can.publish else 0
+    """The caller's work (module docstring). `own_work` is the listings ready to approve whose
+    contributor chain names the caller."""
+
+    def approved(state: SendState) -> int:
+        return sum(t.counts["ready_to_publish"] for m, t in per.items() if sending.get(m) == state)
+
+    reviewable = sum(t.counts["ready_to_approve"] for t in per.values())
+    blocked = sum(t.blocked for t in per.values()) if can.fix else 0
+    questions = questions if can.answer else 0
+    approve = max(reviewable - own_work, 0) if can.approve else 0
+    publish = approved("open") if can.publish else 0
+    sends = can.approve or can.publish
     return {
         "total": blocked + questions + approve + publish,
         "blocked": blocked,
+        "blocked_without_issue": (
+            sum(t.blocked_without_issue for t in per.values()) if can.fix else 0
+        ),
         "questions": questions,
         "ready_to_approve": approve,
+        "own_work": min(own_work, reviewable) if can.approve else 0,
         "ready_to_publish": publish,
-        "publishing_paused": paused if can.approve or can.publish else 0,
-        "improve": improve,
+        "publishing_paused": approved("paused") if sends else 0,
+        "waiting_on_account": approved("account") if sends else 0,
+        "improve": improve if can.answer else 0,
     }
 
 
@@ -436,30 +487,52 @@ async def get_summary(principal: Principal) -> dict[str, Any]:
     from app.repositories.uow import tenant_uow
     from app.services.listing_display import recheck_queue
 
-    settings = get_settings()
-    publishing = {m.value: publish_enabled(m, settings) for m in Marketplace}
-    can = Permissions.of(principal.role)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         await recheck_queue(uow, principal)  # a stale "passed" opens its issues first
-    async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
+    try:
+        return await _read_summary(principal)
+    except DBAPIError as exc:
+        budget = _budget_error(exc)
+        if budget is None:
+            raise
+        raise budget from None
+
+
+async def _read_summary(principal: Principal) -> dict[str, Any]:
+    settings = get_settings()
+    can = Permissions.of(principal.role)
+    user = principal.user_id
+    async with unit_of_work(principal.tenant_id, user_id=user) as session:
         reads = home_reads(session, principal.tenant_id)
         await reads.listings.bounded()
+        accounts = await reads.accounts.current()
+        sending = {
+            m.value: send_state(publish_enabled(m, settings), accounts.get(m.value))
+            for m in Marketplace
+        }
         whole, per = tally(await reads.listings.bucket_groups())
         live_products = await reads.listings.live_products()
-        questions, improve = await reads.tasks.open_counts()
-        blocked = await reads.listings.blocked_rows(ITEMS_MAX)
+        own_work = await reads.listings.own_work(user) if can.approve else 0
+        questions, improve = await reads.tasks.open_counts() if can.answer else (0, 0)
+        blocked = await reads.listings.blocked_rows(ITEMS_MAX) if can.fix else []
         issues = await reads.issues.newest_open_errors(
             [(r.listing_id, r.current_version_id) for r in blocked]
         )
-        tasks = await reads.tasks.blocking_rows(ITEMS_MAX) if len(blocked) < ITEMS_MAX else []
+        tasks = (
+            await reads.tasks.blocking_rows(ITEMS_MAX)
+            if can.answer and len(blocked) < ITEMS_MAX
+            else []
+        )
         room = ITEMS_MAX - len(blocked) - len(tasks)
         approve = (
-            await reads.listings.ready_rows(approve=True, marketplaces=list(per), limit=room)
+            await reads.listings.ready_rows(
+                approve=True, marketplaces=list(per), limit=room, not_by=user
+            )
             if can.approve and room > 0
             else []
         )
         room -= len(approve)
-        open_markets = [m for m, on in publishing.items() if on]
+        open_markets = [m for m, state in sending.items() if state == "open"]
         publish = (
             await reads.listings.ready_rows(approve=False, marketplaces=open_markets, limit=room)
             if can.publish and room > 0
@@ -467,7 +540,6 @@ async def get_summary(principal: Principal) -> dict[str, Any]:
         )
         jobs = await reads.jobs.recent(JOB_SCAN)
         fixes = await reads.issues.recent_fixes(ACTIVITY_MAX)
-        accounts = await reads.accounts.current()
         products = await reads.products.count()
     return {
         "as_of": datetime.now(UTC),
@@ -476,7 +548,7 @@ async def get_summary(principal: Principal) -> dict[str, Any]:
             {"marketplace": m.value, "listings": per[m.value].total, **_market(per[m.value])}
             for m in Marketplace
         ],
-        "needs_you": needs_you_counts(per, questions, improve, can, publishing),
+        "needs_you": needs_you_counts(per, questions, improve, can, sending, own_work),
         "needs_you_items": needs_you_items(blocked, issues, tasks, approve, publish),
         "activity": activity(jobs, fixes),
         "marketplaces": marketplace_rows(accounts, per, settings),

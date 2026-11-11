@@ -6142,18 +6142,30 @@
         "type": "object"
       },
       "NeedsYouCounts": {
-        "description": "The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.",
+        "description": "The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.\nEvery count is 0 for a role that cannot act on it.",
         "properties": {
           "blocked": {
-            "description": "Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`.",
+            "description": "Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`. For a role that edits or rewrites listings.",
             "minimum": 0.0,
             "title": "Blocked",
             "type": "integer"
           },
+          "blocked_without_issue": {
+            "description": "Of `blocked`, listings with no open blocking issue (a failed step or a marketplace rejection): the Inbox has no row for them, the Products list does.",
+            "minimum": 0.0,
+            "title": "Blocked Without Issue",
+            "type": "integer"
+          },
           "improve": {
-            "description": "Open questions that hold no listing back (answering improves a listing).",
+            "description": "Open questions that hold no listing back (answering improves a listing), for a role that answers them.",
             "minimum": 0.0,
             "title": "Improve",
+            "type": "integer"
+          },
+          "own_work": {
+            "description": "Listings ready to approve that the caller made or edited: another approver must approve them. Said, never counted in `total`.",
+            "minimum": 0.0,
+            "title": "Own Work",
             "type": "integer"
           },
           "publishing_paused": {
@@ -6163,19 +6175,19 @@
             "type": "integer"
           },
           "questions": {
-            "description": "Open questions an open blocking issue waits on (`TaskOut.blocking`).",
+            "description": "Open questions an open blocking issue waits on (`TaskOut.blocking`), for a role that answers them.",
             "minimum": 0.0,
             "title": "Questions",
             "type": "integer"
           },
           "ready_to_approve": {
-            "description": "Listings ready to approve; 0 for a role that cannot approve.",
+            "description": "Listings ready to approve that the caller may approve: 0 for a role that cannot approve, and without the caller's own work (maker-checker).",
             "minimum": 0.0,
             "title": "Ready To Approve",
             "type": "integer"
           },
           "ready_to_publish": {
-            "description": "Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused is not counted.",
+            "description": "Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused, or whose account is not connected, is not counted.",
             "minimum": 0.0,
             "title": "Ready To Publish",
             "type": "integer"
@@ -6184,15 +6196,24 @@
             "minimum": 0.0,
             "title": "Total",
             "type": "integer"
+          },
+          "waiting_on_account": {
+            "description": "Approved listings on a marketplace whose account is not connected or needs reconnecting, for a role that approves or publishes. Said, never counted in `total`.",
+            "minimum": 0.0,
+            "title": "Waiting On Account",
+            "type": "integer"
           }
         },
         "required": [
           "total",
           "blocked",
+          "blocked_without_issue",
           "questions",
           "ready_to_approve",
+          "own_work",
           "ready_to_publish",
           "publishing_paused",
+          "waiting_on_account",
           "improve"
         ],
         "title": "NeedsYouCounts",
@@ -25058,7 +25079,7 @@
     },
     "/api/v1/home/summary": {
       "get": {
-        "description": "Exact counts of the tenant's listings in one bucket each, the caller's work (blocked\nlistings, blocking questions, listings to approve and to publish), the top 5 things to do,\nthe 8 newest agent actions, and each marketplace's account and next step.",
+        "description": "Exact counts of the tenant's listings in one bucket each, the caller's work (blocked\nlistings, blocking questions, listings to approve and to publish), the top 5 things to do,\nthe 8 newest agent actions, and each marketplace's account and next step. A read past its 5 s\nbudget answers 500 `INTERNAL_ERROR` with no driver text, as the analytics reads do.",
         "operationId": "home_summary",
         "responses": {
           "200": {
@@ -25130,12 +25151,15 @@
                   ],
                   "needs_you": {
                     "blocked": 1,
+                    "blocked_without_issue": 0,
                     "improve": 2,
+                    "own_work": 0,
                     "publishing_paused": 1,
                     "questions": 1,
                     "ready_to_approve": 1,
                     "ready_to_publish": 0,
-                    "total": 3
+                    "total": 3,
+                    "waiting_on_account": 0
                   },
                   "needs_you_items": [
                     {

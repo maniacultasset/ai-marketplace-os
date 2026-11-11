@@ -13,7 +13,7 @@ import pytest
 
 from .conftest import LOCAL_HOSTS
 from .generation_support import GenWorld, gen_world
-from .home_support import BUCKET_DELTA, PLAIN, PRODUCTS_DELTA, scenario
+from .home_support import BUCKET_DELTA, PLAIN, PRODUCTS_DELTA, connected, scenario
 from .jobs_support import bad_token
 
 __all__ = ["gen_world"]
@@ -63,6 +63,7 @@ def _listing_rows(world: GenWorld, slug: str) -> int:
 async def test_counts_reconcile_with_listing_rows(
     api: httpx.AsyncClient, gen_world: GenWorld
 ) -> None:
+    connected(gen_world, "bharat")
     before = await _get(api, gen_world, "owner@bharat.test")
     s = scenario(gen_world, "bharat")
     after = await _get(api, gen_world, "owner@bharat.test")
@@ -79,12 +80,15 @@ async def test_counts_reconcile_with_listing_rows(
 
     needs = _delta(after["needs_you"], before["needs_you"])
     assert needs == {
-        "total": 6,  # 2 blocked + 1 question + 2 to approve + 1 Flipkart to publish
+        "total": 7,  # 2 blocked + 1 question + 3 to approve + 1 Flipkart to publish
         "blocked": 2,
+        "blocked_without_issue": 1,  # the failed listing: on Products, not in the Inbox
         "questions": 1,
-        "ready_to_approve": 2,
+        "ready_to_approve": 3,
+        "own_work": 1,  # the owner's edit waits for another approver
         "ready_to_publish": 1,
         "publishing_paused": 1,  # the approved Amazon listing
+        "waiting_on_account": 0,
         "improve": 1,
     }
 
@@ -98,6 +102,8 @@ async def test_counts_reconcile_with_listing_rows(
     assert failed["issue"] == "Writing the listing failed." and failed["issue_id"] is None
     # the listing that waits on an answer is the question's, never a second blocked item
     assert all(i["listing_id"] != str(s.question_listing) for i in after["needs_you_items"])
+    # never an approve item the caller's own work would refuse
+    assert all(i["listing_id"] != str(s.own) for i in after["needs_you_items"])
 
     newest = after["activity"][0]
     assert newest["kind"] == "fix" and newest["state"] == "completed"
@@ -108,32 +114,49 @@ async def test_counts_reconcile_with_listing_rows(
 
 
 @pytest.mark.parametrize(
-    ("email", "approve", "publish", "paused"),
+    ("email", "fix", "answer", "approve", "publish", "paused"),
     [
-        ("reviewer@bharat.test", 2, 0, 1),  # approves, never publishes
-        ("operator@bharat.test", 0, 1, 1),  # publishes, never approves
-        ("admin@bharat.test", 0, 0, 0),  # does no listing work
+        # approves (another member's edit too) and rewrites, never answers or publishes
+        ("reviewer@bharat.test", 2, 0, 4, 0, 1),
+        ("operator@bharat.test", 2, 1, 0, 1, 1),  # fixes, answers and publishes, never approves
+        ("admin@bharat.test", 0, 0, 0, 0, 0),  # does no listing work
     ],
 )
 async def test_needs_you_follows_the_role(
     api: httpx.AsyncClient,
     gen_world: GenWorld,
     email: str,
+    fix: int,
+    answer: int,
     approve: int,
     publish: int,
     paused: int,
 ) -> None:
+    connected(gen_world, "bharat")
     before = await _get(api, gen_world, email)
     scenario(gen_world, "bharat")
     after = await _get(api, gen_world, email)
     needs = _delta(after["needs_you"], before["needs_you"])
+    assert needs["blocked"] == fix and needs["questions"] == answer
     assert needs["ready_to_approve"] == approve and needs["ready_to_publish"] == publish
-    assert needs["publishing_paused"] == paused
-    assert needs["total"] == 2 + 1 + approve + publish
+    assert needs["publishing_paused"] == paused and needs["own_work"] == 0
+    assert needs["total"] == fix + answer + approve + publish
     # the listing buckets never depend on the role
     assert _delta(after["listings"], before["listings"])["total"] == BUCKET_DELTA["total"]
     kinds = {i["kind"] for i in after["needs_you_items"]}
     assert ("approve" in kinds) <= (approve > 0) and ("publish" in kinds) <= (publish > 0)
+    assert ("blocked" in kinds) <= (fix > 0) and ("question" in kinds) <= (answer > 0)
+
+
+async def test_publish_waits_on_the_account(api: httpx.AsyncClient, gen_world: GenWorld) -> None:
+    connected(gen_world, "bharat", status="needs_reconnect")
+    before = await _get(api, gen_world, "owner@bharat.test")
+    scenario(gen_world, "bharat")
+    after = await _get(api, gen_world, "owner@bharat.test")
+    needs = _delta(after["needs_you"], before["needs_you"])
+    # the approved Flipkart listing cannot be sent until the account is reconnected
+    assert needs["ready_to_publish"] == 0 and needs["waiting_on_account"] == 1
+    assert all(i["kind"] != "publish" for i in after["needs_you_items"])
 
 
 async def test_publish_counts_when_the_switch_is_on(
@@ -143,6 +166,7 @@ async def test_publish_counts_when_the_switch_is_on(
 
     monkeypatch.setenv("AMAZON_PUBLISH_ENABLED", "true")
     get_settings.cache_clear()
+    connected(gen_world, "bharat")
     before = await _get(api, gen_world, "owner@bharat.test")
     scenario(gen_world, "bharat")
     needs = _delta(

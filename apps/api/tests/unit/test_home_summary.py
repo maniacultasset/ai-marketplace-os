@@ -15,6 +15,7 @@ from app.services.home import (
     BUCKETS,
     ITEMS_MAX,
     Permissions,
+    SendState,
     Tally,
     activity,
     blocked_issue_text,
@@ -25,6 +26,7 @@ from app.services.home import (
     needs_you_counts,
     needs_you_items,
     next_step,
+    send_state,
     tally,
 )
 
@@ -101,6 +103,8 @@ def test_tally_sums_to_total_and_splits_blocked_from_questions() -> None:
     assert whole.counts["problem"] == 4 and whole.blocked == 3
     assert per["amazon"].blocked == 2 and per["flipkart"].blocked == 1
     assert per["flipkart"].counts["ready_to_approve"] == 4
+    # the failed listing has no open blocking issue: no Inbox row for it
+    assert whole.blocked_without_issue == 1 and per["flipkart"].blocked_without_issue == 1
 
 
 def test_tally_keeps_both_marketplaces_when_empty() -> None:
@@ -112,6 +116,7 @@ def _per() -> dict[str, Tally]:
     _, per = tally(
         [
             _g("amazon", "blocked", err=True),
+            _g("amazon", "failed"),
             _g("amazon", "validated", n=2),
             _g("amazon", "approved", n=3),
             _g("flipkart", "approved"),
@@ -120,32 +125,86 @@ def _per() -> dict[str, Tally]:
     return per
 
 
+OPEN_FLIPKART: dict[str, SendState] = {"amazon": "paused", "flipkart": "open"}
+
+
 @pytest.mark.parametrize(
-    ("role", "approve", "publish", "paused"),
+    ("role", "fix", "answer", "approve", "publish", "paused"),
     [
-        ("owner", 2, 1, 3),
-        ("reviewer", 2, 0, 3),
-        ("operator", 0, 1, 3),
-        ("admin", 0, 0, 0),
-        ("unknown", 0, 0, 0),
+        ("owner", 2, 4, 2, 1, 3),
+        ("reviewer", 2, 0, 2, 0, 3),  # rewrites and approves; answering needs product:import
+        ("operator", 2, 4, 0, 1, 3),
+        ("admin", 0, 0, 0, 0, 0),  # acts on no listing: nothing needs it
+        ("unknown", 0, 0, 0, 0, 0),
     ],
 )
 def test_needs_you_follows_role_and_switch(
-    role: str, approve: int, publish: int, paused: int
+    role: str, fix: int, answer: int, approve: int, publish: int, paused: int
 ) -> None:
-    counts = needs_you_counts(
-        _per(), 4, 2, Permissions.of(role), {"amazon": False, "flipkart": True}
-    )
+    counts = needs_you_counts(_per(), 4, 2, Permissions.of(role), OPEN_FLIPKART)
+    assert counts["blocked"] == fix and counts["questions"] == answer
+    assert counts["blocked_without_issue"] == (1 if fix else 0)
+    assert counts["improve"] == (2 if answer else 0)
     assert counts["ready_to_approve"] == approve
     assert counts["ready_to_publish"] == publish
     assert counts["publishing_paused"] == paused
-    assert counts["total"] == 1 + 4 + approve + publish
-    assert counts["blocked"] == 1 and counts["questions"] == 4 and counts["improve"] == 2
+    assert counts["waiting_on_account"] == 0
+    assert counts["total"] == fix + answer + approve + publish
 
 
 def test_needs_you_counts_every_approved_listing_while_publishing_is_on() -> None:
-    counts = needs_you_counts(_per(), 0, 0, Permissions.of("owner"), {"amazon": True})
+    sending: dict[str, SendState] = {"amazon": "open", "flipkart": "open"}
+    counts = needs_you_counts(_per(), 0, 0, Permissions.of("owner"), sending)
     assert counts["ready_to_publish"] == 4 and counts["publishing_paused"] == 0
+
+
+def test_needs_you_keeps_own_work_out_of_approve() -> None:
+    owner = Permissions.of("owner")
+    counts = needs_you_counts(_per(), 0, 0, owner, OPEN_FLIPKART, own_work=2)
+    assert counts["ready_to_approve"] == 0 and counts["own_work"] == 2
+    assert counts["total"] == 2 + 1  # blocked + the open Flipkart listing
+    some = needs_you_counts(_per(), 0, 0, owner, OPEN_FLIPKART, own_work=1)
+    assert some["ready_to_approve"] == 1 and some["own_work"] == 1
+    operator = needs_you_counts(_per(), 0, 0, Permissions.of("operator"), OPEN_FLIPKART, 2)
+    assert operator["own_work"] == 0  # cannot approve anyway
+
+
+def test_needs_you_waits_on_the_account() -> None:
+    sending: dict[str, SendState] = {"amazon": "account", "flipkart": "open"}
+    counts = needs_you_counts(_per(), 0, 0, Permissions.of("operator"), sending)
+    assert counts["ready_to_publish"] == 1 and counts["waiting_on_account"] == 3
+    assert counts["publishing_paused"] == 0
+    reviewer = needs_you_counts(_per(), 0, 0, Permissions.of("reviewer"), sending)
+    assert reviewer["ready_to_publish"] == 0 and reviewer["waiting_on_account"] == 3
+
+
+@pytest.mark.parametrize(
+    ("publishing", "account", "state"),
+    [
+        (False, "active", "paused"),
+        (False, None, "paused"),  # paused wins: nothing to connect for yet
+        (True, None, "account"),
+        (True, "needs_reconnect", "account"),
+        (True, "active", "open"),
+    ],
+)
+def test_send_state(publishing: bool, account: str | None, state: str) -> None:
+    assert send_state(publishing, account) == state
+
+
+@pytest.mark.parametrize(
+    ("role", "answer", "fix", "approve", "publish"),
+    [
+        ("owner", True, True, True, True),
+        ("operator", True, True, False, True),
+        ("reviewer", False, True, True, False),
+        ("admin", False, False, False, False),
+    ],
+)
+def test_permissions_follow_the_matrix(
+    role: str, answer: bool, fix: bool, approve: bool, publish: bool
+) -> None:
+    assert Permissions.of(role) == Permissions(answer, fix, approve, publish)
 
 
 def _row(

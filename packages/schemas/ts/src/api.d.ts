@@ -923,7 +923,8 @@ export interface paths {
          * Exact listing counts, what needs you, recent agent work and marketplace status
          * @description Exact counts of the tenant's listings in one bucket each, the caller's work (blocked
          *     listings, blocking questions, listings to approve and to publish), the top 5 things to do,
-         *     the 8 newest agent actions, and each marketplace's account and next step.
+         *     the 8 newest agent actions, and each marketplace's account and next step. A read past its 5 s
+         *     budget answers 500 `INTERNAL_ERROR` with no driver text, as the analytics reads do.
          */
         get: operations["home_summary"];
         put?: never;
@@ -4634,18 +4635,29 @@ export interface components {
         /**
          * NeedsYouCounts
          * @description The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.
+         *     Every count is 0 for a role that cannot act on it.
          */
         NeedsYouCounts: {
             /**
              * Blocked
-             * @description Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`.
+             * @description Problem listings that wait on a fix rather than an answer: a listing whose every open blocking issue waits on an open question is counted under `questions`. For a role that edits or rewrites listings.
              */
             blocked: number;
             /**
+             * Blocked Without Issue
+             * @description Of `blocked`, listings with no open blocking issue (a failed step or a marketplace rejection): the Inbox has no row for them, the Products list does.
+             */
+            blocked_without_issue: number;
+            /**
              * Improve
-             * @description Open questions that hold no listing back (answering improves a listing).
+             * @description Open questions that hold no listing back (answering improves a listing), for a role that answers them.
              */
             improve: number;
+            /**
+             * Own Work
+             * @description Listings ready to approve that the caller made or edited: another approver must approve them. Said, never counted in `total`.
+             */
+            own_work: number;
             /**
              * Publishing Paused
              * @description Approved listings waiting while publishing to their marketplace is paused, for a role that approves or publishes. Said, never counted in `total`.
@@ -4653,21 +4665,26 @@ export interface components {
             publishing_paused: number;
             /**
              * Questions
-             * @description Open questions an open blocking issue waits on (`TaskOut.blocking`).
+             * @description Open questions an open blocking issue waits on (`TaskOut.blocking`), for a role that answers them.
              */
             questions: number;
             /**
              * Ready To Approve
-             * @description Listings ready to approve; 0 for a role that cannot approve.
+             * @description Listings ready to approve that the caller may approve: 0 for a role that cannot approve, and without the caller's own work (maker-checker).
              */
             ready_to_approve: number;
             /**
              * Ready To Publish
-             * @description Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused is not counted.
+             * @description Approved listings the caller can publish now; 0 for a role that cannot publish. An approved listing on a marketplace whose publishing is paused, or whose account is not connected, is not counted.
              */
             ready_to_publish: number;
             /** Total */
             total: number;
+            /**
+             * Waiting On Account
+             * @description Approved listings on a marketplace whose account is not connected or needs reconnecting, for a role that approves or publishes. Said, never counted in `total`.
+             */
+            waiting_on_account: number;
         };
         /**
          * NeedsYouItem
@@ -19812,12 +19829,15 @@ export interface operations {
                      *       ],
                      *       "needs_you": {
                      *         "blocked": 1,
+                     *         "blocked_without_issue": 0,
                      *         "improve": 2,
+                     *         "own_work": 0,
                      *         "publishing_paused": 1,
                      *         "questions": 1,
                      *         "ready_to_approve": 1,
                      *         "ready_to_publish": 0,
-                     *         "total": 3
+                     *         "total": 3,
+                     *         "waiting_on_account": 0
                      *       },
                      *       "needs_you_items": [
                      *         {

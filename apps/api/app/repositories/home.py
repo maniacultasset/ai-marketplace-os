@@ -9,6 +9,12 @@ The open-error predicates are the display state's (`app.services.listing_display
 `error` row of a listing counts when it has no version (a listing-level answer) or sits on the
 listing's current version; an older version's row is history. Such a row "waits on a question"
 when its `human_task_id` names an open task (`listing_issues.blocking_task_ids`).
+
+Maker-checker (`own_work`) walks each reviewable listing's contributor chain in one recursive
+CTE, the same walk as `app.services.maker_checker.contributor_chain` and `lv_guard`: from the
+current version back through `parent_version_id`, collecting `generated_by_user_id` and
+`edited_by_user_id`, stopping after a `generation` or a full `regeneration` (`changed_paths`
+NULL). `UNION` (not `UNION ALL`) ends the walk on a cycle.
 """
 
 from __future__ import annotations
@@ -20,12 +26,24 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import ColumnElement, and_, func, literal, literal_column, not_, or_, select, text
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    and_,
+    false,
+    func,
+    literal,
+    literal_column,
+    not_,
+    or_,
+    select,
+    text,
+)
 
 from app.db.models.catalog import Product
 from app.db.models.catalog_assets import Image, MarketplaceAccount
 from app.db.models.issues import HumanTask, ListingIssue
-from app.db.models.listings import Listing
+from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.repositories.base import TenantScopedRepository
 
@@ -168,6 +186,21 @@ def problem() -> ColumnElement[bool]:
     )
 
 
+def ready_to_approve() -> builtins.list[ColumnElement[bool]]:
+    """The `ready_to_approve` bucket in SQL: reviewable, no open blocking issue, neither live,
+    partly live nor rejected."""
+    return [
+        Listing.marketplace_state.not_in((*LIVE_STATES, "rejected")),
+        Listing.status.in_(REVIEWABLE),
+        not_(open_errors()),
+    ]
+
+
+def _chain_root(origin: Any, changed_paths: Any) -> ColumnElement[bool]:
+    """The version starts a chain (`maker_checker._starts_chain`)."""
+    return or_(origin == "generation", and_(origin == "regeneration", changed_paths.is_(None)))
+
+
 def _product_join() -> ColumnElement[bool]:
     return and_(Product.tenant_id == Listing.tenant_id, Product.id == Listing.product_id)
 
@@ -247,25 +280,75 @@ class HomeListingReads(TenantScopedRepository[Listing]):
         )
         return [ListingRow(*row) for row in (await self.db.execute(stmt)).all()]
 
+    def own_work_ids(self, user_id: uuid.UUID) -> Select[Any]:
+        """The ids of the listings ready to approve whose contributor chain names `user_id`
+        (module docstring): maker-checker refuses that user's approval."""
+        v = ListingVersion
+        anchor = (
+            self._select()
+            .join(v, and_(v.tenant_id == Listing.tenant_id, v.id == Listing.current_version_id))
+            .where(Listing.archived_at.is_(None), *ready_to_approve())
+            .with_only_columns(
+                Listing.id.label("listing_id"),
+                v.parent_version_id.label("parent_id"),
+                _chain_root(v.origin, v.changed_paths).label("root"),
+                v.generated_by_user_id.label("maker"),
+                v.edited_by_user_id.label("editor"),
+            )
+            .cte("own_chain", recursive=True)
+        )
+        step = (
+            select(
+                anchor.c.listing_id,
+                v.parent_version_id,
+                _chain_root(v.origin, v.changed_paths),
+                v.generated_by_user_id,
+                v.edited_by_user_id,
+            )
+            .join_from(anchor, v, and_(v.tenant_id == self.tenant_id, v.id == anchor.c.parent_id))
+            .where(anchor.c.root.is_(false()))
+        )
+        chain = anchor.union(step)
+        return select(chain.c.listing_id).where(
+            or_(chain.c.maker == user_id, chain.c.editor == user_id)
+        )
+
+    async def own_work(self, user_id: uuid.UUID) -> int:
+        """How many listings ready to approve `user_id` made or edited (`own_work_ids`)."""
+        stmt = (
+            self._select()
+            .where(Listing.id.in_(self.own_work_ids(user_id)))
+            .with_only_columns(func.count())
+        )
+        return int((await self.db.execute(stmt)).scalar_one())
+
     async def blocked_rows(self, limit: int) -> builtins.list[ListingRow]:
         """Problem listings that wait on a fix (not only on an answer)."""
         return await self.rows([problem(), not_(question_only())], limit=limit)
 
     async def ready_rows(
-        self, *, approve: bool, marketplaces: Sequence[str], limit: int
+        self,
+        *,
+        approve: bool,
+        marketplaces: Sequence[str],
+        limit: int,
+        not_by: uuid.UUID | None = None,
     ) -> builtins.list[ListingRow]:
-        """The `ready_to_approve` bucket (reviewable, no open blocking issue) or the
-        `ready_to_publish` one (approved), on `marketplaces`, neither live nor rejected."""
+        """The `ready_to_approve` bucket (reviewable, no open blocking issue; without the ones
+        `not_by` made or edited) or the `ready_to_publish` one (approved), on `marketplaces`,
+        neither live nor rejected."""
         if not marketplaces:
             return []
-        where: list[ColumnElement[bool]] = [
-            Listing.marketplace.in_(list(marketplaces)),
-            Listing.marketplace_state.not_in((*LIVE_STATES, "rejected")),
-        ]
+        where: list[ColumnElement[bool]] = [Listing.marketplace.in_(list(marketplaces))]
         if approve:
-            where += [Listing.status.in_(REVIEWABLE), not_(open_errors())]
+            where += ready_to_approve()
+            if not_by is not None:
+                where.append(Listing.id.not_in(self.own_work_ids(not_by)))
         else:
-            where.append(Listing.status == "approved")
+            where += [
+                Listing.marketplace_state.not_in((*LIVE_STATES, "rejected")),
+                Listing.status == "approved",
+            ]
         return await self.rows(where, limit=limit)
 
 
@@ -276,7 +359,9 @@ class HomeIssueReads(TenantScopedRepository[ListingIssue]):
         self, versions: Sequence[tuple[uuid.UUID, uuid.UUID | None]]
     ) -> dict[uuid.UUID, IssueRow]:
         """Per listing of `(listing_id, current_version_id)`: its newest open blocking row on
-        the current version (or with no version), and how many such rows it has."""
+        the current version (or with no version) that waits on no open question (the Inbox
+        shows a row that does only as its question), else its newest one; and how many such
+        rows it has."""
         if not versions:
             return {}
         current = dict(versions)
@@ -295,7 +380,9 @@ class HomeIssueReads(TenantScopedRepository[ListingIssue]):
                 ListingIssue.plain_message,
                 ListingIssue.message,
             )
-            .order_by(ListingIssue.last_seen_at.desc(), ListingIssue.id.desc())
+            .order_by(
+                _waits_on_question(), ListingIssue.last_seen_at.desc(), ListingIssue.id.desc()
+            )
         )
         out: dict[uuid.UUID, IssueRow] = {}
         counts: dict[uuid.UUID, int] = {}

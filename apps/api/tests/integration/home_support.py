@@ -16,14 +16,14 @@ LATER = SOON + timedelta(minutes=1)
 PLAIN = "The title is longer than Amazon allows."
 
 # What `scenario` adds to each listing bucket (the archived listing adds nothing).
-PRODUCTS_DELTA = 13
+PRODUCTS_DELTA = 15
 BUCKET_DELTA = {
-    "total": 11,
+    "total": 13,
     "live": 2,
     "partly_live": 0,
     "in_progress": 1,
     "problem": 3,
-    "ready_to_approve": 2,
+    "ready_to_approve": 4,
     "ready_to_publish": 2,
     "draft": 1,
     "inactive": 0,
@@ -40,6 +40,8 @@ class HomeScenario:
     question: uuid.UUID
     failed: uuid.UUID
     fixed_title: str
+    own: uuid.UUID
+    """Ready to approve, edited by `owner@<slug>.test`: maker-checker keeps that owner out."""
 
 
 def _versioned(conn: Any, tenant: uuid.UUID, **columns: Any) -> tuple[uuid.UUID, uuid.UUID]:
@@ -49,12 +51,35 @@ def _versioned(conn: Any, tenant: uuid.UUID, **columns: Any) -> tuple[uuid.UUID,
     return listing, version
 
 
-def scenario(world: GenWorld, slug: str) -> HomeScenario:
-    """In `slug`, 12 listings (one archived) whose buckets are `BUCKET_DELTA`, one blocking and
-    one non-blocking open question (13 new products in all), and one issue Kuinn fixed on its
-    own."""
+def connected(world: GenWorld, slug: str, status: str = "active") -> None:
+    """An Amazon and a Flipkart account in `slug` with `status` (made once, then updated), so
+    approved listings can be sent there."""
     conn = world.conn
     tenant = world.tenant(slug)
+    for market in ("amazon", "flipkart"):
+        found = world.scalar(
+            "SELECT id FROM marketplace_accounts WHERE tenant_id = %s AND marketplace = %s"
+            " AND status <> 'revoked'",
+            [tenant, market],
+        )
+        if found is None:
+            f.marketplace_account(conn, tenant, marketplace=market, status=status)
+        else:
+            conn.execute(
+                "UPDATE marketplace_accounts SET status = %s WHERE id = %s", [status, found]
+            )
+    conn.commit()
+
+
+def scenario(world: GenWorld, slug: str) -> HomeScenario:
+    """In `slug`, 14 listings (one archived) whose buckets are `BUCKET_DELTA`, one blocking and
+    one non-blocking open question (15 new products in all), and one issue Kuinn fixed on its
+    own. Two of the listings ready to approve test maker-checker: one whose edit (on top of
+    another member's generation) is `owner@<slug>.test`'s, and one that owner generated before
+    another member fully regenerated it (the chain stops at the regeneration)."""
+    conn = world.conn
+    tenant = world.tenant(slug)
+    owner = world.user(f"owner@{slug}.test")
     conn.execute("SET session_replication_role = replica")
     try:
         f.listing(conn, tenant, marketplace_state="live", status="published")
@@ -84,6 +109,19 @@ def scenario(world: GenWorld, slug: str) -> HomeScenario:
         )
         # archived: in no bucket
         f.listing(conn, tenant, status="validated", archived_at=datetime.now(UTC))
+        # maker-checker: the owner edited this one, so the owner cannot approve it
+        own = f.listing(conn, tenant, status="validated")
+        made = f.version(conn, tenant, own)
+        edited = f.version(
+            conn, tenant, own, origin="edit", parent_version_id=made,
+            changed_paths=["content.title"], edited_by_user_id=owner,
+        )  # fmt: skip
+        conn.execute("UPDATE listings SET current_version_id = %s WHERE id = %s", [edited, own])
+        # ... and generated this one, which another member then fully regenerated: approvable
+        redone = f.listing(conn, tenant, status="validated")
+        first = f.version(conn, tenant, redone, generated_by_user_id=owner)
+        again = f.version(conn, tenant, redone, origin="regeneration", parent_version_id=first)
+        conn.execute("UPDATE listings SET current_version_id = %s WHERE id = %s", [again, redone])
         # a question that holds nothing back
         f.human_task(conn, tenant)
         # a fix Kuinn made itself, the newest action
@@ -101,5 +139,5 @@ def scenario(world: GenWorld, slug: str) -> HomeScenario:
     )
     blocked_product = world.scalar("SELECT product_id FROM listings WHERE id = %s", [blocked])
     return HomeScenario(
-        tenant, blocked, blocked_product, issue, q_listing, question, failed, str(title)
+        tenant, blocked, blocked_product, issue, q_listing, question, failed, str(title), own
     )

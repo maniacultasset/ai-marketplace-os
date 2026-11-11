@@ -2,13 +2,16 @@
 
 Every number is an exact count over the tenant's listing, task and issue rows (no page walk, no
 cap), and each bucket has one definition, written in `app.services.home` and in the field
-descriptions below, so the Home tiles reconcile with the Products list and the Inbox.
+descriptions below. The web's Products list filters by the same listing buckets, so each tile opens
+the listings it counts; the Inbox shows the same question count.
 
 `listings` counts every listing that is not archived exactly once: `live + partly_live +
 in_progress + problem + ready_to_approve + ready_to_publish + draft + inactive == total`.
-`needs_you` is the caller's own work, so it depends on the caller's role: listings to approve
-count only for a role that approves, listings to publish only for a role that publishes and only
-while publishing to that marketplace is on."""
+`needs_you` is the caller's own work, so it depends on the caller's role: questions count only for
+a role that answers them, blocked listings only for a role that fixes them, listings to approve
+only for a role that approves and only those maker-checker lets the caller approve, listings to
+publish only for a role that publishes and only while that marketplace's publishing is on and its
+account is connected."""
 
 from __future__ import annotations
 
@@ -70,25 +73,46 @@ class MarketplaceCounts(WireModel):
 
 
 class NeedsYouCounts(WireModel):
-    """The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`."""
+    """The caller's work. `total = blocked + questions + ready_to_approve + ready_to_publish`.
+    Every count is 0 for a role that cannot act on it."""
 
     total: Count
     blocked: Count = Field(
         description=(
             "Problem listings that wait on a fix rather than an answer: a listing whose every "
-            "open blocking issue waits on an open question is counted under `questions`."
+            "open blocking issue waits on an open question is counted under `questions`. For a "
+            "role that edits or rewrites listings."
         )
     )
+    blocked_without_issue: Count = Field(
+        description=(
+            "Of `blocked`, listings with no open blocking issue (a failed step or a marketplace "
+            "rejection): the Inbox has no row for them, the Products list does."
+        ),
+    )
     questions: Count = Field(
-        description="Open questions an open blocking issue waits on (`TaskOut.blocking`)."
+        description=(
+            "Open questions an open blocking issue waits on (`TaskOut.blocking`), for a role "
+            "that answers them."
+        )
     )
     ready_to_approve: Count = Field(
-        description="Listings ready to approve; 0 for a role that cannot approve."
+        description=(
+            "Listings ready to approve that the caller may approve: 0 for a role that cannot "
+            "approve, and without the caller's own work (maker-checker)."
+        )
+    )
+    own_work: Count = Field(
+        description=(
+            "Listings ready to approve that the caller made or edited: another approver must "
+            "approve them. Said, never counted in `total`."
+        ),
     )
     ready_to_publish: Count = Field(
         description=(
             "Approved listings the caller can publish now; 0 for a role that cannot publish. "
-            "An approved listing on a marketplace whose publishing is paused is not counted."
+            "An approved listing on a marketplace whose publishing is paused, or whose account "
+            "is not connected, is not counted."
         )
     )
     publishing_paused: Count = Field(
@@ -97,8 +121,17 @@ class NeedsYouCounts(WireModel):
             "role that approves or publishes. Said, never counted in `total`."
         )
     )
+    waiting_on_account: Count = Field(
+        description=(
+            "Approved listings on a marketplace whose account is not connected or needs "
+            "reconnecting, for a role that approves or publishes. Said, never counted in `total`."
+        ),
+    )
     improve: Count = Field(
-        description="Open questions that hold no listing back (answering improves a listing)."
+        description=(
+            "Open questions that hold no listing back (answering improves a listing), for a "
+            "role that answers them."
+        )
     )
 
 
