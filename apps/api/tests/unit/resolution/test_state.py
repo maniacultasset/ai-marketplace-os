@@ -358,6 +358,10 @@ def test_seller_action_picks_recategorize_first() -> None:
     assert seller_action([ean, cat, other], lanes) == "recategorize"
     assert seller_action([ean], lanes) == "edit_identifier"
     assert seller_action([ean], {ean.id: ("staff", "mapping")}) is None
+    # Item 13: an invalid barcode or a missing barcode/exemption from Amazon is the same edit
+    for code in ("IDENTIFIER_INVALID", "IDENTIFIER_MISSING"):
+        row = Row(T(), code, field_path="facts.identifier")
+        assert seller_action([row], {row.id: ("seller", "seller_fact")}) == "edit_identifier"
     # QA: the seller's own text over Kuinn's limit is an edit, after the two others
     title = Row(T(), "FIELD_TOO_LONG", source="rules_engine", field_path="content.title")
     lanes[title.id] = ("seller", "ai_content")

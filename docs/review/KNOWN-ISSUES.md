@@ -190,7 +190,8 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   `AMAZON_CATALOG_PRECHECK_ENABLED`) and the AI diagnosis of unknown codes (staff-review proposals that never act,
   off by default: `MARKETPLACE_ERROR_DIAGNOSIS_ENABLED`).
 - **SI13 left out of the error map:** 8541, 8542, 8572 (not on Amazon's public troubleshooting page; their help
-  pages need a login). 8542 has a row since the prod-codes fix below; 8541 and 8572 stay out on purpose. Added:
+  pages need a login). 8542 has a row since the prod-codes fix below, and 8572 since item 13 below; 8541 stays
+  out on purpose. Added:
   4000003, 101158, 100980, 4005015, 4005007, 4005008, 4005006, 4005038, 4005013, 101168, 4005033.
 - **SI13 open:** child-level value-map pairs (a child refusal has no live counterpart: counted unpaired); a
   category change from `blocked` or for a family with live variants (staff); the child-axis repair
@@ -208,9 +209,18 @@ or a client answer. When you fix an item, delete its row and cite the ADR or com
   lane), and 8542, 8560, 99010, 8105, whose Amazon help needs a Seller Central login. Those four use generic seller
   text from the meaning the public integrator guides agree on (`policy_ref.source` `public-integrator-docs`, with a
   `note`), and Amazon's own message is still shown after it. 8542 left the planner's qualification codes: it is a
-  catalog conflict on a matched barcode, so it takes the identifier lanes. 8541 and 8572 stay unmapped on purpose,
+  catalog conflict on a matched barcode, so it takes the identifier lanes. 8541 stays unmapped on purpose,
   and 8541 is still in the qualification codes. Replace any of these with an observed version 2 row when the real
   prod issue text says otherwise.
+- **GTIN exemption and barcode refusals (client feedback item 13, doc-sourced, version 1):** 90188 (an invalid
+  check digit, Amazon's SP-API troubleshooting page), 8572 (a barcode that does not match the brand or product,
+  integrator guides) and 8550 (a barcode or an approved GTIN exemption is needed, one integrator guide). All three sit
+  at `facts.identifier`, and the planner now sends an adapter `IDENTIFIER_DUPLICATE`, `IDENTIFIER_INVALID` or
+  `IDENTIFIER_MISSING` there to the seller's `edit_identifier` (back to the barcode choice). 8560 has a version 2
+  that also names a GTIN exemption Amazon has not approved for the brand or category (the Channable and EffectConnect
+  guides list that case under 8560). No Amazon page documents a separate code for an unapproved exemption, and the
+  exemption the seller claims is never checked against Amazon before a send. Replace with observed rows once real
+  prod issues show these cases.
 
 ## S16 follow-ups
 

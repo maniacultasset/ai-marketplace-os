@@ -71,13 +71,16 @@ PREVIEW_SUFFIX: Final = "|preview"
 ACTION_OF: Final[Mapping[str, str]] = {
     "CATEGORY_MISMATCH": "recategorize",
     "IDENTIFIER_DUPLICATE": "edit_identifier",
+    "IDENTIFIER_INVALID": "edit_identifier",
+    "IDENTIFIER_MISSING": "edit_identifier",
 }
 CONTENT_ROOTS: Final = ("content.", "keywords.")
 SELLER_ACTION_TEXT: Final[Mapping[str, str]] = {
     "recategorize": "Amazon files this product under another category. Choose the matching "
     "category, then regenerate the listing.",
-    "edit_identifier": "Amazon lists this barcode under another brand. Check the barcode, or "
-    "claim a GTIN exemption.",
+    "edit_identifier": "Amazon does not accept this product's barcode or GTIN exemption. Check the "
+    "barcode on the product, or choose the exemption only if Amazon approved it for this brand "
+    "and category.",
     "edit_content": "This text does not pass the marketplace's rules, for example a title that "
     "is too long. Edit the listing to fix it, then save a new version.",
 }
@@ -186,8 +189,9 @@ async def recategorizable_listings(
 
 def seller_action(rows: Iterable[Any], lanes: Mapping[uuid.UUID, tuple[Lane, Cause]]) -> str | None:
     """SI13 (CP-D8): the seller action an open ERROR asks for with no inbox question:
-    `recategorize` (a category the marketplace refiled) before `edit_identifier` (a barcode of
-    another brand) before `edit_content` (text that failed Kuinn's own check)."""
+    `recategorize` (a category the marketplace refiled) before `edit_identifier` (a barcode
+    Amazon refused, or no barcode and no approved GTIN exemption) before `edit_content` (text
+    that failed Kuinn's own check)."""
     kinds: set[str] = set()
     for r in rows:
         if r.status != "open" or r.severity != "error" or lanes.get(r.id, ("",))[0] != "seller":
