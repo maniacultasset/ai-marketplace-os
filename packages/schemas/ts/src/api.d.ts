@@ -1540,6 +1540,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/issue-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every marketplace issue of this listing, who handles it, and each fix Kuinn made (before, after, reason, outcome)
+         * @description Feedback item 20: every marketplace ERROR of the listing in plain words with who handles
+         *     it (Kuinn, you, the marketplace side or Kuinn's team), and each fix Kuinn made with its before
+         *     and after values, reason and outcome. A read: the engine never runs here.
+         */
+        get: operations["listings_issue_history"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}/preview": {
         parameters: {
             query?: never;
@@ -3133,6 +3155,47 @@ export interface components {
          * @enum {string}
          */
         FixAction: "remap_value" | "reformat" | "derive_field" | "rebuild_variation";
+        /** FixOut */
+        FixOut: {
+            /**
+             * After
+             * @description The value Kuinn sends now (null: not shown).
+             */
+            after?: string | null;
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Before
+             * @description The value the marketplace refused.
+             */
+            before?: string | null;
+            /** Field */
+            field: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Issue Id */
+            issue_id?: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "repair" | "content_fix" | "ai_correction";
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "waiting" | "sent" | "accepted" | "refused" | "replaced";
+            /** Reason */
+            reason: string;
+            /** Rule */
+            rule?: string | null;
+        };
         /**
          * Gate
          * @description The nine quality gates before submission (spec L1388-1424); schemas 1.2.0.
@@ -3334,6 +3397,132 @@ export interface components {
             phone?: string | null;
             /** Website */
             website?: string | null;
+        };
+        /** HistoryAttemptOut */
+        HistoryAttemptOut: {
+            /**
+             * Actor
+             * @enum {string}
+             */
+            actor: "user" | "system";
+            /**
+             * At
+             * Format: date-time
+             */
+            at: string;
+            /**
+             * Fix Ids
+             * @description The fixes Kuinn made after this attempt.
+             */
+            fix_ids?: string[];
+            /**
+             * Issue Ids
+             * @description The issues first seen on this attempt.
+             */
+            issue_ids?: string[];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "precheck" | "submission";
+            /** Number */
+            number: number;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "clean" | "issues" | "failed" | "pending" | "accepted" | "partially_accepted" | "rejected" | "error" | "live" | "superseded";
+            /** Version */
+            version: number;
+        };
+        /** HistoryCountsOut */
+        HistoryCountsOut: {
+            /**
+             * Fixed
+             * @default 0
+             */
+            fixed: number;
+            /**
+             * Fixing
+             * @default 0
+             */
+            fixing: number;
+            /**
+             * Marketplace
+             * @default 0
+             */
+            marketplace: number;
+            /**
+             * Needs You
+             * @default 0
+             */
+            needs_you: number;
+            /**
+             * Staff
+             * @default 0
+             */
+            staff: number;
+        };
+        /** HistoryIssueOut */
+        HistoryIssueOut: {
+            /**
+             * Action
+             * @description What the seller does, when it is theirs.
+             */
+            action?: string | null;
+            /**
+             * Cause
+             * @description What went wrong, in plain words.
+             */
+            cause: string;
+            error_code: components["schemas"]["ErrorCode"];
+            /** Field */
+            field: string;
+            /**
+             * First Seen At
+             * Format: date-time
+             */
+            first_seen_at: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "content_data" | "missing_attribute" | "image" | "identifier_exemption" | "category_mismatch" | "account_permission" | "marketplace_system" | "unknown";
+            /**
+             * Handler
+             * @enum {string}
+             */
+            handler: "kuinn" | "you" | "marketplace" | "staff";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lane */
+            lane?: ("auto_repair" | "auto_content" | "ai_field" | "seller" | "marketplace" | "retry" | "staff") | null;
+            /**
+             * Last Seen At
+             * Format: date-time
+             */
+            last_seen_at: string;
+            /** Marketplace Code */
+            marketplace_code?: string | null;
+            /**
+             * Marketplace Message
+             * @description The marketplace's own words, scrubbed.
+             */
+            marketplace_message?: string | null;
+            /** Occurrences */
+            occurrences: number;
+            /** Resolved At */
+            resolved_at?: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "auto_fixed" | "resolved" | "dismissed";
+            /** Value Submitted */
+            value_submitted?: string | null;
         };
         /**
          * HsnSuggestionOut
@@ -3767,6 +3956,26 @@ export interface components {
              * @description The `token` from the link's `#token=` fragment (43 base64url characters). Never log it or send it to analytics.
              */
             token: string;
+        };
+        /** IssueHistoryOut */
+        IssueHistoryOut: {
+            /**
+             * Attempts
+             * @description Newest first.
+             */
+            attempts?: components["schemas"]["HistoryAttemptOut"][];
+            counts: components["schemas"]["HistoryCountsOut"];
+            /**
+             * Fixes
+             * @description Every fix Kuinn made, newest first.
+             */
+            fixes?: components["schemas"]["FixOut"][];
+            /**
+             * Issues
+             * @description Every marketplace ERROR of the listing, newest first.
+             */
+            issues?: components["schemas"]["HistoryIssueOut"][];
+            marketplace: components["schemas"]["Marketplace"];
         };
         /** IssueOut */
         IssueOut: {
@@ -30437,6 +30646,395 @@ export interface operations {
                      *     }
                      */
                     "application/json": components["schemas"]["ListingHistoryPage"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listings_issue_history: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attempts": [
+                     *         {
+                     *           "actor": "user",
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "fix_ids": [
+                     *             "0b1c2d3e-0000-4000-8000-000000001701"
+                     *           ],
+                     *           "issue_ids": [
+                     *             "0b1c2d3e-0000-4000-8000-000000001001",
+                     *             "0b1c2d3e-0000-4000-8000-000000001002"
+                     *           ],
+                     *           "kind": "submission",
+                     *           "number": 1,
+                     *           "outcome": "rejected",
+                     *           "version": 1
+                     *         }
+                     *       ],
+                     *       "counts": {
+                     *         "fixed": 1,
+                     *         "fixing": 0,
+                     *         "marketplace": 0,
+                     *         "needs_you": 1,
+                     *         "staff": 0
+                     *       },
+                     *       "fixes": [
+                     *         {
+                     *           "after": "Navy Blue",
+                     *           "at": "2026-10-05T09:31:00Z",
+                     *           "before": "navy blue",
+                     *           "field": "attributes.color",
+                     *           "id": "0b1c2d3e-0000-4000-8000-000000001701",
+                     *           "issue_id": "0b1c2d3e-0000-4000-8000-000000001001",
+                     *           "kind": "repair",
+                     *           "outcome": "accepted",
+                     *           "reason": "The marketplace accepts only values from its own list, so Kuinn sent the matching value from that list.",
+                     *           "rule": "enum_fold"
+                     *         }
+                     *       ],
+                     *       "issues": [
+                     *         {
+                     *           "action": "Write the fabric detail the way Amazon's message shows (for example 60% cotton, 40% polyester), then send the listing again.",
+                     *           "cause": "Amazon needs a percentage for each fabric in the material detail.",
+                     *           "error_code": "PATTERN_MISMATCH",
+                     *           "field": "attributes.fabric_type",
+                     *           "first_seen_at": "2026-10-05T09:31:00Z",
+                     *           "group": "content_data",
+                     *           "handler": "you",
+                     *           "id": "0b1c2d3e-0000-4000-8000-000000001002",
+                     *           "lane": "seller",
+                     *           "last_seen_at": "2026-10-05T09:31:00Z",
+                     *           "marketplace_code": "18280",
+                     *           "marketplace_message": "fabric_type must include a percentage.",
+                     *           "occurrences": 1,
+                     *           "status": "open",
+                     *           "value_submitted": "cotton"
+                     *         },
+                     *         {
+                     *           "action": "Pick a value from Amazon's list for that detail, then send the listing again.",
+                     *           "cause": "Amazon accepts only values from its own list for this detail, and the value sent is not on it.",
+                     *           "error_code": "VALUE_NOT_ALLOWED",
+                     *           "field": "attributes.color",
+                     *           "first_seen_at": "2026-10-05T09:31:00Z",
+                     *           "group": "content_data",
+                     *           "handler": "kuinn",
+                     *           "id": "0b1c2d3e-0000-4000-8000-000000001001",
+                     *           "lane": "auto_repair",
+                     *           "last_seen_at": "2026-10-05T09:31:00Z",
+                     *           "marketplace_code": "90244",
+                     *           "marketplace_message": "The value for 'color' is not one of the allowed values.",
+                     *           "occurrences": 1,
+                     *           "resolved_at": "2026-10-05T09:31:00Z",
+                     *           "status": "resolved",
+                     *           "value_submitted": "navy blue"
+                     *         }
+                     *       ],
+                     *       "marketplace": "amazon"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["IssueHistoryOut"];
                 };
             };
             /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
