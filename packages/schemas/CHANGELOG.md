@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Brand website and Amazon package (client feedback items 1 and 15, 11 Nov 2026; additive MINOR under the open 2.1.0 heading).
+  - **Contract (MINOR).** `BrandProfileIn.website_url?` (the sign-up form's http(s) pattern, at most 2000 characters; absent leaves it, null clears) and `BrandProfileOut.website_url?` (default null) on `GET`/`PATCH /brand-profile`.
+  - **Behaviour.** Approving a sign-up (password or Google) copies its website to the new brand's profile. The website is stored only; no model reads it. The Amazon adapter sends the packed box (`item_package_dimensions` in centimeters when all three sides are given, `item_package_weight` in grams) on sellable items; `GET /catalog/requirements` lists `package_dimensions` and `package_weight` for Amazon in every category. Flipkart is unchanged.
+  - **FE notice.** The Brand page shows an optional "Website" field; the package helper text says it is the packed box.
+
 - Size run from the size chart (V1.1, client input 8 Nov 2026; additive MINOR under the open 2.1.0 heading).
   - **Contract (MINOR).** New op `POST /products/{product_id}/size-run` (`SizeRunIn.sizes`, `SizeRunOut`): one size variant per size the seller ticked, each a row of the saved size chart; 201 with the variants made, 200 with `created: []` when every size exists. Idempotency-Key required. `ProductOut.variation_theme?` (default null) and `ProductOut.size_run?` (default `[]`).
   - **Behaviour.** Nothing is made without the request; the sizes come from the seller-saved chart, never from a read suggestion. A standalone becomes a size style; SKUs are `<style sku>-<SIZE>`. An unpublished listing written for the old family moves to `blocked/validation_errors` (approval voided) and waits for a regenerate.

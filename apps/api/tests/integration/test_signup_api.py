@@ -462,6 +462,85 @@ async def test_approve_creates_trial_tenant_owner_and_audit(
         assert str(audit[0]) == tenant_id and audit[1] == "staff" and audit[3] == ADMIN, action
 
 
+def _profile(conn: Conn, tenant_id: str) -> tuple[Any, ...] | None:
+    return conn.execute(
+        "SELECT website_url, provenance -> 'website_url' ->> 'source' FROM brand_profiles "
+        "WHERE tenant_id = %s",
+        [tenant_id],
+    ).fetchone()
+
+
+async def test_approve_copies_the_website_to_the_brand_profile(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """Client item 1: the password sign-up's website lands on the new brand's profile, and the
+    new owner reads and edits it through the brand profile API."""
+    request_id = await _pending(api, website="https://kalakar.example")
+    response = await _approve(api, world, request_id)
+    assert response.status_code == 200, response.text
+    tenant_id = response.json()["tenant_id"]
+    assert _profile(auth_db, tenant_id) == ("https://kalakar.example", "seller")
+    headers = bearer((await _login(api)).json()["access_token"])
+    profile = await api.get(f"{PREFIX}/brand-profile", headers=headers)
+    assert profile.status_code == 200 and profile.json()["website_url"] == "https://kalakar.example"
+    patched = await api.patch(
+        f"{PREFIX}/brand-profile",
+        json={"website_url": "https://kalakar.example/shop"},
+        headers={**headers, "If-Match": profile.headers["ETag"]},
+    )
+    assert patched.status_code == 200, patched.text
+    assert patched.json()["website_url"] == "https://kalakar.example/shop"
+
+
+async def test_approve_without_a_website_writes_no_profile(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    request_id = await _pending(api)
+    response = await _approve(api, world, request_id)
+    assert response.status_code == 200, response.text
+    assert _profile(auth_db, response.json()["tenant_id"]) is None
+
+
+async def test_approve_with_an_overlong_website_still_approves(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """The form takes 2048 characters, the profile column 2000: the website is left out and the
+    approval goes through (a website never blocks)."""
+    long_site = "https://kalakar.example/" + "a" * 2010
+    request_id = await _pending(api, website=long_site)
+    response = await _approve(api, world, request_id)
+    assert response.status_code == 200, response.text
+    assert _profile(auth_db, response.json()["tenant_id"]) is None
+
+
+async def test_approve_copies_a_google_applicants_website(
+    api: httpx.AsyncClient, world: World, auth_db: Conn
+) -> None:
+    """The Google sign-up stores its website on the same request row (0012
+    `app_create_google_applicant`), so the one approve copies it too."""
+    email = "asha.rao@gmail.com"
+    auth_db.execute("SELECT set_config('app.login_email', %s, false)", [email])
+    try:
+        found = auth_db.execute(
+            "SELECT public.app_create_google_applicant(%s, %s, %s, %s, %s, %s, %s)",
+            [
+                email,
+                "g-sub-1",
+                "Asha Rao",
+                "Asha Botanicals",
+                "Asha Rao",
+                None,
+                "https://asha.example",
+            ],
+        ).fetchone()
+    finally:
+        auth_db.execute("SELECT set_config('app.login_email', '', false)")
+    assert found is not None and found[0] is not None
+    response = await _approve(api, world, str(found[0]))
+    assert response.status_code == 200, response.text
+    assert _profile(auth_db, response.json()["tenant_id"]) == ("https://asha.example", "seller")
+
+
 async def test_approve_default_trial_is_30_days(
     api: httpx.AsyncClient, world: World, auth_db: Conn
 ) -> None:

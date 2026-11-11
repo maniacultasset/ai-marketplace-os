@@ -30,6 +30,8 @@ raw marketplace code and text (`ErrorItem.raw_code`, `message`).
   `style_number`; `STYLE_FACT_KEYS`), reported at `facts.<key>` for every role. `unit_images`
   is the one rule for which version images an item sends: a colour child sends its own
   colourway's images (main first), then the style-level images, never another colourway's.
+- `SellerFacts` also carry the packed box (`package_*`, cm and g). Each adapter decides whether
+  it sends them: Amazon does on sellable items, Flipkart never in v1.
 """
 
 from __future__ import annotations
@@ -100,6 +102,12 @@ class SellerFacts:
     identifier_type: str | None = None
     identifier_value: str | None = None
     identifier_exempt: bool = False
+    # The packed box as shipped (`products.package_*`, a variant's own else its style's): the
+    # three sides in cm, all or none (`ck_products_dims_all_or_none`), and the weight in grams.
+    package_length_cm: Decimal | None = None
+    package_breadth_cm: Decimal | None = None
+    package_height_cm: Decimal | None = None
+    package_weight_g: int | None = None
 
 
 @dataclass(frozen=True)

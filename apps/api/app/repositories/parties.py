@@ -9,7 +9,8 @@ SI1 T8 (decision 16): `PartyFields` carries the full address (line 2, city, stat
 dedupe match the role is appended; only with `update_on_match=True` (the brand profile route,
 `settings:manage`) are line 2, city, state and GSTIN updated, each as `COALESCE(new, stored)`.
 A match that changes nothing writes nothing (the row stays byte-identical). The brand profile
-repository gains `ensure`, `get_for_update` and `set_default_manufacturer`.
+repository gains `ensure`, `get_for_update`, `set_default_manufacturer` and (client item 1)
+`set_website`.
 """
 
 from __future__ import annotations
@@ -47,6 +48,8 @@ class PartyFields:
 # the columns only the brand profile route may update on a dedupe match (decision 16)
 MATCH_UPDATABLE: Final = ("address_line2", "city", "state_code", "gstin")
 MANUFACTURER_KEY: Final = "manufacturer"
+WEBSITE_KEY: Final = "website_url"
+"""The brand website's dictionary key (`attribute_dictionary.json`: brand level, seller only)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,6 +244,28 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
             update(BrandProfile)
             .where(self._tenant_criterion(include_platform=False), changed)
             .values({column: party_id, BrandProfile.provenance: provenance})
+        ).returning(BrandProfile.tenant_id)
+        return (await self.db.execute(stmt)).first() is not None
+
+    async def set_website(self, url: str | None, fact: Mapping[str, Any]) -> bool:
+        """Write `website_url` and `provenance.website_url` (the value-less seller Fact), or
+        clear both with `url=None`. True when a row was written (an unchanged value writes
+        nothing). Call `ensure` first."""
+        column = BrandProfile.website_url
+        if url is None:
+            changed = or_(column.is_not(None), BrandProfile.provenance.has_key(WEBSITE_KEY))
+            provenance = BrandProfile.provenance.op("-")(WEBSITE_KEY)
+        else:
+            new = cast(literal(json.dumps(dict(fact))), JSONB)
+            changed = or_(
+                column.is_distinct_from(url),
+                BrandProfile.provenance[WEBSITE_KEY]["source"].is_distinct_from(new["source"]),
+            )
+            provenance = BrandProfile.provenance.op("||")(func.jsonb_build_object(WEBSITE_KEY, new))
+        stmt = self._scoped_write(
+            update(BrandProfile)
+            .where(self._tenant_criterion(include_platform=False), changed)
+            .values({column: url, BrandProfile.provenance: provenance})
         ).returning(BrandProfile.tenant_id)
         return (await self.db.execute(stmt)).first() is not None
 

@@ -32,6 +32,8 @@ def test_tshirts_lists() -> None:
         "identifier",
         "manufacturer",
         "mrp",
+        "package_dimensions",
+        "package_weight",
         "selling_price",
     )
     assert needs_for(Marketplace.FLIPKART, "tshirts", template) == (

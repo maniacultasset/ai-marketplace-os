@@ -990,6 +990,21 @@
               }
             ],
             "description": "Absent leaves it unchanged; null clears it."
+          },
+          "website_url": {
+            "anyOf": [
+              {
+                "description": "The brand's website, an http(s) link (the sign-up form's rule).",
+                "maxLength": 2000,
+                "pattern": "^https?://[^\\s/?#\\x00-\\x1f\\x7f]+\\.[^\\s\\x00-\\x1f\\x7f]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional. Absent leaves it unchanged; null clears it. Never sent to a model.",
+            "title": "Website Url"
           }
         },
         "title": "BrandProfileIn",
@@ -1018,6 +1033,17 @@
               }
             ],
             "title": "Updated At"
+          },
+          "website_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Website Url"
           }
         },
         "title": "BrandProfileOut",
@@ -22514,7 +22540,7 @@
     },
     "/api/v1/brand-profile": {
       "get": {
-        "description": "The brand profile (the default manufacturer every product inherits), with its `ETag`. A\nbrand that never saved one reads as the empty profile.",
+        "description": "The brand profile (the default manufacturer every product inherits, and the brand's\nwebsite), with its `ETag`. A brand that never saved one reads as the empty profile.",
         "operationId": "brand_profile_get",
         "responses": {
           "200": {
@@ -22532,7 +22558,8 @@
                     "postal_code": "560001",
                     "state_code": "KA"
                   },
-                  "updated_at": "2026-10-05T09:30:00Z"
+                  "updated_at": "2026-10-05T09:30:00Z",
+                  "website_url": "https://fabindia.example"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BrandProfileOut"
@@ -22756,14 +22783,14 @@
             "HTTPBearer": []
           }
         ],
-        "summary": "The brand profile: the default manufacturer every product inherits",
+        "summary": "The brand profile: the default manufacturer and the website",
         "tags": [
           "brand"
         ],
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Set or clear the default manufacturer (owner, admin). `If-Match` is the `ETag` from GET\n(409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.",
+        "description": "Set or clear the default manufacturer or the website (owner, admin). `If-Match` is the\n`ETag` from GET (409 STALE_VERSION when stale); an absent field is unchanged, `null` clears.",
         "operationId": "brand_profile_update",
         "parameters": [
           {
@@ -22805,7 +22832,8 @@
                     "postal_code": "560001",
                     "state_code": "KA"
                   },
-                  "updated_at": "2026-10-05T09:30:00Z"
+                  "updated_at": "2026-10-05T09:30:00Z",
+                  "website_url": "https://fabindia.example"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BrandProfileOut"

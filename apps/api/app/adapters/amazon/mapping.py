@@ -45,6 +45,10 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
   An image locator must be an https URL (`locator_ok`; `http://` only when the listing allows
   it, the `image:<id>` tag only in a preview). An enum VALUE_NOT_ALLOWED suggests the nearest
   allowed values.
+- Item 15 (client, 2026-11-11): each sellable item carries the packed box as shipped,
+  `item_package_dimensions` (length, width, height in centimeters) when all three sides are
+  given and `item_package_weight` (grams) when the weight is, at `facts.package_dimensions` /
+  `facts.package_weight`. A parent sends neither; a missing package is never an error here.
 - SI8: every item (parent, child, standalone) carries `brand` (the effective brand) and
   `model_number` / `part_number` (the style number, else the style's or standalone's seller SKU);
   an apparel product type (`AUDIENCE_PRODUCT_TYPES`) also carries `target_gender`, `department`
@@ -366,6 +370,45 @@ def _identifier(
     return {}, [error(fact_path(unit, "identifier"), ErrorCode.IDENTIFIER_MISSING, message)]
 
 
+def _measure(value: Decimal | int) -> int | float:
+    number = Decimal(value)
+    return int(number) if number == number.to_integral_value() else float(number)
+
+
+def _package(
+    unit: AdapterItem, facts: SellerFacts | None, marketplace_id: str
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+    """Item 15: a sellable item's packed box (`c.PACKAGE_DIMENSIONS`, `c.PACKAGE_WEIGHT`) and
+    the `facts.*` paths sent. The sides go only all three together; the weight on its own. A
+    parent, or an item with no package facts, sends neither. Never an error: Amazon asks for the
+    package and the "Needed" chips show it (`c.EXTRA_NEEDS`)."""
+    if unit.item_role == "parent" or facts is None:
+        return {}, []
+    out: dict[str, list[dict[str, Any]]] = {}
+    sent: list[str] = []
+    sides = [facts.package_length_cm, facts.package_breadth_cm, facts.package_height_cm]
+    given = [side for side in sides if side is not None and side > 0]
+    if len(given) == len(sides):
+        entry: dict[str, Any] = {
+            name: {"value": _measure(side), "unit": c.PACKAGE_LENGTH_UNIT}
+            for name, side in zip(("length", "width", "height"), given, strict=True)
+        }
+        entry["marketplace_id"] = marketplace_id
+        out[c.PACKAGE_DIMENSIONS] = [entry]
+        sent.append(c.PACKAGE_PATHS[0])
+    weight = facts.package_weight_g
+    if weight is not None and weight > 0:
+        out[c.PACKAGE_WEIGHT] = [
+            {
+                "value": _measure(weight),
+                "unit": c.PACKAGE_WEIGHT_UNIT,
+                "marketplace_id": marketplace_id,
+            }
+        ]
+        sent.append(c.PACKAGE_PATHS[1])
+    return out, sent
+
+
 def _fact_attributes(
     unit: AdapterItem,
     mapped: CategoryTemplate | None,
@@ -675,6 +718,9 @@ def item_payload(
     barcode, barcode_errors = _identifier(unit, facts, marketplace_id, require=require_identifier)
     attributes.update(barcode)
     errors += barcode_errors
+    package, package_sent = _package(unit, facts, marketplace_id)
+    attributes.update(package)
+    sent += package_sent
     skipped += list(fact_paths(unit))
 
     image_names: dict[str, str] = {}
@@ -769,6 +815,9 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     # fails `listing` and a price retry patches the offer only
     index[c.OFFER_ATTRIBUTE] = set(PRICE_PATHS)
     index[c.MANUFACTURER_CONTACT] = {"facts.manufacturer"}
+    # item 15: the packed box
+    index[c.PACKAGE_DIMENSIONS] = {c.PACKAGE_PATHS[0]}
+    index[c.PACKAGE_WEIGHT] = {c.PACKAGE_PATHS[1]}
     # SI8: the style identity facts
     index[c.BRAND_ATTRIBUTE] = {"facts.brand_name"}
     for name in c.AUDIENCE_ATTRIBUTES:

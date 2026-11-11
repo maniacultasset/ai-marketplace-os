@@ -21,11 +21,11 @@ from app.api.pagination import Page
 from app.api.v1.schemas.auth import Email, LoginEmail
 from app.api.v1.schemas.tenants import ProfileName
 from app.core.password_policy import PASSWORD_MAX, PASSWORD_MIN  # the staff CLI's rule
+from app.core.website import WEBSITE_PATTERN
 
 EMAIL_OCTETS_MAX: Final = 254  # ck_users_email
 REASON_MAX: Final = 1000
 PHONE_PATTERN: Final = r"^\+?[0-9][0-9 ()-]{5,30}$"
-WEBSITE_PATTERN: Final = r"^https?://[^\s/?#\x00-\x1f\x7f]+\.[^\s\x00-\x1f\x7f]+$"
 
 SignupStatus = Literal["pending", "approved", "rejected"]
 

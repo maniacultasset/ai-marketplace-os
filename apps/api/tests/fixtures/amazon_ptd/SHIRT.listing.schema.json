@@ -420,6 +420,126 @@
         "language_tag"
       ]
     },
+    "item_package_dimensions": {
+      "title": "Item Package Dimensions L x W x H",
+      "description": "The packed box as shipped.",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "length",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "length": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches",
+                  "millimeters",
+                  "meters"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "width": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches",
+                  "millimeters",
+                  "meters"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "height": {
+            "type": "object",
+            "required": [
+              "value",
+              "unit"
+            ],
+            "properties": {
+              "value": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "centimeters",
+                  "inches",
+                  "millimeters",
+                  "meters"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "item_package_weight": {
+      "title": "Package Weight",
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "value",
+          "unit"
+        ],
+        "properties": {
+          "value": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "grams",
+              "kilograms",
+              "ounces",
+              "pounds"
+            ]
+          },
+          "marketplace_id": {
+            "$ref": "#/$defs/marketplace_id"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "item_weight": {
       "title": "Product Weight",
       "type": "array",

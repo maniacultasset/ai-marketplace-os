@@ -20,7 +20,9 @@
   Approve creates the tenant (`trial`, `trial_days` default 30, ADR-0029) and its owner membership through
   the staff CLI's own statements, and audits as `staff` with the admin's email. Approving an
   approved request, or rejecting a rejected one, answers the stored row; the other crossing is
-  409 `INVALID_STATUS_TRANSITION`.
+  409 `INVALID_STATUS_TRANSITION`. Client item 1: approve also copies the applicant's website (both
+  sign-up paths store it on the request) to the new brand's `brand_profiles.website_url`; a
+  website that does not fit the column is left out, never blocking the approval.
 """
 
 from __future__ import annotations
@@ -39,6 +41,7 @@ from app.core import password_policy
 from app.core.errors import ConflictError, NotFoundError
 from app.core.passwords import hash_password, off_loop, verify_password
 from app.core.rbac import Principal
+from app.core.website import profile_website
 from app.repositories.identity import (
     AuditRepository,
     AuthState,
@@ -48,9 +51,11 @@ from app.repositories.identity import (
     UserRepository,
     UserRow,
 )
+from app.repositories.parties import BrandProfileRepository
 from app.repositories.transactions import identity_session, set_gucs
 from app.services import auth_events
 from app.services.auth import dummy_hash, inet
+from app.services.product_facts import seller_column_fact
 from app.services.sign_in_policy import is_locked
 
 DEFAULT_TRIAL_DAYS: Final = 30  # ADR-0029 (was 14, ADR-0019)
@@ -58,6 +63,7 @@ SLUG_BASE_MAX: Final = 32  # leaves room for "-xxxx" within ck_tenants_slug's 40
 SLUG_ATTEMPTS: Final = 8
 SLUG_FALLBACK: Final = "brand"
 Decision = Literal["approve", "reject"]
+
 Outcome = Literal["apply", "same", "conflict"]
 
 __all__ = [
@@ -274,6 +280,18 @@ async def list_requests(
     return RequestPage(rows[:limit], len(rows) > limit)
 
 
+async def _copy_website(session: Any, tenant_id: uuid.UUID, website: str | None) -> None:
+    """Client item 1: the applicant's website onto the new brand's profile row (created the way
+    `PATCH /brand-profile` creates it), with the value-less seller provenance. No website writes
+    nothing. The session's tenant GUC is already the new tenant."""
+    url = profile_website(website)
+    if url is None:
+        return
+    profiles = BrandProfileRepository(session, tenant_id)
+    await profiles.ensure()
+    await profiles.set_website(url, seller_column_fact(now=datetime.now(UTC)))
+
+
 def _conflict() -> ConflictError:
     return ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "signup_requests_status")
 
@@ -309,6 +327,7 @@ async def approve(
                 continue
         else:
             raise RuntimeError("no free tenant slug for the brand name")
+        await _copy_website(session, tenant_id, row.website)
         await requests.decide(
             request_id,
             status="approved",
