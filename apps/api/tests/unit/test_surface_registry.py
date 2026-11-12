@@ -90,6 +90,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_list", "GET", "/listings"),
     ("listings_get", "GET", "/listings/{listing_id}"),
     ("listings_preview", "GET", "/listings/{listing_id}/preview"),
+    ("listings_requirements", "GET", "/listings/{listing_id}/requirements"),  # item 16 (+ 1)
     ("listings_status", "GET", "/listings/{listing_id}/status"),
     # S19: the audit history (44 + 1)
     ("listings_history", "GET", "/listings/{listing_id}/history"),
@@ -513,6 +514,7 @@ def test_operation_count() -> None:
     # item 3 adds the batch SKU check (variants grid, bulk upload)
     # client item 7 adds the move of a saved photo to another view
     # FB18 (client feedback item 18) adds the cross-brand overview
+    # item 16 adds the listing field requirements read
     assert len(OPS) == 125
 
 

@@ -952,6 +952,48 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ],
             "report": {**_report(True), "request_id": None},
         },
+        "listings_requirements": {
+            "listing_id": LISTING,
+            "marketplace": "amazon",
+            "category": "ethnic_wear_kurta_sets",
+            "rules_version": 3,
+            "has_template": True,
+            "fields": [
+                {
+                    "path": "content.title",
+                    "max_chars": 200,
+                    "min_chars": 5,
+                    "banned_terms": ["best", "guaranteed", "free shipping"],
+                    "banned_count": 3,
+                    "rules": [],
+                },
+                {"path": "content.bullets", "max_items": 5},
+                {"path": "content.bullets[*]", "max_chars": 500},
+                {"path": "content.description", "max_chars": 2000},
+                {"path": "keywords.hidden_terms", "max_bytes": 250},
+                {
+                    "path": "*",
+                    "banned_terms": ["best seller", "#1"],
+                    "banned_count": 2,
+                    "rules": [
+                        "No links, web addresses, emails or phone numbers.",
+                        "Claims like “organic”, “gots”, “certified” need the certification "
+                        "attribute on the product.",
+                    ],
+                },
+            ],
+            "attributes": [
+                {"key": "color", "level": "required", "value_type": "text"},
+                {
+                    "key": "fabric_type",
+                    "level": "required",
+                    "value_type": "enum",
+                    "allowed_values": ["Cotton", "Silk", "Rayon"],
+                    "allowed_count": 3,
+                },
+                {"key": "neck_style", "level": "recommended", "value_type": "text"},
+            ],
+        },
         "listings_status": {
             "listing_id": LISTING,
             "status": "needs_review",

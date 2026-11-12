@@ -1832,6 +1832,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The marketplace's limits and rules for each field of this listing
+         * @description The marketplace's limits and rules for each field of this listing, read from the same
+         *     rules and category template the checks run on: length and count limits, banned words,
+         *     claims that need an attribute, and each attribute's level and allowed values. It gives no
+         *     verdict (the checks decide).
+         */
+        get: operations["listings_requirements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}/resolution": {
         parameters: {
             query?: never;
@@ -2947,6 +2970,38 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** AttributeRequirementOut */
+        AttributeRequirementOut: {
+            /**
+             * Allowed Count
+             * @default 0
+             */
+            allowed_count: number;
+            /**
+             * Allowed Values
+             * @description The first 100 allowed values; empty means any value.
+             */
+            allowed_values?: string[];
+            /** Key */
+            key: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "required" | "conditional" | "recommended" | "optional" | "unsupported";
+            /**
+             * Max Length
+             * @description Characters.
+             */
+            max_length?: number | null;
+            /**
+             * Unit
+             * @description A measurement's unit, as the template names it.
+             */
+            unit?: string | null;
+            /** Value Type */
+            value_type?: ("text" | "enum" | "number" | "boolean" | "measurement") | null;
+        };
         /**
          * AuditEventOut
          * @description One `audit_log` row of a listing. No `actor_email` and no `ip`: the history is a seller
@@ -3709,6 +3764,50 @@ export interface components {
             hole_share: number;
             /** Mask Iou */
             mask_iou?: number | null;
+        };
+        /** FieldRequirementOut */
+        FieldRequirementOut: {
+            /**
+             * Banned Count
+             * @description Every banned word or phrase on the field.
+             * @default 0
+             */
+            banned_count: number;
+            /**
+             * Banned Terms
+             * @description The first 60 banned words or phrases.
+             */
+            banned_terms?: string[];
+            /**
+             * Max Bytes
+             * @description UTF-8 bytes (Amazon backend keywords).
+             */
+            max_bytes?: number | null;
+            /** Max Chars */
+            max_chars?: number | null;
+            /** Max Items */
+            max_items?: number | null;
+            /** Max Words */
+            max_words?: number | null;
+            /** Min Bytes */
+            min_bytes?: number | null;
+            /** Min Chars */
+            min_chars?: number | null;
+            /** Min Items */
+            min_items?: number | null;
+            /** Min Words */
+            min_words?: number | null;
+            /**
+             * Path
+             * @description The field; `content.bullets[*]` is each bullet, `*` every text field.
+             * @enum {string}
+             */
+            path: "content.title" | "content.bullets" | "content.bullets[*]" | "content.description" | "keywords.search_terms" | "keywords.hidden_terms" | "*";
+            /**
+             * Rules
+             * @description Plain lines for the other rules: claims that need an attribute, formats, patterns that are not allowed.
+             */
+            rules?: string[];
         };
         /** FieldResult */
         FieldResult: {
@@ -5077,6 +5176,28 @@ export interface components {
             /** Data */
             data: components["schemas"]["ListingOut"][];
             page: components["schemas"]["PageInfo"];
+        };
+        /** ListingRequirementsOut */
+        ListingRequirementsOut: {
+            /** Attributes */
+            attributes?: components["schemas"]["AttributeRequirementOut"][];
+            /** Category */
+            category: string;
+            /** Fields */
+            fields?: components["schemas"]["FieldRequirementOut"][];
+            /**
+             * Has Template
+             * @description False when the category has no current template.
+             */
+            has_template: boolean;
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            marketplace: components["schemas"]["Marketplace"];
+            /** Rules Version */
+            rules_version: number;
         };
         /**
          * ListingStatus
@@ -37239,6 +37360,389 @@ export interface operations {
                      *         "message": "The marketplace is unavailable; try again.",
                      *         "status": 503,
                      *         "type": "AI_CREDIT_EXHAUSTED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    listings_requirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "attributes": [
+                     *         {
+                     *           "key": "color",
+                     *           "level": "required",
+                     *           "value_type": "text"
+                     *         },
+                     *         {
+                     *           "allowed_count": 3,
+                     *           "allowed_values": [
+                     *             "Cotton",
+                     *             "Silk",
+                     *             "Rayon"
+                     *           ],
+                     *           "key": "fabric_type",
+                     *           "level": "required",
+                     *           "value_type": "enum"
+                     *         },
+                     *         {
+                     *           "key": "neck_style",
+                     *           "level": "recommended",
+                     *           "value_type": "text"
+                     *         }
+                     *       ],
+                     *       "category": "ethnic_wear_kurta_sets",
+                     *       "fields": [
+                     *         {
+                     *           "banned_count": 3,
+                     *           "banned_terms": [
+                     *             "best",
+                     *             "guaranteed",
+                     *             "free shipping"
+                     *           ],
+                     *           "max_chars": 200,
+                     *           "min_chars": 5,
+                     *           "path": "content.title",
+                     *           "rules": []
+                     *         },
+                     *         {
+                     *           "max_items": 5,
+                     *           "path": "content.bullets"
+                     *         },
+                     *         {
+                     *           "max_chars": 500,
+                     *           "path": "content.bullets[*]"
+                     *         },
+                     *         {
+                     *           "max_chars": 2000,
+                     *           "path": "content.description"
+                     *         },
+                     *         {
+                     *           "max_bytes": 250,
+                     *           "path": "keywords.hidden_terms"
+                     *         },
+                     *         {
+                     *           "banned_count": 2,
+                     *           "banned_terms": [
+                     *             "best seller",
+                     *             "#1"
+                     *           ],
+                     *           "path": "*",
+                     *           "rules": [
+                     *             "No links, web addresses, emails or phone numbers.",
+                     *             "Claims like “organic”, “gots”, “certified” need the certification attribute on the product."
+                     *           ]
+                     *         }
+                     *       ],
+                     *       "has_template": true,
+                     *       "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                     *       "marketplace": "amazon",
+                     *       "rules_version": 3
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ListingRequirementsOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
                      *       }
                      *     }
                      */

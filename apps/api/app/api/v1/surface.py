@@ -78,6 +78,7 @@ from app.api.v1.schemas.catalog import (
 )
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
+from app.api.v1.schemas.field_requirements import ListingRequirementsOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
 from app.api.v1.schemas.home import HomeBrandsOut, HomeSummaryOut
 from app.api.v1.schemas.image_candidates import (
@@ -742,6 +743,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               MarketplacePreview, "listings", "Preview the marketplace payload of the current "
               "version (sends nothing)", "S20", path_id="listing_id", conflict_code=E.LISTING_BUSY,
               extra_codes=MappingProxyType({501: (E.NOT_IMPLEMENTED,)}), action=A.TENANT_READ),
+    # item 16 (client feedback, 11 Nov 2026): each field's marketplace limits and rules
+    Operation("listings_requirements", "GET", "/listings/{listing_id}/requirements", 200,
+              ListingRequirementsOut, "listings", "The marketplace's limits and rules for each "
+              "field of this listing", "S19", path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_status", "GET", "/listings/{listing_id}/status", 200, ListingStatusOut,
               "listings", "Listing status (a convenience alias; poll jobs instead)", "S18",
               path_id="listing_id", action=A.TENANT_READ),
