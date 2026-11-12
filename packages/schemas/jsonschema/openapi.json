@@ -2901,6 +2901,12 @@
               }
             ],
             "title": "Rule"
+          },
+          "suggested": {
+            "default": false,
+            "description": "Client item 20: with the brand's auto-fix off, Kuinn only suggests this fix; it is `waiting` until the seller applies it (`POST /listings/{id}/fixes/apply`).",
+            "title": "Suggested",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2912,6 +2918,35 @@
           "at"
         ],
         "title": "FixOut",
+        "type": "object"
+      },
+      "FixesAppliedOut": {
+        "description": "Client item 20: the seller applied Kuinn's suggested fixes for one listing.",
+        "properties": {
+          "job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The re-check, resend or fix job that now runs, or null when none was needed.",
+            "title": "Job Id"
+          },
+          "released": {
+            "description": "Suggested repairs made live by this call (0 on a replay).",
+            "minimum": 0.0,
+            "title": "Released",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "released"
+        ],
+        "title": "FixesAppliedOut",
         "type": "object"
       },
       "Gate": {
@@ -5302,6 +5337,165 @@
         ],
         "title": "ItemMarketplaceState",
         "type": "string"
+      },
+      "ItemSizeIn": {
+        "additionalProperties": false,
+        "description": "Client item 15: the product itself, not the packed box (that is `package`). The same JSON\nmerge patch rules: the three sides together, all set or all null (null clears them), the\nweight alone, `{}` refused and `item: null` clears all four. The sides are stored as the\n`product_dimensions` fact (`L x B x H cm`), the weight as `product_weight` (grams).",
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "exclusiveMinimum": 0.0,
+                    "maximum": 99999.99,
+                    "type": "number"
+                  },
+                  {
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,5}|(?=[\\d.]{1,8}0*$)\\d{0,5}\\.\\d{0,2}0*$)",
+                    "type": "string"
+                  }
+                ],
+                "examples": [
+                  "30.00"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "examples": [
+                  450
+                ],
+                "maximum": 2000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "ItemSizeIn",
+        "type": "object"
+      },
+      "ItemSizeOut": {
+        "description": "Client item 15: the product itself. The sides are null when none is saved or the saved\n`product_dimensions` is free text that is not `L x B x H cm`.",
+        "properties": {
+          "breadth_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Breadth Cm"
+          },
+          "height_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
+          "length_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Length Cm"
+          },
+          "weight_g": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight G"
+          }
+        },
+        "title": "ItemSizeOut",
+        "type": "object"
       },
       "JobAccepted": {
         "properties": {
@@ -8704,6 +8898,17 @@
             "title": "Images",
             "type": "array"
           },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemSizeIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client item 15: the product itself (not the packed box), in cm and grams."
+          },
           "manufacturer": {
             "anyOf": [
               {
@@ -9207,6 +9412,17 @@
             "title": "Images",
             "type": "array"
           },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemSizeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client item 15: the product itself, beside the packed box; own, else the style's on single reads."
+          },
           "manufacturer": {
             "anyOf": [
               {
@@ -9242,6 +9458,20 @@
               }
             ],
             "description": "SI12: own, else the style's on single reads; own on lists."
+          },
+          "package_warnings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Client item 15: the packed box looks unusual for the category (a likely unit slip named when there is one). Never blocks; a box past the category's hard limit is refused with 422 instead.",
+            "propertyNames": {
+              "enum": [
+                "package_dimensions",
+                "package_weight"
+              ]
+            },
+            "title": "Package Warnings",
+            "type": "object"
           },
           "parent_product_id": {
             "anyOf": [
@@ -9637,6 +9867,17 @@
             ],
             "description": "SI5: true marks the product GTIN-exempt (clears any barcode); false clears the exemption. On a style it is set on every variant without a barcode.",
             "title": "Identifier Exemption"
+          },
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemSizeIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client item 15: the product itself; merges; `null` clears all four values."
           },
           "manufacturer": {
             "anyOf": [
@@ -12579,6 +12820,12 @@
       },
       "TenantOut": {
         "properties": {
+          "auto_fix_enabled": {
+            "default": true,
+            "description": "Client item 20: Kuinn applies safe listing fixes by itself (on by default). Off: each fix Kuinn finds waits as a suggested fix until the seller applies it.",
+            "title": "Auto Fix Enabled",
+            "type": "boolean"
+          },
           "capabilities": {
             "$ref": "#/components/schemas/TenantCapabilitiesOut",
             "description": "This deployment's feature switches, so screens never promise what is off."
@@ -12664,8 +12911,20 @@
       },
       "TenantPatch": {
         "additionalProperties": false,
-        "description": "A partial update of the brand profile: at least one field. `tone: null` clears the tone;\n`name`, `guidelines`, `glossary` and `owner_self_approval` cannot be null (send `[]` or `{}`\nto clear a list or map). `glossary` maps a term to avoid to the preferred term\n(`{\"kurta outfit\": \"kurta set\"}`). `owner_self_approval` (ADR-0031) is changed by an owner\nonly (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes\nunder `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).",
+        "description": "A partial update of the brand profile: at least one field. `tone: null` clears the tone;\n`name`, `guidelines`, `glossary` and `owner_self_approval` cannot be null (send `[]` or `{}`\nto clear a list or map). `glossary` maps a term to avoid to the preferred term\n(`{\"kurta outfit\": \"kurta set\"}`). `owner_self_approval` (ADR-0031) is changed by an owner\nonly (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes\nunder `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).\n`auto_fix_enabled` (client item 20) follows the same rules.",
         "properties": {
+          "auto_fix_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Let Kuinn fix safe listing errors automatically (owner only, with a recent code).",
+            "title": "Auto Fix Enabled"
+          },
           "glossary": {
             "anyOf": [
               {
@@ -41084,6 +41343,411 @@
         "x-mkos-action": "listing:edit"
       }
     },
+    "/api/v1/listings/{listing_id}/fixes/apply": {
+      "post": {
+        "description": "Client item 20: with the brand's \"Let Kuinn fix safe listing errors automatically\" off,\neach fix Kuinn finds waits as a suggestion. This applies them for one listing: the suggested\nrepairs go live and the re-check, resend or fix job runs as it would with the setting on.\n409 when the listing is paused, archived or busy, or has no open marketplace error.",
+        "operationId": "listings_fixes_apply",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
+                  "released": 1
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/FixesAppliedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INVALID_STATUS_TRANSITION",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INVALID_STATUS_TRANSITION",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "INVALID_STATUS_TRANSITION"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `INVALID_STATUS_TRANSITION`, `LISTING_BUSY`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Apply the fixes Kuinn suggested for this listing (auto-fix off), then re-check or send it again",
+        "tags": [
+          "listings"
+        ],
+        "x-mkos-action": "listing:edit"
+      }
+    },
     "/api/v1/listings/{listing_id}/history": {
       "get": {
         "description": "The listing's audit history (approvals, denials, rejections, edits), newest first.",
@@ -58270,6 +58934,7 @@
             "content": {
               "application/json": {
                 "example": {
+                  "auto_fix_enabled": true,
                   "glossary": {
                     "kurta set": "kurta and palazzo"
                   },
@@ -58511,7 +59176,7 @@
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409\n`STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.\n`owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a\nstep-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).",
+        "description": "Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409\n`STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.\n`owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a\nstep-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).\n`auto_fix_enabled` (client item 20) follows the same rules.",
         "operationId": "tenants_me_update",
         "parameters": [
           {

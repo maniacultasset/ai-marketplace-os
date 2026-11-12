@@ -9,7 +9,8 @@ of each issue row the inbox shows.
   `marketplace_error_review` staff's, a fact or image question the seller's); an open row a live
   or succeeded fix job covers (`fix_lanes`: its payload's `issue_ids`, by `mode`) takes that
   job's lane; any other row the planner's own rules (`plan.label`). WARNINGs carry no lane. The
-  read never re-runs the engine's content or AI checks: the lane is what Kuinn did.
+  read never re-runs the engine's content or AI checks: the lane is what Kuinn did. Client item
+  20: an open row whose repair is held (a suggested fix, auto-fix off) is the seller's.
 - `state_of(facts)` (pure): the precedence `live` > `fixing` > `checking` > `resubmitted` >
   `stopped` > `needs_marketplace` > `needs_you` > `fix_ready` > `idle`. A generation that failed
   (`failed/generation_failed`) with blocking rows open is `stopped` too, after `needs_you` (its
@@ -102,6 +103,15 @@ def _view(row: Any) -> IssueView:
     )
 
 
+def held_issues(repairs: Iterable[Any]) -> frozenset[uuid.UUID]:
+    """Client item 20: the issues whose live repair is held (a suggested fix, auto-fix off)."""
+    return frozenset(
+        r.source_issue_id
+        for r in repairs
+        if getattr(r, "held", False) and r.retired_at is None and r.source_issue_id is not None
+    )
+
+
 def fix_lanes(jobs: Iterable[Any]) -> dict[uuid.UUID, Lane]:
     """issue id -> the lane of the live or succeeded resolution fix job that covers it (the
     newest job wins: `jobs` come newest first)."""
@@ -134,11 +144,14 @@ def labels(
     fixing: Mapping[uuid.UUID, Lane] | None = None,
     recategorizable: Iterable[uuid.UUID] = (),
     locked: Mapping[uuid.UUID, frozenset[str]] | None = None,
+    held: Iterable[uuid.UUID] = (),
 ) -> dict[uuid.UUID, tuple[Lane, Cause]]:
     """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`;
     `recategorizable` the listings the seller may still recategorise (SI13, CP-D7); `locked`
-    each listing's locked paths (client feedback 14: a refusal on one is the seller's edit)."""
-    repaired_ids = set(repaired)
+    each listing's locked paths (client feedback 14: a refusal on one is the seller's edit);
+    `held` the issues whose repair waits for the seller to apply it (client item 20)."""
+    held_ids = set(held)
+    repaired_ids = set(repaired) - held_ids
     kinds = task_kinds or {}
     covered = fixing or {}
     ctx = PlanContext(critical_keys=critical_keys)
@@ -150,7 +163,9 @@ def labels(
             continue
         view = _view(row)
         lane: Lane | None = None
-        if row.id in repaired_ids or (row.action_taken or "").startswith("repair:"):
+        if row.status == "open" and row.id in held_ids:
+            lane = "seller"  # client item 20: a suggested fix the seller applies
+        elif row.id in repaired_ids or (row.action_taken or "").startswith("repair:"):
             lane = "auto_repair"
         elif row.status != "open" and row.resolution in CLOSED_LANES:
             lane = CLOSED_LANES[row.resolution]
@@ -163,9 +178,9 @@ def labels(
             continue
         owner = getattr(row, "listing_id", None)
         use = ctx_movable if owner in movable else ctx
-        held = (locked or {}).get(owner) if owner is not None else None
-        if held:
-            use = replace(use, locked_paths=held)
+        locked_here = (locked or {}).get(owner) if owner is not None else None
+        if locked_here:
+            use = replace(use, locked_paths=locked_here)
         found = label(view, use)
         if found is not None:
             out[row.id] = found
@@ -221,6 +236,7 @@ async def labels_for(
     if not errors:
         return {}
     repaired = await uow.resolution.repaired_issue_ids([r.id for r in errors])
+    held = await uow.resolution.repaired_issue_ids([r.id for r in errors], held=True)
     tasks = await uow.resolution.task_kinds(
         sorted({r.human_task_id for r in errors if r.human_task_id is not None})
     )
@@ -234,6 +250,7 @@ async def labels_for(
         critical_keys=await uow.product_facts.critical_keys(),
         fixing=fix_lanes(jobs),
         recategorizable=await recategorizable_listings(uow, errors),
+        held=held,
     )
 
 
@@ -572,6 +589,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         fixing=fix_lanes(jobs),
         recategorizable=await recategorizable_listings(uow, issues),
         locked={listing.id: frozenset(getattr(listing, "locked_paths", None) or ())},
+        held=held_issues(repairs),
     )
     live_tasks = {t.task_id: t.kind for t in tasks if t.status in LIVE_TASK}
     open_errors = [i for i in issues if i.status == "open" and i.severity == "error"]

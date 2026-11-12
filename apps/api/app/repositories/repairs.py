@@ -5,6 +5,10 @@ seller's source value still hashes to `source_digest`. `insert` is a replay-safe
 unique index (`uq_listing_repairs_live`, one live row per listing, item and attribute;
 `uq_listing_repairs_once`, one try per listing, issue key and rule, live or retired). A repair is
 retired once (`listing_repairs_guard`), never deleted by the app (no DELETE grant).
+
+Client item 20 (0038): a repair found while the brand's auto-fix is off is inserted `held`, a
+suggested fix. `live_for_listing` leaves held rows out unless asked (the adapter never applies
+one); `release` turns held rows live once, on the seller's "Apply fixes".
 """
 
 from __future__ import annotations
@@ -41,6 +45,8 @@ class NewRepair:
     source_issue_id: UUID | None = None
     job_id: UUID | None = None
     alias_version: int | None = None
+    held: bool = False
+    """Client item 20: a suggested fix (auto-fix off), applied only once the seller releases it."""
 
 
 def repair_set_digest(rows: Sequence[ListingRepair]) -> bytes:
@@ -59,13 +65,37 @@ class RepairRepository(TenantScopedRepository[ListingRepair]):
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("listing repair write for another tenant's unit of work")
 
-    async def live_for_listing(self, listing_id: UUID) -> builtins.list[ListingRepair]:
-        stmt = (
-            self._select()
-            .where(ListingRepair.listing_id == listing_id, ListingRepair.retired_at.is_(None))
-            .order_by(ListingRepair.created_at, ListingRepair.id)
+    async def live_for_listing(
+        self, listing_id: UUID, *, include_held: bool = False
+    ) -> builtins.list[ListingRepair]:
+        """The listing's unretired repairs the adapter applies; `include_held` adds the held
+        suggestions (the resolution executor, which must see every repair it wrote)."""
+        stmt = self._select().where(
+            ListingRepair.listing_id == listing_id, ListingRepair.retired_at.is_(None)
         )
+        if not include_held:
+            stmt = stmt.where(ListingRepair.held.is_(False))
+        stmt = stmt.order_by(ListingRepair.created_at, ListingRepair.id)
         return builtins.list((await self.db.execute(stmt)).scalars())
+
+    async def release(self, ids: Sequence[UUID]) -> builtins.list[UUID]:
+        """Client item 20: the held, unretired rows among `ids` made live (the seller applied
+        them); the ids released, so a replay releases nothing twice."""
+        if not ids:
+            return []
+        self._own_session()
+        stmt = self._scoped_write(
+            update(ListingRepair)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                ListingRepair.id.in_(builtins.list(ids)),
+                ListingRepair.retired_at.is_(None),
+                ListingRepair.held.is_(True),
+            )
+            .values(held=False)
+            .returning(ListingRepair.id)
+        )
+        return [row[0] for row in (await self.db.execute(stmt)).all()]
 
     async def for_listing(self, listing_id: UUID, limit: int = 50) -> builtins.list[ListingRepair]:
         """Every repair of the listing, live or retired, newest first (the resolution read)."""
@@ -98,6 +128,7 @@ class RepairRepository(TenantScopedRepository[ListingRepair]):
                 to_digest=new.to_digest,
                 value_json=new.value_json,
                 alias_version=new.alias_version,
+                held=new.held,
             )
             .on_conflict_do_nothing()
             .returning(ListingRepair.id)

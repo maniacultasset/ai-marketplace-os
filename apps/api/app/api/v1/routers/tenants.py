@@ -61,6 +61,7 @@ def _out(view: tenants.TenantView) -> TenantOut:
             "trial_ends_at": view.trial_ends_at,
             "capabilities": capabilities_out(),
             "owner_self_approval": view.owner_self_approval,
+            "auto_fix_enabled": view.auto_fix_enabled,
         }
     )
 
@@ -84,9 +85,10 @@ async def tenants_me_update(
     """Update the brand profile. `If-Match` is the `ETag` from GET; a stale one is 409
     `STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.
     `owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a
-    step-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`)."""
+    step-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).
+    `auto_fix_enabled` (client item 20) follows the same rules."""
     fields = body.model_dump(include=body.model_fields_set)
-    if tenants.SETTING_FIELD in fields:
+    if set(fields) & set(tenants.SETTINGS):
         if principal.role not in tenants.SETTING_ROLES:
             raise ApiError(403, ErrorCode.PERMISSION_DENIED)
         await check_recent_mfa(claims, principal, otp_only=False)

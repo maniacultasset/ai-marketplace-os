@@ -280,6 +280,48 @@ class PackageOut(WireModel):
     weight_g: int | None = None
 
 
+class ItemSizeIn(StrictModel):
+    """Client item 15: the product itself, not the packed box (that is `package`). The same JSON
+    merge patch rules: the three sides together, all set or all null (null clears them), the
+    weight alone, `{}` refused and `item: null` clears all four. The sides are stored as the
+    `product_dimensions` fact (`L x B x H cm`), the weight as `product_weight` (grams)."""
+
+    length_cm: Dimension | None = None
+    breadth_cm: Dimension | None = None
+    height_cm: Dimension | None = None
+    weight_g: Grams | None = None
+
+    @model_validator(mode="after")
+    def _dims_together(self) -> ItemSizeIn:
+        sent = self.model_fields_set
+        if not sent:
+            raise PydanticCustomError(
+                "mkos_invalid", "Send at least one item field, or `item: null` to clear."
+            )
+        dims = [name for name in _DIMS if name in sent]
+        if dims:
+            nulls = [name for name in _DIMS if getattr(self, name) is None]
+            if len(dims) != len(_DIMS) or len(nulls) not in (0, len(_DIMS)):
+                raise PydanticCustomError(
+                    "mkos_invalid",
+                    "Send length_cm, breadth_cm and height_cm together, all set or all null.",
+                )
+        return self
+
+
+class ItemSizeOut(WireModel):
+    """Client item 15: the product itself. The sides are null when none is saved or the saved
+    `product_dimensions` is free text that is not `L x B x H cm`."""
+
+    length_cm: Decimal | None = None
+    breadth_cm: Decimal | None = None
+    height_cm: Decimal | None = None
+    weight_g: int | None = None
+
+
+PackageWarningKey = Literal["package_dimensions", "package_weight"]
+
+
 IdentifierType = Literal["gtin", "ean", "upc"]
 
 
@@ -343,6 +385,10 @@ class ProductCreate(StrictModel):
     size_chart: SizeChart | None = None
     hsn_code: HsnCode | None = None
     package: PackageIn | None = None
+    item: ItemSizeIn | None = Field(
+        default=None,
+        description="Client item 15: the product itself (not the packed box), in cm and grams.",
+    )
     country_of_origin: CountryCode | None = None
     image_uploads: Annotated[list[ImageUploadIn], Field(max_length=MAX_IMAGE_UPLOADS)] = Field(
         default_factory=list
@@ -396,6 +442,10 @@ class ProductPatch(StrictModel):
     hsn_code: HsnCode | None = None
     package: PackageIn | None = Field(
         default=None, description="SI12: merges; `null` clears all four values."
+    )
+    item: ItemSizeIn | None = Field(
+        default=None,
+        description="Client item 15: the product itself; merges; `null` clears all four values.",
     )
     country_of_origin: CountryCode | None = None
     attributes: (
@@ -683,6 +733,21 @@ class ProductOut(WireModel):
     )
     package: PackageOut | None = Field(
         default=None, description="SI12: own, else the style's on single reads; own on lists."
+    )
+    item: ItemSizeOut | None = Field(
+        default=None,
+        description=(
+            "Client item 15: the product itself, beside the packed box; own, else the style's "
+            "on single reads."
+        ),
+    )
+    package_warnings: dict[PackageWarningKey, str] = Field(
+        default_factory=dict,
+        description=(
+            "Client item 15: the packed box looks unusual for the category (a likely unit slip "
+            "named when there is one). Never blocks; a box past the category's hard limit is "
+            "refused with 422 instead."
+        ),
     )
     country_of_origin: str | None = Field(
         default=None,

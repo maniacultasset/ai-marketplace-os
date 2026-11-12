@@ -73,7 +73,9 @@ VERSION_INSERT = frozenset(
 MATRIX: dict[str, tuple[frozenset[str], frozenset[str], frozenset[str]]] = {
     "tenants": (
         APPEND,
-        frozenset({"name", "tone", "guidelines", "glossary", "owner_self_approval"}),  # 0030
+        frozenset(
+            {"name", "tone", "guidelines", "glossary", "owner_self_approval", "auto_fix_enabled"}
+        ),  # 0030, 0038 (item 20)
         frozenset(),
     ),
     "users": (RW, frozenset(), frozenset()),

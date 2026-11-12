@@ -49,7 +49,7 @@ from app.api.v1.schemas.listings import (
     RegenerateRequest,
     ValidateRequest,
 )
-from app.api.v1.schemas.resolution import ResolutionOut
+from app.api.v1.schemas.resolution import FixesAppliedOut, ResolutionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
@@ -381,6 +381,20 @@ async def listings_issue_history(
     from app.services.resolution.history import history_for
 
     return IssueHistoryOut.model_validate(await history_for(principal, listing_id))
+
+
+@route(router, OPS["listings_fixes_apply"])
+async def listings_fixes_apply(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> FixesAppliedOut:
+    """Client item 20: with the brand's "Let Kuinn fix safe listing errors automatically" off,
+    each fix Kuinn finds waits as a suggestion. This applies them for one listing: the suggested
+    repairs go live and the re-check, resend or fix job runs as it would with the setting on.
+    409 when the listing is paused, archived or busy, or has no open marketplace error."""
+    from app.services.resolution.apply_fixes import apply_fixes
+
+    done = await apply_fixes(principal, listing_id)
+    return FixesAppliedOut(released=done.released, job_id=done.job_id)
 
 
 @route(router, OPS["listings_refresh_status"])

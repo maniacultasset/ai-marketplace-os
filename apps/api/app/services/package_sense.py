@@ -9,6 +9,13 @@ centimetres, metres as centimetres), the warning names the likely meaning.
 `package_warnings(category, sides, weight_g)` is pure and answers `{key: message}` for
 `package_dimensions` and `package_weight`. The web form mirrors it
 (`src/features/products/seller-fields.ts` `packageWarnings`); keep the two in step.
+
+Client item 15 bullet 4 (12 Nov): past the soft band a category also has a hard limit, a box no
+real product of that kind ships in (a kurta box over 30 kg). `package_errors(...)` is pure and
+answers `{key: message}` for the values over it; the product API (`products.create_product`,
+`product_edit.update_product`) and the CSV import refuse them with 422 `VALUE_NOT_ALLOWED` at the
+field, and the message names the allowed range. The soft band between the plausible range and
+the hard limit stays a warning. A category with no row here keeps only the storage limits.
 """
 
 from __future__ import annotations
@@ -19,7 +26,13 @@ from decimal import ROUND_HALF_UP, Decimal
 from types import MappingProxyType
 from typing import Final
 
-__all__ = ["DEFAULT_RANGE", "RANGES", "PackageRange", "package_warnings"]
+__all__ = [
+    "DEFAULT_RANGE",
+    "RANGES",
+    "PackageRange",
+    "package_errors",
+    "package_warnings",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,10 +44,15 @@ class PackageRange:
     min_g: int
     max_g: int
     noun: str | None
+    # the hard limits (item 15 bullet 4): a side or a weight over these is refused, not warned
+    limit_cm: Decimal | None = None
+    limit_g: int | None = None
 
 
-_APPAREL: Final = PackageRange(Decimal("0.3"), Decimal(100), 20, 5_000, "clothing")
-_LAMPS: Final = PackageRange(Decimal(1), Decimal(200), 50, 30_000, "a lamp")
+_APPAREL: Final = PackageRange(
+    Decimal("0.3"), Decimal(100), 20, 5_000, "clothing", Decimal(150), 30_000
+)
+_LAMPS: Final = PackageRange(Decimal(1), Decimal(200), 50, 30_000, "a lamp", Decimal(300), 100_000)
 DEFAULT_RANGE: Final = PackageRange(Decimal("0.1"), Decimal(300), 5, 100_000, None)
 RANGES: Final[Mapping[str, PackageRange]] = MappingProxyType(
     {
@@ -102,19 +120,47 @@ def _sides(sides: Sequence[Decimal], r: PackageRange) -> str | None:
     return None
 
 
+def range_for(category: str | None) -> PackageRange:
+    return RANGES.get((category or "").strip(), DEFAULT_RANGE)
+
+
+def package_errors(
+    category: str | None, sides: Sequence[Decimal] | None, weight_g: int | None
+) -> dict[str, str]:
+    """The hard-limit refusals of one packed box: `{key: message}` for `package_dimensions`
+    (any side over the category's limit) and `package_weight`. The message gives the allowed
+    range and never repeats the submitted value."""
+    r = range_for(category)
+    out: dict[str, str] = {}
+    of = f" for {r.noun}" if r.noun else ""
+    if r.limit_cm is not None and sides is not None and any(s > r.limit_cm for s in sides):
+        out["package_dimensions"] = (
+            f"A packed box{of} has each side between {_num(r.min_cm)} and {_num(r.limit_cm)} "
+            "cm. Check the size is the box in cm."
+        )
+    if r.limit_g is not None and weight_g is not None and weight_g > r.limit_g:
+        out["package_weight"] = (
+            f"A packed box{of} weighs between {_num(r.min_g)} g and {_num(Decimal(r.limit_g) / 1000)}"
+            " kg. Check the weight is the box in grams."
+        )
+    return out
+
+
 def package_warnings(
     category: str | None, sides: Sequence[Decimal] | None, weight_g: int | None
 ) -> dict[str, str]:
     """The plausibility warnings of one packed box (`sides`: length, breadth and height in cm,
-    all three or None). Values outside the storage limits are the hard checks' job, not this."""
-    r = RANGES.get((category or "").strip(), DEFAULT_RANGE)
+    all three or None). Values outside the storage limits are the hard checks' job, not this;
+    a value `package_errors` refuses is not warned about as well."""
+    r = range_for(category)
+    hard = package_errors(category, sides, weight_g)
     out: dict[str, str] = {}
     if sides is not None and len(sides) == 3 and all(s > 0 for s in sides):
         message = _sides(sides, r)
-        if message is not None:
+        if message is not None and "package_dimensions" not in hard:
             out["package_dimensions"] = message
     if weight_g is not None and weight_g > 0:
         message = _weight(weight_g, r)
-        if message is not None:
+        if message is not None and "package_weight" not in hard:
             out["package_weight"] = message
     return out

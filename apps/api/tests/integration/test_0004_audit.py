@@ -27,7 +27,14 @@ ALLOWLIST: dict[str, set[str]] = {
     "rules": {"enabled"},
     "membership": {"role", "is_active"},
     "invitation": {"role"},  # 0017 (ADR-0029)
-    "tenant": {"name", "tone", "guidelines", "glossary", "owner_self_approval"},
+    "tenant": {
+        "name",
+        "tone",
+        "guidelines",
+        "glossary",
+        "owner_self_approval",
+        "auto_fix_enabled",  # 0038 (item 20)
+    },
     "marketplace_account": {"status", "settings"},
     "business_party": {"roles", "source"},
     "category_template": {"marketplace", "category"},

@@ -34,6 +34,13 @@ keys `hsn_code`, `country_of_origin`, `package_dimensions` and `package_weight`.
 (JSON merge patch, CP-D8): the three dimensions are one group (set together or cleared together),
 `weight_g` stands alone, a key not sent is unchanged and `package: null` clears all four.
 
+Client item 15 (12 Nov): `item` is the product itself beside the packed box, the same merge
+patch as `package`: the three sides are the `product_dimensions` attribute fact, written as
+`L x B x H cm` (with `attributes.product_dimensions` in the same body: 422 at `item`), and
+`weight_g` is the `product_weight` column fact. A packed box past the category's hard limit
+(`package_sense.package_errors`, the patched category or the stored one, a variant's style's) is
+422 `VALUE_NOT_ALLOWED` at `package.length_cm` / `package.weight_g`, the message naming the range.
+
 Levels: a style-owned field (`style_number`, `brand_name`, `gender`, `size_chart`, an attribute
 outside the row's owner levels) on a variant is 422 `FACT_LEVEL_INVALID`. Money (CP14): a unit's
 own or inherited
@@ -76,8 +83,10 @@ from app.services.product_facts import (
 )
 from app.services.products import (
     ProductView,
+    check_package,
     checked_brand,
     full_view,
+    item_dims_fact,
     party_fields,
     product_etag,
 )
@@ -105,6 +114,8 @@ PATCH_FIELDS: Final = frozenset(
         "country_of_origin",
         "package",
         "size_chart_image_id",
+        # client item 15: the product itself
+        "item",
     }
 )
 _ALL_LEVELS: Final = frozenset({"style", "variant", "standalone"})
@@ -140,6 +151,10 @@ PACKAGE_DIMS: Final[Mapping[str, str]] = {
 PACKAGE_DIMS_KEY: Final = "package_dimensions"
 PACKAGE_WEIGHT_KEY: Final = "package_weight"
 PACKAGE_WEIGHT_COLUMN: Final = "package_weight_g"
+# client item 15: the product itself
+ITEM_DIMS_KEY: Final = "product_dimensions"
+ITEM_WEIGHT_KEY: Final = "product_weight"
+ITEM_WEIGHT_COLUMN: Final = "product_weight_g"
 _NOT_NULLABLE: Final = frozenset({"title", "category"})
 
 
@@ -268,6 +283,58 @@ def _plan_package(
             typed[PACKAGE_WEIGHT_COLUMN] = weight
 
 
+def _plan_item(
+    row: Any,
+    item: Mapping[str, Any] | None,
+    *,
+    now: datetime,
+    typed: dict[str, Any],
+    cleared: list[str],
+    attrs_set: dict[str, dict[str, Any]],
+    attrs_clear: list[str],
+) -> None:
+    """Client item 15: `item` as a JSON merge patch over the stored product size and weight."""
+    stored: Mapping[str, Any] = row.attributes if isinstance(row.attributes, Mapping) else {}
+    weight_stored = getattr(row, ITEM_WEIGHT_COLUMN, None) is not None
+    if item is None:
+        if ITEM_DIMS_KEY in stored:
+            attrs_clear.append(ITEM_DIMS_KEY)
+        if weight_stored:
+            cleared.append(ITEM_WEIGHT_KEY)
+        return
+    names = tuple(PACKAGE_DIMS)
+    if any(name in item for name in names):
+        sides = [item.get(name) for name in names]
+        if all(v is None for v in sides):
+            if ITEM_DIMS_KEY in stored:
+                attrs_clear.append(ITEM_DIMS_KEY)
+        elif any(v is None for v in sides):  # the wire model refuses it already
+            raise InputError(ErrorCode.VALIDATION_FAILED, "item")
+        else:
+            fact = item_dims_fact([v for v in sides if v is not None], now=now)
+            if not _same_fact(stored.get(ITEM_DIMS_KEY), fact):
+                attrs_set[ITEM_DIMS_KEY] = fact
+    if "weight_g" in item:
+        weight = item["weight_g"]
+        if weight is None:
+            if weight_stored:
+                cleared.append(ITEM_WEIGHT_KEY)
+        elif getattr(row, ITEM_WEIGHT_COLUMN, None) != weight:
+            typed[ITEM_WEIGHT_COLUMN] = weight
+
+
+def _check_package(
+    row: Any, style_row: Any, typed: Mapping[str, Any], groups: Mapping[str, Any]
+) -> None:
+    """Item 15 bullet 4: the box values this patch writes, against the category's hard limit."""
+    category = typed.get("category") or row.category
+    if category is None and style_row is not None:
+        category = style_row.category
+    dims = groups.get(PACKAGE_DIMS_KEY)
+    sides = None if dims is None else [dims[c] for c in PACKAGE_DIMS.values()]
+    check_package(category, sides, typed.get(PACKAGE_WEIGHT_COLUMN))
+
+
 def plan_patch(
     row: Any,
     style_row: Any,
@@ -286,6 +353,8 @@ def plan_patch(
     unknown = set(patch) - PATCH_FIELDS
     if unknown:
         raise InputError(ErrorCode.VALIDATION_FAILED, sorted(unknown)[0])
+    if "item" in patch and ITEM_DIMS_KEY in (patch.get("attributes") or {}):
+        raise InputError(ErrorCode.VALIDATION_FAILED, "item")  # item 15: one source per value
     typed: dict[str, Any] = {}
     cleared: list[str] = []
     for name, (column, key, levels) in TYPED.items():
@@ -312,6 +381,7 @@ def plan_patch(
     groups: dict[str, dict[str, Any]] = {}
     if "package" in patch:
         _plan_package(row, patch["package"], typed, cleared, groups)
+        _check_package(row, style_row, typed, groups)
 
     stored: Mapping[str, Any] = row.attributes if isinstance(row.attributes, Mapping) else {}
     attrs_set: dict[str, dict[str, Any]] = {}
@@ -347,6 +417,18 @@ def plan_patch(
             raise InputError(ErrorCode.VALIDATION_FAILED, f"attributes.{definition.key}")
         if definition.key in stored:
             attrs_clear.append(definition.key)
+    if "item" in patch:
+        if ITEM_DIMS_KEY in built:  # an input alias of the key
+            raise InputError(ErrorCode.VALIDATION_FAILED, "item")
+        _plan_item(
+            row,
+            patch["item"],
+            now=now,
+            typed=typed,
+            cleared=cleared,
+            attrs_set=attrs_set,
+            attrs_clear=attrs_clear,
+        )
     return ProductChange(
         typed_set=typed,
         typed_clear=tuple(cleared),

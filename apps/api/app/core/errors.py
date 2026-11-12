@@ -49,14 +49,16 @@ class NotFoundError(DomainError):
 
 class InputError(DomainError):
     """A request value the service refuses after the schema passed it (422). `field` is the
-    body path (`sku`, `attributes.color`, `images[0]`); the value itself is never kept."""
+    body path (`sku`, `attributes.color`, `images[0]`); the value itself is never kept. `detail`
+    is an optional server-built message for the 422 detail (never the submitted value)."""
 
-    def __init__(self, code: ErrorCode, field: str) -> None:
+    def __init__(self, code: ErrorCode, field: str, detail: str | None = None) -> None:
         if code is ErrorCode.INTERNAL_ERROR:
             raise ValueError("InputError never carries INTERNAL_ERROR")
         super().__init__(f"{code.value} at {field}")
         self.code = code
         self.field = field
+        self.detail = detail
 
 
 class ForbiddenError(DomainError):

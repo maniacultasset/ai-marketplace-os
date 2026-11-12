@@ -117,7 +117,7 @@ from app.api.v1.schemas.marketplaces import (
 )
 from app.api.v1.schemas.product_delete import ProductBulkDeleteResult
 from app.api.v1.schemas.products import ProductOut, ProductPage
-from app.api.v1.schemas.resolution import ResolutionOut
+from app.api.v1.schemas.resolution import FixesAppliedOut, ResolutionOut
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.signup import (
     SignupAccepted,
@@ -777,6 +777,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               IssueHistoryOut, "listings", "Every marketplace issue of this listing, who handles "
               "it, and each fix Kuinn made (before, after, reason, outcome)", "SI11",
               path_id="listing_id", action=A.TENANT_READ),
+    # client item 20: with the brand's auto-fix off, the seller's go for Kuinn's suggested fixes
+    Operation("listings_fixes_apply", "POST", "/listings/{listing_id}/fixes/apply", 200,
+              FixesAppliedOut, "listings", "Apply the fixes Kuinn suggested for this listing "
+              "(auto-fix off), then re-check or send it again", "SI11", path_id="listing_id",
+              conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.LISTING_EDIT),
     Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
               JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
               "minutes per listing)", "S21", path_id="listing_id", idempotency=True,

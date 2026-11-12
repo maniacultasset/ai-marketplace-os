@@ -137,13 +137,13 @@ def test_ck_maker_checker_admits_only_a_marked_self_approval(db: Conn) -> None:
 
 
 def test_audit_allowlist_keeps_the_setting(db: Conn) -> None:
-    assert set(scalar(db, "SELECT audit_allowlist('tenant')")) == {
+    assert set(scalar(db, "SELECT audit_allowlist('tenant')")) >= {
         "name",
         "tone",
         "guidelines",
         "glossary",
         "owner_self_approval",
-    }
+    }  # 0038 adds `auto_fix_enabled` (`test_0038_d5.py`)
 
 
 # ---- lv_guard: exactly one more case ----

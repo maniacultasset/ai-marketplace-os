@@ -43,7 +43,7 @@ from app.services.imports.headers import (
 )
 from app.services.intake_values import COUNTRY_PATTERN, DIMENSION_PATTERN, HSN_PATTERN, MAX_GRAMS
 from app.services.iso_countries import ISO_3166_ALPHA2
-from app.services.package_sense import package_warnings
+from app.services.package_sense import package_errors, package_warnings
 
 __all__ = [
     "ATTRIBUTE_COLUMNS",
@@ -563,8 +563,11 @@ def _package_sense(
     dims: tuple[Decimal | None, Decimal | None, Decimal | None],
     grams: int | None,
 ) -> None:
-    """Item 15: a box that looks wrong for its category is a warning; the row still imports."""
+    """Item 15: a box that looks wrong for its category is a warning; the row still imports. A
+    box past the category's hard limit (bullet 4, a kurta box over 30 kg) fails the row."""
     sides = None if any(d is None for d in dims) else [d for d in dims if d is not None]
+    for key, message in package_errors(category, sides, grams).items():
+        c.fail(ErrorCode.VALUE_NOT_ALLOWED, f"{_SENSE_COLUMNS[key]}: {message}")
     for key, message in package_warnings(category, sides, grams).items():
         c.warnings.append(
             row_error(

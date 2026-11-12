@@ -28,6 +28,8 @@ from app.api.v1.schemas.products import (
     FibreOut,
     FieldSourceOut,
     HsnSuggestionOut,
+    ItemSizeIn,
+    ItemSizeOut,
     PackageIn,
     PackageOut,
     PhotoFactOut,
@@ -194,6 +196,8 @@ def _out(view: products.ProductView) -> ProductOut:
         identifier_exemption=view.identifier_exemption,
         hsn_code=view.hsn_code,
         package=None if view.package is None else PackageOut.model_construct(**view.package),
+        item=None if view.item is None else ItemSizeOut.model_construct(**view.item),
+        package_warnings=view.package_warnings,  # type: ignore[arg-type]
         country_of_origin=view.country_of_origin,
         field_sources={
             key: FieldSourceOut.model_construct(
@@ -279,13 +283,17 @@ async def products_create(
             country_of_origin=body.country_of_origin,
             package_dims=_package_dims(body.package),
             package_weight_g=None if body.package is None else body.package.weight_g,
+            item_dims=_package_dims(body.item),
+            product_weight_g=None if body.item is None else body.item.weight_g,
         ),
     )
     response.headers["ETag"] = view.etag
     return _out(view)
 
 
-def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal] | None:
+def _package_dims(
+    package: PackageIn | ItemSizeIn | None,
+) -> tuple[Decimal, Decimal, Decimal] | None:
     """SI12: the create's three dimensions, or None when they are not all set (the wire model
     keeps them all set or all null)."""
     if package is None:
@@ -375,7 +383,7 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = tuple(value)
         elif name == "product_identifier":
             out[name] = (value.type, value.value)
-        elif name == "package":  # SI12: only the keys sent (a merge patch)
+        elif name in ("package", "item"):  # SI12, item 15: only the keys sent (a merge patch)
             out[name] = {key: getattr(value, key) for key in value.model_fields_set}
         else:
             out[name] = value
