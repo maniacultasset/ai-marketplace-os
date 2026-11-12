@@ -191,3 +191,51 @@ async def test_apply_other_tenant_404(
 async def test_apply_not_found_404(api: httpx.AsyncClient, prev: PubWorld) -> None:
     response = await api.post(_apply_url(uuid.uuid4()), headers=bearer_for(prev.world, OWNER))
     assert response.status_code == 404
+
+
+async def test_off_keeps_a_content_fix_as_a_suggestion_until_applied(
+    api: httpx.AsyncClient, prev: PubWorld
+) -> None:
+    """A title Amazon refused as too long: with auto-fix off Kuinn starts no content fix job,
+    the reads say the seller applies it (never "Kuinn's team is looking"), and "Apply fixes"
+    starts the fix job."""
+    from mkos_schemas.codes import ErrorCode
+
+    from .publish_support import approved, publish_and_run
+    from .test_si11b_attacks import _content, _gen_jobs, _read
+
+    _off(prev)
+    prev.fake.preview_errors = []
+    made = await approved(prev)
+    title = _content(prev, made.version_id)["content"]["title"]
+    prev.fake.set_fail_fields(
+        {
+            "content.title": (
+                "99301",
+                f"The value for 'item_name' is longer than {len(title) - 3} characters.",
+                ErrorCode.FIELD_TOO_LONG,
+            )
+        }
+    )
+    await publish_and_run(api, prev, made)
+    assert _gen_jobs(prev, made.listing_id, "auto_fix") == []  # nothing ran by itself
+
+    auth = bearer_for(prev.world, OWNER)
+    history = await api.get(f"/api/v1/listings/{made.listing_id}/issue-history", headers=auth)
+    assert history.status_code == 200, history.text
+    shown = [i for i in history.json()["issues"] if i["field"] == "content.title"]
+    assert shown and all(
+        (i["suggested"], i["handler"], i["lane"]) == (True, "you", "seller") for i in shown
+    ), shown
+    listed = await api.get(
+        "/api/v1/issues", params={"listing_id": str(made.listing_id)}, headers=auth
+    )
+    assert listed.status_code == 200, listed.text
+    inbox = {i["lane"] for i in listed.json()["data"] if i["field_path"] == "content.title"}
+    assert inbox == {"seller"}, inbox
+    assert (await _read(api, prev, made.listing_id))["state"] != "fixing"
+
+    response = await api.post(_apply_url(made.listing_id), headers=auth)
+    assert response.status_code == 200, response.text
+    (job,) = _gen_jobs(prev, made.listing_id, "auto_fix")
+    assert response.json()["job_id"] == str(job["id"])

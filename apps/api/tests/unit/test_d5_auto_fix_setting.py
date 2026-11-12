@@ -14,11 +14,11 @@ from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-from app.api.v1.schemas.issue_history import FixOut
+from app.api.v1.schemas.issue_history import FixOut, HistoryIssueOut
 from app.api.v1.schemas.tenants import TenantOut, TenantPatch
 from app.services import tenants
 from app.services.resolution.apply_fixes import entry_for
-from app.services.resolution.history import counts, fixes
+from app.services.resolution.history import counts, fixes, issue_rows
 from app.services.resolution.plan import (
     APPROVE_FIX,
     FIX_LANES,
@@ -28,7 +28,7 @@ from app.services.resolution.plan import (
     label,
     plan,
 )
-from app.services.resolution.read import held_issues, labels
+from app.services.resolution.read import held_issues, labels, waiting_fixes
 from pydantic import ValidationError
 
 T0 = datetime(2026, 11, 12, 10, 0, tzinfo=UTC)
@@ -103,6 +103,13 @@ class Row:
     marketplace_code: str | None = "99300"
     dedupe_key: str = "k"
     recurrence_of_id: uuid.UUID | None = None
+    message: str = "Amazon refused it."
+    suggestion: str | None = None
+    value_submitted: str | None = None
+    occurrences: int = 1
+    first_seen_at: datetime = T0
+    last_seen_at: datetime = T0
+    resolved_at: datetime | None = None
 
 
 @dataclass
@@ -144,6 +151,52 @@ def test_a_held_repair_is_a_suggested_fix_that_waits() -> None:
     (made,) = fixes(repairs=[Repair(issue.id)], issues=[], submissions=[])
     assert made["suggested"] is False
     assert counts([], [fix, made])["fixed"] == 1  # a suggestion is not a fix Kuinn made
+
+
+def _content_row(**over: Any) -> Row:
+    base: dict[str, Any] = {"field_path": "content.title", "error_code": "FIELD_TOO_LONG"}
+    return Row(**{**base, **over})
+
+
+def test_a_suggested_content_fix_is_the_sellers_not_the_teams() -> None:
+    """Auto-fix off, the executor keeps a content fix as `approve_fix` and opens no task: the
+    reads must say the seller applies it, never that Kuinn's team is looking."""
+    row = _content_row()
+    assert labels([row])[row.id][0] == "staff"  # what the read said before (no task behind it)
+    waiting = waiting_fixes([row])
+    assert waiting == frozenset({row.id})
+    assert labels([row], held=waiting)[row.id][0] == "seller"
+
+
+def test_waiting_fixes_leave_out_rows_kuinn_or_a_person_already_has() -> None:
+    tasked = _content_row(human_task_id=uuid.uuid4())
+    repaired = _content_row()
+    fixing = _content_row()
+    closed = _content_row(status="resolved")
+    warning = _content_row(severity="warning")
+    own_check = _content_row(source="content_check")
+    value = Row()  # an attribute value: a repair or a seller fact, never a content fix
+    rows = [tasked, repaired, fixing, closed, warning, own_check, value]
+    assert (
+        waiting_fixes(rows, repaired={repaired.id}, fixing={fixing.id: "auto_content"})
+        == frozenset()
+    )
+
+
+def test_a_locked_path_is_never_a_suggested_fix() -> None:
+    row = _content_row()
+    locked = {row.listing_id: frozenset({"content.title"})}
+    assert waiting_fixes([row], locked=locked) == frozenset()
+
+
+def test_the_history_marks_the_suggested_issue() -> None:
+    row = _content_row(message="Amazon refused it. Marketplace message: too long")
+    waiting = waiting_fixes([row])
+    (out,) = issue_rows([row], labels([row], held=waiting), suggested=waiting)
+    assert out["suggested"] is True and out["handler"] == "you"
+    HistoryIssueOut.model_validate(out)
+    (plain,) = issue_rows([row], labels([row]))
+    assert plain["suggested"] is False
 
 
 @pytest.mark.parametrize(

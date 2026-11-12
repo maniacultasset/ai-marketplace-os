@@ -3666,6 +3666,12 @@
             "title": "Status",
             "type": "string"
           },
+          "suggested": {
+            "default": false,
+            "description": "Client item 20: with the brand's auto-fix off, Kuinn has a fix for this open issue (a value change, a content fix or an AI rewrite) that waits until the seller applies it (`POST /listings/{id}/fixes/apply`).",
+            "title": "Suggested",
+            "type": "boolean"
+          },
           "value_submitted": {
             "anyOf": [
               {

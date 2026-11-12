@@ -45,9 +45,9 @@ from app.services.resolution.read import (
     _precheck,
     _within,
     fix_lanes,
-    held_issues,
     labels,
     recategorizable_listings,
+    suggested_issues,
 )
 
 MAX_ISSUES: Final = 100
@@ -240,9 +240,12 @@ def issue_rows(
     issues: Iterable[Any],
     lanes: Mapping[uuid.UUID, tuple[Lane, Any]],
     outside: frozenset[tuple[str, str]] = frozenset(),
+    *,
+    suggested: frozenset[uuid.UUID] = frozenset(),
 ) -> list[dict[str, Any]]:
     """The marketplace's ERROR rows, newest first. `outside` holds the (plain text, seller
-    action) pairs of the map rows marked `handled_outside`."""
+    action) pairs of the map rows marked `handled_outside`; `suggested` the open issues whose
+    fix waits for the seller's "Apply fixes" (client item 20)."""
     out: list[dict[str, Any]] = []
     rows = [i for i in issues if i.severity == "error" and i.source in ADAPTER_SOURCES]
     rows.sort(key=lambda r: (r.last_seen_at, r.id), reverse=True)
@@ -268,6 +271,7 @@ def issue_rows(
                 "first_seen_at": row.first_seen_at,
                 "last_seen_at": row.last_seen_at,
                 "resolved_at": row.resolved_at,
+                "suggested": row.status == "open" and row.id in suggested,
             }
         )
     return out
@@ -412,6 +416,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
     repairs = await uow.resolution.repairs_for(listing.id)
     tasks = await uow.resolution.linked_tasks(listing.id)
     versions = await uow.resolution.versions_of(listing.id)
+    suggested = await suggested_issues(uow, listing, issues, repairs, jobs)
     lanes = labels(
         issues,
         repaired={r.source_issue_id for r in repairs if r.source_issue_id is not None},
@@ -419,10 +424,11 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         critical_keys=await uow.product_facts.critical_keys(),
         fixing=fix_lanes(jobs),
         recategorizable=await recategorizable_listings(uow, issues),
-        held=held_issues(repairs),
+        locked={listing.id: frozenset(getattr(listing, "locked_paths", None) or ())},
+        held=suggested,
     )
     outside = await uow.error_map.outside_texts(listing.marketplace)
-    rows = issue_rows(issues, lanes, outside)
+    rows = issue_rows(issues, lanes, outside, suggested=suggested)
     made = fixes(
         repairs=repairs,
         issues=issues,

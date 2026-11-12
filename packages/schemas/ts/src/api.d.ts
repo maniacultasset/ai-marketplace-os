@@ -4064,6 +4064,12 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "auto_fixed" | "resolved" | "dismissed";
+            /**
+             * Suggested
+             * @description Client item 20: with the brand's auto-fix off, Kuinn has a fix for this open issue (a value change, a content fix or an AI rewrite) that waits until the seller applies it (`POST /listings/{id}/fixes/apply`).
+             * @default false
+             */
+            suggested: boolean;
             /** Value Submitted */
             value_submitted?: string | null;
         };
