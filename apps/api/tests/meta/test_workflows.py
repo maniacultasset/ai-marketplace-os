@@ -35,8 +35,8 @@ REQUIRED_CHECKS = {job for jobs in PR_FILES.values() for job in jobs}
 API_TEST_JOBS = ("api-tests", "api-tests-integration")
 TIMEOUTS = {"ci-api.yml": 15, "contracts.yml": 10, "ci-meta.yml": 5, PUSH_FILE: 5, PUBLISH_FILE: 10}
 # Per-job exceptions: the api suite with coverage outgrew 15 min on the runner (S13b); since S26
-# each of its two shards aims at ~25 min, capped at 40 (headroom for a slow runner).
-JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 40, ("ci-api.yml", "api-tests-integration"): 40}
+# each of its two shards aims at ~25 min, capped at 55 (headroom for a slow runner; the shards reached 36-40 min by wave D).
+JOB_TIMEOUTS = {("ci-api.yml", "api-tests"): 55, ("ci-api.yml", "api-tests-integration"): 55}
 ENV_JOBS = {
     "api-lint": "mos_test",
     "api-typecheck": "mos_test",
