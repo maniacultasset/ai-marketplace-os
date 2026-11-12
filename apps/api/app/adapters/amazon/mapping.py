@@ -59,6 +59,9 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
 - SI8 T5: a child's `item_name` is the family title plus ` - <Colour>, <Size>` (the template's
   mapped values for the family's axes only; `child_title`), cut to the stored definition's
   `item_name.maxLength` (else 200) by shortening the title at a word boundary, never the suffix.
+- Client item 5 (2026-11-12): every item of a mapped listing whose template names an Amazon
+  browse node (`external_category_id`, digits only) sends it as `recommended_browse_nodes`
+  (`[{value, marketplace_id}]`); with none set nothing is sent and nothing is guessed.
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -66,6 +69,7 @@ The adapter only adds errors; it never removes or downgrades a Rules Engine verd
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -750,6 +754,7 @@ def item_payload(
     errors += barcode_errors
     package, package_sent = _package(unit, facts, marketplace_id)
     attributes.update(package)
+    attributes.update(_browse_node(template, marketplace_id))
     sent += package_sent
     skipped += list(fact_paths(unit))
 
@@ -815,6 +820,24 @@ def item_payload(
         stale_repairs=applied.stale,
         image_names=image_names,
     )
+
+
+def browse_node(template: AdapterTemplate | None) -> str | None:
+    """Client item 5: the template's Amazon browse node id (`external_category_id`), when it is
+    set and is a node id (digits only); None otherwise, and then nothing is sent."""
+    if template is None or not is_mapped(template):
+        return None
+    node = (template.external_category_id or "").strip()
+    return node if re.fullmatch(c.BROWSE_NODE_PATTERN, node) else None
+
+
+def _browse_node(template: AdapterTemplate | None, marketplace_id: str) -> Payload:
+    """`recommended_browse_nodes` for every item of a mapped listing whose template names a
+    node; an empty dict otherwise (no id is ever guessed)."""
+    node = browse_node(template)
+    if node is None:
+        return {}
+    return {c.BROWSE_NODE_ATTRIBUTE: [{"value": node, "marketplace_id": marketplace_id}]}
 
 
 IMAGE_NAMES: Final = frozenset({c.MAIN_IMAGE, *c.OTHER_IMAGES})

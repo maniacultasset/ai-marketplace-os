@@ -43,3 +43,46 @@ current definition; an update publish is not blocked by it.
 - DW2-P (trigger: SP-API production app approval): run steps 1-3 in production for KURTA, SHIRT
   and LAMP, then correct the believed names in `app/adapters/amazon/constants.py` and the seed
   templates through a new template version, and confirm the shape of `item_dimensions`.
+
+## Check every category template (client feedback item 5)
+
+`python -m app.cli templates check [--product-type T] [--list-browse-nodes]` (read-only, on
+`DATABASE_URL`) checks each Amazon category template against the stored current definition of
+its own product type, and prints one line per template:
+
+```
+ethnic_wear_kurta_sets -> KURTA: definition <version>, 0 drift(s); browse node not set
+home_decor_lamps -> LAMP: no stored definition for LAMP, not checked; browse node not set
+tshirts -> SHIRT: no stored definition for SHIRT, not checked; browse node not set
+templates check: 3 template(s), 1 checked, 2 without a stored definition, 0 drift(s), 3 without a browse node
+```
+
+Exit 0: all checked, no drift. Exit 1: drift (the drift lines are indented under the template).
+Exit 3: a template was not checked because no definition is stored (run `templates refresh` for
+that product type first), or the check could not run. Without a stored definition a preview or
+publish is not checked against Amazon's schema either (AC10, the `ptd.missing` log line).
+
+## Browse nodes
+
+Each Amazon template's browse node is its `external_category_id`. When it is set (digits only),
+every item of a listing in that category sends it as `recommended_browse_nodes`
+(`[{value, marketplace_id}]`), and `templates diff` / `check` verify it against the stored
+definition (declared, and in its enum when the definition lists one). When it is NULL nothing is
+sent.
+
+No Amazon.in (`A21TJRUUN4KGV`) node id is in the repo: the trimmed fixtures in
+`tests/fixtures/amazon_ptd` are hand-written and carry none, and no real definition has been
+stored yet. Every seeded template keeps NULL, and none is guessed:
+
+| category | Amazon product type | browse node |
+|---|---|---|
+| `ethnic_wear_kurta_sets` | `KURTA` | needed |
+| `tshirts` | `SHIRT` | needed |
+| `home_decor_lamps` | `LAMP` | needed |
+
+To fill them: store the real definitions (`templates refresh`, then `promote-definition`), run
+`templates check --list-browse-nodes` to see the nodes each definition lists (or read them in
+Seller Central's browse tree guide for amazon.in), then set `external_category_id` in
+`app/db/seed_templates.py` as a new template version, regenerate
+`app/db/seed_data/platform_templates.json`, and load it (`templates load`). `templates check`
+should then print `browse node set` with 0 drift.

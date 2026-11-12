@@ -189,6 +189,20 @@ per-brand job cap per run (`DATABASE_URL`, tenant scope). The slug and the selle
 | bad arguments (argparse)             | stderr | 2    |
 | no such tenant, or a seller id that matches no tenant or more than one | stderr | 4 |
 
+`templates check [--product-type T] [--requirements R] [--list-browse-nodes]` (client item 5)
+checks every Amazon category template of `PLATFORM_TEMPLATES_PATH` against the stored current
+definition of its own product type (read-only on `DATABASE_URL`): per template, the stored
+version and its drift lines, or "no stored definition ..., not checked", and whether its browse
+node is set. `--list-browse-nodes` also prints the nodes a definition lists.
+
+| outcome                              | stream | exit |
+|--------------------------------------|--------|------|
+| every template checked, no drift     | stdout | 0    |
+| drift in any template                | stdout | 1    |
+| bad arguments (argparse)             | stderr | 2    |
+| a template not checked (no stored definition), no drift | stdout | 3 |
+| could not compare (no database, no template, a failure) | stderr | 3 |
+
 `templates diff --product-type T [--requirements R] [--from-file PATH]` reports the believed
 Amazon wire names (the adapter's constants and `PLATFORM_TEMPLATES_PATH`) against the stored
 current definition (read-only on `DATABASE_URL`) or a saved schema file. Value-free lines.
@@ -1724,17 +1738,7 @@ async def _stored_schema(settings: Settings, product_type: str, requirements: st
 
 
 def _amazon_templates(product_type: str) -> list[Any]:
-    from app.db.platform_loads import load_template_file
-
-    latest: dict[str, Any] = {}
-    for entry in load_template_file(PLATFORM_TEMPLATES_PATH):
-        template = entry.template
-        if template.marketplace.value != "amazon" or entry.product_type != product_type:
-            continue
-        held = latest.get(template.category)
-        if held is None or entry.version > held.version:
-            latest[template.category] = entry
-    return [latest[k].template for k in sorted(latest)]
+    return [template for _, template in _amazon_category_templates(product_type)]
 
 
 async def run_ptd_diff(args: argparse.Namespace) -> int:
@@ -1771,6 +1775,87 @@ async def run_ptd_diff(args: argparse.Namespace) -> int:
     return EXIT_DRIFT if drifts else EXIT_OK
 
 
+def _amazon_category_templates(product_type: str | None) -> list[tuple[str, Any]]:
+    """The latest Amazon template of each category in `PLATFORM_TEMPLATES_PATH`, as
+    (product_type, template); only `product_type`'s when given."""
+    from app.db.platform_loads import load_template_file
+
+    latest: dict[str, Any] = {}
+    for entry in load_template_file(PLATFORM_TEMPLATES_PATH):
+        template = entry.template
+        if template.marketplace.value != "amazon" or not entry.product_type:
+            continue
+        if product_type is not None and entry.product_type != product_type:
+            continue
+        held = latest.get(template.category)
+        if held is None or entry.version > held.version:
+            latest[template.category] = entry
+    return [(latest[k].product_type, latest[k].template) for k in sorted(latest)]
+
+
+async def _stored_definitions(
+    settings: Settings, product_types: Sequence[str], requirements: str
+) -> dict[str, Any]:
+    """product type -> its current stored definition (`StoredDefinition`), None when none."""
+    from app.adapters.amazon import constants as amazon
+    from app.adapters.amazon.drift import StoredDefinition
+    from app.db.session import dispose_engine, platform_scope
+    from app.repositories.product_type_definitions import ProductTypeDefinitionRepository
+
+    out: dict[str, Any] = {}
+    try:
+        async with platform_scope() as session:
+            repo = ProductTypeDefinitionRepository(session)
+            for product_type in sorted(set(product_types)):
+                current = await repo.current(
+                    marketplace_id=settings.amazon_marketplace_id,
+                    product_type=product_type,
+                    requirements=requirements,
+                    locale=amazon.PTD_LOCALE,
+                )
+                out[product_type] = (
+                    None
+                    if current is None
+                    else StoredDefinition(
+                        current.product_type_version,
+                        await repo.schema_json(current.definition_id),
+                    )
+                )
+    finally:
+        await dispose_engine()
+    return out
+
+
+async def run_templates_check(args: argparse.Namespace) -> int:
+    """Client item 5: every Amazon category template against the stored definition of its own
+    product type; a template whose product type has none stored is reported as not checked."""
+    from app.adapters.amazon.drift import check_templates, render_checks
+    from app.core.config import get_settings
+
+    try:
+        templates = _amazon_category_templates(args.product_type)
+        if not templates:
+            sys.stderr.write("templates check: could not compare (no Amazon category template)\n")
+            return EXIT_NO_COMPARE
+        settings = get_settings()
+        if settings.database_url is None:
+            sys.stderr.write("templates check: could not compare (DATABASE_URL is required)\n")
+            return EXIT_NO_COMPARE
+        stored = await _stored_definitions(
+            settings, [product_type for product_type, _ in templates], args.requirements
+        )
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"templates check: could not compare ({_describe(exc)})\n")
+        return EXIT_NO_COMPARE
+    checks = check_templates(templates, stored)
+    sys.stdout.write(render_checks(checks, list_nodes=args.list_browse_nodes) + "\n")
+    if any(one.drifts for one in checks):
+        return EXIT_DRIFT
+    if not all(one.checked for one in checks):
+        return EXIT_NO_COMPARE
+    return EXIT_OK
+
+
 def _add_ptd(templates_commands: Any) -> None:
     from app.adapters.amazon import constants as amazon
 
@@ -1805,6 +1890,14 @@ def _add_ptd(templates_commands: Any) -> None:
     drift.add_argument("--product-type", type=_product_type, required=True)
     requirements(drift)
     drift.add_argument("--from-file", type=Path, default=None)
+    check = templates_commands.add_parser(
+        "check", help="every Amazon category template against its stored definition"
+    )
+    check.add_argument("--product-type", type=_product_type, default=None)
+    requirements(check)
+    check.add_argument(
+        "--list-browse-nodes", action="store_true", help="print the nodes each definition lists"
+    )
 
 
 def _add_onboarding(groups: Any) -> None:
@@ -1994,6 +2087,8 @@ def _run_ptd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         return asyncio.run(run_ptd_refresh(args))
     if args.command == "promote-definition":
         return asyncio.run(run_ptd_promote(args))
+    if args.command == "check":
+        return asyncio.run(run_templates_check(args))
     if args.from_file is not None and not args.from_file.is_file():
         sys.stderr.write("templates diff: no such file\n")
         return EXIT_NO_FILE

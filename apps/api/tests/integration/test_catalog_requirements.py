@@ -71,12 +71,14 @@ async def test_tshirts(images_db: JobWorld, api: httpx.AsyncClient) -> None:
     assert body["levels"] == {"amazon": levels, "flipkart": levels}
 
 
+# client item 4: the add form asks for `uncategorized` while "Let Kuinn suggest" is on
+@pytest.mark.parametrize("category", ["no_such_category", "uncategorized"])
 async def test_unknown_category_facts_and_extras_only(
-    images_db: JobWorld, api: httpx.AsyncClient
+    images_db: JobWorld, api: httpx.AsyncClient, category: str
 ) -> None:
     response = await api.get(
         URL,
-        params={"category": "no_such_category"},
+        params={"category": category},
         headers=as_member(images_db, "owner@acme.test"),
     )
     assert response.status_code == 200, response.text
