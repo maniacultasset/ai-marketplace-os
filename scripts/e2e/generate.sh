@@ -14,6 +14,8 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
 
 usage() {
   echo "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> $0 [base_url]" >&2
@@ -116,7 +118,7 @@ sql() {
 }
 
 new_product() {
-  call POST /products "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Generated Kurta Set\", \"category\": \"$category\"}"
+  call POST /products "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Generated Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS}"
   expect 201
   json 'b["id"]'
 }

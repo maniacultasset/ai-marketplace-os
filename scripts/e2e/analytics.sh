@@ -20,6 +20,8 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
 . scripts/e2e/lib/photo_views.sh
 
 usage() {
@@ -163,7 +165,7 @@ cmp -s "$body" "$work/acme_before.json" || fail "/analytics/summary answered ano
 step create_3_products
 products=()
 for n in 1 2 3; do
-  call POST /products "$operator" "" "{\"sku\": \"E2E-AN-$run-$n\", \"title\": \"E2E Analytics Kurta Set $n\", \"category\": \"$category\", \"size_chart\": $PHOTO_VIEWS_CHART}"
+  call POST /products "$operator" "" "{\"sku\": \"E2E-AN-$run-$n\", \"title\": \"E2E Analytics Kurta Set $n\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   products+=("$(json 'b["id"]')")
 done

@@ -18,6 +18,8 @@
 # bounded at 60 s. On failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
 . scripts/e2e/lib/photo_views.sh
 
 usage() {
@@ -180,7 +182,7 @@ wait_listing() {
 # generated_approved SKU: a product (with its size chart and photos), a stub generation and the
 # reviewer's approval; sets $listing_id and $version.
 generated_approved() {
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Recovery Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"identifier_exemption\": true, \"size_chart\": $PHOTO_VIEWS_CHART}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Recovery Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   local product job
   product="$(json 'b["id"]')"

@@ -21,6 +21,8 @@
 # Post-condition: no live acme Flipkart account is left (the last step revokes it).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
 . scripts/e2e/lib/photo_views.sh
 
 usage() {
@@ -196,7 +198,7 @@ bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
 
 step create_product
-call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}, \"size_chart\": $PHOTO_VIEWS_CHART}"
+call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
 expect 201
 product="$(json 'b["id"]')"
 

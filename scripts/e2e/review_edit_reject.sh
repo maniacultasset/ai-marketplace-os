@@ -14,6 +14,8 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
 . scripts/e2e/lib/photo_views.sh
 
 usage() {
@@ -126,7 +128,7 @@ wait_job() {
 }
 
 new_product() {
-  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\", \"size_chart\": $PHOTO_VIEWS_CHART}"
+  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   json 'b["id"]'
 }
@@ -203,6 +205,12 @@ call POST /listings/approve "$reviewer" "e2e-edit-rej0-$run" "{\"items\": [{\"li
 expect 422
 
 step reject_regenerate_200
+# Client feedback 14: every edited path is locked, and a regenerate that keeps a lock keeps its
+# editor in the maker-checker chain. The owner hands the edited text back first (an unlock alone
+# makes no new version), so the reviewer's regenerate is a whole one and starts a new chain.
+call PATCH "/listings/$listing_id/content" "$owner" "" "{\"content\": {\"title\": \"Owner Edited Kurta Set\", \"bullets\": [\"Soft cotton fabric\"], \"description\": \"A cotton kurta set with a straight fit.\"}, \"unlock\": [\"content.title\", \"content.bullets\", \"content.description\"]}" "$owner_version"
+expect 200
+json 'b["locked_paths"] == [] and b["current_version_id"] == "'"$owner_version"'"' >/dev/null
 call POST /listings/approve "$reviewer" "e2e-edit-rej-$run" "{\"items\": [{\"listing_id\": \"$listing_id\", \"listing_version_id\": \"$owner_version\", \"decision\": \"reject\", \"reason_code\": \"poor_quality\", \"feedback\": \"Shorter title, please.\", \"regenerate\": true}]}"
 expect 200
 json 'b["items"][0]["http_status"] == 200 and b["items"][0]["listing_status"] == "generating"' >/dev/null

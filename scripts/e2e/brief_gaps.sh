@@ -173,7 +173,8 @@ wait_listing() {
   while :; do
     call GET "$api/listings/$2" "$1"
     expect 200
-    if json "$3" >/dev/null 2>&1; then return 0; fi
+    # a subshell: a false predicate makes `json` call `fail`, which must not end the poll
+    if (json "$3") >/dev/null 2>&1; then return 0; fi
     if [ "$(date +%s)" -ge "$deadline" ]; then fail "the listing did not reach the state within ${bound} s"; fi
     sleep 1
   done
@@ -183,7 +184,7 @@ wait_listing() {
 # generation; sets $product, $listing_id and $version once the generation and its dry run settled.
 generated() {
   local ident="${2:-\"identifier_exemption\": true}" job
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Gaps Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"selling_price\": \"999.00\", \"gender\": \"women\", \"size_chart\": $PHOTO_VIEWS_CHART, $ident}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Gaps Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"selling_price\": \"999.00\", \"gender\": \"women\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}, \"size_chart\": $PHOTO_VIEWS_CHART, $ident}"
   expect 201
   product="$(json 'b["id"]')"
   photo_views_upload "$api" "$operator" "$product" "e2e-gap-img-$1" "$work" || fail "the photo checklist is not met"
