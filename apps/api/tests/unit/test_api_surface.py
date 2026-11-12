@@ -251,6 +251,7 @@ def test_list_ops_are_the_page_models() -> None:
         "brand_documents_list",
         # S19: the listing history and the two inboxes
         "listings_history",
+        "listings_versions",  # item 17
         "issues_list",
         "tasks_list",
         # S21: the submission ledger read

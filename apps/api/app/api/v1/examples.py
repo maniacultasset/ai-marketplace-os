@@ -273,6 +273,20 @@ _AUDIT_EVENT: Final = {
     "request_id": REQUEST_ID,
     "job_id": None,
     "occurred_at": T1,
+    "actor_name": "Priya Sharma",
+}
+# item 17: version 1, written by Kuinn for USER, approved by USER_2
+_LISTING_VERSION: Final = {
+    "id": VERSION,
+    "version": 1,
+    "origin": "generation",
+    "written_by": "kuinn",
+    "created_at": T0,
+    "generated_by": {"user_id": USER, "name": "Ravi Kumar"},
+    "edited_by": None,
+    "approved_by": {"user_id": USER_2, "name": "Priya Sharma"},
+    "approved_at": T1,
+    "self_approved": False,
 }
 _SUBMISSION: Final = {
     "id": SUBMISSION,
@@ -1149,6 +1163,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "jobs_get": _JOB_ENVELOPE,
         "jobs_cancel": {**_JOB_ENVELOPE, "status": "cancelled", "stage": None, "finished_at": T1},
         "listings_history": _page([_AUDIT_EVENT]),
+        "listings_versions": _page([_LISTING_VERSION]),
         "issues_list": _page([_ISSUE]),
         "issues_dismiss": {
             **_ISSUE,

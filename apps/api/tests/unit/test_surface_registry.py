@@ -93,6 +93,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_status", "GET", "/listings/{listing_id}/status"),
     # S19: the audit history (44 + 1)
     ("listings_history", "GET", "/listings/{listing_id}/history"),
+    ("listings_versions", "GET", "/listings/{listing_id}/versions"),  # item 17 (+ 1)
     ("listings_content_patch", "PATCH", "/listings/{listing_id}/content"),
     ("listings_regenerate", "POST", "/listings/{listing_id}/regenerate"),
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
@@ -495,7 +496,8 @@ def test_operation_count() -> None:
     # FB20 (client feedback item 20) adds the listing issue history
     # V1.1 adds the photo match keep
     # ADR-0032 adds the brand create
-    assert len(OPS) == 121
+    # item 17 adds the listing versions read
+    assert len(OPS) == 122
 
 
 def test_error_codes_per_d2() -> None:

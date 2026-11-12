@@ -108,6 +108,7 @@ from app.api.v1.schemas.listings import (
     ListingHistoryPage,
     ListingPage,
     ListingStatusOut,
+    ListingVersionPage,
 )
 from app.api.v1.schemas.marketplaces import (
     ConnectOut,
@@ -744,6 +745,11 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("listings_history", "GET", "/listings/{listing_id}/history", 200,
               ListingHistoryPage, "listings", "The listing's audit history, newest first", "S19",
               path_id="listing_id", query=("limit", "cursor"), action=A.TENANT_READ),
+    # item 17 (client feedback, 11 Nov 2026): who made, edited and approved each version
+    Operation("listings_versions", "GET", "/listings/{listing_id}/versions", 200,
+              ListingVersionPage, "listings", "The listing's versions with who made, edited "
+              "and approved each, newest first", "S19", path_id="listing_id",
+              query=("limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_content_patch", "PATCH", "/listings/{listing_id}/content", 200,
               ListingDetail, "listings", "Edit content (creates a new version)", "S18",
               path_id="listing_id", has_body=True, if_match=True,

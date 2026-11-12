@@ -817,7 +817,8 @@ Generate.
 | Re-run the checks | `POST /listings/validate` `{listing_id, listing_version_id?}` |
 | What will be sent to the marketplace | `GET /listings/{listing_id}/preview` (errors in `report.errors`) |
 | Rule help | `GET /rules?marketplace=...&category=...`, `POST /rules/dry-run` |
-| History | `GET /listings/{listing_id}/history` |
+| History | `GET /listings/{listing_id}/history` (a person's event carries `actor_name`) |
+| Who made, edited and approved each version | `GET /listings/{listing_id}/versions` (newest first; `written_by` `kuinn` or `person`, `generated_by`, `edited_by`, `approved_by` as `{user_id, name}`, `self_approved`) |
 | Cancel a queued job | `POST /jobs/{job_id}/cancel` (key) |
 
 ### Review queue
