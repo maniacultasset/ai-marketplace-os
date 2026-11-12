@@ -30,6 +30,7 @@ from sqlalchemy import (
     ColumnElement,
     Select,
     and_,
+    case,
     false,
     func,
     literal,
@@ -120,6 +121,18 @@ class JobRow:
     marketplace: str | None
     product_id: uuid.UUID | None
     title: str | None
+    # a `bulk_import` job: its `imports` row (`entity_id`) and its finished row counts
+    # (`result_json`), so a run that imported nothing is not said as done
+    entity_id: uuid.UUID | None = None
+    imported: int | None = None
+    failed: int | None = None
+    total_rows: int | None = None
+
+
+def _result_int(key: str) -> ColumnElement[int]:
+    """An integer of `job_runs.result_json`, NULL when absent or not a number."""
+    value = JobRun.result_json[key]
+    return case((func.jsonb_typeof(value) == "number", value.as_integer()), else_=None)
 
 
 @dataclass(frozen=True, slots=True)
@@ -524,6 +537,10 @@ class HomeJobReads(TenantScopedRepository[JobRun]):
                 Listing.marketplace,
                 Product.id,
                 Product.title,
+                JobRun.entity_id,
+                _result_int("imported"),
+                _result_int("failed"),
+                _result_int("total_rows"),
             )
             .order_by(JobRun.queued_at.desc(), JobRun.id.desc())
             .limit(limit)

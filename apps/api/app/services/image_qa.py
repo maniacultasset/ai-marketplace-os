@@ -11,8 +11,8 @@ upload size. numpy is banned (RULES §4); only Pillow's C operations (`ImageChop
 - `text_overlay(img)`: the edge map (`FIND_EDGES`, threshold `EDGE_THRESHOLD`) is cut into row
   bands (consecutive rows with edges); a band `TEXT_BAND_MIN`..`TEXT_BAND_MAX` of the height is a
   line of text when its column profile holds at least `TEXT_RUNS_PER_LINE` narrow runs (glyphs,
-  or words once the copy merges them). Text is `TEXT_MIN_LINES` lines with `TEXT_MIN_RUNS` runs,
-  or one line of `TEXT_ONE_LINE_RUNS`. A product's outline makes tall bands or long runs, so it
+  or words once the copy merges them) no more than `TEXT_GAP_MAX` of the width apart. Text is
+  `TEXT_MIN_LINES` lines with `TEXT_MIN_RUNS` runs, or one line of `TEXT_ONE_LINE_RUNS`. A product's outline makes tall bands or long runs, so it
   never counts.
 - `watermark(img)`: (a) a corner patch (15 % x 15 %) whose edge density is over
   `CORNER_RATIO` times the median of the other corners, or (b) a repeating low-contrast tile:
@@ -50,6 +50,9 @@ EDGE_THRESHOLD: Final = 96
 TEXT_BAND_MIN: Final = 0.005
 TEXT_BAND_MAX: Final = 0.08
 TEXT_RUN_MAX: Final = 0.35
+# glyphs and words of one line sit close together; a garment's left and right outlines in the
+# same band are a product width apart (prod Chrome pass 12 Nov, B6)
+TEXT_GAP_MAX: Final = 0.08
 TEXT_RUNS_PER_LINE: Final = 2
 TEXT_MIN_LINES: Final = 2
 TEXT_MIN_RUNS: Final = 5
@@ -148,6 +151,18 @@ def _runs(values: list[float], floor: float = 0.0) -> list[tuple[int, int]]:
     return out
 
 
+def _line_runs(runs: list[tuple[int, int]], gap: float) -> int:
+    """The most runs in one cluster whose neighbours are at most `gap` px apart: the glyphs of
+    one line of text, not two outlines of a product across the same rows."""
+    best = count = 0
+    end: int | None = None
+    for start, length in runs:
+        count = count + 1 if end is not None and start - end <= gap else 1
+        best = max(best, count)
+        end = start + length
+    return best
+
+
 def text_overlay(img: Image.Image) -> bool:
     small = qa_copy(img)
     mask = _edges(small)
@@ -159,10 +174,11 @@ def text_overlay(img: Image.Image) -> bool:
             continue
         band = mask.crop((0, top, w, top + height))
         narrow = [r for r in _runs(_profile(band, horizontal=True)) if r[1] <= TEXT_RUN_MAX * w]
-        if len(narrow) >= TEXT_RUNS_PER_LINE:
+        line = _line_runs(narrow, TEXT_GAP_MAX * w)
+        if line >= TEXT_RUNS_PER_LINE:
             lines += 1
-            runs += len(narrow)
-            widest_line = max(widest_line, len(narrow))
+            runs += line
+            widest_line = max(widest_line, line)
     return (lines >= TEXT_MIN_LINES and runs >= TEXT_MIN_RUNS) or widest_line >= TEXT_ONE_LINE_RUNS
 
 

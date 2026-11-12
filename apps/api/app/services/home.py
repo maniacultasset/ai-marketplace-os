@@ -396,6 +396,31 @@ _FIX_FIELD: Final = (
 )
 
 
+def _rows(count: int) -> str:
+    return f"{count} row" if count == 1 else f"{count} rows"
+
+
+def _import_words(job: JobRow, state: JobState) -> tuple[JobState, str] | None:
+    """A finished import by its row counts (client feedback 11 Nov, B3): the job is `partial`
+    whenever a row failed, even when none was imported, so its state alone says "done" for an
+    import that imported nothing. `None` when the counts are not there (an older result)."""
+    if state == "pending" or job.imported is None or job.failed is None:
+        return None
+    imported, failed = job.imported, job.failed
+    total = job.total_rows if job.total_rows is not None else imported + failed
+    if failed and not imported:
+        return "failed", f"Could not import your spreadsheet: none of its {_rows(total)} imported"
+    if failed:
+        verb = "needs" if failed == 1 else "need"
+        return "completed", (
+            f"Imported {imported} of {_rows(total)} from your spreadsheet. "
+            f"{_rows(failed)} {verb} a fix"
+        )
+    if imported:
+        return "completed", f"Imported {_rows(imported)} from your spreadsheet"
+    return None
+
+
 def job_activity(job: JobRow) -> dict[str, Any] | None:
     state = _JOB_STATE.get(job.status)
     spec = _JOB_TEXT.get(job.kind)
@@ -405,6 +430,12 @@ def job_activity(job: JobRow) -> dict[str, Any] | None:
     at = job.finished_at or job.started_at or job.queued_at
     market = MARKETPLACE_NAME.get(job.marketplace or "", "the marketplace")
     text = words[state].format(p=job.title or "a product", m=market)
+    needs_fix = 0
+    if job.kind == "bulk_import":
+        said = _import_words(job, state)
+        if said is not None:
+            state, text = said
+            needs_fix = job.failed or 0
     return {
         "kind": kind,
         "state": state,
@@ -413,6 +444,8 @@ def job_activity(job: JobRow) -> dict[str, Any] | None:
         "product_title": job.title,
         "listing_id": job.listing_id,
         "marketplace": job.marketplace,
+        "import_id": job.entity_id if job.kind == "bulk_import" else None,
+        "needs_fix": needs_fix,
         "at": at,
     }
 
