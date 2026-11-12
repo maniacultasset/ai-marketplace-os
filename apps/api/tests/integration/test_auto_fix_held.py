@@ -239,3 +239,33 @@ async def test_off_keeps_a_content_fix_as_a_suggestion_until_applied(
     assert response.status_code == 200, response.text
     (job,) = _gen_jobs(prev, made.listing_id, "auto_fix")
     assert response.json()["job_id"] == str(job["id"])
+
+
+async def test_turning_it_back_on_releases_the_held_repair(
+    prev: PubWorld, marketplace_enum: None
+) -> None:
+    """A repair held while auto-fix was off goes live on the next run once the owner turns it
+    on again: never refused as a second live repair (a staff `repair_rejected`)."""
+    from app.repositories.uow import tenant_uow
+    from app.services.resolution.run import resolve
+
+    _off(prev)
+    prev.fake.preview_errors = [_colour_error()]
+    made = await generated(prev.world)
+    (first,) = preview_jobs(prev, made.listing_id)
+    await run_job(first["id"])
+    assert _repairs(prev, made.listing_id) == [("enum_fold", "color", True, None)]
+
+    prev.conn.execute(
+        "UPDATE tenants SET auto_fix_enabled = true WHERE id = %s", [prev.world.tenant("acme")]
+    )
+    async with tenant_uow(prev.world.tenant("acme")) as uow:
+        listing = await uow.listings.get(made.listing_id)
+        job = await uow.job_runs.get_by_id(first["id"])
+        assert job is not None
+        result = await resolve(uow, listing, entry="preview", job=job)
+    assert result is not None
+    assert [s.lane for s in result.steps] == ["auto_repair"]
+    assert _repairs(prev, made.listing_id) == [("enum_fold", "color", False, None)]
+    assert _audit(prev, "listing_repair.approved") == [("system", None)]
+    assert len(preview_jobs(prev, made.listing_id)) == 2  # the re-check follows

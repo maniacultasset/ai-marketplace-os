@@ -62,7 +62,9 @@ own result committed.
    listing_id)` (the seller's "Apply fixes", `POST /listings/{id}/fixes/apply`) runs this
    executor once with auto-fix allowed (`approved_by`): the held repairs are released (audited
    `listing_repair.approved`, the user as actor) and count as written, so the re-check, resend or
-   fix job follows as it would have with the setting on. A plain retry stays automatic.
+   fix job follows as it would have with the setting on. A plain retry stays automatic. With the
+   setting turned back on, the next run releases the held repairs the same way (the system as
+   actor) instead of refusing them as a second live repair.
 """
 
 from __future__ import annotations
@@ -841,8 +843,9 @@ async def _resolve(
     ids: dict[uuid.UUID, uuid.UUID] = {}
     suggested: dict[uuid.UUID, Any] = {}
     released: dict[uuid.UUID, Any] = {}
-    if approved_by is not None:
-        # client item 20: the seller applied the suggestions; each held repair goes live now
+    if auto_fix:
+        # client item 20: the seller applied the suggestions, or the owner turned automatic
+        # fixes back on; each held repair goes live now (never left to a staff repair review)
         for repair_id in await uow.listing_repairs.release([r.id for r in held.values()]):
             freed = next(r for r in held.values() if r.id == repair_id)
             released[repair_id] = freed
