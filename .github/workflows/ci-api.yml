@@ -48,8 +48,8 @@ jobs:
     # the full suite took 39.1 min on the runner at S19 (KNOWN-ISSUES §E); since S26 it runs as two
     # required jobs over disjoint shards (tests/support/shard.py), each under pytest-xdist (auto,
     # at most 4 workers): this one is shard 1 with the migration round trip, and
-    # api-tests-integration is shard 2. Each aims at ~25 min; 40 is the cap.
-    timeout-minutes: 40
+    # api-tests-integration is shard 2. Each aims at ~25 min; 55 is the cap (the shards reached 36-40 min by wave D).
+    timeout-minutes: 55
     env:
       APP_ENV: local
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
@@ -91,7 +91,7 @@ jobs:
     permissions:
       contents: read
     # shard 2 of the api suite (S26; see api-tests): the database suites shard 1 does not run.
-    timeout-minutes: 40
+    timeout-minutes: 55
     env:
       APP_ENV: local
       DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/mos_test
