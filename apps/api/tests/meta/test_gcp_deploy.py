@@ -33,6 +33,7 @@ SUBCOMMANDS = (
     "tenant",
     "templates",
     "amazon-check",
+    "amazon-preview",
     "images",
     "status",
     "edge",
@@ -2291,6 +2292,132 @@ def test_amazon_check_refuses_bad_flags(
     _amazon_on(toolkit, "prod")
     result = _run_fail(toolkit, tmp_path, "prod", "amazon-check", *args, "--dry-run", "--sha", SHA)
     assert "amazon-check" in result.stderr
+    assert "run jobs deploy" not in result.stdout
+
+
+# ---- the owner's one-off Amazon dry run (app.workers.amazon_preview, 2026-11-12) ----
+
+LISTING_ID = "0b7e6c1a-2f3d-4c5b-9a8e-7d6c5b4a3f21"
+PREVIEW_SWITCHES = (
+    "AMAZON_VALIDATION_PREVIEW_ENABLED",
+    "AMAZON_CATALOG_PRECHECK_ENABLED",
+    "AMAZON_PREVIEW_ONEOFF",
+)
+
+
+def _preview_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-amazon-preview" in line)
+
+
+def _preview(toolkit: Path, tmp_path: Path, *extra: str) -> str:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    return _run(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", *extra, "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+
+
+def test_amazon_preview_runs_once_as_the_worker_then_the_job_is_deleted(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _preview(toolkit, tmp_path)
+    job = _preview_deploy(out)
+    assert "--service-account=aimos-worker@" in job
+    assert _secret_names(job) == ["DATABASE_URL", "AMAZON_CLIENT_SECRET"]
+    assert "--max-retries=0" in job and "--tasks=1" in job
+    assert (
+        "--args=^|^-m|app.cli|ops|amazon-preview|--tenant-slug=acme"
+        f"|--listing-id={LISTING_ID}|--staff-email=s@b.test" in job.replace("\\", "")
+    )
+    assert "--precheck" not in job
+    lines = out.splitlines()
+    deploy = lines.index(next(x for x in lines if "run jobs deploy aimos-amazon-preview" in x))
+    execute = lines.index(next(x for x in lines if "run jobs execute aimos-amazon-preview" in x))
+    delete = lines.index(next(x for x in lines if "run jobs delete aimos-amazon-preview" in x))
+    assert deploy < execute < delete
+    (block,) = _blocks(out, "amazon-preview env file")
+    assert block.count("AMAZON_PUBLISH_ENABLED:") == 1
+    env = {str(k): str(v) for k, v in yaml.safe_load(block).items()}
+    assert env["APP_ROLE"] == "shell" and env["APP_ENV"] == "production"
+    assert env["AMAZON_PUBLISH_ENABLED"] == "true"
+    assert env["AMAZON_VALIDATION_PREVIEW_ENABLED"] == "true"
+    assert env["AMAZON_CATALOG_PRECHECK_ENABLED"] == "false"
+    assert env["AMAZON_PREVIEW_ONEOFF"] == "1"
+    # the job boots as the shell role in production and passes the one-off's settings guard
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("AMAZON_CLIENT_SECRET", SECRET_VALUES["AMAZON_CLIENT_SECRET"])
+    from app.core.config import get_settings
+    from app.workers.amazon_preview import settings_refusal
+
+    get_settings.cache_clear()
+    try:
+        assert settings_refusal(get_settings(), precheck=False) is None
+        assert settings_refusal(get_settings(), precheck=True) is not None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_amazon_preview_precheck_turns_on_the_catalog_check_for_the_job_only(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    out = _preview(toolkit, tmp_path, "--precheck")
+    assert _preview_deploy(out).replace("\\", "").count("|--precheck") == 1
+    env = yaml.safe_load(_blocks(out, "amazon-preview env file")[0])
+    assert str(env["AMAZON_CATALOG_PRECHECK_ENABLED"]) == "true"
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_the_api_and_the_worker_never_get_the_preview_switches(
+    toolkit: Path, tmp_path: Path, repo_root: Path, env_name: str
+) -> None:
+    out = _run(
+        toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    blocks = _blocks(out, "env file")
+    assert blocks
+    for block in blocks:
+        env = yaml.safe_load(block)
+        for name in PREVIEW_SWITCHES:
+            assert name not in env, name
+    prod = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
+    assert re.search(r"^AMAZON_PUBLISH_ENABLED=false$", prod, re.MULTILINE)
+    for name in PREVIEW_SWITCHES:
+        assert not re.search(rf"^{name}=", prod, re.MULTILINE), name
+
+
+def test_amazon_preview_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path: Path) -> None:
+    result = _run_fail(
+        toolkit, tmp_path, "staging", "amazon-preview", "--slug", "acme", "--listing-id",
+        LISTING_ID, "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "amazon-preview needs the Amazon app" in result.stderr
+    assert "aimos-amazon-preview" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--slug", "acme", "--staff-email", "s@b.test"),
+        ("--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug", "acme", "--listing-id", LISTING_ID),
+        ("--slug", "acme", "--listing-id", "not-a-uuid", "--staff-email", "s@b.test"),
+        ("--slug", "a|b", "--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug", "acme", "--listing-id", LISTING_ID, "--staff-email", "s@b.test", "--ean", "1"),
+        ("--seller-id", "A1CHECKSELLER9", "--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug",),
+    ],
+)
+def test_amazon_preview_refuses_bad_flags(
+    toolkit: Path, tmp_path: Path, args: tuple[str, ...]
+) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "amazon-preview", *args, "--dry-run", "--sha", SHA
+    )
+    assert "amazon-preview" in result.stderr
     assert "run jobs deploy" not in result.stdout
 
 

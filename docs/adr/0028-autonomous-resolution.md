@@ -88,3 +88,26 @@ payload go back to the marketplace without a second approval?
   marketplace side, or Kuinn's team; a resend is Kuinn's), and each fix with its before and after values (a content
   fix's or AI rewrite's after value is read from the fix version that closed the issue), reason and outcome. It reuses
   this read's lanes, never runs the engine and never writes.
+
+## Amendment: the one-off dry run (owner decision, 2026-11-12)
+
+- **Decision.** The owner asked for Amazon's `VALIDATION_PREVIEW` (which saves nothing) on 2 or 3 test listings
+  in the brand that holds the real seller connection, through a one-off staff job, while publishing stays off
+  everywhere else (`AMAZON_PUBLISH_ENABLED=false` in `prod.env` is unchanged).
+- **How.** `deploy.sh prod amazon-preview --slug S --listing-id L --staff-email E [--precheck]` creates the
+  Cloud Run job `aimos-amazon-preview` (worker identity, shell role, `DATABASE_URL` and `AMAZON_CLIENT_SECRET`
+  only), executes it once, prints its log and deletes it. Only that job's env sets `AMAZON_PUBLISH_ENABLED=true`,
+  `AMAZON_VALIDATION_PREVIEW_ENABLED=true` and `AMAZON_PREVIEW_ONEOFF=1`; every role but the shell refuses to
+  boot with the last one, and `app.workers.amazon_preview` refuses to run without it.
+- **What it may send.** The job body of point 4 (`run_remote_preview`) runs once, synchronously, behind a
+  transport that passes a GET or a listings-item PUT whose only `mode` is `VALIDATION_PREVIEW` and refuses
+  anything else before it is sent, and an adapter wrapper with no create, update or publish method. A GET of each
+  SKU runs before (a SKU already on Amazon stops the run before any preview) and after (a SKU found, or a reply
+  other than VALID or INVALID, prints STOP and fails the job; any STOP after the preview also opens the CP-D24
+  breaker task). Every seller SKU must carry the test prefix `KTEST-`: the job checks the listing's SKUs before
+  any call and the built item's SKUs again right before the preview, and refuses a live SKU unsent.
+- **What it never does.** No job of any kind is enqueued (`no_enqueue` around the whole run: no publish, no
+  automatic resend, no fix job); the kind's terminal hook and the resolution engine never run; the verdict is
+  printed, not written (no issue rows, no `remote_check_*`, no status move), so a test listing is never left
+  blocked by a dry run production cannot repeat. One `listing.preview_oneoff` audit row names the staff admin.
+- Runbook: `docs/runbooks/AMAZON-PREVIEW-ONEOFF.md`.
