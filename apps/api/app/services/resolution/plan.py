@@ -39,6 +39,12 @@ The two seller actions open no inbox question: the issue row is the seller's sig
 is on the listing (`SELLER_ACTIONS`). And a plan-level hold: while an adapter `CATEGORY_MISMATCH`
 ERROR is planned, adapter `MISSING_ATTRIBUTE` rows get no step (one ask, not ten).
 
+Client item 20 (0038): with the brand's `auto_fix_enabled` off (`ctx.auto_fix_enabled`), a step
+the rules above give an automatic fix lane (`auto_repair`, `auto_content`, `ai_field`) is the
+seller's `approve_fix` instead: Kuinn keeps the fix as a suggestion (a held repair, or the fix job
+it would run) and applies it only when the seller says so. A plain `retry` (the same approved
+payload sent again, no change) stays automatic. `approve_fix` opens no inbox question.
+
 `cause` says whose value was wrong (P:D16). `lane_for(code, class)` is the issue-free lane of the
 error catalogue (T19).
 """
@@ -77,7 +83,12 @@ QUALIFICATION_CODES: Final = frozenset({"99320", "5665", "5461", "8541"})
 LOCKED_SKU_CODES: Final = frozenset({"4005013", "101168"})
 SKU_CODES: Final = frozenset({ErrorCode.SKU_CONFLICT.value, ErrorCode.SELLER_SKU_CONFLICT.value})
 # SI13 (CP-D8): seller steps that open no inbox question (the action is on the listing)
-SELLER_ACTIONS: Final = frozenset({"recategorize", "edit_identifier", "edit_content"})
+SELLER_ACTIONS: Final = frozenset(
+    {"recategorize", "edit_identifier", "edit_content", "approve_fix"}
+)
+# Client item 20: the lanes that change a value; with auto-fix off each waits for the seller
+FIX_LANES: Final = frozenset({"auto_repair", "auto_content", "ai_field"})
+APPROVE_FIX: Final = "approve_fix"
 _IDENTIFIER_PATH: Final = re.compile(r"(variants\[[^\]]+\]\.)?facts\.identifier")
 # The marketplace's barcode refusals the seller fixes at the product's barcode choice
 IDENTIFIER_EDIT_CODES: Final = frozenset(
@@ -126,6 +137,9 @@ class PlanContext:
     locked_paths: frozenset[str] = frozenset()
     """Client feedback 14: the seller's locked edits (`listings.locked_paths`). No automatic
     lane rewrites one: a refusal on it is the seller's `edit_content` (edit or unlock it)."""
+    auto_fix_enabled: bool = True
+    """Client item 20: the brand lets Kuinn apply safe fixes by itself (`tenants.auto_fix_enabled`,
+    or the seller's own "Apply fixes" for one run). Off: a fix lane is the seller's `approve_fix`."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,6 +314,14 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
     return "staff", "ops"
 
 
+def _gated(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
+    """`_lane`, with a fix lane turned into the seller's `approve_fix` while auto-fix is off."""
+    found = _lane(issue, ctx)
+    if found is not None and not ctx.auto_fix_enabled and found[0] in FIX_LANES:
+        return "seller", APPROVE_FIX
+    return found
+
+
 def _holds_missing(issues: Sequence[IssueView], ctx: PlanContext) -> bool:
     """SI13: an adapter CATEGORY_MISMATCH ERROR is planned, so the burst of missing attributes
     that came with it waits for the category (one ask, not ten)."""
@@ -322,7 +344,7 @@ def plan(issues: Sequence[IssueView], ctx: PlanContext) -> tuple[Step, ...]:
             and issue.error_code == ErrorCode.MISSING_ATTRIBUTE.value
         ):
             continue
-        found = _lane(issue, ctx)
+        found = _gated(issue, ctx)
         if found is None:
             continue
         lane, action = found
@@ -355,7 +377,7 @@ def lane_for(
 def label(issue: IssueView, ctx: PlanContext) -> tuple[Lane, Cause] | None:
     """The lane and cause the planner gives one issue (None for a WARNING): the resolution read
     and the inbox label each row with the same rules the executor plans with (T20)."""
-    found = _lane(issue, ctx)
+    found = _gated(issue, ctx)
     if found is None:
         return None
     return found[0], cause_of(issue, found[0], ctx.provenance)

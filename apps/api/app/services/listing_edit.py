@@ -45,6 +45,7 @@ from app.services.adapter_check import adapter_check
 from app.services.generation_context import previous_listing
 from app.services.issue_questions import ask_after_check
 from app.services.issues import sync_issues
+from app.services.keyword_reasons import refresh_keyword_reasons
 from app.services.listing_display import needs_you_counts
 from app.services.listing_reads import affected
 from app.services.listings import human_move, insert_run, rules_check, to_detail
@@ -113,6 +114,8 @@ async def edit_content(
         # a 422 on the first failing path, the value never echoed.
         loc = exc.errors(include_input=False)[0]["loc"]
         raise InputError(ErrorCode.VALIDATION_FAILED, ".".join(str(p) for p in loc)) from None
+    # client feedback 11: the reasons of the terms still listed, `used_in` on the edited copy
+    new = refresh_keyword_reasons(new, (old,))
     factual = _factual_edit(old, new)
     if factual is not None:
         # 422 VALIDATION_FAILED at the attribute (the declared code; the value never echoed)

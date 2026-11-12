@@ -90,6 +90,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_list", "GET", "/listings"),
     ("listings_get", "GET", "/listings/{listing_id}"),
     ("listings_preview", "GET", "/listings/{listing_id}/preview"),
+    ("listings_requirements", "GET", "/listings/{listing_id}/requirements"),  # item 16 (+ 1)
     ("listings_status", "GET", "/listings/{listing_id}/status"),
     # S19: the audit history (44 + 1)
     ("listings_history", "GET", "/listings/{listing_id}/history"),
@@ -100,6 +101,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
     ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
     ("listings_issue_history", "GET", "/listings/{listing_id}/issue-history"),
+    ("listings_fixes_apply", "POST", "/listings/{listing_id}/fixes/apply"),  # client item 20
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -112,6 +114,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_report", "GET", "/images/{image_id}/report"),
     # SI1: the image delete (78 + 1)
     ("images_delete", "DELETE", "/images/{image_id}"),
+    # V1.1 (client feedback item 7): move a saved photo to another view
+    ("images_update", "PATCH", "/images/{image_id}"),
     ("image_candidates_create", "POST", "/products/{product_id}/image-candidates"),
     ("image_candidates_list", "GET", "/products/{product_id}/image-candidates"),
     ("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept"),
@@ -158,6 +162,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
         "/catalog/category-suggestions/{suggestion_id}",
     ),
     ("skus_availability", "GET", "/skus/availability"),
+    ("skus_availability_check", "POST", "/skus/availability-check"),  # item 3: the batch
     ("skus_suggest", "POST", "/skus/suggestion"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
@@ -172,6 +177,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("admin_quality", "GET", "/admin/quality"),
     # client feedback 11 Nov 2026, item 6: the Home summary
     ("home_summary", "GET", "/home/summary"),
+    # client feedback 11 Nov 2026, item 18: every brand of the caller
+    ("home_brands", "GET", "/home/brands"),
 )
 
 E = ErrorCode
@@ -505,7 +512,12 @@ def test_operation_count() -> None:
     # ADR-0032 adds the brand create
     # item 17 adds the listing versions read
     # client item 2 adds the admin's one question and the applicant's one reply
-    assert len(OPS) == 124
+    # item 3 adds the batch SKU check (variants grid, bulk upload)
+    # client item 7 adds the move of a saved photo to another view
+    # FB18 (client feedback item 18) adds the cross-brand overview
+    # item 16 adds the listing field requirements read
+    # client item 20 adds the seller's apply of Kuinn's suggested fixes
+    assert len(OPS) == 129
 
 
 def test_error_codes_per_d2() -> None:
@@ -563,6 +575,8 @@ def test_error_codes_per_d2() -> None:
             E.INVALID_STATUS_TRANSITION,
             E.LISTING_BUSY,
         ),
+        # client item 20: nothing open to apply, a paused or archived listing, or one at work
+        "listings_fixes_apply": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),
         # ADR-0019: approving a rejected request, or rejecting an approved one
         "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
         "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),
@@ -672,7 +686,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1", "FB6", "ADR-0032",
+        "SI12", "SI14", "PD1", "FB6", "FB18", "ADR-0032",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

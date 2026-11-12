@@ -24,6 +24,11 @@ callable `prepare` is given (C6). The only module that imports `jsonschema_rs` (
   check fails closed.
 - SI8 T5: `value_max_length(schema, attribute)` is the stored definition's
   `properties.<attribute>.items.properties.value.maxLength` (a positive int), else None.
+- Client items 8 and 15 (12 Nov): `declares(schema, attribute)` says whether the stored definition
+  has the attribute (None: no usable schema); `members(schema, attribute)` is its entry's
+  `items.properties` (member -> subschema) and `required_members` its `items.required`, so the
+  mapping sends an attribute such as `apparel_size` or `item_dimensions` only in the shape and
+  with the values the definition accepts.
 """
 
 from __future__ import annotations
@@ -123,6 +128,8 @@ class _Compiled:
     validator: Any
     titles: Mapping[str, str]
     max_lengths: Mapping[str, int] = field(default_factory=dict)
+    # items 8 and 15: attribute -> (its entry's `items.properties`, its `items.required`)
+    shapes: Mapping[str, tuple[Mapping[str, Any], tuple[str, ...]]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -164,6 +171,49 @@ def _max_lengths(schema: Mapping[str, Any]) -> dict[str, int]:
     return out
 
 
+def _shapes(schema: Mapping[str, Any]) -> dict[str, tuple[Mapping[str, Any], tuple[str, ...]]]:
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        return {}
+    out: dict[str, tuple[Mapping[str, Any], tuple[str, ...]]] = {}
+    for name, spec in properties.items():
+        items = spec.get("items") if isinstance(spec, dict) else None
+        props = items.get("properties") if isinstance(items, dict) else None
+        required = items.get("required") if isinstance(items, dict) else None
+        out[str(name)] = (
+            props if isinstance(props, dict) else {},
+            tuple(str(r) for r in required) if isinstance(required, list) else (),
+        )
+    return out
+
+
+def _compiled(schema: ProductTypeSchema | None) -> _Compiled | None:
+    handle = None if schema is None else schema.validator
+    return handle if isinstance(handle, _Compiled) else None
+
+
+def declares(schema: ProductTypeSchema | None, attribute: str) -> bool | None:
+    """Whether the stored definition has `attribute`; None when there is no usable schema."""
+    handle = _compiled(schema)
+    return None if handle is None else attribute in handle.shapes
+
+
+def members(schema: ProductTypeSchema | None, attribute: str) -> Mapping[str, Any]:
+    """The attribute entry's `items.properties` (member -> subschema); {} when not declared."""
+    handle = _compiled(schema)
+    if handle is None or attribute not in handle.shapes:
+        return {}
+    return handle.shapes[attribute][0]
+
+
+def required_members(schema: ProductTypeSchema | None, attribute: str) -> tuple[str, ...]:
+    """The attribute entry's `items.required`; () when not declared."""
+    handle = _compiled(schema)
+    if handle is None or attribute not in handle.shapes:
+        return ()
+    return handle.shapes[attribute][1]
+
+
 def value_max_length(schema: ProductTypeSchema | None, attribute: str) -> int | None:
     """The stored definition's `maxLength` for `attribute`'s value; None when there is no
     schema, it is not prepared or did not compile, or it gives none."""
@@ -187,7 +237,7 @@ def compile_schema(schema: Mapping[str, Any]) -> _Compiled | _CompileFailed:
         )
     except (ValueError, TypeError, RecursionError) as exc:  # SCHEMA_INVALID by every check
         return _CompileFailed(type(exc).__name__)
-    return _Compiled(validator, _titles(body), _max_lengths(body))
+    return _Compiled(validator, _titles(body), _max_lengths(body), _shapes(body))
 
 
 async def prepare(

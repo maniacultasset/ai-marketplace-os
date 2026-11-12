@@ -1,5 +1,5 @@
 """Images (owner step S17b): the signed upload URL, the upload (a multipart `file` or a
-`storage_key` from the signed step) and the report. Writes need `product:import` (owner,
+`storage_key` from the signed step), the report and (V1.1) the move to another view. Writes need `product:import` (owner,
 operator); the report any member. Another tenant's product, key or image is 404, never 403.
 Routes import no `sqlalchemy` or `app.db`; domain errors render through the shared handlers."""
 
@@ -20,13 +20,16 @@ from app.api.v1.schemas.images import (
     ImageAccepted,
     ImageReportOut,
     ImageReports,
+    ImageViewIn,
+    ImageViewOut,
+    MovedImageOut,
     PhotoMatchKeptOut,
     UploadUrlOut,
     UploadUrlRequest,
 )
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
-from app.services import images, photo_match
+from app.services import images, photo_match, photo_view_change
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -121,6 +124,35 @@ async def images_delete(
     same 404."""
     await images.delete_image(principal, image_id)
     return Response(status_code=204)
+
+
+def _moved(moved: photo_view_change.MovedImage) -> MovedImageOut:
+    return MovedImageOut(
+        image_id=moved.image_id,
+        slot=moved.slot,
+        role=moved.role,
+        compliance_status=moved.compliance_status,
+        job_id=moved.job_id,
+    )
+
+
+@route(router, OPS["images_update"])
+async def images_update(
+    image_id: Annotated[UUID, PathParam()], body: ImageViewIn, principal: CurrentPrincipal
+) -> ImageViewOut:
+    """Move a saved photo to another view without uploading it again: Front (`main`), Back or
+    Close-up (`secondary` with that `role`), an extra photo (`secondary`), lifestyle, size chart
+    or packaging label. Front, Back and Close-up hold one photo per product and colourway: a
+    taken one swaps, and `swapped` names the photo that took the old view. A photo whose slot
+    changed is checked again (`job_id`); the same view again changes nothing."""
+    # 422 at `role` (a role off `secondary`) or `slot` (a size chart on a variant); another
+    # tenant's, an unknown or a deleted photo is 404. One `image.view_changed` audit row each.
+    change = await photo_view_change.change_view(principal, image_id, body.slot, body.role)
+    out = _moved(change.image)
+    return ImageViewOut(
+        **out.model_dump(),
+        swapped=None if change.swapped is None else _moved(change.swapped),
+    )
 
 
 @route(router, OPS["images_photo_match_keep"])

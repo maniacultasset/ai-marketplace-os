@@ -78,8 +78,9 @@ from app.api.v1.schemas.catalog import (
 )
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
+from app.api.v1.schemas.field_requirements import ListingRequirementsOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
-from app.api.v1.schemas.home import HomeSummaryOut
+from app.api.v1.schemas.home import HomeBrandsOut, HomeSummaryOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
     ImageCandidateOut,
@@ -88,6 +89,7 @@ from app.api.v1.schemas.image_candidates import (
 from app.api.v1.schemas.images import (
     ImageAccepted,
     ImageReportOut,
+    ImageViewOut,
     PhotoMatchKeptOut,
     UploadUrlOut,
 )
@@ -117,7 +119,7 @@ from app.api.v1.schemas.marketplaces import (
 )
 from app.api.v1.schemas.product_delete import ProductBulkDeleteResult
 from app.api.v1.schemas.products import ProductOut, ProductPage
-from app.api.v1.schemas.resolution import ResolutionOut
+from app.api.v1.schemas.resolution import FixesAppliedOut, ResolutionOut
 from app.api.v1.schemas.rules import RulePage
 from app.api.v1.schemas.signup import (
     SignupAccepted,
@@ -128,7 +130,7 @@ from app.api.v1.schemas.signup import (
 )
 from app.api.v1.schemas.size_chart_read import SizeChartReadOut
 from app.api.v1.schemas.size_run import SizeRunOut
-from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionOut
+from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuBatchCheckOut, SkuSuggestionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenant_create import TenantCreated
@@ -678,7 +680,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.SKU_CONFLICT, etag=True,
               extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_list", "GET", "/products", 200, ProductPage, "products",
-              "List products", "S12", query=("limit", "cursor"), action=A.TENANT_READ),
+              "List products", "S12", query=("listing", "marketplace", "limit", "cursor"),
+              action=A.TENANT_READ),
     Operation("products_get", "GET", "/products/{product_id}", 200, ProductOut, "products",
               "Read one product", "S12", path_id="product_id", etag=True,
               action=A.TENANT_READ),
@@ -731,7 +734,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               body_ids=("items[].listing_id",), idempotency=True, action=A.LISTING_PUBLISH),
     Operation("listings_list", "GET", "/listings", 200, ListingPage, "listings",
               "List listings (the review queue)", "S19",
-              query=("status", "marketplace", "product_id", "limit", "cursor"), action=A.TENANT_READ),
+              query=("status", "marketplace", "product_id", "bucket", "limit", "cursor"),
+              action=A.TENANT_READ),
     Operation("listings_get", "GET", "/listings/{listing_id}", 200, ListingDetail, "listings",
               "Read one listing with its content and validation", "S19", path_id="listing_id",
               etag=True, action=A.TENANT_READ),
@@ -739,6 +743,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               MarketplacePreview, "listings", "Preview the marketplace payload of the current "
               "version (sends nothing)", "S20", path_id="listing_id", conflict_code=E.LISTING_BUSY,
               extra_codes=MappingProxyType({501: (E.NOT_IMPLEMENTED,)}), action=A.TENANT_READ),
+    # item 16 (client feedback, 11 Nov 2026): each field's marketplace limits and rules
+    Operation("listings_requirements", "GET", "/listings/{listing_id}/requirements", 200,
+              ListingRequirementsOut, "listings", "The marketplace's limits and rules for each "
+              "field of this listing", "S19", path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_status", "GET", "/listings/{listing_id}/status", 200, ListingStatusOut,
               "listings", "Listing status (a convenience alias; poll jobs instead)", "S18",
               path_id="listing_id", action=A.TENANT_READ),
@@ -777,6 +785,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               IssueHistoryOut, "listings", "Every marketplace issue of this listing, who handles "
               "it, and each fix Kuinn made (before, after, reason, outcome)", "SI11",
               path_id="listing_id", action=A.TENANT_READ),
+    # client item 20: with the brand's auto-fix off, the seller's go for Kuinn's suggested fixes
+    Operation("listings_fixes_apply", "POST", "/listings/{listing_id}/fixes/apply", 200,
+              FixesAppliedOut, "listings", "Apply the fixes Kuinn suggested for this listing "
+              "(auto-fix off), then re-check or send it again", "SI11", path_id="listing_id",
+              conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({409: (E.LISTING_BUSY,)}), action=A.LISTING_EDIT),
     Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
               JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
               "minutes per listing)", "S21", path_id="listing_id", idempotency=True,
@@ -820,6 +834,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
               "Delete an image (and its prepared and public copies)", "SI1",
               path_id="image_id", action=A.PRODUCT_IMPORT),
+    # V1.1 (client feedback item 7): move a saved photo to another view, no new upload
+    Operation("images_update", "PATCH", "/images/{image_id}", 200, ImageViewOut, "images",
+              "Move a photo to another view (a taken Front, Back or Close-up swaps)", "SI12",
+              path_id="image_id", has_body=True, action=A.PRODUCT_IMPORT),
     # ---- image candidates (SI7) ----
     Operation("image_candidates_create", "POST", "/products/{product_id}/image-candidates", 202,
               ImageCandidateAccepted, "images",
@@ -957,6 +975,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("skus_availability", "GET", "/skus/availability", 200, SkuAvailabilityOut,
               "products", "Whether a SKU is free in this brand", "SI14", query=("sku",),
               action=A.TENANT_READ),
+    Operation("skus_availability_check", "POST", "/skus/availability-check", 200,
+              SkuBatchCheckOut, "products",
+              "Which of many SKUs are already used in this brand", "SI14", has_body=True,
+              action=A.TENANT_READ),
     Operation("skus_suggest", "POST", "/skus/suggestion", 200, SkuSuggestionOut, "products",
               "Make a new SKU for this brand", "SI14", has_body=True, idempotency=True,
               action=A.PRODUCT_IMPORT),
@@ -1002,6 +1024,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("home_summary", "GET", "/home/summary", 200, HomeSummaryOut, "home",
               "Exact listing counts, what needs you, recent agent work and marketplace status",
               "FB6", action=A.TENANT_READ),
+    Operation("home_brands", "GET", "/home/brands", 200, HomeBrandsOut, "home",
+              "Each of the caller's own brands with its counts, each counted inside that brand",
+              "FB18", action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

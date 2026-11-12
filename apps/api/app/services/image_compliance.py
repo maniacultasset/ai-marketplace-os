@@ -153,6 +153,7 @@ async def run_image_compliance(ctx: JobContext) -> Outcome:
             meta=outcome.meta,
             content_hash=hashlib.sha256(data).hexdigest(),
             clean=clean,
+            slot=slot,  # V1.1 (feedback 7): a photo moved meanwhile is the move's re-check's
         )
     if status is None:
         return Outcome("succeeded", {"skipped": "image_gone", "image_id": str(image_id)})

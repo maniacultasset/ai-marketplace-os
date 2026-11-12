@@ -764,6 +764,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "guidelines": ["Never claim 'best'."],
             "glossary": {"kurta set": "kurta and palazzo"},
             "status": "active",
+            "auto_fix_enabled": True,
         },
         "tenants_me_update": {
             "id": TENANT,
@@ -952,6 +953,48 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ],
             "report": {**_report(True), "request_id": None},
         },
+        "listings_requirements": {
+            "listing_id": LISTING,
+            "marketplace": "amazon",
+            "category": "ethnic_wear_kurta_sets",
+            "rules_version": 3,
+            "has_template": True,
+            "fields": [
+                {
+                    "path": "content.title",
+                    "max_chars": 200,
+                    "min_chars": 5,
+                    "banned_terms": ["best", "guaranteed", "free shipping"],
+                    "banned_count": 3,
+                    "rules": [],
+                },
+                {"path": "content.bullets", "max_items": 5},
+                {"path": "content.bullets[*]", "max_chars": 500},
+                {"path": "content.description", "max_chars": 2000},
+                {"path": "keywords.hidden_terms", "max_bytes": 250},
+                {
+                    "path": "*",
+                    "banned_terms": ["best seller", "#1"],
+                    "banned_count": 2,
+                    "rules": [
+                        "No links, web addresses, emails or phone numbers.",
+                        "Claims like “organic”, “gots”, “certified” need the certification "
+                        "attribute on the product.",
+                    ],
+                },
+            ],
+            "attributes": [
+                {"key": "color", "level": "required", "value_type": "text"},
+                {
+                    "key": "fabric_type",
+                    "level": "required",
+                    "value_type": "enum",
+                    "allowed_values": ["Cotton", "Silk", "Rayon"],
+                    "allowed_count": 3,
+                },
+                {"key": "neck_style", "level": "recommended", "value_type": "text"},
+            ],
+        },
         "listings_status": {
             "listing_id": LISTING,
             "status": "needs_review",
@@ -1067,6 +1110,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 }
             ],
         },
+        "listings_fixes_apply": {"released": 1, "job_id": JOB},
         "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"
@@ -1088,6 +1132,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "images_update": {  # V1.1 (client feedback item 7): an extra photo marked as the Back
+            "image_id": IMAGE,
+            "slot": "secondary",
+            "role": "back",
+            "compliance_status": "passed",
+            "job_id": None,
+            "swapped": None,
+        },
         "images_photo_match_keep": {  # V1.1 (client feedback item 9)
             "image_id": IMAGE,
             "photo_match": {
@@ -1360,6 +1412,21 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "title": "Cotton kurta set",
             "is_variant": False,
             "deleted": False,
+            "family_role": None,
+        },
+        "skus_availability_check": {
+            "checked": 6,
+            "taken": [
+                {
+                    "sku": "ACME-KUR-0007-RED-M",
+                    "available": False,
+                    "product_id": PRODUCT_1,
+                    "title": "Cotton kurta set",
+                    "is_variant": True,
+                    "deleted": False,
+                    "family_role": "variant",
+                }
+            ],
         },
         "skus_suggest": {"sku": "ACME-KUR-0008"},
         "catalog_requirements_get": {
@@ -1387,6 +1454,52 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "selling_price",
             ],
             "levels": {"amazon": _TSHIRT_LEVELS_AMAZON, "flipkart": _TSHIRT_LEVELS_FLIPKART},
+        },
+        "home_brands": {
+            "as_of": T1,
+            "brands": [
+                {
+                    "tenant_id": TENANT,
+                    "name": "Bharat Threads",
+                    "role": "owner",
+                    "current": True,
+                    "products": 12,
+                    "listings": {
+                        "total": 9,
+                        "live": 3,
+                        "partly_live": 0,
+                        "live_products": 2,
+                        "in_progress": 1,
+                        "problem": 2,
+                        "ready_to_approve": 1,
+                        "ready_to_publish": 1,
+                        "draft": 1,
+                        "inactive": 0,
+                    },
+                    "needs_you": 3,
+                },
+                {
+                    "tenant_id": "0b1c2d3e-0000-4000-8000-000000000099",
+                    "name": "Kuinn Kids",
+                    "role": "reviewer",
+                    "current": False,
+                    "products": 4,
+                    "listings": {
+                        "total": 4,
+                        "live": 1,
+                        "partly_live": 1,
+                        "live_products": 2,
+                        "in_progress": 0,
+                        "problem": 0,
+                        "ready_to_approve": 2,
+                        "ready_to_publish": 0,
+                        "draft": 0,
+                        "inactive": 0,
+                    },
+                    "needs_you": 2,
+                },
+            ],
+            "more": False,
         },
         "home_summary": {
             "as_of": T1,

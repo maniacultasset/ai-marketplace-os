@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     ForeignKeyConstraint,
     Index,
@@ -100,3 +101,6 @@ class ListingRepair(TenantScoped, Base):
     created_at: Mapped[datetime] = created_at_column()
     retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     retired_reason: Mapped[str | None] = mapped_column(Text)
+    # 0038 (client item 20): a suggested fix found while auto-fix is off; never applied until the
+    # seller releases it (true -> false once, `listing_repairs_guard`)
+    held: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))

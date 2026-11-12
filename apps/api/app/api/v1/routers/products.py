@@ -11,15 +11,17 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import Marketplace
 
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.routers.catalog import photo_view_fields
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
+from app.api.v1.schemas.home import ListingBucketFilter
 from app.api.v1.schemas.images import PhotoMatchOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
@@ -28,6 +30,8 @@ from app.api.v1.schemas.products import (
     FibreOut,
     FieldSourceOut,
     HsnSuggestionOut,
+    ItemSizeIn,
+    ItemSizeOut,
     PackageIn,
     PackageOut,
     PhotoFactOut,
@@ -194,6 +198,8 @@ def _out(view: products.ProductView) -> ProductOut:
         identifier_exemption=view.identifier_exemption,
         hsn_code=view.hsn_code,
         package=None if view.package is None else PackageOut.model_construct(**view.package),
+        item=None if view.item is None else ItemSizeOut.model_construct(**view.item),
+        package_warnings=view.package_warnings,  # type: ignore[arg-type]
         country_of_origin=view.country_of_origin,
         field_sources={
             key: FieldSourceOut.model_construct(
@@ -279,13 +285,17 @@ async def products_create(
             country_of_origin=body.country_of_origin,
             package_dims=_package_dims(body.package),
             package_weight_g=None if body.package is None else body.package.weight_g,
+            item_dims=_package_dims(body.item),
+            product_weight_g=None if body.item is None else body.item.weight_g,
         ),
     )
     response.headers["ETag"] = view.etag
     return _out(view)
 
 
-def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal] | None:
+def _package_dims(
+    package: PackageIn | ItemSizeIn | None,
+) -> tuple[Decimal, Decimal, Decimal] | None:
     """SI12: the create's three dimensions, or None when they are not all set (the wire model
     keeps them all set or all null)."""
     if package is None:
@@ -298,10 +308,33 @@ def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal]
 
 @route(router, OPS["products_list"])
 async def products_list(
-    page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+    page: Annotated[PageParams, Depends()],
+    principal: CurrentPrincipal,
+    listing: Annotated[
+        ListingBucketFilter | None,
+        Query(
+            description=(
+                "Only products owning a listing in this Home bucket (`HomeSummaryOut.listings`, "
+                "the same definition; with `marketplace`, a listing on that marketplace), so "
+                "the list a Home count opens is filtered on the server. `any_live` is live or "
+                "partly live."
+            )
+        ),
+    ] = None,
+    marketplace: Annotated[
+        Marketplace | None,
+        Query(description="Only products owning a listing on this marketplace."),
+    ] = None,
 ) -> ProductPage:
-    """List the brand's products, newest first."""
-    views, has_more = await products.list_products(principal, limit=page.limit, after=page.after)
+    """List the brand's products, newest first, optionally only those owning a listing in a
+    Home bucket or on a marketplace."""
+    views, has_more = await products.list_products(
+        principal,
+        limit=page.limit,
+        after=page.after,
+        listing=listing,
+        marketplace=None if marketplace is None else Marketplace(marketplace).value,
+    )
     last = views[-1] if views else None
     next_cursor = encode_cursor(last.created_at, last.id) if has_more and last else None
     return ProductPage(
@@ -375,7 +408,7 @@ def _patch(body: ProductPatch) -> dict[str, Any]:
             out[name] = tuple(value)
         elif name == "product_identifier":
             out[name] = (value.type, value.value)
-        elif name == "package":  # SI12: only the keys sent (a merge patch)
+        elif name in ("package", "item"):  # SI12, item 15: only the keys sent (a merge patch)
             out[name] = {key: getattr(value, key) for key in value.model_fields_set}
         else:
             out[name] = value

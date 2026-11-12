@@ -818,6 +818,7 @@ Generate.
 | Save a human edit | `PATCH /listings/{listing_id}/content` with `If-Match` |
 | Re-run the checks | `POST /listings/validate` `{listing_id, listing_version_id?}` |
 | What will be sent to the marketplace | `GET /listings/{listing_id}/preview` (errors in `report.errors`) |
+| Each field's marketplace limits and rules | `GET /listings/{listing_id}/requirements` (`fields[]` by path: lengths, counts, banned words, plain rule lines; `attributes[]`: level, allowed values) |
 | Rule help | `GET /rules?marketplace=...&category=...`, `POST /rules/dry-run` |
 | History | `GET /listings/{listing_id}/history` (a person's event carries `actor_name`) |
 | Who made, edited and approved each version | `GET /listings/{listing_id}/versions` (newest first; `written_by` `kuinn` or `person`, `generated_by`, `edited_by`, `approved_by` as `{user_id, name}`, `self_approved`) |

@@ -6,7 +6,7 @@ from typing import Annotated, Final, Literal
 from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
-from mkos_schemas.enums import ImageSlot, JobState
+from mkos_schemas.enums import ImageRole, ImageSlot, JobState
 from mkos_schemas.images import ImageReport
 from pydantic import AwareDatetime, Field
 
@@ -81,3 +81,37 @@ class PhotoMatchOut(WireModel):
 class PhotoMatchKeptOut(WireModel):
     image_id: UUID
     photo_match: PhotoMatchOut
+
+
+class ImageViewIn(StrictModel):
+    """V1.1 (client feedback item 7): the view a saved photo moves to. Front is `main`; Back and
+    Close-up are `secondary` with that `role`; a plain `secondary` is an extra photo."""
+
+    slot: ImageSlot
+    role: ImageRole | None = Field(
+        default=None, description="`back` or `close_up`, only with `slot: secondary`."
+    )
+
+
+class MovedImageOut(WireModel):
+    image_id: UUID
+    slot: ImageSlot
+    role: ImageRole | None = None
+    compliance_status: Literal["pending", "passed", "failed"]
+    job_id: UUID | None = Field(
+        default=None,
+        description=(
+            "The `image_compliance` job checking the photo again, when its slot changed (its "
+            "report is cleared and it is `pending` until the job ends); null when it kept its slot."
+        ),
+    )
+
+
+class ImageViewOut(MovedImageOut):
+    swapped: MovedImageOut | None = Field(
+        default=None,
+        description=(
+            "The photo that held the target view (Front, Back or Close-up hold one photo per "
+            "product and colourway): it took the moved photo's old view."
+        ),
+    )

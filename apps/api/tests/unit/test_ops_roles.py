@@ -70,6 +70,7 @@ Q7: dict[str, str] = {
     "listings_status": "tenant:read",
     "listings_history": "tenant:read",
     "listings_versions": "tenant:read",  # item 17
+    "listings_requirements": "tenant:read",  # item 16
     "issues_list": "tenant:read",
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",
@@ -82,6 +83,7 @@ Q7: dict[str, str] = {
     "listings_resolution": "tenant:read",  # SI11 T20
     "listings_issue_history": "tenant:read",  # feedback item 20
     "listings_refresh_status": "listing:publish",  # S21 CP7
+    "listings_fixes_apply": "listing:edit",  # client item 20
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
     "marketplaces_accounts": "tenant:read",
@@ -96,6 +98,7 @@ Q7: dict[str, str] = {
     "products_category_suggest": "product:import",  # SI14
     "products_size_run_create": "product:import",  # V1.1
     "images_photo_match_keep": "product:import",  # V1.1
+    "images_update": "product:import",  # V1.1 (feedback 7)
     "tenants_create": "settings:manage",  # ADR-0032 (the service also needs owner)
     "imports_column_map_create": "product:import",  # SI14
     "imports_column_map_get": "tenant:read",  # SI14
@@ -106,6 +109,7 @@ Q7: dict[str, str] = {
     "catalog_category_suggest": "product:import",
     "catalog_category_suggestion_get": "tenant:read",
     "skus_availability": "tenant:read",
+    "skus_availability_check": "tenant:read",
     "skus_suggest": "product:import",
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
@@ -118,6 +122,7 @@ Q7: dict[str, str] = {
     "analytics_summary": "analytics:read",
     "analytics_quality": "analytics:read",  # SI14
     "home_summary": "tenant:read",  # FB6
+    "home_brands": "tenant:read",  # FB18
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)

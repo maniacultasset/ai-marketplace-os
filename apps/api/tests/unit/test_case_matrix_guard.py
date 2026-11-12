@@ -82,6 +82,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_get",
         "listings_history",
         "listings_versions",  # item 17
+        "listings_requirements",  # item 16
         "listings_approve",
         "issues_list",
         "issues_dismiss",
@@ -96,10 +97,12 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "catalog_category_suggest",
         "catalog_category_suggestion_get",
         "skus_availability",
+        "skus_availability_check",
         "skus_suggest",
         "products_category_suggest",  # SI14
         "products_size_run_create",  # V1.1
         "images_photo_match_keep",  # V1.1
+        "images_update",  # V1.1 (feedback 7)
         "tenants_create",  # ADR-0032
         "imports_column_map_create",  # SI14
         "imports_column_map_get",  # SI14
@@ -107,6 +110,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "analytics_quality",  # SI14
         "admin_quality",  # SI14
         "home_summary",  # FB6
+        "home_brands",  # FB18
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",
@@ -122,6 +126,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_submissions",
         "listings_resolution",
         "listings_issue_history",
+        "listings_fixes_apply",  # client item 20
         "listings_refresh_status",
         "analytics_get",
         "analytics_summary",

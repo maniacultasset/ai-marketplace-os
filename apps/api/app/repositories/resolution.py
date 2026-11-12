@@ -289,17 +289,18 @@ class ResolutionRepository(TenantScopedRepository[ListingRepair]):
         rows = (await self.db.execute(self._scoped_read(stmt))).all()
         return [FixVersion(row[0], row[1], tuple(row[2] or ()), dict(row[3] or {})) for row in rows]
 
-    async def repaired_issue_ids(self, issue_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
-        """The issue rows a repair (live or retired) was written for."""
+    async def repaired_issue_ids(
+        self, issue_ids: Sequence[uuid.UUID], *, held: bool = False
+    ) -> set[uuid.UUID]:
+        """The issue rows a repair (live or retired) was written for; with `held` (client item
+        20) only those whose unretired repair is held, a suggested fix waiting for the seller."""
         if not issue_ids:
             return set()
         r = ListingRepair
-        stmt = (
-            self._select()
-            .where(r.source_issue_id.in_(builtins.list(issue_ids)))
-            .with_only_columns(r.source_issue_id)
-            .distinct()
-        )
+        found = self._select().where(r.source_issue_id.in_(builtins.list(issue_ids)))
+        if held:
+            found = found.where(r.held.is_(True), r.retired_at.is_(None))
+        stmt = found.with_only_columns(r.source_issue_id).distinct()
         return {row for row in (await self.db.execute(stmt)).scalars() if row is not None}
 
     async def task_kinds(self, task_ids: Sequence[uuid.UUID]) -> dict[uuid.UUID, tuple[str, str]]:

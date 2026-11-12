@@ -59,6 +59,9 @@ spec's `marketplace_field` and `value_map` (DATABASE.md:541-542, T49).
 - SI8 T5: a child's `item_name` is the family title plus ` - <Colour>, <Size>` (the template's
   mapped values for the family's axes only; `child_title`), cut to the stored definition's
   `item_name.maxLength` (else 200) by shortening the title at a word boundary, never the suffix.
+- Client item 5 (2026-11-12): every item of a mapped listing whose template names an Amazon
+  browse node (`external_category_id`, digits only) sends it as `recommended_browse_nodes`
+  (`[{value, marketplace_id}]`); with none set nothing is sent and nothing is guessed.
 
 The adapter only adds errors; it never removes or downgrades a Rules Engine verdict (invariant
 2): `required_attributes` and the enum vocabulary are the ones the engine checks.
@@ -66,6 +69,7 @@ The adapter only adds errors; it never removes or downgrades a Rules Engine verd
 
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
@@ -82,7 +86,7 @@ from mkos_schemas.listing import AttributeValue, CanonicalListing
 from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.amazon import constants as c
-from app.adapters.amazon import schema_check
+from app.adapters.amazon import schema_check, sizing
 from app.adapters.amazon.repairs import apply_repairs
 from app.adapters.base import (
     FACT_SPEC_KEYS,
@@ -409,6 +413,45 @@ def _package(
         ]
         sent.append(PACKAGE_PATHS[1])
     return out, sent
+
+
+def _sizing(
+    listing: AdapterListing,
+    unit: AdapterItem,
+    mapped: CategoryTemplate | None,
+    facts: SellerFacts | None,
+    marketplace_id: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+    """Items 8 and 15 (`sizing`): a sellable item's product size and weight, its structured
+    apparel size and its size-chart measurements, each only where the stored LISTING definition
+    declares it, and the field paths that fed them."""
+    if unit.item_role == "parent" or facts is None:
+        return {}, []
+    schema = listing.product_type_schema
+    targets = frozenset(
+        str(spec.marketplace_field)
+        for spec in (mapped.specs.values() if mapped is not None else ())
+        if spec.marketplace_field
+    )
+    out = sizing.item_size(facts, schema, marketplace_id, mapped=targets)
+    sent: list[str] = []
+    if sizing.ITEM_DIMENSIONS in out:
+        sent.append(_attribute_or_fact(listing, unit, "product_dimensions"))
+    if sizing.ITEM_WEIGHT in out:
+        sent.append(_attribute_or_fact(listing, unit, "product_weight"))
+    size = sizing.apparel_size(facts, schema, marketplace_id)
+    if size is not None:
+        out[sizing.APPAREL_SIZE] = [size]
+        sent.append(sku_path(unit) if unit.item_role == "child" else "attributes.size")
+    measures = sizing.chart_measures(facts, schema, marketplace_id)
+    if measures:
+        out.update(measures)
+        sent.append(fact_path(unit, "size_measurements"))
+    return out, sent
+
+
+def _attribute_or_fact(listing: AdapterListing, unit: AdapterItem, key: str) -> str:
+    return f"attributes.{key}" if key in listing.listing.attributes else fact_path(unit, key)
 
 
 PACKAGE_WARNINGS: Final[Mapping[str, str]] = MappingProxyType(
@@ -750,7 +793,11 @@ def item_payload(
     errors += barcode_errors
     package, package_sent = _package(unit, facts, marketplace_id)
     attributes.update(package)
+    attributes.update(_browse_node(template, marketplace_id))
     sent += package_sent
+    sized, sized_sent = _sizing(listing, unit, mapped, facts, marketplace_id)
+    attributes.update(sized)  # a structured item_dimensions replaces the template's text entry
+    sent += sized_sent
     skipped += list(fact_paths(unit))
 
     image_names: dict[str, str] = {}
@@ -815,6 +862,24 @@ def item_payload(
         stale_repairs=applied.stale,
         image_names=image_names,
     )
+
+
+def browse_node(template: AdapterTemplate | None) -> str | None:
+    """Client item 5: the template's Amazon browse node id (`external_category_id`), when it is
+    set and is a node id (digits only); None otherwise, and then nothing is sent."""
+    if template is None or not is_mapped(template):
+        return None
+    node = (template.external_category_id or "").strip()
+    return node if re.fullmatch(c.BROWSE_NODE_PATTERN, node) else None
+
+
+def _browse_node(template: AdapterTemplate | None, marketplace_id: str) -> Payload:
+    """`recommended_browse_nodes` for every item of a mapped listing whose template names a
+    node; an empty dict otherwise (no id is ever guessed)."""
+    node = browse_node(template)
+    if node is None:
+        return {}
+    return {c.BROWSE_NODE_ATTRIBUTE: [{"value": node, "marketplace_id": marketplace_id}]}
 
 
 IMAGE_NAMES: Final = frozenset({c.MAIN_IMAGE, *c.OTHER_IMAGES})

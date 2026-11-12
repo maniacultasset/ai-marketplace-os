@@ -10,6 +10,10 @@
 - `shape`: a spec attribute the schema declares without a `value` member (for example a
   structured `item_dimensions` of length, width and height) while the adapter sends one value.
 
+Client item 5 (2026-11-12): a template that names a browse node (`external_category_id`) feeds
+`recommended_browse_nodes`; the node must be digits, declared, and in the attribute's enum when
+the schema lists one (`unknown_attribute` / `unknown_value`, value-free).
+
 `templates` are the seed's Amazon templates for `product_type`; with none, only the constants
 are checked. `render` prints one sorted line per drift.
 
@@ -22,6 +26,7 @@ definitions are stored and this diff runs on them (SI8 DL-A).
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
@@ -117,6 +122,10 @@ def diff(
                     )
                 )
     for template in templates:
+        node = (template.external_category_id or "").strip()
+        if node:
+            found |= _browse_node_drift(properties, node, template.category, product_type)
+            fed.add(c.BROWSE_NODE_ATTRIBUTE)
         for key, spec in template.specs.items():
             if not spec.marketplace_field:
                 continue
@@ -152,5 +161,127 @@ def diff(
     return sorted(found)
 
 
+def _browse_node_drift(
+    properties: Mapping[str, Any], node: str, category: str, product_type: str
+) -> set[Drift]:
+    """Client item 5: a template's browse node is a node id the schema accepts. Value-free: the
+    category names the template, never the id."""
+    name = c.BROWSE_NODE_ATTRIBUTE
+    if not re.fullmatch(c.BROWSE_NODE_PATTERN, node):
+        return {Drift("unknown_value", name, f"{category} browse node is not a node id")}
+    if name not in properties:
+        return {Drift("unknown_attribute", name, f"{category} -> not declared by {product_type}")}
+    enum = _enum(properties[name])
+    if enum is not None and node not in {str(v) for v in enum}:
+        return {
+            Drift(
+                "unknown_value",
+                name,
+                f"{category} browse node is not among the {len(enum)} allowed values",
+            )
+        }
+    return set()
+
+
+def browse_node_choices(schema: Mapping[str, Any]) -> list[tuple[str, str]]:
+    """The browse nodes a stored definition offers, as (id, name) pairs sorted by id: its
+    `recommended_browse_nodes` value `enum`, named by `enumNames` when given. Empty when the
+    schema lists none (most do not)."""
+    raw = schema.get("properties")
+    properties: Mapping[str, Any] = raw if isinstance(raw, dict) else {}
+    props = _item_properties(properties.get(c.BROWSE_NODE_ATTRIBUTE))
+    value = props.get("value") if props is not None else None
+    if not isinstance(value, dict) or not isinstance(value.get("enum"), list):
+        return []
+    names = value.get("enumNames")
+    named = names if isinstance(names, list) and len(names) == len(value["enum"]) else None
+    pairs = {
+        str(v): (str(named[i]) if named is not None else "") for i, v in enumerate(value["enum"])
+    }
+    return sorted(pairs.items())
+
+
 def render(drifts: Sequence[Drift]) -> str:
     return "\n".join(f"{d.kind} {d.attribute}: {d.detail}" for d in sorted(drifts))
+
+
+# ---- client item 5 (2026-11-12): `templates check`, every Amazon category template at once ----
+
+
+@dataclass(frozen=True)
+class StoredDefinition:
+    """The current stored definition of one product type: its version and schema JSON."""
+
+    version: str
+    schema: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class TemplateCheck:
+    category: str
+    product_type: str
+    browse_node: str | None
+    """The template's node id, None when not set."""
+    version: str | None
+    """The stored definition's version; None when none is stored (then nothing is checked)."""
+    drifts: tuple[Drift, ...] = ()
+    choices: tuple[tuple[str, str], ...] = ()
+    """The browse nodes the stored definition lists, (id, name)."""
+
+    @property
+    def checked(self) -> bool:
+        return self.version is not None
+
+
+def check_templates(
+    templates: Sequence[tuple[str, CategoryTemplate]],
+    stored: Mapping[str, StoredDefinition | None],
+) -> list[TemplateCheck]:
+    """Each Amazon category template `(product_type, template)` against the stored definition of
+    its own product type (`stored[product_type]`, None when none is stored). Pure."""
+    out: list[TemplateCheck] = []
+    for product_type, template in sorted(templates, key=lambda t: (t[1].category, t[0])):
+        node = (template.external_category_id or "").strip() or None
+        found = stored.get(product_type)
+        if found is None:
+            out.append(TemplateCheck(template.category, product_type, node, None))
+            continue
+        out.append(
+            TemplateCheck(
+                template.category,
+                product_type,
+                node,
+                found.version,
+                tuple(diff(found.schema, [template], product_type)),
+                tuple(browse_node_choices(found.schema)),
+            )
+        )
+    return out
+
+
+def render_checks(checks: Sequence[TemplateCheck], *, list_nodes: bool = False) -> str:
+    """One line per template, its drift lines indented under it, then a summary line. With
+    `list_nodes`, the browse nodes each stored definition lists too (public taxonomy ids, the
+    values a template's `external_category_id` takes)."""
+    lines: list[str] = []
+    for one in checks:
+        node = "browse node set" if one.browse_node else "browse node not set"
+        if one.choices:
+            node += f" (the definition lists {len(one.choices)})"
+        if one.version is None:
+            state = f"no stored definition for {one.product_type}, not checked"
+        else:
+            state = f"definition {one.version}, {len(one.drifts)} drift(s)"
+        lines.append(f"{one.category} -> {one.product_type}: {state}; {node}")
+        lines += [f"  {d.kind} {d.attribute}: {d.detail}" for d in one.drifts]
+        if list_nodes:
+            lines += [f"  browse node {i} {name}".rstrip() for i, name in one.choices]
+    unchecked = sum(1 for one in checks if not one.checked)
+    drifts = sum(len(one.drifts) for one in checks)
+    unset = sum(1 for one in checks if not one.browse_node)
+    lines.append(
+        f"templates check: {len(checks)} template(s), {len(checks) - unchecked} checked, "
+        f"{unchecked} without a stored definition, {drifts} drift(s), "
+        f"{unset} without a browse node"
+    )
+    return "\n".join(lines)

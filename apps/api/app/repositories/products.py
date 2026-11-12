@@ -16,13 +16,15 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import case, cast, func, literal, literal_column, or_, tuple_, update
+from sqlalchemy import case, cast, func, literal, literal_column, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.catalog import Product
+from app.db.models.listings import Listing
 from app.repositories.base import TenantScopedRepository
+from app.repositories.home import in_bucket
 
 PAGE_LIMIT_MIN = 1
 # SI14: the seller's decision on a suggestion; a job never writes over it
@@ -82,6 +84,8 @@ class SkuHolder:
     title: str
     parent_product_id: uuid.UUID | None
     deleted: bool
+    # set on a family's style (it has sizes or colours); a plain CSV row cannot update it
+    variation_theme: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,7 +313,11 @@ class ProductRepository(TenantScopedRepository[Product]):
             self._select()
             .where(Product.sku == sku)
             .with_only_columns(
-                Product.id, Product.title, Product.parent_product_id, Product.deleted_at
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+                Product.variation_theme,
             )
         )
         found = (await self.db.execute(stmt)).one_or_none()
@@ -320,7 +328,36 @@ class ProductRepository(TenantScopedRepository[Product]):
             title=found[1],
             parent_product_id=found[2],
             deleted=found[3] is not None,
+            variation_theme=found[4],
         )
+
+    async def holders_of_skus(self, skus: Sequence[str]) -> dict[str, SkuHolder]:
+        """`holder_of_sku` for many SKUs in one select (client feedback 11 Nov, item 3: the
+        batch check before a variants save or a bulk upload): only the held SKUs are keys."""
+        if not skus:
+            return {}
+        stmt = (
+            self._select()
+            .where(Product.sku.in_(list(skus)))
+            .with_only_columns(
+                Product.sku,
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+                Product.variation_theme,
+            )
+        )
+        return {
+            row[0]: SkuHolder(
+                id=row[1],
+                title=row[2],
+                parent_product_id=row[3],
+                deleted=row[4] is not None,
+                variation_theme=row[5],
+            )
+            for row in (await self.db.execute(stmt)).all()
+        }
 
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
@@ -342,13 +379,32 @@ class ProductRepository(TenantScopedRepository[Product]):
         return builtins.list(found or [])
 
     async def list_page(
-        self, *, limit: int, after: tuple[datetime, uuid.UUID] | None
+        self,
+        *,
+        limit: int,
+        after: tuple[datetime, uuid.UUID] | None,
+        listing: str | None = None,
+        marketplace: str | None = None,
     ) -> tuple[builtins.list[Product], bool]:
+        """One keyset page, newest first. With `listing` (a Home bucket filter,
+        `app.repositories.home.BUCKET_FILTERS`) or `marketplace`, only the products that own a
+        listing that is not archived in that bucket and on that marketplace."""
         if isinstance(limit, bool) or not isinstance(limit, int):
             raise ValueError("limit must be an int")
         if not PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in {PAGE_LIMIT_MIN}..{PAGE_LIMIT_MAX}")
         stmt = self._select().where(Product.deleted_at.is_(None))
+        if listing is not None or marketplace is not None:
+            owned = [
+                Listing.tenant_id == Product.tenant_id,
+                Listing.product_id == Product.id,
+                Listing.archived_at.is_(None),
+            ]
+            if listing is not None:
+                owned.append(in_bucket(listing))
+            if marketplace is not None:
+                owned.append(Listing.marketplace == marketplace)
+            stmt = stmt.where(select(literal(1)).where(*owned).exists())
         if after is not None:
             created_at, row_id = after
             bound = tuple_(

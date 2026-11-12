@@ -35,6 +35,7 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot
 from sqlalchemy.exc import DBAPIError
 
+from app.adapters.base import item_dimensions_text, parse_item_dimensions
 from app.core.config import get_settings
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
@@ -53,6 +54,7 @@ from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
+from app.services.package_sense import package_errors, package_warnings
 from app.services.photo_match import live_jobs, read_state
 from app.services.photo_views import SizeChartCheck, ViewState
 from app.services.product_facts import (
@@ -60,6 +62,7 @@ from app.services.product_facts import (
     STANDALONE,
     AttributeValue,
     build_attributes,
+    fact_stamp,
     seller_column_fact,
     seller_provenance,
     size_chart_fact,
@@ -120,6 +123,9 @@ class NewProduct:
     country_of_origin: str | None = None
     package_dims: tuple[Decimal, Decimal, Decimal] | None = None
     package_weight_g: int | None = None
+    # client item 15: the product itself, beside the packed box
+    item_dims: tuple[Decimal, Decimal, Decimal] | None = None
+    product_weight_g: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,6 +229,9 @@ class ProductView:
     hsn_code: str | None = None
     package: dict[str, Any] | None = None
     country_of_origin: str | None = None
+    # client item 15: the product itself, and the packed box's soft warnings for the category
+    item: dict[str, Any] | None = None
+    package_warnings: dict[str, str] = field(default_factory=dict)
     # SI12: detail reads only (`{}` and None on lists)
     field_sources: dict[str, FieldSource] = field(default_factory=dict)
     hsn_suggestion: HsnSuggestion | None = None
@@ -243,6 +252,8 @@ class ProductView:
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
+# client item 15: the product itself (the sides as one attribute fact, the weight a column)
+ITEM_DIMS_KEY: Final = "product_dimensions"
 PACKAGE_COLUMNS: Final = {
     "length_cm": "package_length_cm",
     "breadth_cm": "package_breadth_cm",
@@ -257,6 +268,7 @@ class SellerValues:
     hsn_code: str | None = None
     package: dict[str, Any] | None = None
     country_of_origin: str | None = None
+    item: dict[str, Any] | None = None  # client item 15: the product itself
     hsn_from_style: bool = False
     dims_from_style: bool = False
     weight_from_style: bool = False
@@ -356,6 +368,51 @@ def _own_dims(row: Any) -> dict[str, Any] | None:
     return dims if all(v is not None for v in dims.values()) else None
 
 
+def _item_dims(row: Any) -> dict[str, Any] | None:
+    attributes = getattr(row, "attributes", None)
+    fact = attributes.get(ITEM_DIMS_KEY) if isinstance(attributes, Mapping) else None
+    sides = parse_item_dimensions(fact.get("value")) if isinstance(fact, Mapping) else None
+    if sides is None:
+        return None
+    return dict(zip(PACKAGE_COLUMNS, sides, strict=True))
+
+
+def item_values(row: Any, style: Any = None) -> dict[str, Any] | None:
+    """Client item 15: the product itself, own else the style's (the sides as one group): the
+    `product_dimensions` fact written as `L x B x H cm` and `product_weight_g`."""
+    dims = _item_dims(row)
+    if dims is None and style is not None:
+        dims = _item_dims(style)
+    weight = getattr(row, "product_weight_g", None)
+    if weight is None and style is not None:
+        weight = getattr(style, "product_weight_g", None)
+    if dims is None and weight is None:
+        return None
+    return {**(dims or dict.fromkeys(PACKAGE_COLUMNS)), "weight_g": weight}
+
+
+def item_dims_fact(sides: Sequence[Decimal], *, now: datetime) -> dict[str, object]:
+    """Client item 15: the seller `product_dimensions` Fact of the product's own sides, its value
+    the `L x B x H cm` text every template already sends and the adapters parse back."""
+    length, breadth, height = sides
+    return {
+        "value": item_dimensions_text(length, breadth, height),
+        "source": "seller",
+        "captured_via": "api",
+        "updated_at": fact_stamp(now),
+    }
+
+
+def package_hints(category: str | None, package: Mapping[str, Any] | None) -> dict[str, str]:
+    """Client item 15: the packed box's soft warnings for `category` (`package_sense`)."""
+    if not package:
+        return {}
+    sides = [package.get(name) for name in PACKAGE_COLUMNS]
+    whole = None if any(side is None for side in sides) else [Decimal(str(v)) for v in sides]
+    weight = package.get("weight_g")
+    return package_warnings(category, whole, weight if isinstance(weight, int) else None)
+
+
 def seller_values(row: Any, style: Any = None, brand_country: str | None = None) -> SellerValues:
     """Own values; on a single read a missing one is the style's (the dims as one group), and a
     missing origin is then the brand default."""
@@ -384,6 +441,7 @@ def seller_values(row: Any, style: Any = None, brand_country: str | None = None)
     return SellerValues(
         hsn_code=hsn,
         package=package,
+        item=item_values(row, style),
         country_of_origin=country,
         hsn_from_style=hsn_from_style,
         dims_from_style=dims_from_style,
@@ -532,16 +590,20 @@ def _view(
         variation_theme=getattr(row, "variation_theme", None),
         size_run=list(getattr(row, "size_run", None) or []),
         **_identifier_view(row, style_exempt),
-        **_seller_view(row if seller is None else None, seller),
+        **_seller_view(row if seller is None else None, seller, category=row.category),
     )
 
 
-def _seller_view(row: Any, seller: SellerValues | None) -> dict[str, Any]:
+def _seller_view(
+    row: Any, seller: SellerValues | None, *, category: str | None = None
+) -> dict[str, Any]:
     values = seller if seller is not None else seller_values(row)
     return {
         "hsn_code": values.hsn_code,
         "package": values.package,
         "country_of_origin": values.country_of_origin,
+        "item": values.item,
+        "package_warnings": package_hints(category, values.package),
     }
 
 
@@ -793,11 +855,35 @@ async def create_product(principal: Principal, cmd: NewProduct) -> ProductView:
         raise
 
 
+def check_package(
+    category: str | None,
+    sides: Sequence[Decimal] | None,
+    weight_g: int | None,
+    *,
+    field: str = "package",
+) -> None:
+    """Client item 15 bullet 4: a packed box past the category's hard limit is 422
+    `VALUE_NOT_ALLOWED` at `package.length_cm` or `package.weight_g`, the message naming the
+    allowed range (`package_sense.package_errors`)."""
+    refused = package_errors(category, sides, weight_g)
+    if "package_dimensions" in refused:
+        raise InputError(
+            ErrorCode.VALUE_NOT_ALLOWED, f"{field}.length_cm", refused["package_dimensions"]
+        )
+    if "package_weight" in refused:
+        raise InputError(
+            ErrorCode.VALUE_NOT_ALLOWED, f"{field}.weight_g", refused["package_weight"]
+        )
+
+
 async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
     _refuse_nul(cmd)
     if cmd.images:
         raise NotFoundError("images[0]")
     check_price_le_mrp(cmd.selling_price, cmd.mrp)
+    check_package(cmd.category, cmd.package_dims, cmd.package_weight_g)
+    if cmd.item_dims is not None and ITEM_DIMS_KEY in cmd.attributes:
+        raise InputError(ErrorCode.VALIDATION_FAILED, "item")
     if bool(cmd.image_uploads) != (cmd.id is not None):
         raise InputError(ErrorCode.VALIDATION_FAILED, "image_uploads")
     checked = []
@@ -835,6 +921,8 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             if SIZE_CHART_KEY in facts:
                 raise InputError(ErrorCode.VALIDATION_FAILED, "size_chart")
             facts[SIZE_CHART_KEY] = size_chart_fact(cmd.size_chart, now=now)
+        if cmd.item_dims is not None:  # client item 15: the product itself, as `L x B x H cm`
+            facts[ITEM_DIMS_KEY] = item_dims_fact(cmd.item_dims, now=now)
         provenance = seller_provenance(now=now)
         if cmd.category is None:  # a NULL fact column carries no provenance (0027)
             provenance.pop("category", None)
@@ -864,6 +952,7 @@ async def _create_product(principal: Principal, cmd: NewProduct) -> ProductView:
             "hsn_code": cmd.hsn_code,
             "country_of_origin": cmd.country_of_origin,
             "package_weight_g": cmd.package_weight_g,
+            "product_weight_g": cmd.product_weight_g,
         }
         if cmd.manufacturer is not None:
             # decision 16: a product route links a matching party and never rewrites it
@@ -950,10 +1039,19 @@ async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductVie
 
 
 async def list_products(
-    principal: Principal, *, limit: int, after: tuple[datetime, uuid.UUID] | None
+    principal: Principal,
+    *,
+    limit: int,
+    after: tuple[datetime, uuid.UUID] | None,
+    listing: str | None = None,
+    marketplace: str | None = None,
 ) -> tuple[list[ProductView], bool]:
+    """A page of products, newest first; `listing` and `marketplace` keep the products owning
+    a listing in that Home bucket and on that marketplace (`ProductRepository.list_page`)."""
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        rows, has_more = await uow.products.list_page(limit=limit, after=after)
+        rows, has_more = await uow.products.list_page(
+            limit=limit, after=after, listing=listing, marketplace=marketplace
+        )
         keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
         exempt = await uow.products.style_exemptions([r.id for r in rows if _is_style(r)])
         thumbs = await _main_views(uow, principal.tenant_id, rows)

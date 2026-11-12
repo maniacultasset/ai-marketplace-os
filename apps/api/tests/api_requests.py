@@ -56,6 +56,7 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     # client feedback 11 Nov
     "catalog_category_suggest": {"title": "Cotton kurta set with dupatta"},
     "skus_suggest": {"brand_name": "Acme"},  # a category needs a current template
+    "skus_availability_check": {"skus": ["ACME-KUR-0001"]},  # client feedback item 3
     "brand_profile_update": {"default_manufacturer": None},
     "products_create": {"sku": "FAB-1", "title": "Kurta"},
     "listings_generate": {"product_id": ID, "marketplace": "amazon"},
@@ -68,6 +69,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "listings_regenerate": {"instructions": "Shorter title."},
     "marketplaces_connect": {"marketplace": "amazon"},
     "marketplaces_connect_confirm": {"pending": "p" * 43},
+    # V1.1 (feedback 7): the seeded photo is a plain secondary, so this move changes nothing
+    "images_update": {"slot": "secondary"},
     "images_upload_url": {
         "product_id": ID,
         "slot": "main",
@@ -114,6 +117,7 @@ _INVALID_JSON: dict[str, dict[str, Any]] = {
     "auth_mfa_totp_enroll": {"current_password": ""},
     "brand_profile_update": {"default_manufacturer": {"legal_name": ""}},
     "skus_suggest": {"category": "Bad-Slug"},  # client feedback 11 Nov
+    "skus_availability_check": {"skus": ["has space"]},  # client feedback item 3
 }
 _FORM_OPS = {"brand_documents_upload", "products_bulk", "images_upload"}
 _QUERY: dict[str, dict[str, str]] = {

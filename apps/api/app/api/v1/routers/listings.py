@@ -8,6 +8,7 @@ refresh-status.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
@@ -35,6 +36,12 @@ from app.api.v1.schemas.batches import (
     BatchResult,
     PublishRequest,
 )
+from app.api.v1.schemas.field_requirements import (
+    AttributeRequirementOut,
+    FieldRequirementOut,
+    ListingRequirementsOut,
+)
+from app.api.v1.schemas.home import BUCKET_FILTER_DESCRIPTION, ListingBucketFilter
 from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.listings import (
     AuditEventOut,
@@ -49,11 +56,12 @@ from app.api.v1.schemas.listings import (
     RegenerateRequest,
     ValidateRequest,
 )
-from app.api.v1.schemas.resolution import ResolutionOut
+from app.api.v1.schemas.resolution import FixesAppliedOut, ResolutionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import (
+    field_requirements,
     generation,
     listing_edit,
     listing_preview,
@@ -171,9 +179,13 @@ async def listings_list(
     status: Annotated[ListingStatus | None, Query()] = None,
     marketplace: Annotated[Marketplace | None, Query()] = None,
     product_id: Annotated[UUID | None, Query()] = None,
+    bucket: Annotated[
+        ListingBucketFilter | None, Query(description=BUCKET_FILTER_DESCRIPTION)
+    ] = None,
 ) -> ListingPage:
-    """List the brand's listings, filtered by status, marketplace or product. `status=validated`
-    or `needs_review` is the review queue, oldest first; any other filter is newest first."""
+    """List the brand's listings, filtered by status, marketplace, product or Home bucket.
+    `status=validated` or `needs_review` is the review queue, oldest first; any other filter is
+    newest first."""
     wanted = None if status is None else ListingStatus(status).value
     tag = listing_reads.order_tag(wanted)
     after = None if page.cursor is None else decode_tagged_cursor(page.cursor, tag)
@@ -182,6 +194,7 @@ async def listings_list(
         status=wanted,
         marketplace=None if marketplace is None else Marketplace(marketplace).value,
         product_id=product_id,
+        bucket=bucket,
         after=after,
         limit=page.limit,
     )
@@ -219,6 +232,30 @@ async def listings_preview(
         return await listing_preview.preview_listing(principal, listing_id)
     except listing_preview.MarketplaceNotSupported:
         raise NotImplementedYet("listings_preview") from None
+
+
+@route(router, OPS["listings_requirements"])
+async def listings_requirements(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> ListingRequirementsOut:
+    """The marketplace's limits and rules for each field of this listing, read from the same
+    rules and category template the checks run on: length and count limits, banned words,
+    claims that need an attribute, and each attribute's level and allowed values. It gives no
+    verdict (the checks decide)."""
+    found = await field_requirements.listing_requirements(principal, listing_id)
+    return ListingRequirementsOut.model_validate(
+        {
+            "listing_id": found.listing_id,
+            "marketplace": found.marketplace,
+            "category": found.category,
+            "rules_version": found.rules_version,
+            "has_template": found.has_template,
+            "fields": [FieldRequirementOut.model_validate(asdict(f)) for f in found.fields],
+            "attributes": [
+                AttributeRequirementOut.model_validate(asdict(a)) for a in found.attributes
+            ],
+        }
+    )
 
 
 @route(router, OPS["listings_status"])
@@ -381,6 +418,20 @@ async def listings_issue_history(
     from app.services.resolution.history import history_for
 
     return IssueHistoryOut.model_validate(await history_for(principal, listing_id))
+
+
+@route(router, OPS["listings_fixes_apply"])
+async def listings_fixes_apply(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> FixesAppliedOut:
+    """Client item 20: with the brand's "Let Kuinn fix safe listing errors automatically" off,
+    each fix Kuinn finds waits as a suggestion. This applies them for one listing: the suggested
+    repairs go live and the re-check, resend or fix job runs as it would with the setting on.
+    409 when the listing is paused, archived or busy, or has no open marketplace error."""
+    from app.services.resolution.apply_fixes import apply_fixes
+
+    done = await apply_fixes(principal, listing_id)
+    return FixesAppliedOut(released=done.released, job_id=done.job_id)
 
 
 @route(router, OPS["listings_refresh_status"])

@@ -1,6 +1,6 @@
 """The tenant's brand profile (S16 T14; DATABASE.md:216-229): `app_rw` may UPDATE only `name`,
-`tone`, `guidelines`, `glossary` and (0030, ADR-0031) `owner_self_approval`, so this repository
-writes nothing else."""
+`tone`, `guidelines`, `glossary`, (0030, ADR-0031) `owner_self_approval` and (0038, client item 20)
+`auto_fix_enabled`, so this repository writes nothing else."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from app.repositories.base import TenantScopedRepository
 
 PROFILE_FIELDS: Final = frozenset({"name", "tone", "guidelines", "glossary"})
 # ADR-0031: the brand's approval setting; only an owner changes it (services/tenants.py)
-SETTING_FIELDS: Final = frozenset({"owner_self_approval"})
+SETTING_FIELDS: Final = frozenset({"owner_self_approval", "auto_fix_enabled"})
 WRITABLE_FIELDS: Final = PROFILE_FIELDS | SETTING_FIELDS
 
 
@@ -32,6 +32,12 @@ class TenantProfileRepository(TenantScopedRepository[Tenant]):
         """ADR-0031: whether an owner may approve its own work in this tenant (false when the
         row is not visible, so a missing row never grants anything)."""
         stmt = self._select().with_only_columns(Tenant.owner_self_approval)
+        return bool((await self.db.execute(stmt)).scalar_one_or_none())
+
+    async def auto_fix_enabled(self) -> bool:
+        """Client item 20: whether Kuinn may apply safe listing fixes by itself in this tenant
+        (false when the row is not visible, so a missing row never lets a fix through)."""
+        stmt = self._select().with_only_columns(Tenant.auto_fix_enabled)
         return bool((await self.db.execute(stmt)).scalar_one_or_none())
 
     async def update_profile(self, fields: dict[str, Any]) -> Tenant:

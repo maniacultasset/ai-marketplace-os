@@ -245,3 +245,58 @@ def test_answer_suggested_labels_and_marks_unsure() -> None:
 def test_answer_other_results(result: dict[str, str] | None, status: str) -> None:
     body = answer_from_job(JOB, "succeeded", result)
     assert body["status"] == status and body["candidates"] == []
+
+
+# ---- the batch SKU check (item 3: the variants grid and the bulk upload) ----
+
+
+def test_batch_check_body_takes_1_to_1000_valid_skus() -> None:
+    from app.api.v1.schemas.skus import SkuBatchCheckIn
+    from pydantic import ValidationError
+
+    assert SkuBatchCheckIn.model_validate({"skus": ["A-1", "A-1"]}).skus == ["A-1", "A-1"]
+    assert len(SkuBatchCheckIn.model_validate({"skus": ["A-1"] * 1000}).skus) == 1000
+    for bad in ([], ["A-1"] * 1001, ["has space"], ["a]b"], ["x" * 65], ["A\x00B"]):
+        with pytest.raises(ValidationError):
+            SkuBatchCheckIn.model_validate({"skus": bad})
+
+
+async def test_batch_check_refuses_more_than_the_cap_before_any_query() -> None:
+    from app.services.sku_help import MAX_BATCH_SKUS, check_skus
+
+    principal: Any = object()  # never read: the cap is checked before the unit of work opens
+    with pytest.raises(ValueError, match="at most"):
+        await check_skus(principal, [f"S-{n}" for n in range(MAX_BATCH_SKUS + 1)])
+
+
+@pytest.mark.parametrize(
+    ("parent", "theme", "deleted", "role"),
+    [
+        (None, None, False, None),
+        (None, "size", False, "style"),
+        ("child", None, False, "variant"),
+        (None, "size_color", True, "style"),
+        ("child", None, True, "variant"),
+        (None, None, True, None),
+    ],
+)
+def test_taken_names_the_family_role_deleted_or_not(
+    parent: str | None, theme: str | None, deleted: bool, role: str | None
+) -> None:
+    import uuid
+
+    from app.repositories.products import SkuHolder
+    from app.services.sku_help import _taken
+
+    holder = SkuHolder(
+        id=uuid.uuid4(),
+        title="Kurta set",
+        parent_product_id=uuid.uuid4() if parent else None,
+        deleted=deleted,
+        variation_theme=theme,
+    )
+    check = _taken("KS-1", holder)
+    assert check.family_role == role and check.available is False
+    assert check.deleted is deleted
+    assert check.is_variant is (bool(parent) and not deleted)
+    assert (check.product_id is None) is deleted

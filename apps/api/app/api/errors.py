@@ -388,7 +388,7 @@ def domain_api_error(exc: Exception) -> ApiError:
     if isinstance(exc, LimitError):
         return ApiError(429, exc.code, headers={"Retry-After": str(exc.retry_after_s)})
     if isinstance(exc, InputError):
-        msg = _INPUT_MESSAGES.get(exc.code, "Invalid value.")
+        msg = exc.detail or _INPUT_MESSAGES.get(exc.code, "Invalid value.")
         return ApiError(
             422, exc.code, details=[{"loc": ["body", *path_segments(exc.field)], "msg": msg}]
         )

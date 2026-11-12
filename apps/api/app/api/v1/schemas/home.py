@@ -19,6 +19,7 @@ from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
 
+from mkos_schemas.auth import Role
 from mkos_schemas.base import WireModel
 from mkos_schemas.enums import Marketplace
 from pydantic import Field
@@ -30,6 +31,24 @@ ActivityState = Literal["completed", "failed", "pending"]
 ActivityKind = Literal["write", "send", "photo_check", "import", "brand", "fix"]
 AccountState = Literal["connected", "needs_reconnect", "not_connected"]
 NextStep = Literal["connect", "reconnect", "add_listing", "fix", "none"]
+ListingBucketFilter = Literal[
+    "live",
+    "partly_live",
+    "any_live",
+    "in_progress",
+    "problem",
+    "ready_to_approve",
+    "ready_to_publish",
+    "draft",
+    "inactive",
+]
+"""A Home bucket as a list filter (`GET /listings?bucket=`, `GET /products?listing=`): the
+listings one Home count counts (`ListingCounts`); `any_live` is live or partly live, as the Live
+tile counts them."""
+BUCKET_FILTER_DESCRIPTION = (
+    "Only listings in this Home bucket (`HomeSummaryOut.listings`, the same definition), so the "
+    "list a Home count opens holds exactly what it counts. `any_live` is live or partly live."
+)
 
 
 class ListingCounts(WireModel):
@@ -189,3 +208,32 @@ class HomeSummaryOut(WireModel):
     activity: Annotated[list[ActivityItem], Field(max_length=8)]
     marketplaces: Annotated[list[MarketplaceStatus], Field(max_length=2)]
     products: Count = Field(description="Products that are not deleted (styles and standalones).")
+
+
+class BrandSummary(WireModel):
+    """One of the caller's brands, counted inside that brand (its own tenant context)."""
+
+    tenant_id: UUID
+    name: str
+    role: Role = Field(description="The caller's role in this brand.")
+    current: bool = Field(description="The brand the caller's token is signed in to.")
+    products: Count = Field(description="Products that are not deleted (styles and standalones).")
+    listings: ListingCounts
+    needs_you: Count = Field(
+        description=(
+            "What waits on the caller in this brand, for the caller's role there "
+            "(`NeedsYouCounts.total`, the same definition)."
+        )
+    )
+
+
+class HomeBrandsOut(WireModel):
+    """Client feedback 11 Nov 2026, item 18 (ADR-0032 light path): the caller's own brands side
+    by side, by name. Only brands the caller is an active member of; each is counted under its
+    own tenant, never across tenants."""
+
+    as_of: datetime
+    brands: Annotated[list[BrandSummary], Field(max_length=25)]
+    more: bool = Field(
+        default=False, description="The caller has more brands than the overview reads (25)."
+    )

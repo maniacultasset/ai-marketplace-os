@@ -111,3 +111,21 @@ payload go back to the marketplace without a second approval?
   printed, not written (no issue rows, no `remote_check_*`, no status move), so a test listing is never left
   blocked by a dry run production cannot repeat. One `listing.preview_oneoff` audit row names the staff admin.
 - Runbook: `docs/runbooks/AMAZON-PREVIEW-ONEOFF.md`.
+
+## Amendment: the brand's auto-fix setting (client item 20, 2026-11-12)
+
+- **Decision.** Client feedback item 20 bullet 3 asks that safe fixes apply automatically "within authorised
+  permissions". Each brand now has `tenants.auto_fix_enabled` ("Let Kuinn fix safe listing errors automatically",
+  revision `0038_d5`), on by default so every brand keeps the behaviour above. Only an active owner changes it, on
+  `PATCH /tenants/me` with a step-up, and each change writes `tenant.auto_fix_enabled_changed` with the value
+  before and after (the ADR-0031 rules).
+- **Off.** The planner gives every fix lane (`auto_repair`, `auto_content`, `ai_field`) to the seller as
+  `approve_fix` (a seller action with no inbox question). A repair candidate is stored `held`
+  (`listing_repairs.held`, audited `listing_repair.suggested`): the adapter never applies a held repair, no
+  re-check, resend or fix job is enqueued, and the issue stays open in "Needs you". The issue history shows the
+  repair as a suggested fix (`FixOut.suggested`, outcome `waiting`). A plain `retry` (the same approved payload
+  sent again) stays automatic: it changes nothing.
+- **The seller's go.** `POST /listings/{id}/fixes/apply` (listing:edit) runs the executor once with auto-fix
+  allowed: each held repair goes live once (`held` true -> false only, `listing_repairs_guard`; audited
+  `listing_repair.approved` with the user), and the re-check, resend or fix job follows as with the setting on.
+  The invariant 9 cap is unchanged and still counts those jobs.

@@ -13,6 +13,11 @@ ADR-0031: `owner_self_approval` is the brand's approval setting. Only an active 
 (the route checks the role and the step-up first; the membership is read again `FOR SHARE` in
 the transaction, so a concurrent demotion is seen or waits), and a change writes its own
 `tenant.owner_self_approval_changed` audit row with the value before and after.
+
+Client item 20 (0038): `auto_fix_enabled` ("Let Kuinn fix safe listing errors automatically", on by
+default) is the second brand setting, under the same rules: owner only, the step-up in the route,
+and its own `tenant.auto_fix_enabled_changed` audit row with the value before and after. The
+resolution executor reads it (`app/services/resolution/run.py`).
 """
 
 from __future__ import annotations
@@ -46,6 +51,13 @@ PROFILE_KEYS: Final = frozenset({"name", *VOICE_FIELDS})
 SETTING_FIELD: Final = "owner_self_approval"
 SETTING_ROLES: Final = frozenset({"owner"})
 SETTING_AUDIT: Final = "tenant.owner_self_approval_changed"
+# Client item 20: the auto-fix setting, under the same rules
+AUTO_FIX_FIELD: Final = "auto_fix_enabled"
+# the owner-only brand settings -> their audit action
+SETTINGS: Final[Mapping[str, str]] = {
+    SETTING_FIELD: SETTING_AUDIT,
+    AUTO_FIX_FIELD: "tenant.auto_fix_enabled_changed",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +71,7 @@ class TenantView:
     status: str
     trial_ends_at: datetime | None = None  # SI10: only while the tenant is on trial (CP-D5)
     owner_self_approval: bool = False  # ADR-0031
+    auto_fix_enabled: bool = True  # client item 20
 
 
 def etag(tenant_id: uuid.UUID, updated_at: datetime) -> str:
@@ -76,6 +89,7 @@ def _view(row: Any) -> TenantView:
         status=row.status,
         trial_ends_at=row.trial_ends_at if row.status == "trial" else None,
         owner_self_approval=bool(row.owner_self_approval),
+        auto_fix_enabled=bool(row.auto_fix_enabled),
     )
 
 
@@ -129,17 +143,18 @@ def _current(view: TenantView, key: str) -> Any:
 async def update_profile(
     principal: Principal, fields: Mapping[str, Any], if_match: str
 ) -> tuple[TenantView, str]:
-    if not fields or set(fields) - {*PROFILE_KEYS, SETTING_FIELD}:
+    if not fields or set(fields) - {*PROFILE_KEYS, *SETTINGS}:
         raise ValueError(
-            "update_profile takes name, tone, guidelines, glossary and owner_self_approval only"
+            "update_profile takes name, tone, guidelines, glossary, owner_self_approval and "
+            "auto_fix_enabled only"
         )
     _check_voice(fields)
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        if SETTING_FIELD in fields:
+        if set(fields) & set(SETTINGS):
             # approver_state: the membership FOR SHARE, inactive while the email is unverified
             member = await uow.members.approver_state(principal.user_id)
             if member is None or member[0] not in SETTING_ROLES or not member[1]:
-                raise ForbiddenError("only an owner changes owner_self_approval")
+                raise ForbiddenError("only an owner changes a brand setting")
         row = await uow.tenants.lock_profile()
         if row is None:
             raise NotFoundError("tenant")
@@ -161,16 +176,18 @@ async def update_profile(
                 before=json.dumps({k: _current(before_view, k) for k in profile}, sort_keys=True),
                 after=json.dumps(profile, sort_keys=True),
             )
-        if SETTING_FIELD in changed:
+        for name, action in SETTINGS.items():
+            if name not in changed:
+                continue
             await uow.audit.write(
                 tenant_id=principal.tenant_id,
                 actor_type="user",
                 actor_user_id=principal.user_id,
-                action=SETTING_AUDIT,
+                action=action,
                 entity_type="tenant",
                 entity_id=principal.tenant_id,
-                before=json.dumps({SETTING_FIELD: before_view.owner_self_approval}),
-                after=json.dumps({SETTING_FIELD: changed[SETTING_FIELD]}),
+                before=json.dumps({name: _current(before_view, name)}),
+                after=json.dumps({name: changed[name]}),
             )
         if set(changed) & set(VOICE_FIELDS) and not await uow.job_runs.has_queued(
             JobKind.BRAND_EMBED, entity_id=principal.tenant_id, source=PROFILE_SOURCE

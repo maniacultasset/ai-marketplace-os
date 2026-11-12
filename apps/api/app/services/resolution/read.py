@@ -9,7 +9,10 @@ of each issue row the inbox shows.
   `marketplace_error_review` staff's, a fact or image question the seller's); an open row a live
   or succeeded fix job covers (`fix_lanes`: its payload's `issue_ids`, by `mode`) takes that
   job's lane; any other row the planner's own rules (`plan.label`). WARNINGs carry no lane. The
-  read never re-runs the engine's content or AI checks: the lane is what Kuinn did.
+  read never re-runs the engine's content or AI checks: the lane is what Kuinn did. Client item
+  20: an open row whose repair is held (a suggested fix, auto-fix off) is the seller's, and so,
+  with auto-fix off, is a row the executor kept as a suggested content fix or AI rewrite
+  (`waiting_fixes`).
 - `state_of(facts)` (pure): the precedence `live` > `fixing` > `checking` > `resubmitted` >
   `stopped` > `needs_marketplace` > `needs_you` > `fix_ready` > `idle`. A generation that failed
   (`failed/generation_failed`) with blocking rows open is `stopped` too, after `needs_you` (its
@@ -102,6 +105,82 @@ def _view(row: Any) -> IssueView:
     )
 
 
+def held_issues(repairs: Iterable[Any]) -> frozenset[uuid.UUID]:
+    """Client item 20: the issues whose live repair is held (a suggested fix, auto-fix off)."""
+    return frozenset(
+        r.source_issue_id
+        for r in repairs
+        if getattr(r, "held", False) and r.retired_at is None and r.source_issue_id is not None
+    )
+
+
+SUGGESTED_LANES: Final[frozenset[str]] = frozenset({"auto_content", "ai_field"})
+
+
+def waiting_fixes(
+    rows: Iterable[Any],
+    *,
+    repaired: Iterable[uuid.UUID] = (),
+    fixing: Mapping[uuid.UUID, Lane] | None = None,
+    critical_keys: frozenset[str] = frozenset(),
+    locked: Mapping[uuid.UUID, frozenset[str]] | None = None,
+) -> frozenset[uuid.UUID]:
+    """Client item 20, with the brand's auto-fix off: the open adapter ERRORs the executor kept
+    as a suggested content fix or AI rewrite (`approve_fix`, no repair row behind it). Such a row
+    has no repair, no linked task (a staff or seller task would be its lane) and no fix job, and
+    the planner's own rules give it `auto_content` or `ai_field` when the content fix and the AI
+    may run. The read never re-runs the engine's checks, so this is the executor's own outcome:
+    a content fix it could not make goes to a staff task, never here."""
+    repaired_ids = set(repaired)
+    covered = fixing or {}
+    out: set[uuid.UUID] = set()
+    for row in rows:
+        if (
+            row.status != "open"
+            or row.severity != "error"
+            or row.source not in ADAPTER_SOURCES
+            or row.human_task_id is not None
+            or row.id in repaired_ids
+            or row.id in covered
+            or (row.action_taken or "").startswith("repair:")
+        ):
+            continue
+        owner = getattr(row, "listing_id", None)
+        ctx = PlanContext(
+            critical_keys=critical_keys,
+            content_fixable=frozenset({row.id}),
+            ai_allowed=True,
+            locked_paths=(
+                (locked or {}).get(owner, frozenset()) if owner is not None else frozenset()
+            ),
+        )
+        found = label(_view(row), ctx)
+        if found is not None and found[0] in SUGGESTED_LANES:
+            out.add(row.id)
+    return frozenset(out)
+
+
+async def suggested_issues(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    issues: Sequence[Any],
+    repairs: Sequence[Any],
+    jobs: Sequence[Any],
+) -> frozenset[uuid.UUID]:
+    """Client item 20: one listing's issues whose fix waits for the seller's "Apply fixes": a
+    held repair, and (auto-fix off) a suggested content fix or AI rewrite (`waiting_fixes`)."""
+    held = held_issues(repairs)
+    if await uow.tenants.auto_fix_enabled():
+        return held
+    return held | waiting_fixes(
+        issues,
+        repaired={r.source_issue_id for r in repairs if r.source_issue_id is not None},
+        fixing=fix_lanes(jobs),
+        critical_keys=await uow.product_facts.critical_keys(),
+        locked={listing.id: frozenset(getattr(listing, "locked_paths", None) or ())},
+    )
+
+
 def fix_lanes(jobs: Iterable[Any]) -> dict[uuid.UUID, Lane]:
     """issue id -> the lane of the live or succeeded resolution fix job that covers it (the
     newest job wins: `jobs` come newest first)."""
@@ -134,11 +213,14 @@ def labels(
     fixing: Mapping[uuid.UUID, Lane] | None = None,
     recategorizable: Iterable[uuid.UUID] = (),
     locked: Mapping[uuid.UUID, frozenset[str]] | None = None,
+    held: Iterable[uuid.UUID] = (),
 ) -> dict[uuid.UUID, tuple[Lane, Cause]]:
     """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`;
     `recategorizable` the listings the seller may still recategorise (SI13, CP-D7); `locked`
-    each listing's locked paths (client feedback 14: a refusal on one is the seller's edit)."""
-    repaired_ids = set(repaired)
+    each listing's locked paths (client feedback 14: a refusal on one is the seller's edit);
+    `held` the issues whose repair waits for the seller to apply it (client item 20)."""
+    held_ids = set(held)
+    repaired_ids = set(repaired) - held_ids
     kinds = task_kinds or {}
     covered = fixing or {}
     ctx = PlanContext(critical_keys=critical_keys)
@@ -150,7 +232,9 @@ def labels(
             continue
         view = _view(row)
         lane: Lane | None = None
-        if row.id in repaired_ids or (row.action_taken or "").startswith("repair:"):
+        if row.status == "open" and row.id in held_ids:
+            lane = "seller"  # client item 20: a suggested fix the seller applies
+        elif row.id in repaired_ids or (row.action_taken or "").startswith("repair:"):
             lane = "auto_repair"
         elif row.status != "open" and row.resolution in CLOSED_LANES:
             lane = CLOSED_LANES[row.resolution]
@@ -163,9 +247,9 @@ def labels(
             continue
         owner = getattr(row, "listing_id", None)
         use = ctx_movable if owner in movable else ctx
-        held = (locked or {}).get(owner) if owner is not None else None
-        if held:
-            use = replace(use, locked_paths=held)
+        locked_here = (locked or {}).get(owner) if owner is not None else None
+        if locked_here:
+            use = replace(use, locked_paths=locked_here)
         found = label(view, use)
         if found is not None:
             out[row.id] = found
@@ -221,19 +305,28 @@ async def labels_for(
     if not errors:
         return {}
     repaired = await uow.resolution.repaired_issue_ids([r.id for r in errors])
+    held = await uow.resolution.repaired_issue_ids([r.id for r in errors], held=True)
     tasks = await uow.resolution.task_kinds(
         sorted({r.human_task_id for r in errors if r.human_task_id is not None})
     )
     jobs = await uow.resolution.fix_jobs(
         sorted({r.listing_id for r in errors if r.status == "open"})
     )
+    critical = await uow.product_facts.critical_keys()
+    fixing = fix_lanes(jobs)
+    if not await uow.tenants.auto_fix_enabled():
+        # client item 20: a content fix or AI rewrite Kuinn only suggests is the seller's too
+        held = held | waiting_fixes(
+            errors, repaired=repaired, fixing=fixing, critical_keys=critical
+        )
     return labels(
         errors,
         repaired=repaired,
         task_kinds={k: v[0] for k, v in tasks.items()},
-        critical_keys=await uow.product_facts.critical_keys(),
-        fixing=fix_lanes(jobs),
+        critical_keys=critical,
+        fixing=fixing,
         recategorizable=await recategorizable_listings(uow, errors),
+        held=held,
     )
 
 
@@ -572,6 +665,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         fixing=fix_lanes(jobs),
         recategorizable=await recategorizable_listings(uow, issues),
         locked={listing.id: frozenset(getattr(listing, "locked_paths", None) or ())},
+        held=await suggested_issues(uow, listing, issues, repairs, jobs),
     )
     live_tasks = {t.task_id: t.kind for t in tasks if t.status in LIVE_TASK}
     open_errors = [i for i in issues if i.status == "open" and i.severity == "error"]

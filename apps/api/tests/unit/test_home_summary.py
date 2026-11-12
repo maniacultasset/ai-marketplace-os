@@ -399,3 +399,95 @@ def test_marketplace_rows_follow_the_switches() -> None:
     assert flipkart["enabled"] is False and flipkart["account"] == "not_connected"
     assert flipkart["next_step"] == "connect"
     assert marketplace_rows({"amazon": "active"}, {}, settings)[0]["account"] == "connected"
+
+
+# ---- item 6: the bucket filters; item 18: the cross-brand overview ----
+
+
+def test_bucket_filters_are_the_wire_values_and_cover_every_bucket() -> None:
+    from typing import get_args
+
+    from app.api.v1.schemas.home import ListingBucketFilter
+    from app.repositories.home import BUCKET_FILTERS
+
+    assert set(BUCKET_FILTERS) == set(get_args(ListingBucketFilter))
+    singles = {k: v for k, v in BUCKET_FILTERS.items() if k != "any_live"}
+    assert all(v == (k,) for k, v in singles.items())
+    assert set(singles) == set(BUCKETS)
+    assert BUCKET_FILTERS["any_live"] == ("live", "partly_live")
+
+
+def test_bucket_sql_names_every_bucket() -> None:
+    from app.repositories.home import in_bucket, listing_bucket_sql
+    from sqlalchemy.dialects import postgresql
+
+    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    sql = str(listing_bucket_sql().compile(dialect=dialect))
+    assert sql.startswith("CASE WHEN")
+    for bucket in BUCKETS:
+        assert f"'{bucket}'" in sql, bucket
+    assert "ELSE 'draft'" in sql
+    with pytest.raises(KeyError):
+        in_bucket("everything")
+
+
+def _member(name: str, role: str = "owner", tenant: uuid.UUID | None = None) -> SimpleNamespace:
+    return SimpleNamespace(tenant_id=tenant or uuid.uuid4(), tenant_name=name, role=role)
+
+
+def test_brands_by_name_whatever_was_used_last() -> None:
+    from app.services.home import brand_order
+
+    rows = [_member("kuinn kids"), _member("Bharat"), _member("acme")]
+    assert [m.tenant_name for m in brand_order(rows)] == ["acme", "Bharat", "kuinn kids"]
+
+
+def _counted(**overrides: object) -> object:
+    from app.services.home import Counted
+
+    whole, per = tally(
+        [
+            BucketGroup("amazon", "validated", "not_submitted", False, False, 3),
+            BucketGroup("amazon", "blocked", "not_submitted", True, False, 2),
+            BucketGroup("flipkart", "approved", "not_submitted", False, False, 1),
+        ]
+    )
+    fields: dict[str, object] = {
+        "accounts": {"flipkart": "active"},
+        "sending": {"amazon": "paused", "flipkart": "open"},
+        "whole": whole,
+        "per": per,
+        "live_products": 0,
+        "own_work": 1,
+        "questions": 4,
+        "improve": 0,
+        "products": 6,
+    }
+    return Counted(**{**fields, **overrides})  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("role", "needs"),
+    [
+        ("owner", 2 + 4 + 2 + 1),  # fixes, answers, approves (not its own one) and publishes
+        ("reviewer", 2 + 2),  # rewrites and approves
+        ("admin", 0),
+    ],
+)
+def test_brand_row_counts_the_callers_role_there(role: str, needs: int) -> None:
+    from app.services.home import brand_row
+
+    m = _member("Bharat", role)
+    row = brand_row(m, uuid.uuid4(), _counted())  # type: ignore[arg-type]
+    assert row["tenant_id"] == m.tenant_id and row["name"] == "Bharat" and row["role"] == role
+    assert row["current"] is False and row["products"] == 6
+    assert row["listings"]["total"] == 6 and row["listings"]["problem"] == 2
+    assert row["listings"]["live_products"] == 0
+    assert row["needs_you"] == needs
+
+
+def test_brand_row_marks_the_current_brand() -> None:
+    from app.services.home import brand_row
+
+    m = _member("Acme")
+    assert brand_row(m, m.tenant_id, _counted())["current"] is True  # type: ignore[arg-type]

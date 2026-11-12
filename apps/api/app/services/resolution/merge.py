@@ -8,6 +8,11 @@ and `attributes.<key>`. Any other path is never a target (the planner gives it n
 
 Client feedback 14: a seller's section regenerate may also target `attributes`, the whole map
 (`services/sections.py`); it is never a planner target, so `mergeable` stays False for it.
+
+Client feedback 11 (schemas 2.1.0): `keyword_reasons` follow the keywords. A term keeps the reason
+of the side its keyword list came from (`result` when a `keywords.*` path is a target, else
+`base`), then the other side's; `used_in` is recomputed on the merged copy
+(`services/keyword_reasons.py`).
 """
 
 from __future__ import annotations
@@ -17,6 +22,8 @@ from collections.abc import Sequence
 from typing import Any, Final
 
 from mkos_schemas.listing import CanonicalListing
+
+from app.services.keyword_reasons import refresh_keyword_reasons
 
 _PLAIN: Final = frozenset(
     {
@@ -68,4 +75,8 @@ def merge_targets(
                 out["attributes"][key] = new["attributes"][key]
             else:
                 out["attributes"].pop(key, None)
-    return CanonicalListing.model_validate(out)
+    out["keyword_reasons"] = []
+    first, second = (
+        (result, base) if any(p.startswith("keywords.") for p in targets) else (base, result)
+    )
+    return refresh_keyword_reasons(CanonicalListing.model_validate(out), (first, second))

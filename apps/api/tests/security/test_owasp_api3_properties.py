@@ -75,7 +75,8 @@ TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
 # WireModel, `extra="ignore"`, so a newer peer's keys are dropped, never stored). The dry-run
 # writes nothing, and its own request model forbids extra keys at the top level.
 SEAM_MODELS = frozenset(
-    {"CanonicalListing", "Claim", "ImageRef", "ListingContent", "ListingKeywords"}
+    # KeywordReason (2.1.0): the canonical listing's keyword reasons, a seam model like Claim
+    {"CanonicalListing", "Claim", "ImageRef", "KeywordReason", "ListingContent", "ListingKeywords"}
 )
 TOKEN_OPS = frozenset(
     {

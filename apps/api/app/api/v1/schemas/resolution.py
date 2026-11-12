@@ -113,3 +113,15 @@ class ResolutionOut(WireModel):
         default_factory=list, description="Newest first."
     )
     next_step: NextStepOut
+
+
+class FixesAppliedOut(WireModel):
+    """Client item 20: the seller applied Kuinn's suggested fixes for one listing."""
+
+    released: Annotated[int, Field(ge=0)] = Field(
+        description="Suggested repairs made live by this call (0 on a replay)."
+    )
+    job_id: UUID | None = Field(
+        default=None,
+        description="The re-check, resend or fix job that now runs, or null when none was needed.",
+    )

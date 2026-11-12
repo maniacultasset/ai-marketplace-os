@@ -50,6 +50,7 @@ from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.db.session import USER_INFO_KEY
 from app.repositories.base import TenantScopedRepository
+from app.repositories.home import in_bucket
 from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate
 
 __all__ = [
@@ -96,6 +97,9 @@ class ListingFilter:
     status: str | None = None
     marketplace: str | None = None
     product_id: uuid.UUID | None = None
+    bucket: str | None = None
+    """A Home bucket filter (`app.repositories.home.BUCKET_FILTERS`), so the list a Home count
+    opens holds exactly the listings it counts."""
 
     @property
     def queue(self) -> bool:
@@ -415,6 +419,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
             stmt = stmt.where(Listing.marketplace == filters.marketplace)
         if filters.product_id is not None:
             stmt = stmt.where(Listing.product_id == filters.product_id)
+        if filters.bucket is not None:
+            stmt = stmt.where(in_bucket(filters.bucket))
         if filters.queue:
             stmt = stmt.where(Listing.paused_at.is_(None), Listing.archived_at.is_(None))
             key = (Listing.status_changed_at, Listing.id)

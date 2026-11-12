@@ -143,6 +143,9 @@ PRODUCT_FIELDS = frozenset(
         "hsn_code",
         "package",
         "country_of_origin",
+        # client item 15: the product itself, and the packed box's soft warnings
+        "item",
+        "package_warnings",
         "field_sources",
         "suggestions",
         "size_chart_suggestion",

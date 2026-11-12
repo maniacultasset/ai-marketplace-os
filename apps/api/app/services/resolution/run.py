@@ -55,6 +55,16 @@ own result committed.
    `auto_content` step, the same job runs `mode ai_field` (`target_fields`, one feedback line per
    path): the model's result is merged so only those paths change, and the version waits for a
    non-maker the same way. Paused AI sends those refusals to a staff content review.
+8. Client item 20 (0038): the brand's `tenants.auto_fix_enabled`. Off, the planner gives every
+   fix lane to the seller (`approve_fix`): a repair candidate is written `held` (a suggested fix
+   the adapter never applies, audited `listing_repair.suggested`), no fix job and no re-check or
+   resend is enqueued, and the issue stays open in "Needs you". `apply_fixes(principal,
+   listing_id)` (the seller's "Apply fixes", `POST /listings/{id}/fixes/apply`) runs this
+   executor once with auto-fix allowed (`approved_by`): the held repairs are released (audited
+   `listing_repair.approved`, the user as actor) and count as written, so the re-check, resend or
+   fix job follows as it would have with the setting on. A plain retry stays automatic. With the
+   setting turned back on, the next run releases the held repairs the same way (the system as
+   actor) instead of refusing them as a second live repair.
 """
 
 from __future__ import annotations
@@ -86,6 +96,7 @@ from app.services.auto_fix.text import seller_central_step, staff_step
 from app.services.issues import adapter_source
 from app.services.remote_preview import request_preview
 from app.services.resolution.plan import (
+    APPROVE_FIX,
     SELLER_ACTIONS,
     IssueView,
     PlanContext,
@@ -762,8 +773,38 @@ async def _recategorizable(uow: TenantUnitOfWork, listing: Any, rows: Sequence[A
     return await recategorizable(uow, listing)
 
 
+async def _audit_held(
+    uow: TenantUnitOfWork,
+    listing: Any,
+    job: JobRun,
+    rows: Mapping[uuid.UUID, Any],
+    *,
+    action: str,
+    user_id: uuid.UUID | None = None,
+) -> None:
+    """Client item 20: one audit row per suggested (`listing_repair.suggested`, the system) or
+    released (`listing_repair.approved`, the seller) repair. `rows` is repair id -> its rule and
+    attribute holder."""
+    for repair_id, repair in rows.items():
+        await uow.audit.write(
+            tenant_id=listing.tenant_id,
+            actor_type="system" if user_id is None else "user",
+            actor_user_id=user_id,
+            action=action,
+            entity_type="listing_repair",
+            entity_id=repair_id,
+            after=json.dumps({"rule": repair.rule, "attribute": repair.attribute}),
+            job_id=job.id,
+        )
+
+
 async def _resolve(
-    uow: TenantUnitOfWork, listing: Any, *, entry: Entry, job: JobRun
+    uow: TenantUnitOfWork,
+    listing: Any,
+    *,
+    entry: Entry,
+    job: JobRun,
+    approved_by: uuid.UUID | None = None,
 ) -> ResolutionResult:
     channel: Literal["live", "preview"] = "preview" if entry == "preview" else "live"
     rows = await uow.listing_issues.open_errors(
@@ -774,7 +815,10 @@ async def _resolve(
     if not rows:
         return ResolutionResult()
     stored = await _on_marketplace(uow, listing)
-    live = await uow.listing_repairs.live_for_listing(listing.id)
+    # client item 20: the held suggestions count as written for the one-live-row rules
+    live = await uow.listing_repairs.live_for_listing(listing.id, include_held=True)
+    held = {r.source_issue_id: r for r in live if r.held and r.source_issue_id is not None}
+    auto_fix = approved_by is not None or await uow.tenants.auto_fix_enabled()
     found = await _candidates(uow, listing, rows, stored=stored, entry=entry, live=live)
     candidates = found.candidates
     recurrence = await uow.resolution.recurrence_resolutions(
@@ -792,13 +836,29 @@ async def _resolve(
         approved_current=listing.approved_version_id == listing.current_version_id,
         cycles_used=cycles,
         locked_paths=frozenset(getattr(listing, "locked_paths", None) or ()),
+        auto_fix_enabled=auto_fix,
     )
     steps = plan([_view(r, recurrence) for r in rows], ctx)
     by_issue = {r.id: r for r in rows}
     ids: dict[uuid.UUID, uuid.UUID] = {}
+    suggested: dict[uuid.UUID, Any] = {}
+    released: dict[uuid.UUID, Any] = {}
+    if auto_fix:
+        # client item 20: the seller applied the suggestions, or the owner turned automatic
+        # fixes back on; each held repair goes live now (never left to a staff repair review)
+        for repair_id in await uow.listing_repairs.release([r.id for r in held.values()]):
+            freed = next(r for r in held.values() if r.id == repair_id)
+            released[repair_id] = freed
+            if freed.source_issue_id is not None and freed.source_issue_id in candidates:
+                ids[freed.source_issue_id] = repair_id
     for step in steps:
-        if step.lane != "auto_repair":
+        held_fix = step.action == APPROVE_FIX and step.issue_id in candidates
+        if step.lane != "auto_repair" and not held_fix:
             continue
+        if step.issue_id in ids:
+            continue  # released above
+        if held_fix and step.issue_id in held:
+            continue  # already suggested, still waiting for the seller
         repair, row = candidates[step.issue_id], by_issue[step.issue_id]
         inserted = await uow.listing_repairs.insert(
             NewRepair(
@@ -815,9 +875,12 @@ async def _resolve(
                 to_digest=repair.to_digest,
                 value_json=None if repair.value is None else [dict(v) for v in repair.value],
                 alias_version=repair.alias_version,
+                held=held_fix,
             )
         )
-        if inserted is not None:
+        if inserted is not None and held_fix:
+            suggested[inserted] = repair
+        elif inserted is not None:
             ids[step.issue_id] = inserted
     # a planned repair the store refused (a live repair of the attribute, or this key and rule
     # tried once already) is no automatic step: staff looks (never `auto_repair` with no repair)
@@ -830,7 +893,12 @@ async def _resolve(
         for s in steps
     )
     written = {i: candidates[i] for i in ids}
-    await _audit(uow, listing, job, written, ids)
+    fresh_ids = {i: r for i, r in ids.items() if r not in released}
+    await _audit(uow, listing, job, {i: candidates[i] for i in fresh_ids}, fresh_ids)
+    await _audit_held(uow, listing, job, suggested, action="listing_repair.suggested")
+    await _audit_held(
+        uow, listing, job, released, action="listing_repair.approved", user_id=approved_by
+    )
     tasks = await _human_steps(uow, listing, steps, by_issue)
     automatic = all(s.lane in ("auto_repair", "auto_content", "ai_field", "retry") for s in steps)
     content = any(s.lane in ("auto_content", "ai_field") for s in steps)
@@ -918,14 +986,20 @@ async def hand_over(
 
 
 async def resolve(
-    uow: TenantUnitOfWork, listing: Any, *, entry: Entry, job: JobRun
+    uow: TenantUnitOfWork,
+    listing: Any,
+    *,
+    entry: Entry,
+    job: JobRun,
+    approved_by: uuid.UUID | None = None,
 ) -> ResolutionResult | None:
-    """The executor (module docstring), in its own SAVEPOINT."""
+    """The executor (module docstring), in its own SAVEPOINT. `approved_by` is the seller who
+    applied Kuinn's suggested fixes (client item 20): this one run may fix automatically."""
     if listing is None or listing.paused_at is not None or listing.archived_at is not None:
         return None
     try:
         async with uow.session.begin_nested():
-            result = await _resolve(uow, listing, entry=entry, job=job)
+            result = await _resolve(uow, listing, entry=entry, job=job, approved_by=approved_by)
     except Exception as exc:  # the savepoint rolled back; the job's own writes stay
         log.error(
             "resolution.failed",

@@ -72,8 +72,11 @@ async def list_listings(
     product_id: uuid.UUID | None,
     after: Keyset | None,
     limit: int,
+    bucket: str | None = None,
 ) -> ListingsPage:
-    filters = ListingFilter(status=status, marketplace=marketplace, product_id=product_id)
+    filters = ListingFilter(
+        status=status, marketplace=marketplace, product_id=product_id, bucket=bucket
+    )
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, more = await uow.listings.page(filters, after=after, limit=limit)
         # the cursor is the page as read: a re-check below moves `status_changed_at`
