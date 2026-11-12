@@ -355,8 +355,8 @@ PROD_CODES: Final = {
 
 
 def test_prod_code_rows_present(rows: list[ErrorMapIn]) -> None:
-    # the version 1 rows (8560 has a version 2 since item 13)
-    by_code = {r.raw_value: r for r in rows if r.match_on == "code" and r.version == 1}
+    # each code's row in the file (8560's version 2 replaced its version 1 since item 13)
+    by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
     for code, (error_code, klass, hint, _lane) in PROD_CODES.items():
         row = by_code[code]
         assert (row.error_code.value, row.error_class.value, row.field_hint) == (
@@ -364,7 +364,7 @@ def test_prod_code_rows_present(rows: list[ErrorMapIn]) -> None:
             klass,
             hint,
         ), code
-        assert row.version == 1 and row.enabled, code
+        assert row.version == (2 if code == "8560" else 1) and row.enabled, code
         source = (row.policy_ref or {}).get("source")
         # only Amazon's public seller page documents the brand codes; the rest are generic
         want = "amazon-seller-docs" if code in ("5665", "5461") else "public-integrator-docs"
@@ -474,8 +474,10 @@ def test_gtin_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
 def test_8560_version_2_names_the_unapproved_exemption(rows: list[ErrorMapIn]) -> None:
     """Integrators report Amazon's 8560 when a GTIN exemption is claimed for a brand or category
     Amazon has not approved: version 2 says so and keeps the code's class."""
+    # the file holds one version per key (`test_error_map_coverage.py`): version 2 replaced the
+    # version 1 row, which stays stored where it was loaded
     versions = sorted(r.version for r in rows if r.match_on == "code" and r.raw_value == "8560")
-    assert versions == [1, 2]
+    assert versions == [2]
     row = _best(rows)["8560"]
     assert row.version == 2
     assert (row.error_code.value, row.error_class.value, row.field_hint) == (
