@@ -206,7 +206,7 @@ async def _apply(
     listings = await conversion.listings(uow, row)
     stamp = fact_stamp(datetime.now(UTC))
     converted = row.variation_theme is None
-    if converted:
+    if converted:  # the update expires `row`: only `style` and `stored` are read after it
         exempt = await conversion.drop_identity(uow, row)
     else:  # a later size joins an exempt family exempt, or the style would read as not exempt
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
@@ -214,9 +214,9 @@ async def _apply(
     if len(size_run) > MAX_SIZES:  # ck_products_size_run: refuse here, never a 500 from the DB
         raise InputError(ErrorCode.VALIDATION_FAILED, "sizes")
     if converted:
-        await uow.products.update_one(row.id, variation_theme="size", size_run=size_run)
+        await uow.products.update_one(style.id, variation_theme="size", size_run=size_run)
     else:
-        await uow.products.update_one(row.id, size_run=size_run)
+        await uow.products.update_one(style.id, size_run=size_run)
     created = await _make_children(uow, principal, style, new, exempt=exempt, stamp=stamp)
     await MatrixCellRepository(uow.session, principal.tenant_id).check_now()
     await conversion.supersede(uow, listings, UserActor(principal.user_id))

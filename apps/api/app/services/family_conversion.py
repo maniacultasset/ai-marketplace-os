@@ -46,7 +46,8 @@ def blocker(row: Product) -> str | None:
 
 async def drop_identity(uow: TenantUnitOfWork, row: Product) -> bool:
     """Clear the standalone's exemption (or `not_applicable`) before it takes a theme; True
-    when it was GTIN-exempt, so every new variant without a barcode is exempt too."""
+    when it was GTIN-exempt, so every new variant without a barcode is exempt too. The update
+    expires `row`: the caller reads nothing from it afterwards."""
     exempt = row.identifier_status == "exempt"
     provenance = dict(row.provenance or {})
     if row.identifier_status is not None or IDENTITY_KEY in provenance:
