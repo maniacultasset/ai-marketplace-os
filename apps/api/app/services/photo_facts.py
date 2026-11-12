@@ -57,6 +57,7 @@ __all__ = [
     "same_as_rejected",
     "screen",
     "template_spelling",
+    "with_photo_writes",
 ]
 
 V1_KEYS: Final = (
@@ -580,6 +581,34 @@ class PhotoDecision:
     writes: tuple[PhotoWrite, ...] = ()
     tasks: tuple[PhotoTask, ...] = ()
     dropped: tuple[tuple[str, str], ...] = ()
+
+
+def with_photo_writes(facts: ProductFacts, decision: PhotoDecision) -> ProductFacts:
+    """`facts` as `apply_photo_decision` leaves them when every write lands: each write an
+    unconfirmed `ai` fact (value and normalized the template's spelling). The generation worker
+    builds the version and its re-check from these, because the persist stamps the re-read
+    digest on that re-check (`recheck_digest`) and the preview overlays the re-read facts: a
+    colour read from the photo must not be "missing" in the one and sent in the other (client
+    Chrome pass B14). A key a seller, document or PIM value holds is never a write (`screen`)."""
+    if decision.run_id is None or not decision.writes:
+        return facts
+    attributes = dict(facts.attributes)
+    for write in decision.writes:
+        stored = attributes.get(write.key)
+        if stored is not None and not is_unconfirmed_ai(stored):
+            continue  # the store's compare-and-set keeps a seller value too
+        attributes[write.key] = ResolvedFact(
+            key=write.key,
+            value=write.value,
+            normalized=write.value,
+            source="ai",
+            captured_via="agent",
+            agent_run_id=str(decision.run_id),
+            confidence=write.confidence,
+            evidence_ref=f"image:{write.image_id}",
+            is_critical=False if stored is None else stored.is_critical,
+        )
+    return facts.model_copy(update={"attributes": attributes})
 
 
 def _photo_run(records: Sequence[AgentRunRecord]) -> UUID | None:

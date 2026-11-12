@@ -95,6 +95,7 @@ from app.services.photo_facts import (
     photo_read_skip,
     photo_set,
     screen,
+    with_photo_writes,
 )
 from app.services.pipeline_deps import SeamPortError, build_pipeline_deps
 from app.services.resolution.merge import merge_targets
@@ -556,6 +557,21 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
             tasks=len(decision.tasks),
             dropped=[reason for _key, reason in decision.dropped],
         )
+        if trusted.listing is not None and decision.writes:
+            # Client Chrome pass B14: the persist writes these values and stamps the re-read
+            # digest on the re-check, and the preview overlays the re-read facts. So the version
+            # and its re-check take them too: a colour read from the photo is never "missing"
+            # in the checks while the marketplace preview sends it.
+            after = with_photo_writes(facts, decision)
+            relisted = seller_overlay(trusted.listing, after, rules.template)
+            if relisted != trusted.listing:
+                trusted = dataclasses.replace(trusted, listing=relisted)
+                report = recheck(relisted, rules, product, rejections=rejections)
+                move = map_outcome(
+                    trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
+                )
+                if fix is not None and move.to == "validated":
+                    move = NEEDS_REVIEW
         photo = {
             "photo": decision,
             "pre_facts": facts,
