@@ -244,14 +244,16 @@ def _role_block(entrypoint: Path, role: str) -> list[str]:
 def test_entrypoint_migrate_role_loads_platform_data_in_order(entrypoint: Path) -> None:
     """The migrate job: the schema, the dictionary the facts guard reads, then the platform rules
     before the templates (generation is gated on a current template only, so a failed rules load
-    must leave no category generatable), then the Amazon error map (SI9). No path arguments (the CLI's defaults ship in the image)
-    and no shell variables (`set -eu`); only the last command execs."""
+    must leave no category generatable), then the Amazon error map (SI9) and the Flipkart one
+    (feedback item 20). No path arguments (the CLI's defaults ship in the image) and no shell
+    variables (`set -eu`); only the last command execs."""
     assert _role_block(entrypoint, "migrate") == [
         "python -m app.cli db migrate",
         "python -m app.cli dictionary sync",
         "python -m app.cli rules load",
         "python -m app.cli templates load",
-        "exec python -m app.cli errors load",
+        "python -m app.cli errors load",
+        "exec python -m app.cli errors load --marketplace flipkart",
     ]
 
 

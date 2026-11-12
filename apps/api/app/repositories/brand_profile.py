@@ -3,9 +3,11 @@ S18 D6).
 
 Exactly: `tone`, `guidelines`, `glossary` (the tenant row) and `brand_names`, `brand_owner_type`,
 `content_locale`, `brand_description` (the brand profile row; the description cut to 2000
-characters). Never `website_url`, `logo_storage_key` or a party id. A tenant with no
-`brand_profiles` row gets the tenant fields plus `content_locale` `en-IN` and an empty
-`brand_names`. Another tenant reads as an empty profile.
+characters) and `brand_voice` (client feedback item 19: the stored answers as a dict, or None;
+`build_context` re-reads them through `services.brand_voice.voice_for_prompt`). Never `website_url`, `logo_storage_key` or a
+party id. A tenant with no `brand_profiles` row gets the tenant fields plus `content_locale`
+`en-IN`, an empty `brand_names` and no description or voice. Another tenant reads as an empty
+profile. The voice shapes tone and emphasis only; the product facts stay in charge.
 
 SI8 (CP-D1, CP-D9): `brand_choices()` are the tenant's own brand names (its non-blank
 `brand_profiles.brand_names`, then `tenants.name`), read through this repository's tenant scope;
@@ -31,7 +33,12 @@ PROMPT_KEYS: Final = (
     "brand_owner_type",
     "content_locale",
     "brand_description",
+    "brand_voice",
 )
+
+
+def _voice(raw: object) -> dict[str, Any] | None:
+    return dict(raw) if isinstance(raw, dict) else None
 
 
 class _Brand(TenantScopedRepository[BrandProfile]):
@@ -56,6 +63,7 @@ class BrandPromptRepository(TenantScopedRepository[Tenant]):
                     BrandProfile.brand_owner_type,
                     BrandProfile.content_locale,
                     BrandProfile.brand_description,
+                    BrandProfile.brand_voice,
                 )
             )
         ).one_or_none()
@@ -68,6 +76,7 @@ class BrandPromptRepository(TenantScopedRepository[Tenant]):
             "brand_owner_type": None if brand is None else brand.brand_owner_type,
             "content_locale": DEFAULT_LOCALE if brand is None else brand.content_locale,
             "brand_description": None if description is None else description[:DESCRIPTION_MAX],
+            "brand_voice": _voice(None if brand is None else brand.brand_voice),
         }
 
     async def brand_choices(self) -> tuple[str, ...]:

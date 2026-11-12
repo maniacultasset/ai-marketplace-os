@@ -42,7 +42,7 @@ from mkos_schemas.listing import CanonicalListing
 from pydantic import ValidationError
 
 from app.services.rejected_values import with_rejections
-from app.services.rules_engine import evaluate
+from app.services.rules_engine import evaluate, is_recommendation
 from app.services.rules_loader import LoadedRules
 
 MAX_AGENT_RUNS: Final = 100
@@ -243,6 +243,8 @@ def map_outcome(
     if report.blocking:
         return BLOCKED
     failed_block = any(getattr(b, "status", None) == "failed" for b in blocks)
-    if report.errors or failed_block or terminal_state in ("needs_review", "blocked"):
+    # feedback item 10: a missing recommended attribute alone keeps a clean listing `validated`
+    flagged = [e for e in report.errors if not is_recommendation(e)]
+    if flagged or failed_block or terminal_state in ("needs_review", "blocked"):
         return NEEDS_REVIEW
     return VALIDATED

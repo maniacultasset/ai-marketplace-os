@@ -24,9 +24,9 @@ def test_amazon_seed_templates_two_categories() -> None:
 
     got = [(t.template.marketplace.value, t.template.category, t.version, t.product_type) for t in seed_templates()]  # fmt: skip
     assert got == [
-        ("amazon", "ethnic_wear_kurta_sets", 3, "KURTA"),  # SI2
-        ("amazon", "tshirts", 2, "SHIRT"),  # SI2
-        ("amazon", "home_decor_lamps", 2, "LAMP"),  # A2
+        ("amazon", "ethnic_wear_kurta_sets", 4, "KURTA"),  # SI2, feedback item 10
+        ("amazon", "tshirts", 3, "SHIRT"),  # SI2, feedback item 10
+        ("amazon", "home_decor_lamps", 3, "LAMP"),  # A2, feedback item 10
     ]
     for seed in seed_templates():
         assert seed.template.variation_themes == THEMES[seed.template.category]
@@ -105,9 +105,9 @@ def test_flipkart_seed_templates_two_categories() -> None:
 
     got = [(t.template.marketplace.value, t.template.category, t.version, t.product_type) for t in flipkart_seed_templates()]  # fmt: skip
     assert got == [
-        ("flipkart", "ethnic_wear_kurta_sets", 3, "kurta"),  # SI2
-        ("flipkart", "tshirts", 2, "t_shirt"),  # SI2
-        ("flipkart", "home_decor_lamps", 2, "table_lamp"),  # A2
+        ("flipkart", "ethnic_wear_kurta_sets", 4, "kurta"),  # SI2, feedback item 10
+        ("flipkart", "tshirts", 3, "t_shirt"),  # SI2, feedback item 10
+        ("flipkart", "home_decor_lamps", 3, "table_lamp"),  # A2, feedback item 10
     ]
     for seed in flipkart_seed_templates():
         assert seed.template.variation_themes == THEMES[seed.template.category]
@@ -187,8 +187,9 @@ def test_flipkart_seed_templates_s9_v1_unchanged() -> None:
 
 LAMP_KEYS = ("lamp_type", "lamp_material", "shade_material", "light_source_type")
 # The kurta and tshirts entries of `platform_template_loads()`: unchanged by A2; SI2's new
-# versions (Amazon kurta v3 / tshirts v2, Flipkart kurta v3 / t_shirt v2) moved the pin once.
-APPAREL_TEMPLATES_SHA256 = "58a98deb1fe516ee3269ff4fa20790f862d8e6dc0ebcb5bafea2b15584fa8c12"
+# versions (Amazon kurta v3 / tshirts v2, Flipkart kurta v3 / t_shirt v2) moved the pin once, and
+# feedback item 10's (kurta v4 / tshirts v3, recommended attributes) once more.
+APPAREL_TEMPLATES_SHA256 = "a640c30245d7688c1e48171015415ba0c51c45aa164d26f6de545a08b3c106db"
 
 
 def test_platform_dictionary_file_loads() -> None:
@@ -222,7 +223,7 @@ def test_lamp_templates_require_the_seeded_rule_attributes() -> None:
 
     for seed in (_lamp(seed_templates()), _lamp(flipkart_seed_templates())):
         template = seed.template
-        assert seed.version == 2
+        assert seed.version == 3
         assert template.required_attributes == ["color", "product_dimensions"]
         assert {k for k, s in template.specs.items() if s.requirement == "required"} == {
             "color",
@@ -327,7 +328,8 @@ def test_si2_fact_specs_optional_and_versions(marketplace: str, category: str) -
     seed = _apparel(marketplace, category)
     for key in ("fiber_composition", "manufacturer", "country_of_origin"):
         assert seed.template.specs[key].requirement == "optional"
-    assert seed.version == (3 if category == "ethnic_wear_kurta_sets" else 2)
+    # SI2's versions, each one up for feedback item 10's recommended attributes
+    assert seed.version == (4 if category == "ethnic_wear_kurta_sets" else 3)
 
 
 def test_si2_amazon_value_maps() -> None:
@@ -433,3 +435,34 @@ def test_enum_match_needs_one_clear_match() -> None:
     assert enum_match("slim fit", ["Slim", "Slim Fit"]) == "Slim Fit"  # exact wins
     assert enum_match("regular", ["Regular Fit", "Regular Neck"]) is None  # two answers: none
     assert enum_match("cotton", ["Cotton Lycra"]) is None
+
+
+# ---- client feedback item 10: recommended attributes ----
+
+RECOMMENDED = {
+    "ethnic_wear_kurta_sets": ["fit", "kurta_type", "neckline", "pattern", "sleeve_length"],
+    "tshirts": ["fit", "neckline", "pattern", "sleeve_length"],
+    "home_decor_lamps": ["lamp_material", "lamp_type", "light_source_type", "shade_material"],
+}
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+@pytest.mark.parametrize("category", sorted(RECOMMENDED))
+def test_recommended_attributes_are_optional_mapped_specs(marketplace: str, category: str) -> None:
+    from app.services.rules_engine import requirement_levels
+
+    (seed,) = [
+        s
+        for s in _all_seeds()
+        if s.template.marketplace.value == marketplace and s.template.category == category
+    ]
+    template = seed.template
+    assert template.recommended_attributes == RECOMMENDED[category]
+    for key in template.recommended_attributes:
+        # sent like any optional key: an optional spec the adapter maps, never required
+        assert key in template.optional_attributes
+        assert template.specs[key].requirement == "optional"
+        assert template.specs[key].marketplace_field
+    levels = requirement_levels(template)
+    assert sorted(k for k, v in levels.items() if v == "recommended") == RECOMMENDED[category]
+    assert {k for k, v in levels.items() if v == "required"} == set(template.required_attributes)

@@ -57,6 +57,8 @@ POLICIES: dict[str, frozenset[str]] = {
     "ai_credit_state": frozenset({"acs_read", "acs_write", "t_platform", "t_migrator"}),
     # 0022 (SI11): the plain template
     "listing_repairs": TEMPLATE,
+    # 0029 (client feedback 11 Nov): the plain template
+    "sku_counters": TEMPLATE,
 }
 MFA_TABLES = frozenset(
     {"user_mfa_factors", "user_recovery_codes", "mfa_challenges", "user_password_history"}

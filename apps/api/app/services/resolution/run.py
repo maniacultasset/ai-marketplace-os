@@ -791,6 +791,7 @@ async def _resolve(
         repair_rejected=found.rejected,
         approved_current=listing.approved_version_id == listing.current_version_id,
         cycles_used=cycles,
+        locked_paths=frozenset(getattr(listing, "locked_paths", None) or ()),
     )
     steps = plan([_view(r, recurrence) for r in rows], ctx)
     by_issue = {r.id: r for r in rows}

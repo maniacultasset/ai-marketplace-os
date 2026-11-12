@@ -88,3 +88,35 @@ def test_flipkart_never_sends_the_extras() -> None:
         if path.name == "constants.py":
             continue
         assert "EXTRA_NEEDS" not in path.read_text(encoding="utf-8"), path.name
+
+
+class _Templates:
+    async def current(self, marketplace: str, category: str) -> None:
+        return None
+
+
+class _Uow:
+    templates = _Templates()
+
+
+@pytest.mark.parametrize("on", [True, False])
+async def test_photo_views_add_the_size_chart_need(
+    monkeypatch: pytest.MonkeyPatch, on: bool
+) -> None:
+    """Feedback 7 and 8: with the checklist on, an apparel category needs the seller's size
+    chart (`size_measurements`) on both marketplaces and answers its photo views; lamps never
+    need a chart. Off, nothing changes."""
+    from app.services import photo_views, requirements
+
+    monkeypatch.setattr(photo_views, "enabled", lambda: on)
+    monkeypatch.setattr(requirements, "get_settings", lambda: None)
+    monkeypatch.setattr(requirements, "category_enabled", lambda slug, settings: True)
+    kurta = await requirements.requirements(_Uow(), "ethnic_wear_kurta_sets")  # type: ignore[arg-type]
+    lamps = await requirements.requirements(_Uow(), "home_decor_lamps")  # type: ignore[arg-type]
+    assert ("size_measurements" in kurta.amazon) is on
+    assert ("size_measurements" in kurta.flipkart) is on
+    assert "size_measurements" not in lamps.amazon + lamps.flipkart
+    views = [v.view for v in kurta.photo_views]
+    assert views == (
+        ["front", "back", "close_up", "size_chart", "lifestyle", "packaging_label"] if on else []
+    )

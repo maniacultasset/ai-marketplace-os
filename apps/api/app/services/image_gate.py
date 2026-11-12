@@ -11,7 +11,15 @@
   warning. These carry `source=rules_engine` and the issue code as `raw_code` (T84);
 - the pipeline's reports for that image and marketplace add a warning item for each failed
   `vision` check, whatever their `pass` (C8: vision results never block in v1). Their
-  deterministic checks are ignored: the stored report is the authority.
+  deterministic checks are ignored: the stored report is the authority;
+- feedback 7 and 8: `views`, the photo view and size chart findings (`photo_views.findings`,
+  empty while `PHOTO_VIEWS_ENABLED` is off), each kept at its own severity.
+- V1.1 (client feedback item 9): `matches` names what the photo match says of an image
+  (`photo_match.unresolved`): an unresolved `mismatch` (the photo may not show this product in
+  this colour) adds a blocking item; an unresolved `unsure`, a check still running and a
+  `mismatch` the seller kept each add a warning (`source=vision_model`), so the approver sees a
+  questioned photo the seller kept (maker-checker). The seller resolves a question by keeping the
+  photo (recorded and audited) or removing it.
 
 Every blocking item is `Severity.ERROR` and every warning `Severity.WARNING`, so an `ErrorReport`
 built from both keeps only the gate's blocking items in `.blocking`. S19's `approve_batch` calls
@@ -32,6 +40,12 @@ from mkos_schemas.images import ImageIssue, ImageReport
 from mkos_schemas.listing import CanonicalListing
 
 NOT_CHECKED: Final = "image not checked yet"
+MATCH_MESSAGES: Final = {
+    "mismatch": "This photo may not show this product in this colour. Keep it or remove it.",
+    "unsure": "We could not tell if this photo shows this product in this colour.",
+    "checking": "We are still checking that this photo shows this product in this colour.",
+    "kept_mismatch": "The seller kept this photo after the colour check questioned it.",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +89,8 @@ def evaluate_image_gate(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
     pipeline_reports: Sequence[ImageReport],
+    views: Sequence[ErrorItem] = (),
+    matches: Mapping[UUID, str] | None = None,
 ) -> ImageGateResult:
     blocking: list[ErrorItem] = []
     warnings: list[ErrorItem] = []
@@ -108,6 +124,15 @@ def evaluate_image_gate(
                           message=f"vision check failed: {check.check}", listing=listing,
                           issue=issues.get(check.check))
                 )  # fmt: skip
+        verdict = (matches or {}).get(ref.image_id)
+        if verdict in MATCH_MESSAGES:
+            severity = Severity.ERROR if verdict == "mismatch" else Severity.WARNING
+            (blocking if severity is Severity.ERROR else warnings).append(
+                _item(path, severity=severity, source=ErrorSource.VISION_MODEL,
+                      message=MATCH_MESSAGES[verdict], listing=listing)
+            )  # fmt: skip
+    for item in views:
+        (blocking if item.severity is Severity.ERROR else warnings).append(item)
     return ImageGateResult(blocking=tuple(blocking), warnings=tuple(warnings))
 
 
@@ -115,11 +140,12 @@ def image_issue_report(
     listing: CanonicalListing,
     stored: Mapping[UUID, ImageReport],
     pipeline_reports: Sequence[ImageReport],
+    views: Sequence[ErrorItem] = (),
 ) -> ErrorReport:
     """SI4 A14 (CP-D1): the gate's items the issue inbox syncs as source `vision_model`. The
     "not checked yet" item (`source=system`) is dropped: a pending check is not a seller issue.
     The approve gate keeps calling `evaluate_image_gate` unchanged."""
-    gate = evaluate_image_gate(listing, stored, pipeline_reports)
+    gate = evaluate_image_gate(listing, stored, pipeline_reports, views)
     items = [e for e in (*gate.blocking, *gate.warnings) if e.source is not ErrorSource.SYSTEM]
     failed = any(e.severity is Severity.ERROR for e in items)
     return ErrorReport(

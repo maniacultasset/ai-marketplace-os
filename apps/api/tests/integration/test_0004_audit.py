@@ -22,7 +22,7 @@ Conn = psycopg.Connection[tuple[Any, ...]]
 
 ALLOWLIST: dict[str, set[str]] = {
     "product": {"attributes", "provenance"},
-    "brand_profile": {"provenance"},
+    "brand_profile": {"provenance", "brand_voice"},  # 0033 (item 19): changed voice field names
     "listing": {"status", "status_reason", "paused_at", "archived_at"},
     "rules": {"enabled"},
     "membership": {"role", "is_active"},

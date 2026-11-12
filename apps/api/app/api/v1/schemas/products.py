@@ -40,7 +40,9 @@ from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
+from app.api.v1.schemas.catalog import PhotoViewRuleOut
 from app.api.v1.schemas.common import StorageKey
+from app.api.v1.schemas.images import PhotoMatchOut
 from app.services.intake_values import (
     MAX_DIMENSION,
     MAX_GRAMS,
@@ -473,6 +475,13 @@ class ProductImageOut(WireModel):
     view_expires_at: AwareDatetime | None = Field(
         default=None, description="When to fetch a fresh `view_url`; null with it."
     )
+    photo_match: PhotoMatchOut | None = Field(
+        default=None,
+        description=(
+            "V1.1: does the photo show this product in its colour; null when it is not checked "
+            "(the check is off, or the photo is not a product photo that passed its checks)."
+        ),
+    )
 
 
 class ColourwayOut(WireModel):
@@ -574,6 +583,27 @@ class SizeChartSuggestionOut(WireModel):
     )
     confidence: float | None = None
     read_at: AwareDatetime | None = None
+
+
+class PhotoViewOut(PhotoViewRuleOut):
+    """Feedback 7: one row of the product's photo checklist. `status`: `present`, `missing`, or
+    `invalid` (every photo in the view failed its checks; upload a new one). A size chart the
+    seller saved counts as present with no photo."""
+
+    status: Literal["present", "missing", "invalid"]
+    image_ids: list[UUID] = Field(default_factory=list)
+
+
+class SizeChartCheckOut(WireModel):
+    """Feedback 8: the size chart of a style or standalone. `required`: a marketplace's checklist
+    needs it before approval (show "Needed" while `saved` is false). `missing_sizes`: variant
+    sizes the saved chart has no row for (they block approval); `unused_sizes`: chart sizes no
+    variant has (a warning). Case and spaces are ignored when sizes are matched."""
+
+    required: bool
+    saved: bool
+    missing_sizes: list[str] = Field(default_factory=list)
+    unused_sizes: list[str] = Field(default_factory=list)
 
 
 class ProductOut(WireModel):
@@ -684,6 +714,20 @@ class ProductOut(WireModel):
         description=(
             "SI14: whether `POST /products/{product_id}/category-suggestion` can classify the "
             "product; while false it answers `unavailable` (hide the button). False on lists."
+        ),
+    )
+    photo_views: list[PhotoViewOut] = Field(
+        default_factory=list,
+        description=(
+            "Feedback 7: the photo checklist for the product's category, with what is present; "
+            "single reads only. Empty on lists and while the checklist is switched off."
+        ),
+    )
+    size_chart_check: SizeChartCheckOut | None = Field(
+        default=None,
+        description=(
+            "Feedback 8: the size chart check of a style or standalone; single reads only. "
+            "Null on lists, on a variant and while the checklist is switched off."
         ),
     )
     thumbnail_url: str | None = Field(

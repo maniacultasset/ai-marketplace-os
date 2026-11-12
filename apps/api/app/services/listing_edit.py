@@ -16,12 +16,18 @@
 7. SI4 A13: the questions (`ask_after_check`): tasks whose issues all closed are cancelled, and
    an open error row only the seller can fix opens or reuses one task; then the
    `human_task_opened` move to `blocked/human_task_open`. An edit is never auto-fixed (D6).
+
+Client feedback 14 (field locks, `services/sections.py`): every path the edit changes is locked,
+and `unlock` releases the paths it names (an edited path stays locked), written before step 3,
+so a PATCH that only unlocks changes no content and makes no version. No regenerate changes a
+locked path.
 """
 
 from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
 from typing import Any
 
 from mkos_schemas.codes import ErrorCode
@@ -40,7 +46,9 @@ from app.services.generation_context import previous_listing
 from app.services.issue_questions import ask_after_check
 from app.services.issues import sync_issues
 from app.services.listing_display import needs_you_counts
+from app.services.listing_reads import affected
 from app.services.listings import human_move, insert_run, rules_check, to_detail
+from app.services.sections import MAX_LOCKS, edited_paths, next_locks
 from app.services.seller_facts import FACTUAL_KEYS
 
 log = get_logger(__name__)
@@ -83,6 +91,7 @@ async def edit_content(
     content: ListingContent,
     keywords: ListingKeywords | None,
     attributes: dict[str, Any] | None,
+    unlock: Sequence[str] = (),
 ) -> dict[str, Any]:
     listing = await uow.listings.get_for_update(listing_id)
     if listing is None:
@@ -108,12 +117,51 @@ async def edit_content(
     if factual is not None:
         # 422 VALIDATION_FAILED at the attribute (the declared code; the value never echoed)
         raise InputError(ErrorCode.VALIDATION_FAILED, factual)
+    current = list(listing.locked_paths or [])
+    locks = next_locks(current, unlock=unlock, edited=edited_paths(old, new))
+    if locks != sorted(current):
+        if len(locks) > MAX_LOCKS:  # `ck_listings_locked_paths`: unlock some first
+            raise InputError(ErrorCode.VALIDATION_FAILED, "unlock")
+        listing = await uow.listings.set_locks(listing.id, locks)
+        await _locks_changed(uow, principal, listing.id, current, locks)
     changed = _changed(old, new)
     if not changed:
         summary = await uow.validation_runs.summary_for(parent.id)
         counts = await needs_you_counts(uow, [listing])
-        return to_detail(listing, old, summary, counts.get(listing.id, 0))
+        body = to_detail(listing, old, summary, counts.get(listing.id, 0))
+        body["affected_sections"] = await affected(uow, listing, parent)
+        return body
     return await save_edit(uow, principal, listing, parent, new, changed)
+
+
+async def _locks_changed(
+    uow: TenantUnitOfWork,
+    principal: Principal,
+    listing_id: uuid.UUID,
+    before: Sequence[str],
+    after: Sequence[str],
+) -> None:
+    """Client feedback 14: a released lock lets any later AI run rewrite the seller's text, so an
+    unlock is audited with who did it (paths only, never values); a new lock is the edit's own
+    audit row."""
+    added, removed = sorted(set(after) - set(before)), sorted(set(before) - set(after))
+    log.info(
+        "listing.locks_changed",
+        listing_id=str(listing_id),
+        locked=len(added),
+        unlocked=len(removed),
+    )
+    if not removed:
+        return
+    await uow.audit.write(
+        tenant_id=principal.tenant_id,
+        actor_type="user",
+        actor_user_id=principal.user_id,
+        action="listing.unlocked",
+        entity_type="listing",
+        entity_id=listing_id,
+        reason=("unlocked: " + ", ".join(removed))[:500],
+    )
 
 
 async def save_edit(
@@ -206,7 +254,10 @@ async def save_edit(
         changed=len(changed),
     )
     counts = await needs_you_counts(uow, [listing])
-    return to_detail(listing, stored, summary_of([run]), counts.get(listing.id, 0))
+    body = to_detail(listing, stored, summary_of([run]), counts.get(listing.id, 0))
+    # client feedback 14: an edit is not an AI write, so the answers it did not use still show
+    body["affected_sections"] = await affected(uow, listing, version)
+    return body
 
 
 async def edit(
@@ -217,6 +268,7 @@ async def edit(
     content: ListingContent,
     keywords: ListingKeywords | None,
     attributes: dict[str, Any] | None,
+    unlock: Sequence[str] = (),
 ) -> dict[str, Any]:
     """The route's transaction: the caller's unit of work (the user is the move's actor)."""
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -228,6 +280,7 @@ async def edit(
             content=content,
             keywords=keywords,
             attributes=attributes,
+            unlock=unlock,
         )
 
 

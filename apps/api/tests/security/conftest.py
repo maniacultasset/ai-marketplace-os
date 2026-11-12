@@ -156,6 +156,14 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         finished_at="2026-10-06T00:00:01Z", attempt=1,
     )  # fmt: skip
     import_id = ops_support.import_run(conn, seed, filename=f"{canary}.csv", job_id=import_job)
+    # client feedback 11 Nov: an answered category suggestion made before a product was saved
+    suggestion_id = ops_support.job_run(
+        conn, t, kind="image_compliance", entity_type="category_suggestion",
+        payload_json={"category_draft": {"text": {"title": f"{canary} kurta", "attributes": {}}}},
+        result_json={"status": "suggested", "candidates": [], "calibration_version": "v1"},
+        status="succeeded", started_at="2026-10-06T00:00:00Z",
+        finished_at="2026-10-06T00:00:01Z", attempt=1, created_by=operator,
+    )  # fmt: skip
     ops_support.import_row(conn, t, import_id)
     image_id = f.image(conn, t, product_id)
     # SI7: the live main with a clean copy (a candidate's source) and a ready candidate of it
@@ -233,6 +241,7 @@ def _side(conn: Any, world: World, slug: str) -> Side:
     ids: dict[str, Any] = {
         "product_id": product_id,
         "map_id": map_id,
+        "suggestion_id": suggestion_id,
         "account_id": account_id,
         "listing_id": listing_id,
         "listing_version_id": version_id,

@@ -10,7 +10,9 @@ import pytest
 REPO = Path(__file__).resolve().parents[4]
 
 
-@pytest.mark.parametrize("name", ["ERROR_MAP_FAKE_PATH", "ERROR_MAP_AMAZON_PATH"])
+@pytest.mark.parametrize(
+    "name", ["ERROR_MAP_FAKE_PATH", "ERROR_MAP_AMAZON_PATH", "ERROR_MAP_FLIPKART_PATH"]
+)
 def test_error_map_ships_in_the_image(name: str) -> None:
     from app import cli
 

@@ -64,6 +64,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("tenants_me", "GET", "/tenants/me"),
     # S16: the profile update, the document list and delete (40 + 3)
     ("tenants_me_update", "PATCH", "/tenants/me"),
+    ("tenants_create", "POST", "/tenants"),  # ADR-0032: an owner adds another brand
     ("brand_documents_upload", "POST", "/brand/documents"),
     ("brand_documents_list", "GET", "/brand/documents"),
     ("brand_documents_delete", "DELETE", "/brand/documents/{document_id}"),
@@ -97,6 +98,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_retry_fields", "POST", "/listings/{listing_id}/publish/retry-fields"),
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
     ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
+    ("listings_issue_history", "GET", "/listings/{listing_id}/issue-history"),
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -144,6 +146,16 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     # SI12: the size-chart read and the marketplace needs (100 + 2)
     ("size_chart_read_create", "POST", "/products/{product_id}/size-chart-read"),
     ("catalog_requirements_get", "GET", "/catalog/requirements"),
+    # client feedback 11 Nov: the category picker, the suggestion before save, the SKU help
+    ("catalog_categories_list", "GET", "/catalog/categories"),
+    ("catalog_category_suggest", "POST", "/catalog/category-suggestions"),
+    (
+        "catalog_category_suggestion_get",
+        "GET",
+        "/catalog/category-suggestions/{suggestion_id}",
+    ),
+    ("skus_availability", "GET", "/skus/availability"),
+    ("skus_suggest", "POST", "/skus/suggestion"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
     # V1.1 (client input 8 Nov): the size run from the saved size chart
@@ -151,8 +163,12 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("imports_column_map_create", "POST", "/imports/column-maps"),
     ("imports_column_map_get", "GET", "/imports/column-maps/{map_id}"),
     ("imports_column_map_confirm", "POST", "/imports/column-maps/{map_id}/confirm"),
+    # V1.1 (client feedback item 9): keep a photo the photo match questioned
+    ("images_photo_match_keep", "POST", "/images/{image_id}/photo-match/keep"),
     ("analytics_quality", "GET", "/analytics/quality"),
     ("admin_quality", "GET", "/admin/quality"),
+    # client feedback 11 Nov 2026, item 6: the Home summary
+    ("home_summary", "GET", "/home/summary"),
 )
 
 E = ErrorCode
@@ -293,10 +309,14 @@ D9_IDEMPOTENT = {
     "imports_column_map_create",  # SI14
     "imports_column_map_confirm",  # SI14
     "products_size_run_create",  # V1.1
+    "catalog_category_suggest",  # client feedback 11 Nov
+    "skus_suggest",  # client feedback 11 Nov
+    "images_photo_match_keep",  # V1.1
     "image_candidates_accept",  # SI7
     "image_candidates_reject",  # SI7
     "tasks_close",  # SI9
     "products_bulk_delete",  # PD1
+    "tenants_create",  # ADR-0032
 }
 
 
@@ -370,6 +390,7 @@ STEP_UP = {
     "auth_google_unlink": "any",  # ADR-0020
     "invites_create": "any",  # SI5
     "members_password_reset": "otp",  # SI5: a reset link needs a TOTP code
+    "tenants_create": "any",  # ADR-0032
 }
 # ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
 # dropped it (still platform-admin only) and the window is 30 minutes
@@ -469,7 +490,12 @@ def test_operation_count() -> None:
     # 102 through SI13; SI14 adds the category suggestion, three column-map ops and the two
     # quality reads; PD1 adds the product delete and its bulk form; V1.1 adds the size run;
     # the ADR-0019 amendment adds the sign-up status poll
-    assert len(OPS) == 112
+    # FB6 (client feedback item 6) adds the Home summary; the client feedback of 11 Nov adds the
+    # category list, the draft suggestion and its read, and the SKU check and suggestion
+    # FB20 (client feedback item 20) adds the listing issue history
+    # V1.1 adds the photo match keep
+    # ADR-0032 adds the brand create
+    assert len(OPS) == 121
 
 
 def test_error_codes_per_d2() -> None:
@@ -493,6 +519,8 @@ def test_error_codes_per_d2() -> None:
         "image_candidates_accept": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "image_candidates_reject": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
+        # V1.1: no question on the photo
+        "images_photo_match_keep": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
         "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
             E.IDEMPOTENCY_KEY_REUSED,
             E.INVALID_STATUS_TRANSITION,
@@ -541,6 +569,7 @@ def test_error_codes_per_d2() -> None:
         "listings_regenerate",
         "size_chart_read_create",
         "products_category_suggest",  # SI14
+        "catalog_category_suggest",  # client feedback 11 Nov
     }
     for op in OPS.values():
         codes = op.error_codes
@@ -628,7 +657,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1",
+        "SI12", "SI14", "PD1", "FB6", "ADR-0032",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

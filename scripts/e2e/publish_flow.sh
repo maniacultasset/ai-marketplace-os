@@ -11,6 +11,8 @@
 # fields, retry-fields (202) resends exactly those two paths as one PATCH and the listing is
 # `published`. No token is 401; bharat gets 404 for acme's listing and its submissions. The run's
 # SKUs are removed from the fake at the end and acme's Amazon account is revoked.
+# Each product carries a saved size chart and a front, back and close-up photo before it
+# generates, so the photo view checklist (`PHOTO_VIEWS_ENABLED`) is met.
 #
 # Usage: FAKE_URL=<fake> WORKER_START=<cmd> WORKER_STOP=<cmd> ERRORS_LOAD=<cmd> \
 #        scripts/e2e/publish_flow.sh [base_url]
@@ -19,6 +21,9 @@
 # bounded at 60 s. On failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: FAKE_URL=<fake> WORKER_START=<cmd> WORKER_STOP=<cmd> ERRORS_LOAD=<cmd> $0 [base_url]" >&2
@@ -175,13 +180,14 @@ wait_listing() {
   done
 }
 
-# generated_approved SKU: a product, a stub generation and the reviewer's approval; sets
-# $listing_id and $version.
+# generated_approved SKU: a product (with its size chart and photos), a stub generation and the
+# reviewer's approval; sets $listing_id and $version.
 generated_approved() {
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"identifier_exemption\": true}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Publish Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   local product job
   product="$(json 'b["id"]')"
+  photo_views_upload "$api" "$operator" "$product" "e2e-pub-img-$1" "$work" || fail "the photo checklist is not met"
   call POST "$api/listings/generate" "$operator" "e2e-pub-gen-$1" "{\"product_id\": \"$product\", \"marketplace\": \"amazon\"}"
   expect 202
   job="$(json 'b["job_id"]')"

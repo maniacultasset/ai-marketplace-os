@@ -15,6 +15,22 @@ guard keeps it immutable; only `is_current` moves):
 S9's v1 rows (`seed_ops._template_rows`) are not touched. A2 (ai-deps PLAN) adds the
 `home_decor_lamps` mappings for both marketplaces at the end of this module.
 
+Client feedback item 10 (11 Nov 2026) adds `recommended_attributes` to every mapping, one
+version up each (Amazon kurta v4, tshirts v3, lamps v3; Flipkart the same): optional keys that
+help search and filters and that the seller can fill on the product page. The levels, per key:
+
+| Level | Kurta sets | T-shirts | Lamps |
+|---|---|---|---|
+| required | color, fabric_type | color, fabric_type | color, product_dimensions |
+| recommended | fit, kurta_type, neckline, pattern, sleeve_length | fit, neckline, pattern, sleeve_length | lamp_material, lamp_type, light_source_type, shade_material |
+| optional | country_of_origin, fiber_composition, manufacturer, number_of_pieces, size | the kurta list without kurta_type, plus product_weight | country_of_origin |
+
+`country_of_origin` and `manufacturer` stay optional here because the adapters already require
+them as seller facts; `size` is a variation axis. A missing recommended key is a non-blocking
+warning (`rules_engine.template`); a value is only ever filled from a fact. To change a level,
+edit the lists here, regenerate `seed_data/platform_templates.json` and bump the version: the
+migrate job's `templates load` promotes it with no code change.
+
 Every Amazon name here (`product_type`, attribute names, enum spellings) is believed from the
 public SP-API product type definitions, not yet confirmed against a sandbox or a PTD fetch: DW1
 and DW2 confirm them, and `templates refresh` (T53) replaces them. The `required_attributes`
@@ -190,6 +206,9 @@ NECK_MAP: Final = {
     "v neck": "V-Neck",
 }
 THEMES: Final = [["size"], ["color"], ["size", "color"]]
+# feedback item 10: optional keys worth adding (search, filters), on the same keys both marketplaces
+APPAREL_RECOMMENDED: Final = ("fit", "neckline", "pattern", "sleeve_length")
+KURTA_RECOMMENDED: Final = tuple(sorted((*APPAREL_RECOMMENDED, "kurta_type")))
 
 
 def _enum(
@@ -241,6 +260,7 @@ def _kurta() -> dict[str, Any]:
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
         "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "recommended_attributes": list(KURTA_RECOMMENDED),
         "specs": specs,
         "variation_themes": THEMES,
     }
@@ -260,6 +280,7 @@ def _tshirt() -> dict[str, Any]:
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
         "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "recommended_attributes": list(APPAREL_RECOMMENDED),
         "specs": specs,
         "variation_themes": THEMES,
     }
@@ -279,9 +300,9 @@ TSHIRT_PRODUCT_TYPE: Final = "SHIRT"
 def seed_templates() -> list[SeedTemplate]:
     """The three Amazon mappings, as the S13 loader takes them (no database needed)."""
     return [
-        SeedTemplate(KURTA_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_kurta())),
-        SeedTemplate(TSHIRT_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_tshirt())),
-        SeedTemplate(LAMP_PRODUCT_TYPE, 2, CategoryTemplate.model_validate(_amazon_lamp())),
+        SeedTemplate(KURTA_PRODUCT_TYPE, 4, CategoryTemplate.model_validate(_kurta())),
+        SeedTemplate(TSHIRT_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_tshirt())),
+        SeedTemplate(LAMP_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_amazon_lamp())),
     ]
 
 
@@ -384,7 +405,9 @@ def _flipkart_apparel_specs() -> dict[str, Any]:
     }
 
 
-def _flipkart(category: str, extra: dict[str, Any]) -> dict[str, Any]:
+def _flipkart(
+    category: str, extra: dict[str, Any], recommended: tuple[str, ...] = APPAREL_RECOMMENDED
+) -> dict[str, Any]:
     specs = {**_flipkart_apparel_specs(), **extra}
     return {
         "marketplace": "flipkart",
@@ -392,6 +415,7 @@ def _flipkart(category: str, extra: dict[str, Any]) -> dict[str, Any]:
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
         "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "recommended_attributes": list(recommended),
         "specs": specs,
         "variation_themes": THEMES,
     }
@@ -403,13 +427,13 @@ FLIPKART_TSHIRT_VERTICAL: Final = "t_shirt"
 
 def flipkart_seed_templates() -> list[SeedTemplate]:
     """The three Flipkart mappings, as the S13 loader takes them (no database needed)."""
-    kurta = _flipkart("ethnic_wear_kurta_sets", {"kurta_type": _text("Type")})
+    kurta = _flipkart("ethnic_wear_kurta_sets", {"kurta_type": _text("Type")}, KURTA_RECOMMENDED)
     tshirt = _flipkart("tshirts", {})
     lamp = _flipkart_lamp()
     return [
-        SeedTemplate(FLIPKART_KURTA_VERTICAL, 3, CategoryTemplate.model_validate(kurta)),
-        SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 2, CategoryTemplate.model_validate(tshirt)),
-        SeedTemplate(FLIPKART_LAMP_VERTICAL, 2, CategoryTemplate.model_validate(lamp)),
+        SeedTemplate(FLIPKART_KURTA_VERTICAL, 4, CategoryTemplate.model_validate(kurta)),
+        SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 3, CategoryTemplate.model_validate(tshirt)),
+        SeedTemplate(FLIPKART_LAMP_VERTICAL, 3, CategoryTemplate.model_validate(lamp)),
     ]
 
 
@@ -428,6 +452,7 @@ LAMP_PRODUCT_TYPE: Final = "LAMP"
 FLIPKART_LAMP_VERTICAL: Final = "table_lamp"
 LAMP_THEMES: Final = [["color"]]
 LAMP_REQUIRED: Final = ("color", "product_dimensions")
+LAMP_RECOMMENDED: Final = ("lamp_material", "lamp_type", "light_source_type", "shade_material")
 LAMP_COLORS: Final = (
     "Beige",
     "Black",
@@ -462,6 +487,7 @@ def _lamp(marketplace: str, specs: dict[str, Any]) -> dict[str, Any]:
         "external_category_id": None,
         "required_attributes": list(LAMP_REQUIRED),
         "optional_attributes": sorted(k for k in specs if k not in LAMP_REQUIRED),
+        "recommended_attributes": list(LAMP_RECOMMENDED),
         "specs": specs,
         "variation_themes": LAMP_THEMES,
     }

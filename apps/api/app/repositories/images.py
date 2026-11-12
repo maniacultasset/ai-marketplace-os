@@ -8,6 +8,8 @@
   view's live keys, the orphan sweep's `registered_keys` and S19's `live_reports_for_images`.
 - SI12: the photo `role` (Back, Close-up) and `clear_role`, the product's live size chart, and the
   size-chart read result stored on the image (`metadata.size_chart_read`, fenced on the clean hash).
+- V1.1 (client feedback item 9): the photo match stored on the image (`metadata.photo_match`,
+  fenced on the clean hash and the match key), the seller's keep, and the gate's read.
 
 "Live" is `deleted_at IS NULL`. A replaced image is soft-deleted and its object kept (spec L10193
 "versions are kept"), so `get_by_key` and `registered_keys` count deleted rows too. Nothing here
@@ -94,6 +96,10 @@ class ImageDetail:
     clean_mime_type: str | None = None
     view_url: str | None = None
     view_expires_at: datetime | None = None
+    # V1.1: the stored `metadata.photo_match`, and the state the product read makes of it
+    # (`app.services.photo_match.read_state`)
+    photo_match_raw: Mapping[str, Any] | None = None
+    photo_match: Any = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -663,6 +669,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.created_at,
                 Image.metadata_["vision"].label("vision"),
                 Image.clean_mime_type,
+                Image.metadata_["photo_match"].label("photo_match"),
             )
             .order_by(slot_rank, Image.position, Image.created_at, Image.id)
         )
@@ -686,6 +693,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 created_at=row.created_at,
                 has_vision=isinstance(row.vision, Mapping),
                 clean_mime_type=row.clean_mime_type,
+                photo_match_raw=row.photo_match if isinstance(row.photo_match, Mapping) else None,
             )
             for row in (await self.db.execute(stmt)).all()
         ]
@@ -870,6 +878,96 @@ class ImageRepository(TenantScopedRepository[Image]):
             .returning(Image.id)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    # ---- V1.1: the variant photo match ----
+
+    async def write_photo_match(
+        self,
+        image_id: UUID,
+        value: Mapping[str, Any],
+        *,
+        source_hash: str,
+        expect_key: str | None = None,
+        expect_job: str | None = None,
+    ) -> bool:
+        """Store `value` as `metadata.photo_match` on a live image whose clean copy still has
+        `source_hash`; with `expect_key` / `expect_job`, only while the stored match still names
+        that key / job (a newer check, or other pixels, is never overwritten). False when nothing
+        was written."""
+        self._own_session()
+        current = Image.metadata_["photo_match"]
+        fences = [
+            Image.id == _uuid("image_id", image_id),
+            Image.deleted_at.is_(None),
+            Image.clean_content_hash == source_hash,
+            self._tenant_criterion(include_platform=False),
+        ]
+        if expect_key is not None:
+            fences.append(current["key"].astext == expect_key)
+        if expect_job is not None:
+            fences.append(current["job_id"].astext == expect_job)
+        stmt = self._scoped_write(
+            update(Image)
+            .where(*fences)
+            .values(
+                {
+                    Image.metadata_: Image.metadata_.op("||")(
+                        func.jsonb_build_object(
+                            "photo_match", cast(literal(json.dumps(dict(value))), JSONB)
+                        )
+                    )
+                }
+            )
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def keep_photo_match(self, image_id: UUID, *, user_id: UUID, at: datetime) -> bool:
+        """The seller keeps a photo the match questioned: `kept_by` and `kept_at` join the stored
+        `mismatch` or `unsure` match of a live image, once (a second keep changes nothing). False
+        when nothing was written."""
+        self._own_session()
+        current = Image.metadata_["photo_match"]
+        kept = cast(
+            literal(json.dumps({"kept_by": str(user_id), "kept_at": at.isoformat()})), JSONB
+        )
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.deleted_at.is_(None),
+                current["status"].astext.in_(("mismatch", "unsure")),
+                current["kept_at"].is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(
+                {
+                    Image.metadata_: Image.metadata_.op("||")(
+                        func.jsonb_build_object("photo_match", current.op("||")(kept))
+                    )
+                }
+            )
+            .returning(Image.id)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none() is not None
+
+    async def photo_matches_for_images(
+        self, image_ids: Sequence[UUID]
+    ) -> dict[UUID, tuple[Mapping[str, Any] | None, str | None]]:
+        """The approve gate: `(metadata.photo_match, clean_content_hash)` of the live images among
+        `image_ids`, in one SELECT; unknown, foreign or deleted ids are absent."""
+        ids = [_uuid("image_id", i) for i in image_ids]
+        if not ids:
+            return {}
+        stmt = (
+            self._select()
+            .where(Image.id.in_(ids), Image.deleted_at.is_(None))
+            .with_only_columns(Image.id, Image.metadata_["photo_match"], Image.clean_content_hash)
+        )
+        return {
+            image_id: (raw if isinstance(raw, Mapping) else None, clean)
+            for image_id, raw, clean in (await self.db.execute(stmt)).all()
+        }
 
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""

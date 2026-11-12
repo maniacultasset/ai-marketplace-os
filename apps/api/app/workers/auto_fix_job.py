@@ -17,6 +17,10 @@ refusals of one base version with no model call:
    generator, who is this version's maker, as approver), the refusals closed `deterministic_fix`
    with the trail text, and the dry run asked again with `trigger resolution`.
 
+Client feedback 14: a fix on a path the seller locked is dropped and the locked paths stay the
+base's (`sections.keep_locked`); nothing left -> "Kuinn could not fix it". The planner already
+gives a locked path to the seller, so this is the backstop.
+
 The reservation is zeroed on every path (no model call). The fix version is never resent on its
 own: a non-maker approves it and publishes ("Approve and resend").
 """
@@ -32,10 +36,12 @@ from mkos_schemas.enums import Marketplace
 from app.core.logging import get_logger
 from app.core.resolved_facts import for_rules, listing_facts_digest
 from app.repositories.uow import tenant_uow
+from app.services.generation_context import previous_listing
 from app.services.generation_persist import PersistPlan, Pins, make_persist
 from app.services.generation_result import BLOCKED, NEEDS_REVIEW, recheck
 from app.services.resolution.content import prepare
 from app.services.rules_loader import RuleLoadError, load_rules
+from app.services.sections import covered, keep_locked
 from app.workers.errors import JobFailed
 from app.workers.payloads import AutoFixPayload
 from app.workers.registry import JobContext, Outcome
@@ -83,7 +89,14 @@ async def run_auto_fix(ctx: JobContext) -> Outcome:
             raise _fail(ctx, ErrorCode.NOT_FOUND, "The product is gone.")
         rejections = await uow.products.photo_rejections(listing.product_id)
         created_by = base.generated_by_user_id
+        before = previous_listing(listing, base)
     fixed, fixes = found
+    locked = tuple(listing.locked_paths or ())
+    if locked:  # client feedback 14: the planner never sends a locked path; never rewrite one
+        fixes = tuple(f for f in fixes if not covered(f.record.field, locked))
+        if not fixes or before is None:
+            raise _fail(ctx, ErrorCode.GENERATION_FAILED, NOT_FIXED)
+        fixed = keep_locked(fixed, before, locked)
     report = recheck(fixed, rules, for_rules(family[0]), rejections=rejections)
     move = BLOCKED if report.blocking else NEEDS_REVIEW
     version_id = uuid.uuid4()

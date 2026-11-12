@@ -11,7 +11,9 @@ Runs against a fresh local stack (`make load-smoke`: scripts/load/run.sh brings 
 2. 20 concurrent `POST /listings/generate` (distinct keys) for 20 of the imported products, then
    one `GET /listings` every 3 s (never one poll per job): 20/20 `succeeded`.
 3. While (2) runs, bharat starts one generation (it must start within 60 s) and publishes a
-   listing approved before the load (its publish job must leave `queued` within 30 s).
+   listing approved before the load (its publish job must leave `queued` within 30 s). That
+   listing's product carries a saved size chart and a front, back and close-up photo before it
+   generates, so the photo view checklist (`PHOTO_VIEWS_ENABLED`) is met at its approval.
 4. 0 dead letters (`GET /jobs/{id}` per job at the end), 0 5xx, 0 429, and the per-tenant request
    rate counted here stays at or under 100 a minute (D2: under the 120/min tenant limit).
 
@@ -49,6 +51,11 @@ IMPORT_DEADLINE_S: Final = 600
 GENERATE_DEADLINE_S: Final = 600
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 SETTLED_LISTING: Final = frozenset({"validated", "needs_review", "failed", "blocked"})
+# feedback 7 and 8: a Kurta set needs the seller's saved size chart and a front photo, and
+# recommends a back and a close-up one (scripts/e2e/lib/photo_views.sh does the same over curl)
+SIZE_CHART: Final = {"unit": "cm", "basis": "garment", "rows": [{"size": "M", "chest": 100}]}
+PHOTO_VIEWS: Final = (("main", None), ("secondary", "back"), ("secondary", "close_up"))
+PHOTO_DEADLINE_S: Final = 60
 
 # AC 7, as the report and the exit code read them.
 THRESHOLDS: Final[dict[str, int]] = {
@@ -343,17 +350,69 @@ async def connect_amazon(api: Api, fake: str, token: str, seller: str) -> None:
     )
 
 
-async def bharat_generated(api: Api, operator: str, run: str, sku: str) -> tuple[str, str]:
-    """A bharat product and its generation's (job id, listing id), not waited on."""
+def photo_png() -> bytes:
+    """A 1000x1000 white PNG whose dark square fills 94 % of the side: it passes every image
+    check with no warning (as `scripts/e2e/make_image.py ... 0.94`)."""
+    from PIL import Image
+
+    img = Image.new("RGB", (1000, 1000), (255, 255, 255))
+    img.paste((40, 60, 90), (30, 30, 970, 970))
+    out = io.BytesIO()
+    img.save(out, format="PNG")
+    return out.getvalue()
+
+
+async def photo_views_ready(api: Api, operator: str, product_id: str, key: str) -> None:
+    """The product's front, back and close-up photos, uploaded and polled (every
+    `POLL_INTERVAL_S`) until all three passed their checks and the photo read on upload is done
+    (so the facts the generation pins no longer move)."""
+    data = photo_png()
+    for slot, role in PHOTO_VIEWS:
+        form = {"product_id": product_id, "slot": slot, **({"role": role} if role else {})}
+        await api.expect(
+            202,
+            "bharat",
+            "bharat",
+            "POST",
+            "/images/upload",
+            token=operator,
+            key=f"{key}-{role or 'front'}",
+            data=form,
+            files={"file": ("photo.png", data, "application/octet-stream")},
+        )
+    end = time.monotonic() + PHOTO_DEADLINE_S
+    while True:
+        body = await api.expect(
+            200, "bharat", "bharat", "GET", f"/products/{product_id}", token=operator
+        )
+        seen = {
+            (d["slot"], d.get("role")): d["compliance_status"]
+            for d in body["image_details"]
+            if (d["slot"], d.get("role")) in PHOTO_VIEWS
+        }
+        if "failed" in seen.values():
+            raise SmokeError("bharat: a setup photo failed its checks")
+        checked = len(seen) == len(PHOTO_VIEWS) and set(seen.values()) == {"passed"}
+        if checked and not body.get("photo_reading"):
+            return
+        if time.monotonic() > end:
+            raise SmokeError(f"bharat: the setup photos were not checked in {PHOTO_DEADLINE_S} s")
+        await asyncio.sleep(POLL_INTERVAL_S)
+
+
+async def bharat_generated(
+    api: Api, operator: str, run: str, sku: str, *, photos: bool = False
+) -> tuple[str, str]:
+    """A bharat product and its generation's (job id, listing id), not waited on. `photos`: the
+    product first gets its size chart and photos (a listing that will be approved)."""
+    fields: dict[str, Any] = {"sku": sku, "title": "Load Smoke Kurta Set", "category": CATEGORY}
+    if photos:
+        fields["size_chart"] = SIZE_CHART
     product = await api.expect(
-        201,
-        "bharat",
-        "bharat",
-        "POST",
-        "/products",
-        token=operator,
-        json={"sku": sku, "title": "Load Smoke Kurta Set", "category": CATEGORY},
+        201, "bharat", "bharat", "POST", "/products", token=operator, json=fields
     )
+    if photos:
+        await photo_views_ready(api, operator, str(product["id"]), f"load-bharat-img-{run}-{sku}")
     accepted = await api.expect(
         202,
         "bharat",
@@ -373,7 +432,9 @@ async def bharat_setup(api: Api, fake: str, run: str) -> dict[str, str]:
     operator = await api.login("bharat", "operator")
     reviewer = await api.login("bharat", "reviewer")
     await connect_amazon(api, fake, owner, f"LOADBH{run}")
-    job_id, listing_id = await bharat_generated(api, operator, run, f"LOAD-BH-{run}-PUB")
+    job_id, listing_id = await bharat_generated(
+        api, operator, run, f"LOAD-BH-{run}-PUB", photos=True
+    )
     job = await api.wait_job("bharat", "bharat", operator, job_id, 120)
     if job["status"] != "succeeded":
         raise SmokeError(f"bharat: the setup generation ended {job['status']}")

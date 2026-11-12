@@ -65,3 +65,26 @@ payload go back to the marketplace without a second approval?
   migrator connection; migrator access is the authorisation and the seed PR the second review.
 - **Value maps and the export** are read-only staff reports (`errors value-maps`, `errors export`); an alias change
   stays a reviewed PR to `aliases.py`.
+
+## Client feedback item 20 additions (2026-11-11)
+
+- **Coverage.** `error_map.amazon.json` adds the codes on Amazon's Listings Items troubleshooting and Manage
+  Listings Issues pages (missing values, enums, patterns and fabric, lengths, counts, numbers, cross-field rules,
+  identifiers and the catalogue, luxury and generic-brand eligibility, price limits, currency, Amazon's internal
+  error), each with plain text and a seller action; `policy_ref.kuinn_repair` names the safe repair kinds that can
+  cover a row. No row sets its own fix (`auto_fixable` false, no `fix_action`), but the planner routes on the
+  code, so a row's code is its lane and is chosen on purpose (`test_error_map_coverage`): a fact value (fabric
+  make-up, price, a count, a number) is `VALUE_NOT_ALLOWED`, `CROSS_FIELD_MISMATCH` or `MISSING_ATTRIBUTE` and goes
+  to the seller or Kuinn's team, never to the AI; only a text rule on Kuinn's own text (HTML, web links, a length)
+  takes the deterministic content fix (`FIELD_TOO_LONG`) or the one-field AI rewrite (`PATTERN_MISMATCH`,
+  `FIELD_TOO_SHORT`, credit-gated, one try per key); Amazon's internal error 4000000 (`MARKETPLACE_UNAVAILABLE`;
+  the row stays `user_action`, as every documented row) is resent by its code's policy; brand and generic-product eligibility goes to the marketplace lane; the luxury-category
+  codes 4005018/4005019 are `CATEGORY_MISMATCH` (the seller recategorises). `error_map.flipkart.json` is new: Flipkart documents the error shape but no code list, so its rows match
+  the documented payload node an issue's path names (`path:price`, `path:tax`, ...); settings Kuinn does not send
+  in v1 (tax, delivery charges, stock, packages, fulfilment) carry `policy_ref.handled_outside`. The migrate job
+  loads both files.
+- **Issue history read.** `GET /listings/{id}/issue-history`: each marketplace ERROR with its plain cause, the
+  marketplace's code and words, the field, the client's error group and who handles it (Kuinn, the seller, the
+  marketplace side, or Kuinn's team; a resend is Kuinn's), and each fix with its before and after values (a content
+  fix's or AI rewrite's after value is read from the fix version that closed the issue), reason and outcome. It reuses
+  this read's lanes, never runs the engine and never writes.

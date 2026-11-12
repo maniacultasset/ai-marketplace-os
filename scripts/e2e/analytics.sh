@@ -4,7 +4,9 @@
 # and the next snapshot moves by exactly that (generated +3, approvals +2, rejections +1,
 # first-pass validation runs +3, publish counts unchanged). bharat's analytics never move. No
 # token is 401, `from` after `to` is 422, both routes answer the same body, and the staff cost page
-# shows one generated listing's cost and refuses a bad day.
+# shows one generated listing's cost and refuses a bad day. Each product carries a saved size
+# chart and a front, back and close-up photo before it generates, so the photo view checklist
+# (`PHOTO_VIEWS_ENABLED`) is met.
 #
 # Publish legs: the publish path (POST /listings/publish, its submissions and the fake marketplace
 # forced failure) is S21's and is not on this base, so this script asserts the publish counts stay
@@ -18,6 +20,9 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> $0 [base_url]" >&2
@@ -160,7 +165,7 @@ cmp -s "$body" "$work/acme_before.json" || fail "/analytics/summary answered ano
 step create_3_products
 products=()
 for n in 1 2 3; do
-  call POST /products "$operator" "" "{\"sku\": \"E2E-AN-$run-$n\", \"title\": \"E2E Analytics Kurta Set $n\", \"category\": \"$category\"}"
+  call POST /products "$operator" "" "{\"sku\": \"E2E-AN-$run-$n\", \"title\": \"E2E Analytics Kurta Set $n\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   products+=("$(json 'b["id"]')")
 done
@@ -168,6 +173,11 @@ done
 step worker_start
 bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
+
+step photo_views_ready
+for n in 0 1 2; do
+  photo_views_upload "$api" "$operator" "${products[$n]}" "e2e-an-img-$run-$n" "$work" || fail "the photo checklist is not met"
+done
 
 step generate_3
 listings=()

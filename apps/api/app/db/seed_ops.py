@@ -57,6 +57,7 @@ from app.db.platform_loads import (
 )
 from app.db.seed_templates import flipkart_seed_templates, seed_templates
 from app.repositories.base import TenantScopedRepository
+from app.services.rules_engine import warning_count
 
 SEED_NAMESPACE: Final = uuid.UUID("5eed0000-9c1e-4d6a-8a51-0c5a1e5eed00")
 # A§5; reachable only under APP_ENV=local (PLAN D9)
@@ -682,7 +683,7 @@ async def seed_demo_listing(
             template_version=template_version,
             facts_digest=hashlib.sha256(b"{}").digest(),
             blocking_count=len(report.blocking),
-            warning_count=len(report.errors) - len(report.blocking),
+            warning_count=warning_count(report),
         )
         .on_conflict_do_nothing()
     )
@@ -694,7 +695,7 @@ DEMO_FAMILY_SKU: Final = "KURTA-FAM-01"
 DEMO_FAMILY_THEME: Final = "size_color"
 DEMO_FAMILY_SIZES: Final = ("s", "m")
 DEMO_FAMILY_COLOURS: Final = ("navy blue", "maroon")
-DEMO_FAMILY_TEMPLATE_VERSION: Final = 3  # SI2: the Amazon kurta v3
+DEMO_FAMILY_TEMPLATE_VERSION: Final = 4  # feedback item 10: the Amazon kurta v4
 
 
 def demo_family_child_sku(size: str, colour: str) -> str:
@@ -867,7 +868,7 @@ async def seed_demo_family(session: AsyncSession) -> None:
 # ---- S22 T15 (D7; R3): acme's Flipkart demo listings, pinned to the Flipkart kurta mapping ----
 
 DEMO_FLIPKART_MARKETPLACE: Final = "flipkart"
-DEMO_FLIPKART_TEMPLATE_VERSION: Final = 3  # SI2: the Flipkart kurta v3
+DEMO_FLIPKART_TEMPLATE_VERSION: Final = 4  # feedback item 10: the Flipkart kurta v4
 
 
 def demo_flipkart_ids() -> dict[str, tuple[uuid.UUID, uuid.UUID]]:

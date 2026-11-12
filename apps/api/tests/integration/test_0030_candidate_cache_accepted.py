@@ -53,7 +53,7 @@ def _accepted(conn: Conn) -> tuple[UUID, UUID, UUID]:
     return tenant, product, source
 
 
-def test_single_head_on_0029() -> None:
+def test_chained_on_0029() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())

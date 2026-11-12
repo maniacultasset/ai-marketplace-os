@@ -14,7 +14,10 @@ L5300-5304, L6778; invariants 1, 4, 8, 9, 10; S22 T11, T12). Believed wire shape
   a field -> `partially_published` + API_REJECTED_PARTIAL (judged per item, so one refused family
   child never fails the children Flipkart created, S22b F4); nothing applied -> `failed` +
   PUBLISH_FAILED. Raw codes and text are kept, mapped
-  through the error map to the one `ErrorItem` (`source=flipkart_adapter`).
+  through the error map to the one `ErrorItem` (`source=flipkart_adapter`). A result's
+  `attribute_errors` are read with its `errors` (Listing Management API reference); an issue's
+  JSON `path` root (`constants.PATH_ROOTS`) is its error-map category `path:<root>`, since Flipkart
+  publishes no code list, and a `price` root with no attribute fails the price paths.
 - S20 C2: a known failure (429 past the budget, auth, connect) is raised only when nothing was
   applied. After a chunk was applied the result is `partially_published`: applied items keep
   their results, the failing chunk's items are `failed` with that code, later chunks `skipped`.
@@ -38,6 +41,7 @@ L5300-5304, L6778; invariants 1, 4, 8, 9, 10; S22 T11, T12). Believed wire shape
 from __future__ import annotations
 
 import hashlib
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date
 from typing import Any, Final
@@ -88,7 +92,37 @@ NO_LISTING_ID: Final = UUID(int=0)
 MAX_PERFORMANCE_DAYS: Final = 366
 NOT_FOUND_CODE: Final = "LISTING_NOT_FOUND"
 _ORDER: Final = {"failed": 0, "succeeded": 1, "skipped": 2}
+_PATH_SPLIT: Final = re.compile(r"[.\[\]/$\s]+")
 _RETRYABLE: Final = frozenset({RetryClass.AUTO_RETRY, RetryClass.AI_CORRECT})
+
+
+def path_root(issue: Mapping[str, Any]) -> str | None:
+    """The first segment of an issue's JSON `path` that is a top-level node of the documented
+    listing payload (`constants.PATH_ROOTS`: price, tax, shipping_fees, locations, ...), or None.
+    Flipkart publishes the error shape but no code list, so its error map matches on this root
+    (category `path:<root>`) when no code row does."""
+    path = issue.get("path")
+    if not isinstance(path, str):
+        return None
+    for segment in _PATH_SPLIT.split(path[:512]):
+        if segment in c.PATH_ROOTS:
+            return segment
+    return None
+
+
+def issue_keys(issue: Mapping[str, Any]) -> tuple[list[str], list[str]]:
+    """(the attribute names an issue names, its error-map categories). An issue with no
+    `attribute` whose path root is the price block names `price`, so it fails the price paths."""
+    attribute = issue.get("attribute")
+    root = path_root(issue)
+    names = [str(attribute)] if attribute else []
+    if not names and root == c.PRICE_ATTRIBUTE:
+        names = [root]
+    category = issue.get("category")
+    categories = [str(category)] if category else []
+    if root is not None:
+        categories.append(f"{c.PATH_CATEGORY_PREFIX}{root}")
+    return names, categories
 
 
 class _Plan:
@@ -185,16 +219,13 @@ class FlipkartAdapter(MarketplaceAdapter):
         failed: dict[str, ErrorItem] = {}
         warned: dict[str, ErrorItem] = {}
         loose: list[ErrorItem] = []
-        errors = result.get("errors")
-        for issue in errors if isinstance(errors, list) else []:
+        for issue in error_rows(result):
             if not isinstance(issue, dict):
                 continue
             severity = str(issue.get("severity", "ERROR")).upper()
             if severity == "INFO":
                 continue
-            attribute = issue.get("attribute")
-            names = [str(attribute)] if attribute else []
-            category = issue.get("category")
+            names, categories = issue_keys(issue)
             found: Sequence[str | None] = sorted(
                 {p for n in names for p in index.get(n, ()) if p in in_scope}
             )
@@ -206,7 +237,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                     ),
                     field=path,
                     marketplace=Marketplace.FLIPKART,
-                    categories=[str(category)] if category else [],
+                    categories=categories,
                     secrets=(*self._client.used_secrets(), *parties),
                 )
                 if severity == c.WARNING:
@@ -689,9 +720,7 @@ class FlipkartAdapter(MarketplaceAdapter):
             severity = str(issue.get("severity", "")).upper()
             if severity not in ("ERROR", c.WARNING):
                 continue
-            attribute = issue.get("attribute")
-            names = [str(attribute)] if attribute else []
-            category = issue.get("category")
+            names, categories = issue_keys(issue)
             found: Sequence[str | None] = sorted(
                 {p for n in names for p in index.get(n, ()) if p != "variants"}
             )
@@ -701,7 +730,7 @@ class FlipkartAdapter(MarketplaceAdapter):
                     raw_message=str(issue.get("description", "")),
                     field=path,
                     marketplace=Marketplace.FLIPKART,
-                    categories=[str(category)] if category else [],
+                    categories=categories,
                     secrets=secrets,
                 )
                 one = read_issue(one, warning=severity == c.WARNING)

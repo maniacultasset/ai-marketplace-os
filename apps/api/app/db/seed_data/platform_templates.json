@@ -1,6 +1,6 @@
 [
   {
-    "version": 3,
+    "version": 4,
     "product_type": "KURTA",
     "template": {
       "marketplace": "amazon",
@@ -24,6 +24,13 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "fit",
+        "kurta_type",
+        "neckline",
+        "pattern",
+        "sleeve_length"
+      ],
       "specs": {
         "color": {
           "requirement": "required",
@@ -315,7 +322,7 @@
     }
   },
   {
-    "version": 2,
+    "version": 3,
     "product_type": "SHIRT",
     "template": {
       "marketplace": "amazon",
@@ -339,6 +346,12 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "fit",
+        "neckline",
+        "pattern",
+        "sleeve_length"
+      ],
       "specs": {
         "color": {
           "requirement": "required",
@@ -630,7 +643,7 @@
     }
   },
   {
-    "version": 2,
+    "version": 3,
     "product_type": "LAMP",
     "template": {
       "marketplace": "amazon",
@@ -649,6 +662,12 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "lamp_material",
+        "lamp_type",
+        "light_source_type",
+        "shade_material"
+      ],
       "specs": {
         "color": {
           "requirement": "required",
@@ -750,7 +769,7 @@
     }
   },
   {
-    "version": 3,
+    "version": 4,
     "product_type": "kurta",
     "template": {
       "marketplace": "flipkart",
@@ -774,6 +793,13 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "fit",
+        "kurta_type",
+        "neckline",
+        "pattern",
+        "sleeve_length"
+      ],
       "specs": {
         "color": {
           "requirement": "required",
@@ -1065,7 +1091,7 @@
     }
   },
   {
-    "version": 2,
+    "version": 3,
     "product_type": "t_shirt",
     "template": {
       "marketplace": "flipkart",
@@ -1088,6 +1114,12 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "fit",
+        "neckline",
+        "pattern",
+        "sleeve_length"
+      ],
       "specs": {
         "color": {
           "requirement": "required",
@@ -1369,7 +1401,7 @@
     }
   },
   {
-    "version": 2,
+    "version": 3,
     "product_type": "table_lamp",
     "template": {
       "marketplace": "flipkart",
@@ -1388,6 +1420,12 @@
       ],
       "conditional_attributes": [],
       "unsupported_attributes": [],
+      "recommended_attributes": [
+        "lamp_material",
+        "lamp_type",
+        "light_source_type",
+        "shade_material"
+      ],
       "specs": {
         "color": {
           "requirement": "required",

@@ -46,13 +46,15 @@ from app.repositories.parties import PartyFields
 from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
-from app.services import category_suggest, image_views, product_identifier
+from app.services import category_suggest, image_views, photo_views, product_identifier
 from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
+from app.services.photo_match import live_jobs, read_state
+from app.services.photo_views import SizeChartCheck, ViewState
 from app.services.product_facts import (
     SIZE_CHART_KEY,
     STANDALONE,
@@ -235,6 +237,9 @@ class ProductView:
     # V1.1: a style's axes and its size keys (None and [] on a standalone or variant)
     variation_theme: Literal["size", "color", "size_color"] | None = None
     size_run: list[str] = field(default_factory=list)
+    # feedback 7 and 8: single reads only, while PHOTO_VIEWS_ENABLED is on
+    photo_views: tuple[ViewState, ...] = ()
+    size_chart_check: SizeChartCheck | None = None
 
 
 READ_STATUSES: Final = frozenset({"read", "unreadable", "failed", "unavailable"})
@@ -580,6 +585,18 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         for detail in await uow.images.details_for_product(row.id)
     )
     details = await image_views.with_views(row.tenant_id, row.id, details)
+    if get_settings().photo_match_enabled:  # V1.1: the stored photo match of each photo
+        now = datetime.now(UTC)
+        live = await live_jobs(uow, [d.photo_match_raw for d in details])
+        details = tuple(
+            replace(
+                d,
+                photo_match=read_state(
+                    d.photo_match_raw, clean_hash=d.clean_content_hash, now=now, live=live
+                ),
+            )
+            for d in details
+        )
     colourways: tuple[ColourwayRow, ...] = ()
     if row.variation_theme is not None and row.parent_product_id is None:
         colourways = tuple(await uow.colourways.colourways_of(row.id))
@@ -630,7 +647,21 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         category_suggestion=public_category_suggestion(row),
         category_suggest_enabled=get_settings().category_suggest_enabled,
         **await _thumbnail(uow, row, details),
+        **await _photo_checks(uow, row, details),
     )
+
+
+async def _photo_checks(
+    uow: TenantUnitOfWork, row: Any, details: tuple[ImageDetail, ...]
+) -> dict[str, Any]:
+    """Feedback 7 and 8: the photo checklist and the size chart check of a single read."""
+    if not photo_views.enabled():
+        return {}
+    inputs = photo_views.inputs_of(row, details, await photo_views.variant_sizes(uow, row))
+    return {
+        "photo_views": photo_views.product_states(row.category, inputs),
+        "size_chart_check": photo_views.size_chart_check(row.category, inputs),
+    }
 
 
 async def _thumbnail(

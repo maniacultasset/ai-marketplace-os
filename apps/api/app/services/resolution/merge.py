@@ -5,6 +5,9 @@ version's, whatever the model returned. Pure (no I/O).
 `mergeable(path)` names the paths a target may be: `content.title`, `content.description`,
 `content.bullets` or one `content.bullets[<i>]`, `keywords.search_terms`, `keywords.hidden_terms`
 and `attributes.<key>`. Any other path is never a target (the planner gives it no `ai_field`).
+
+Client feedback 14: a seller's section regenerate may also target `attributes`, the whole map
+(`services/sections.py`); it is never a planner target, so `mergeable` stays False for it.
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ _PLAIN: Final = frozenset(
         "keywords.hidden_terms",
     }
 )
+_MAP: Final = "attributes"
 _BULLET: Final = re.compile(r"content\.bullets\[(\d{1,2})\]")
 _ATTRIBUTE: Final = re.compile(r"attributes\.([a-z0-9_]{1,64})")
 
@@ -42,6 +46,9 @@ def merge_targets(
     out: dict[str, Any] = base.model_dump(mode="python")
     new: dict[str, Any] = result.model_dump(mode="python")
     for path in targets:
+        if path == _MAP:  # a section regenerate's whole attribute map
+            out["attributes"] = new["attributes"]
+            continue
         if path in _PLAIN:
             root, name = path.split(".", 1)
             out[root][name] = new[root][name]

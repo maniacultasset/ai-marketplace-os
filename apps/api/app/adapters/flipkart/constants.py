@@ -58,6 +58,26 @@ NEUTRAL_THEME_AXES: Final[Mapping[str, frozenset[str]]] = MappingProxyType(
     }
 )
 
+# The top-level nodes of a listing in Flipkart's Listing Management API reference
+# (https://seller.flipkart.com/api-docs/listing-api-docs/LMAPIRef.html). An issue's JSON `path`
+# names one; the error map matches `path:<root>` (Flipkart publishes no error-code list).
+PATH_ROOTS: Final = frozenset(
+    {
+        "product_id",
+        "price",
+        "tax",
+        "listing_status",
+        "shipping_fees",
+        "fulfillment_profile",
+        "fulfillment",
+        "packages",
+        "locations",
+        "address_label",
+        "dating_label",
+    }
+)
+PATH_CATEGORY_PREFIX: Final = "path:"
+
 # Response vocabulary (believed, DW1).
 SUCCESS: Final = "SUCCESS"
 FAILURE: Final = "FAILURE"
@@ -74,6 +94,12 @@ REQUIRED_FACTS: Final = ("mrp", "selling_price", "manufacturer", "country_of_ori
 # below stay in FORBIDDEN_ATTRIBUTES (`hsn`, `package_*`).
 EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
     {None: ("hsn_code", "package_dimensions", "package_weight")}
+)
+
+# Client feedback 11 Nov (item 5): the plain name of each seeded Flipkart vertical, shown in the
+# category picker ("On Flipkart: Kurta"). A vertical missing here reads as words from its code.
+PRODUCT_TYPE_NAMES: Final[Mapping[str, str]] = MappingProxyType(
+    {"kurta": "Kurta", "t_shirt": "T-shirt", "table_lamp": "Table lamp"}
 )
 
 # Never sent in v1. Any payload key here is a bug (price travels only inside `price`).

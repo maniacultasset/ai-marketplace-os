@@ -105,7 +105,35 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
         body["can_approve"], body["approve_hint"], body["self_approval"] = await _approve_hint(
             uow, principal, listing, version
         )
+        body["affected_sections"] = await affected(uow, listing, version)
     return body, etag_of(body.get("current_version_id"))
+
+
+async def affected(uow: Any, listing: Any, version: Any) -> list[str]:
+    """Client feedback 14: the sections whose facts the seller answered after the last AI run
+    that wrote them (`sections.stale_sections`, the fully locked ones left out). A fresh
+    generation rewrote every section; a regeneration the scope its model runs record (a
+    deterministic fix, an edit or a fact-only version wrote none). Empty while there is no
+    version to update or a run is writing one."""
+    from app.services.sections import stale_sections
+
+    if version is None or listing.status in ("created", "generating"):
+        return []
+    answers = await uow.human_tasks.fact_answers(listing.product_id)
+    if not answers:
+        return []
+    scopes: dict[Any, list[list[str] | None]] = {}
+    for version_id, scope in await uow.agent_runs.version_scopes(listing.id):
+        scopes.setdefault(version_id, []).append(scope)
+    refreshes: list[tuple[Any, list[str] | None]] = []
+    for version_id, origin, at in await uow.listing_versions.ai_written(listing.id):
+        runs = scopes.get(version_id)
+        if origin == "generation" or (runs and None in runs):
+            refreshes.append((at, None))
+        elif runs:
+            refreshes.append((at, sorted({p for scope in runs if scope for p in scope})))
+    locked = getattr(listing, "locked_paths", None) or ()
+    return list(stale_sections(answers, refreshes, locked))
 
 
 async def _approve_hint(

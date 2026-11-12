@@ -36,6 +36,17 @@ class CurrentCategory:
 
 
 @dataclass(frozen=True, slots=True)
+class CurrentMapping:
+    """Client feedback 11 Nov: one current template, as the category picker shows it."""
+
+    marketplace: str
+    category: str
+    version: int
+    product_type: str
+    external_category_id: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class PinnedTemplate:
     id: UUID
     version: int
@@ -128,6 +139,26 @@ class CategoryTemplateRepository:
             external_category_id=row.external_category_id,
             template=_wire(row.marketplace, row.category, row),
         )
+
+    async def current_mappings(self) -> list[CurrentMapping]:
+        """Every current template's marketplace, category, version, product type and external
+        category id, sorted by category then marketplace. Platform rows, so no tenant filter."""
+        t = CategoryTemplate
+        stmt = (
+            select(t.marketplace, t.category, t.version, t.product_type, t.external_category_id)
+            .where(t.is_current.is_(True))
+            .order_by(t.category, t.marketplace)
+        )
+        return [
+            CurrentMapping(
+                marketplace=str(row.marketplace),
+                category=str(row.category),
+                version=int(row.version),
+                product_type=str(row.product_type or ""),
+                external_category_id=row.external_category_id,
+            )
+            for row in (await self.db.execute(stmt)).all()
+        ]
 
     async def current_categories(self) -> list[CurrentCategory]:
         """SI14: every category with a current template on any marketplace, sorted, with the

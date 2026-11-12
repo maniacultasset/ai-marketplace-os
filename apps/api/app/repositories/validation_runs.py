@@ -3,7 +3,8 @@ the one `ErrorReport` shape (invariant 8).
 
 - `insert(result, *, template_id, template_version, facts_digest)`: `passed` and the counts come
   from the report (`passed = blocking_count == 0`); a `rules_engine` row needs every pin
-  (`vr_rules_pins`).
+  (`vr_rules_pins`). `recommended` (the service's `rules_engine.warning_count` split, item 10)
+  keeps the missing recommended attributes out of `warning_count`; the report keeps them.
 - `find_equal_pins(...)`: the newest `rules_engine` run of a version with exactly these pins (a
   repeated `/validate` writes nothing new).
 - `summary_for(version_id)`: the version's runs as a `ValidationSummary` (the newest run decides
@@ -52,6 +53,7 @@ class ValidationRunRepository(TenantScopedRepository[ValidationRun]):
         template_version: int | None,
         facts_digest: bytes | None,
         request_id: str | None = None,
+        warnings: int | None = None,
     ) -> ValidationRun:
         report = result.report
         blocking = len(report.blocking)
@@ -72,7 +74,7 @@ class ValidationRunRepository(TenantScopedRepository[ValidationRun]):
             template_version=template_version,
             facts_digest=facts_digest,
             blocking_count=blocking,
-            warning_count=len(report.errors) - blocking,
+            warning_count=len(report.errors) - blocking if warnings is None else warnings,
         )
         return await self.add(row)
 

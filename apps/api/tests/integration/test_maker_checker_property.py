@@ -5,7 +5,8 @@ reject and approve by three members of one tenant.
 Each step runs in its own committed transaction (its own unit of work), so the events guard's
 `decided_at = now() AND decided_by_user_id = app_user_id()` test can only match that step's own
 row. The oracle is a shadow contributor set kept by the test itself (reset to {maker} on
-generate and full regenerate; editors added on edit; carried over by a partial regeneration
+generate and on a full regenerate of a listing with no locked edit, carried forward by one that
+kept a lock, client feedback 14; editors added on edit; carried over by a partial regeneration
 and by an import that names a parent, DATABASE.md:785), never `contributor_chain`:
 
 - leg 1 (the API decides): when an approve reaches the maker-checker step, it is refused (item
@@ -137,6 +138,7 @@ class Machine:
         from .review_support import run_job
 
         principal = self.world.principal(email)
+        locked = bool(self.row(shadow)["locked_paths"])
 
         async def go() -> None:
             async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
@@ -150,7 +152,12 @@ class Machine:
         except DomainError:
             return
         assert self.row(shadow)["status"] == "validated"
-        shadow.makers = {principal.user_id}
+        if locked:
+            # client feedback 14: a whole regenerate keeps the seller's locked edits and records
+            # `changed_paths`, so the chain carries their editors forward
+            shadow.makers.add(principal.user_id)
+        else:
+            shadow.makers = {principal.user_id}
 
     def _row_version(self, shadow: Shadow, email: str, origin: str) -> None:
         """A partial regeneration or an import as rows (no v1 route makes them)."""
