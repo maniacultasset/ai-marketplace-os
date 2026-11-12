@@ -6958,6 +6958,11 @@ export interface components {
              */
             deleted: boolean;
             /**
+             * Family Role
+             * @description Set when the SKU belongs to a family, deleted or not: `style` (the style of a family with sizes or colours) or `variant` (one of its sizes or colours). A CSV row with a variant's SKU needs its `parent_style_id`; a family's style is sent with its variants. Null for a standalone product or a free SKU.
+             */
+            family_role?: ("style" | "variant") | null;
+            /**
              * Is Variant
              * @default false
              */
@@ -48378,6 +48383,7 @@ export interface operations {
                      *         {
                      *           "available": false,
                      *           "deleted": false,
+                     *           "family_role": "variant",
                      *           "is_variant": true,
                      *           "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
                      *           "sku": "ACME-KUR-0007-RED-M",

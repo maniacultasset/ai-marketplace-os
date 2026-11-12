@@ -267,3 +267,36 @@ async def test_batch_check_refuses_more_than_the_cap_before_any_query() -> None:
     principal: Any = object()  # never read: the cap is checked before the unit of work opens
     with pytest.raises(ValueError, match="at most"):
         await check_skus(principal, [f"S-{n}" for n in range(MAX_BATCH_SKUS + 1)])
+
+
+@pytest.mark.parametrize(
+    ("parent", "theme", "deleted", "role"),
+    [
+        (None, None, False, None),
+        (None, "size", False, "style"),
+        ("child", None, False, "variant"),
+        (None, "size_color", True, "style"),
+        ("child", None, True, "variant"),
+        (None, None, True, None),
+    ],
+)
+def test_taken_names_the_family_role_deleted_or_not(
+    parent: str | None, theme: str | None, deleted: bool, role: str | None
+) -> None:
+    import uuid
+
+    from app.repositories.products import SkuHolder
+    from app.services.sku_help import _taken
+
+    holder = SkuHolder(
+        id=uuid.uuid4(),
+        title="Kurta set",
+        parent_product_id=uuid.uuid4() if parent else None,
+        deleted=deleted,
+        variation_theme=theme,
+    )
+    check = _taken("KS-1", holder)
+    assert check.family_role == role and check.available is False
+    assert check.deleted is deleted
+    assert check.is_variant is (bool(parent) and not deleted)
+    assert (check.product_id is None) is deleted

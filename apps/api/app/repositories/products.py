@@ -82,6 +82,8 @@ class SkuHolder:
     title: str
     parent_product_id: uuid.UUID | None
     deleted: bool
+    # set on a family's style (it has sizes or colours); a plain CSV row cannot update it
+    variation_theme: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,7 +311,11 @@ class ProductRepository(TenantScopedRepository[Product]):
             self._select()
             .where(Product.sku == sku)
             .with_only_columns(
-                Product.id, Product.title, Product.parent_product_id, Product.deleted_at
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+                Product.variation_theme,
             )
         )
         found = (await self.db.execute(stmt)).one_or_none()
@@ -320,6 +326,7 @@ class ProductRepository(TenantScopedRepository[Product]):
             title=found[1],
             parent_product_id=found[2],
             deleted=found[3] is not None,
+            variation_theme=found[4],
         )
 
     async def holders_of_skus(self, skus: Sequence[str]) -> dict[str, SkuHolder]:
@@ -336,11 +343,16 @@ class ProductRepository(TenantScopedRepository[Product]):
                 Product.title,
                 Product.parent_product_id,
                 Product.deleted_at,
+                Product.variation_theme,
             )
         )
         return {
             row[0]: SkuHolder(
-                id=row[1], title=row[2], parent_product_id=row[3], deleted=row[4] is not None
+                id=row[1],
+                title=row[2],
+                parent_product_id=row[3],
+                deleted=row[4] is not None,
+                variation_theme=row[5],
             )
             for row in (await self.db.execute(stmt)).all()
         }

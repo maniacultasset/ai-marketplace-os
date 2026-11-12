@@ -1360,6 +1360,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "title": "Cotton kurta set",
             "is_variant": False,
             "deleted": False,
+            "family_role": None,
         },
         "skus_availability_check": {
             "checked": 6,
@@ -1371,6 +1372,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                     "title": "Cotton kurta set",
                     "is_variant": True,
                     "deleted": False,
+                    "family_role": "variant",
                 }
             ],
         },

@@ -94,15 +94,18 @@ async def test_free_taken_variant_and_deleted(images_db: JobWorld, api: httpx.As
         "title": None,
         "is_variant": False,
         "deleted": False,
+        "family_role": None,
     }
     taken = (await _check(api, images_db, "KS-1")).json()
     assert taken["available"] is False and taken["product_id"] == str(style)
     assert taken["title"] == "Kurta set" and taken["is_variant"] is False
+    assert taken["family_role"] == "style"
     child = (await _check(api, images_db, "KS-1-S")).json()
     assert child["available"] is False and child["is_variant"] is True
+    assert child["family_role"] == "variant"
     deleted = (await _check(api, images_db, "OLD-1")).json()
     assert deleted["available"] is False and deleted["deleted"] is True
-    assert deleted["product_id"] is None
+    assert deleted["product_id"] is None and deleted["family_role"] is None
 
 
 @pytest.mark.endpoint("skus_availability", case="validation")
@@ -167,6 +170,7 @@ async def test_batch_names_each_taken_sku_once_in_order(
     assert [t["sku"] for t in body["taken"]] == ["KS-1-S", "OLD-1", "KS-1"]
     child, deleted, own = body["taken"]
     assert child["available"] is False and child["is_variant"] is True
+    assert child["family_role"] == "variant"
     assert child["title"] is not None and child["product_id"] not in (None, str(style))
     assert deleted == {
         "sku": "OLD-1",
@@ -175,9 +179,26 @@ async def test_batch_names_each_taken_sku_once_in_order(
         "title": None,
         "is_variant": False,
         "deleted": True,
+        "family_role": None,
     }
     assert own["product_id"] == str(style) and own["title"] == "Kurta set"
-    assert own["is_variant"] is False
+    assert own["is_variant"] is False and own["family_role"] == "style"
+
+
+async def test_batch_deleted_family_members_keep_their_role(
+    images_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """A deleted style or variant still needs its family shape in a CSV (an upsert revives it),
+    so the batch says which it was without naming the product."""
+    _style_with_child(images_db.conn, images_db.tenant("acme"))
+    images_db.conn.execute(
+        "UPDATE products SET deleted_at = %s WHERE sku IN ('KS-1', 'KS-1-S')", [datetime.now(UTC)]
+    )
+    taken = (await _batch(api, images_db, ["KS-1", "KS-1-S"])).json()["taken"]
+    assert [(t["sku"], t["deleted"], t["family_role"], t["product_id"]) for t in taken] == [
+        ("KS-1", True, "style", None),
+        ("KS-1-S", True, "variant", None),
+    ]
 
 
 async def test_batch_all_free_and_the_full_thousand(

@@ -4,7 +4,7 @@ for me" (`POST /skus/suggestion`)."""
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
 from mkos_schemas.base import Slug, StrictModel, WireModel
@@ -24,6 +24,15 @@ class SkuAvailabilityOut(WireModel):
     title: Annotated[str, Field(max_length=500)] | None = None
     is_variant: bool = False
     deleted: bool = False
+    family_role: Literal["style", "variant"] | None = Field(
+        default=None,
+        description=(
+            "Set when the SKU belongs to a family, deleted or not: `style` (the style of a family "
+            "with sizes or colours) or `variant` (one of its sizes or colours). A CSV row with a "
+            "variant's SKU needs its `parent_style_id`; a family's style is sent with its "
+            "variants. Null for a standalone product or a free SKU."
+        ),
+    )
 
 
 # a NUL can never be stored (PostgreSQL text), so it is refused here rather than at the query

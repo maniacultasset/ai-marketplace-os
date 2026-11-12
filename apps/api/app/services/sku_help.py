@@ -28,7 +28,7 @@ import re
 import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 
@@ -69,6 +69,7 @@ CODE_CHARS: Final = 3
 DIGITS: Final = 4
 # the batch check: a bulk upload's 10,000 rows take 10 calls, inside the tenant limiter
 MAX_BATCH_SKUS: Final = 1000
+FamilyRole = Literal["style", "variant"]
 # a number whose SKU is taken is skipped; this many in a row means something is wrong
 MAX_SKIPS: Final = 50
 _WORD: Final = re.compile(r"[A-Za-z0-9]+")
@@ -82,6 +83,7 @@ class SkuCheck:
     title: str | None = None
     is_variant: bool = False
     deleted: bool = False
+    family_role: FamilyRole | None = None
 
 
 def _ascii_words(text: str) -> list[str]:
@@ -118,15 +120,26 @@ def format_sku(prefix: str, code: str, number: int) -> str:
     return f"{prefix}-{code}-{number:0{DIGITS}d}"
 
 
+def _family_role(holder: SkuHolder) -> FamilyRole | None:
+    """What a CSV row with this SKU must look like (imports runner B9/B10): a variant needs its
+    `parent_style_id`, a family's style is sent with its variants; deleted rows count too (an
+    upsert revives them)."""
+    if holder.parent_product_id is not None:
+        return "variant"
+    return "style" if holder.variation_theme is not None else None
+
+
 def _taken(sku: str, holder: SkuHolder) -> SkuCheck:
+    role = _family_role(holder)
     if holder.deleted:  # the unique still holds a deleted product's SKU; there is nothing to open
-        return SkuCheck(sku=sku, available=False, deleted=True)
+        return SkuCheck(sku=sku, available=False, deleted=True, family_role=role)
     return SkuCheck(
         sku=sku,
         available=False,
         product_id=str(holder.id),
         title=holder.title,
         is_variant=holder.parent_product_id is not None,
+        family_role=role,
     )
 
 
