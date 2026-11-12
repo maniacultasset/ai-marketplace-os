@@ -433,10 +433,13 @@ class ImageRepository(TenantScopedRepository[Image]):
         meta: ImageMeta | None,
         content_hash: str,
         clean: CleanMeta | None = None,
+        slot: ImageSlot | None = None,
     ) -> ComplianceStatus | None:
         """One UPDATE of a live row: the report object keyed by marketplace (wire aliases, so
         `pass`), the worst-of `compliance_status`, the meta columns and `content_hash`. Returns
-        the status written, or None when the row is not live any more.
+        the status written, or None when the row is not live any more, or (V1.1, feedback 7)
+        when `slot` is given and the row is no longer in it: the photo moved to another view while
+        this check ran, so its rules no longer apply and the move's own re-check writes the report.
 
         SI1 T16: `clean` sets `clean_content_hash`, `clean_mime_type` and `metadata.vision`
         `{w, h}`; None clears them, except on a row that already has a `public_id` (its public
@@ -479,6 +482,7 @@ class ImageRepository(TenantScopedRepository[Image]):
                 Image.id == _uuid("image_id", image_id),
                 Image.deleted_at.is_(None),
                 self._tenant_criterion(include_platform=False),
+                *(() if slot is None else (Image.slot == ImageSlot(slot).value,)),
             )
             .values(values)
             .returning(Image.id)

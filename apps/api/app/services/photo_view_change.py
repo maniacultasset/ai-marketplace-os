@@ -12,7 +12,8 @@ Close-up a `secondary` with that role, a plain `secondary` an extra photo, and `
 - the same view again changes nothing and writes nothing (200 with no job);
 - a photo whose slot changed is checked again: its report is cleared, its status is `pending`
   and one `image_compliance` job is queued (the rules differ per slot, and the job then queues
-  the photo read and the photo match as an upload does). A role-only move (Back to Close-up, an
+  the photo read and the photo match as an upload does; a check still running under the old
+  slot writes nothing, since `write_report` is fenced on the slot it read). A role-only move (Back to Close-up, an
   extra photo marked Back) keeps the checks and asks for the photo read again, which reads
   nothing when the photo set is unchanged;
 - a photo moved where the photo match never looks (size chart, packaging label) drops its match;
