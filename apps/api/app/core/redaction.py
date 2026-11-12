@@ -120,6 +120,8 @@ DENY_KEYS: Final[frozenset[str]] = frozenset(
         "data_b64",
         "preview_url",
         "source_preview_url",
+        # the "already applied" create answer's signed link to the used candidate
+        "applied_preview_url",
         # saved image views (product reads): signed GETs, bearer credentials
         "view_url",
         "thumbnail_url",

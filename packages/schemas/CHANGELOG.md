@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- White background "already applied" shows the photo (client tester, 11 Nov 2026, item 12; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
+  - **Contract (MINOR).** `ImageCandidateAccepted.applied_preview_url?` (default null) on `image_candidates_create`: a 10-minute signed GET of the applied candidate's stored image, set only with `accepted_image_id`.
+  - **Behaviour.** Signed after the idempotent call and never stored with the answer (CP-D18): a replay signs a fresh URL, and none once the image is no longer the live main (or the size-chart image). The "already applied" rule itself is unchanged.
+  - **FE notice.** Show `applied_preview_url` in the applied note at once, and refetch the product read so the new main row appears.
+
 - White background "already in use" (client tester, 11 Nov 2026; ADR-0030 amendment; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
   - **Contract (MINOR).** `ImageCandidateAccepted.accepted_image_id?` (default null) on `image_candidates_create`: set only with status `accepted`.
   - **Behaviour.** A create answers `accepted` only when the candidate's image is still the live main of the same product and colourway (a click from a page read before the accept). A size chart answers `accepted` while its image is still the product's size-chart image. An accepted candidate whose image was deleted or replaced, or the same photo as another colourway's main, no longer answers: a new candidate and job are made. A second click while one is queued still answers the same job. Migration `0030_candidate_cache_accepted` takes accepted rows out of `uq_image_candidates_cache`.
