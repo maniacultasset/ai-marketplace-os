@@ -126,6 +126,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "listings_submissions",
         "listings_resolution",
         "listings_issue_history",
+        "listings_fixes_apply",  # client item 20
         "listings_refresh_status",
         "analytics_get",
         "analytics_summary",

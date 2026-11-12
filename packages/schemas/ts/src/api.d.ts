@@ -1703,6 +1703,29 @@ export interface paths {
         patch: operations["listings_content_patch"];
         trace?: never;
     };
+    "/api/v1/listings/{listing_id}/fixes/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply the fixes Kuinn suggested for this listing (auto-fix off), then re-check or send it again
+         * @description Client item 20: with the brand's "Let Kuinn fix safe listing errors automatically" off,
+         *     each fix Kuinn finds waits as a suggestion. This applies them for one listing: the suggested
+         *     repairs go live and the re-check, resend or fix job runs as it would with the setting on.
+         *     409 when the listing is paused, archived or busy, or has no open marketplace error.
+         */
+        post: operations["listings_fixes_apply"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings/{listing_id}/history": {
         parameters: {
             query?: never;
@@ -2712,6 +2735,7 @@ export interface paths {
          *     `STALE_VERSION`. A voice change (tone, guidelines, glossary) re-embeds the profile chunks.
          *     `owner_self_approval` (ADR-0031) needs the owner role (else 403 `PERMISSION_DENIED`), then a
          *     step-up like a team change (403 `MFA_STEP_UP_REQUIRED` / `MFA_ENROLLMENT_REQUIRED`).
+         *     `auto_fix_enabled` (client item 20) follows the same rules.
          */
         patch: operations["tenants_me_update"];
         trace?: never;
@@ -3882,6 +3906,28 @@ export interface components {
             reason: string;
             /** Rule */
             rule?: string | null;
+            /**
+             * Suggested
+             * @description Client item 20: with the brand's auto-fix off, Kuinn only suggests this fix; it is `waiting` until the seller applies it (`POST /listings/{id}/fixes/apply`).
+             * @default false
+             */
+            suggested: boolean;
+        };
+        /**
+         * FixesAppliedOut
+         * @description Client item 20: the seller applied Kuinn's suggested fixes for one listing.
+         */
+        FixesAppliedOut: {
+            /**
+             * Job Id
+             * @description The re-check, resend or fix job that now runs, or null when none was needed.
+             */
+            job_id?: string | null;
+            /**
+             * Released
+             * @description Suggested repairs made live by this call (0 on a replay).
+             */
+            released: number;
         };
         /**
          * Gate
@@ -4208,6 +4254,12 @@ export interface components {
              * @enum {string}
              */
             status: "open" | "auto_fixed" | "resolved" | "dismissed";
+            /**
+             * Suggested
+             * @description Client item 20: with the brand's auto-fix off, Kuinn has a fix for this open issue (a value change, a content fix or an AI rewrite) that waits until the seller applies it (`POST /listings/{id}/fixes/apply`).
+             * @default false
+             */
+            suggested: boolean;
             /** Value Submitted */
             value_submitted?: string | null;
         };
@@ -4853,6 +4905,38 @@ export interface components {
          * @enum {string}
          */
         ItemMarketplaceState: "not_submitted" | "processing" | "pending_review" | "live" | "inactive" | "rejected" | "removed";
+        /**
+         * ItemSizeIn
+         * @description Client item 15: the product itself, not the packed box (that is `package`). The same JSON
+         *     merge patch rules: the three sides together, all set or all null (null clears them), the
+         *     weight alone, `{}` refused and `item: null` clears all four. The sides are stored as the
+         *     `product_dimensions` fact (`L x B x H cm`), the weight as `product_weight` (grams).
+         */
+        ItemSizeIn: {
+            /** Breadth Cm */
+            breadth_cm?: (number | string) | null;
+            /** Height Cm */
+            height_cm?: (number | string) | null;
+            /** Length Cm */
+            length_cm?: (number | string) | null;
+            /** Weight G */
+            weight_g?: number | null;
+        };
+        /**
+         * ItemSizeOut
+         * @description Client item 15: the product itself. The sides are null when none is saved or the saved
+         *     `product_dimensions` is free text that is not `L x B x H cm`.
+         */
+        ItemSizeOut: {
+            /** Breadth Cm */
+            breadth_cm?: number | string | null;
+            /** Height Cm */
+            height_cm?: number | string | null;
+            /** Length Cm */
+            length_cm?: number | string | null;
+            /** Weight G */
+            weight_g?: number | null;
+        };
         /** JobAccepted */
         JobAccepted: {
             /**
@@ -6181,6 +6265,8 @@ export interface components {
             image_uploads?: components["schemas"]["ImageUploadIn"][];
             /** Images */
             images?: string[];
+            /** @description Client item 15: the product itself (not the packed box), in cm and grams. */
+            item?: components["schemas"]["ItemSizeIn"] | null;
             /** @description Only when it differs from the brand default. */
             manufacturer?: components["schemas"]["PartyIn"] | null;
             /** Mrp */
@@ -6364,6 +6450,8 @@ export interface components {
             image_details?: components["schemas"]["ProductImageOut"][];
             /** Images */
             images?: string[];
+            /** @description Client item 15: the product itself, beside the packed box; own, else the style's on single reads. */
+            item?: components["schemas"]["ItemSizeOut"] | null;
             /** @description The effective manufacturer (own, style or brand default); null on lists. */
             manufacturer?: components["schemas"]["PartyOut"] | null;
             /**
@@ -6373,6 +6461,13 @@ export interface components {
             mrp?: string | null;
             /** @description SI12: own, else the style's on single reads; own on lists. */
             package?: components["schemas"]["PackageOut"] | null;
+            /**
+             * Package Warnings
+             * @description Client item 15: the packed box looks unusual for the category (a likely unit slip named when there is one). Never blocks; a box past the category's hard limit is refused with 422 instead.
+             */
+            package_warnings?: {
+                [key: string]: string;
+            };
             /** Parent Product Id */
             parent_product_id?: string | null;
             /** Photo Facts */
@@ -6503,6 +6598,8 @@ export interface components {
              * @description SI5: true marks the product GTIN-exempt (clears any barcode); false clears the exemption. On a style it is set on every variant without a barcode.
              */
             identifier_exemption?: boolean | null;
+            /** @description Client item 15: the product itself; merges; `null` clears all four values. */
+            item?: components["schemas"]["ItemSizeIn"] | null;
             manufacturer?: components["schemas"]["PartyIn"] | null;
             /** Mrp */
             mrp?: string | null;
@@ -7670,6 +7767,12 @@ export interface components {
         };
         /** TenantOut */
         TenantOut: {
+            /**
+             * Auto Fix Enabled
+             * @description Client item 20: Kuinn applies safe listing fixes by itself (on by default). Off: each fix Kuinn finds waits as a suggested fix until the seller applies it.
+             * @default true
+             */
+            auto_fix_enabled: boolean;
             /** @description This deployment's feature switches, so screens never promise what is off. */
             capabilities?: components["schemas"]["TenantCapabilitiesOut"];
             /** Glossary */
@@ -7714,8 +7817,14 @@ export interface components {
          *     (`{"kurta outfit": "kurta set"}`). `owner_self_approval` (ADR-0031) is changed by an owner
          *     only (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes
          *     under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).
+         *     `auto_fix_enabled` (client item 20) follows the same rules.
          */
         TenantPatch: {
+            /**
+             * Auto Fix Enabled
+             * @description Let Kuinn fix safe listing errors automatically (owner only, with a recent code).
+             */
+            auto_fix_enabled?: boolean | null;
             /** Glossary */
             glossary?: {
                 [key: string]: string;
@@ -34967,6 +35076,399 @@ export interface operations {
             };
         };
     };
+    listings_fixes_apply: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                listing_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
+                     *       "released": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["FixesAppliedOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Permission denied. Codes: `PERMISSION_DENIED`. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PERMISSION_DENIED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PERMISSION_DENIED",
+                     *               "field": "request",
+                     *               "message": "Permission denied.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Permission denied.",
+                     *         "status": 403,
+                     *         "type": "PERMISSION_DENIED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not found. Codes: `NOT_FOUND`. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "NOT_FOUND",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "NOT_FOUND",
+                     *               "field": "request",
+                     *               "message": "Not found.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Not found.",
+                     *         "status": 404,
+                     *         "type": "NOT_FOUND"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description The request conflicts with the current state. Codes: `INVALID_STATUS_TRANSITION`, `LISTING_BUSY`. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INVALID_STATUS_TRANSITION",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INVALID_STATUS_TRANSITION",
+                     *               "field": "request",
+                     *               "message": "The request conflicts with the current state.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request conflicts with the current state.",
+                     *         "status": 409,
+                     *         "type": "INVALID_STATUS_TRANSITION"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request validation failed. Codes: `VALIDATION_FAILED`. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "details": [
+                     *           {
+                     *             "loc": [
+                     *               "body",
+                     *               "field"
+                     *             ],
+                     *             "msg": "Field required"
+                     *           }
+                     *         ],
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "Request validation failed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request validation failed.",
+                     *         "status": 422,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     listings_history: {
         parameters: {
             query?: {
@@ -51855,6 +52357,7 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "auto_fix_enabled": true,
                      *       "glossary": {
                      *         "kurta set": "kurta and palazzo"
                      *       },

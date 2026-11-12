@@ -61,6 +61,14 @@ class HistoryIssueOut(WireModel):
     first_seen_at: AwareDatetime
     last_seen_at: AwareDatetime
     resolved_at: AwareDatetime | None = None
+    suggested: bool = Field(
+        default=False,
+        description=(
+            "Client item 20: with the brand's auto-fix off, Kuinn has a fix for this open issue "
+            "(a value change, a content fix or an AI rewrite) that waits until the seller "
+            "applies it (`POST /listings/{id}/fixes/apply`)."
+        ),
+    )
 
 
 class FixOut(WireModel):
@@ -78,6 +86,13 @@ class FixOut(WireModel):
     reason: Annotated[str, Field(min_length=1, max_length=300)]
     outcome: FixOutcome
     at: AwareDatetime
+    suggested: bool = Field(
+        default=False,
+        description=(
+            "Client item 20: with the brand's auto-fix off, Kuinn only suggests this fix; it is "
+            "`waiting` until the seller applies it (`POST /listings/{id}/fixes/apply`)."
+        ),
+    )
 
 
 class HistoryAttemptOut(WireModel):

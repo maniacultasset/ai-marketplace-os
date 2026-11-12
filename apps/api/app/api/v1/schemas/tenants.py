@@ -103,6 +103,13 @@ class TenantOut(WireModel):
             "Every self-approval is recorded in the listing history."
         ),
     )
+    auto_fix_enabled: bool = Field(
+        default=True,
+        description=(
+            "Client item 20: Kuinn applies safe listing fixes by itself (on by default). Off: "
+            "each fix Kuinn finds waits as a suggested fix until the seller applies it."
+        ),
+    )
 
 
 class TenantPatch(StrictModel):
@@ -111,7 +118,8 @@ class TenantPatch(StrictModel):
     to clear a list or map). `glossary` maps a term to avoid to the preferred term
     (`{"kurta outfit": "kurta set"}`). `owner_self_approval` (ADR-0031) is changed by an owner
     only (403 `PERMISSION_DENIED` for anyone else) with a code entered in the last 30 minutes
-    under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`)."""
+    under `MFA_ENFORCEMENT=all` (403 `MFA_STEP_UP_REQUIRED` or `MFA_ENROLLMENT_REQUIRED`).
+    `auto_fix_enabled` (client item 20) follows the same rules."""
 
     name: ProfileName | None = None
     tone: Tone | None = None
@@ -121,12 +129,24 @@ class TenantPatch(StrictModel):
         default=None,
         description="Owners may approve their own listings (owner only, with a recent code).",
     )
+    auto_fix_enabled: StrictBool | None = Field(
+        default=None,
+        description=(
+            "Let Kuinn fix safe listing errors automatically (owner only, with a recent code)."
+        ),
+    )
 
     @model_validator(mode="before")
     @classmethod
     def _nulls(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            for key in ("name", "guidelines", "glossary", "owner_self_approval"):
+            for key in (
+                "name",
+                "guidelines",
+                "glossary",
+                "owner_self_approval",
+                "auto_fix_enabled",
+            ):
                 if key in data and data[key] is None:
                     raise PydanticCustomError("mkos_invalid", "Only tone may be null.")
         return data

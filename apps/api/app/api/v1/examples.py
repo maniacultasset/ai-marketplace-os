@@ -764,6 +764,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "guidelines": ["Never claim 'best'."],
             "glossary": {"kurta set": "kurta and palazzo"},
             "status": "active",
+            "auto_fix_enabled": True,
         },
         "tenants_me_update": {
             "id": TENANT,
@@ -1109,6 +1110,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 }
             ],
         },
+        "listings_fixes_apply": {"released": 1, "job_id": JOB},
         "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"

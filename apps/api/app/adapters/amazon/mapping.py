@@ -86,7 +86,7 @@ from mkos_schemas.listing import AttributeValue, CanonicalListing
 from mkos_schemas.paths import is_valid_field_path
 
 from app.adapters.amazon import constants as c
-from app.adapters.amazon import schema_check
+from app.adapters.amazon import schema_check, sizing
 from app.adapters.amazon.repairs import apply_repairs
 from app.adapters.base import (
     FACT_SPEC_KEYS,
@@ -413,6 +413,45 @@ def _package(
         ]
         sent.append(PACKAGE_PATHS[1])
     return out, sent
+
+
+def _sizing(
+    listing: AdapterListing,
+    unit: AdapterItem,
+    mapped: CategoryTemplate | None,
+    facts: SellerFacts | None,
+    marketplace_id: str,
+) -> tuple[dict[str, list[dict[str, Any]]], list[str]]:
+    """Items 8 and 15 (`sizing`): a sellable item's product size and weight, its structured
+    apparel size and its size-chart measurements, each only where the stored LISTING definition
+    declares it, and the field paths that fed them."""
+    if unit.item_role == "parent" or facts is None:
+        return {}, []
+    schema = listing.product_type_schema
+    targets = frozenset(
+        str(spec.marketplace_field)
+        for spec in (mapped.specs.values() if mapped is not None else ())
+        if spec.marketplace_field
+    )
+    out = sizing.item_size(facts, schema, marketplace_id, mapped=targets)
+    sent: list[str] = []
+    if sizing.ITEM_DIMENSIONS in out:
+        sent.append(_attribute_or_fact(listing, unit, "product_dimensions"))
+    if sizing.ITEM_WEIGHT in out:
+        sent.append(_attribute_or_fact(listing, unit, "product_weight"))
+    size = sizing.apparel_size(facts, schema, marketplace_id)
+    if size is not None:
+        out[sizing.APPAREL_SIZE] = [size]
+        sent.append(sku_path(unit) if unit.item_role == "child" else "attributes.size")
+    measures = sizing.chart_measures(facts, schema, marketplace_id)
+    if measures:
+        out.update(measures)
+        sent.append(fact_path(unit, "size_measurements"))
+    return out, sent
+
+
+def _attribute_or_fact(listing: AdapterListing, unit: AdapterItem, key: str) -> str:
+    return f"attributes.{key}" if key in listing.listing.attributes else fact_path(unit, key)
 
 
 PACKAGE_WARNINGS: Final[Mapping[str, str]] = MappingProxyType(
@@ -756,6 +795,9 @@ def item_payload(
     attributes.update(package)
     attributes.update(_browse_node(template, marketplace_id))
     sent += package_sent
+    sized, sized_sent = _sizing(listing, unit, mapped, facts, marketplace_id)
+    attributes.update(sized)  # a structured item_dimensions replaces the template's text entry
+    sent += sized_sent
     skipped += list(fact_paths(unit))
 
     image_names: dict[str, str] = {}

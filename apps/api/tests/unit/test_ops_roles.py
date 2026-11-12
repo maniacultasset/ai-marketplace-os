@@ -83,6 +83,7 @@ Q7: dict[str, str] = {
     "listings_resolution": "tenant:read",  # SI11 T20
     "listings_issue_history": "tenant:read",  # feedback item 20
     "listings_refresh_status": "listing:publish",  # S21 CP7
+    "listings_fixes_apply": "listing:edit",  # client item 20
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
     "marketplaces_accounts": "tenant:read",

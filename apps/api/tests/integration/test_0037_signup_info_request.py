@@ -52,7 +52,8 @@ def test_single_head_on_0036() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # 0038_d5 sits on top (`test_0038_d5.py`)
+    assert len(script.get_heads()) == 1
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 

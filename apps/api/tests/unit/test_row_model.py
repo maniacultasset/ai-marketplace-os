@@ -280,7 +280,9 @@ def test_row_model_dimension_bounds(case: str) -> None:
         return
     result = run(package_length_cm=case, package_breadth_cm="10", package_height_cm="10")
     assert result.row is None
-    assert ok(package_length_cm="99999.99", package_breadth_cm="1", package_height_cm="0.5")
+    # the storage bound itself is the hard check only where the category has no tighter limit
+    # (item 15 bullet 4: a clothing box is at most 150 cm a side, `test_package_sense.py`)
+    assert ok(package_length_cm="150", package_breadth_cm="1", package_height_cm="0.5")
 
 
 # ---- properties ----

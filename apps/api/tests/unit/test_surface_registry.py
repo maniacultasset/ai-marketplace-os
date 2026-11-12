@@ -101,6 +101,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_submissions", "GET", "/listings/{listing_id}/submissions"),
     ("listings_resolution", "GET", "/listings/{listing_id}/resolution"),
     ("listings_issue_history", "GET", "/listings/{listing_id}/issue-history"),
+    ("listings_fixes_apply", "POST", "/listings/{listing_id}/fixes/apply"),  # client item 20
     ("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status"),
     ("marketplaces_connect", "POST", "/marketplaces/connect"),
     ("marketplaces_callback", "GET", "/marketplaces/{marketplace}/callback"),
@@ -515,6 +516,7 @@ def test_operation_count() -> None:
     # client item 7 adds the move of a saved photo to another view
     # FB18 (client feedback item 18) adds the cross-brand overview
     # item 16 adds the listing field requirements read
+    # client item 20 adds the seller's apply of Kuinn's suggested fixes
     assert len(OPS) == 125
 
 
@@ -573,6 +575,8 @@ def test_error_codes_per_d2() -> None:
             E.INVALID_STATUS_TRANSITION,
             E.LISTING_BUSY,
         ),
+        # client item 20: nothing open to apply, a paused or archived listing, or one at work
+        "listings_fixes_apply": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),
         # ADR-0019: approving a rejected request, or rejecting an approved one
         "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
         "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),

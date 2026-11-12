@@ -111,6 +111,21 @@ class SellerFacts:
     package_breadth_cm: Decimal | None = None
     package_height_cm: Decimal | None = None
     package_weight_g: int | None = None
+    # Client item 15 bullet 1 (12 Nov): the product itself, beside the packed box. The sides come
+    # from the `product_dimensions` fact when it is written as `item_dimensions_text` (else None:
+    # a free-text value still travels as the template maps it); the weight is
+    # `products.product_weight_g` (own, else the style's).
+    item_length_cm: Decimal | None = None
+    item_breadth_cm: Decimal | None = None
+    item_height_cm: Decimal | None = None
+    product_weight_g: int | None = None
+    # Client item 8 bullet 5 (12 Nov): this item's size and its row of the style's saved size chart
+    # (`size_measurements`, matched by size label ignoring case and spaces): the unit (`cm`/`in`),
+    # the basis (`garment`/`body`) and measurement -> value. Empty with no chart or no row.
+    size: str | None = None
+    size_chart_unit: str | None = None
+    size_chart_basis: str | None = None
+    size_measures: Mapping[str, Decimal] = field(default_factory=lambda: _EMPTY)
 
 
 @dataclass(frozen=True)
@@ -490,6 +505,39 @@ def _title(name: str) -> str:
 
 def _percent_text(value: Decimal) -> str:
     return format(value.normalize(), "f")
+
+
+_DIM: Final = r"(\d{1,5}(?:\.\d{1,2})?)"
+_TIMES: Final = "[x\u00d7]"  # an ASCII x or the multiplication sign
+_ITEM_DIMS: Final = re.compile(
+    rf"\s*{_DIM}\s*{_TIMES}\s*{_DIM}\s*{_TIMES}\s*{_DIM}\s*cm\s*", re.IGNORECASE
+)
+
+
+def item_dimensions_text(length: Decimal, breadth: Decimal, height: Decimal) -> str:
+    """Client item 15: the `product_dimensions` text a structured product size is stored as,
+    `30 x 15 x 12.5 cm` (length x breadth x height, cm, no trailing zeros)."""
+    return " x ".join(_plain(Decimal(v)) for v in (length, breadth, height)) + " cm"
+
+
+def parse_item_dimensions(text: object) -> tuple[Decimal, Decimal, Decimal] | None:
+    """The (length, breadth, height) in cm of a `product_dimensions` value written as
+    `L x B x H cm` (case and spaces free, the multiplication sign too); None for any other text or a zero side.
+    """
+    if not isinstance(text, str):
+        return None
+    found = _ITEM_DIMS.fullmatch(text)
+    if found is None:
+        return None
+    sides = tuple(Decimal(found.group(i)) for i in (1, 2, 3))
+    if any(side <= 0 for side in sides):
+        return None
+    return sides[0], sides[1], sides[2]
+
+
+def _plain(value: Decimal) -> str:
+    text = format(value.quantize(_CENT).normalize(), "f")
+    return text
 
 
 def composition_text(text: str | None, parts: object | None) -> str | None:
