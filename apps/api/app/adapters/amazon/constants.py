@@ -49,6 +49,14 @@ EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
 PRODUCT_TYPE_NAMES: Final[Mapping[str, str]] = MappingProxyType(
     {"KURTA": "Kurta", "SHIRT": "Shirt", "LAMP": "Lamp"}
 )
+# Client feedback item 5 (2026-11-12): the Amazon browse node a category's listings ask for. The
+# node id is the category template's `external_category_id` (the mapping table of spec [71]);
+# each item sends it as `recommended_browse_nodes` when it is set. A browse node id is digits
+# only; anything else is never sent. No Amazon.in (A21TJRUUN4KGV) node id is in the repo yet:
+# every seeded template keeps NULL until someone with Seller Central reads them, see
+# docs/runbooks/PTD-REFRESH.md "Browse nodes".
+BROWSE_NODE_ATTRIBUTE: Final = "recommended_browse_nodes"
+BROWSE_NODE_PATTERN: Final = r"^[0-9]{1,20}$"
 # SI2 T8: the second Amazon field the one manufacturer fact feeds (name and address)
 MANUFACTURER_CONTACT: Final = "manufacturer_contact_information"
 # SI5 B2 (PLAN §2.7): a sellable item's barcode, or the seller's GTIN exemption (never both,
