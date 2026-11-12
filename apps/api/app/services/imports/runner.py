@@ -26,7 +26,11 @@ written `imported` or `failed`, never `pending`. The body never starts generatio
 A family is two passes (DATABASE.md:971-974, T17): pass 1 upserts the style (its title, brand
 and classification must agree across the family, else `CROSS_FIELD_MISMATCH` on the row that
 disagrees) and its colourways; pass 2 writes each child with its available cell, then one
-derived `not_provided` cell per missing colour x size, so the matrix is complete. Parties
+derived `not_provided` cell per missing colour x size, so the matrix is complete. A style SKU
+that is a saved standalone (the variants screen's "Save variants") is converted as the size run
+converts it (`family_conversion`): a barcode, stock reference or own size fails the family with
+`VARIATION_INVALID`, its GTIN exemption moves to the variants without a barcode, and its unsent
+listings go back to `blocked/validation_errors`. Parties
 (B11): the manufacturer is matched on its dedupe key with the address kept whole (a PIN is
 taken only when exactly one trails it); consumer care equal to the brand default is inherited
 (no product override), otherwise a nameless consumer-care party, never an invented name.
@@ -52,8 +56,9 @@ from app.adapters.storage import (
     csv_bucket,
     get_storage,
 )
-from app.core.errors import InputError, RowCountError
+from app.core.errors import ConflictError, InputError, RowCountError
 from app.core.logging import get_logger
+from app.db.models.catalog import Product
 from app.db.models.ops import Import
 from app.repositories.brand_profile import BrandPromptRepository
 from app.repositories.column_maps import ImportColumnMapRepository
@@ -65,11 +70,13 @@ from app.repositories.imports import (
     mapped_categories,
 )
 from app.repositories.jobs import JobRunRepository
+from app.repositories.listings import UserActor
 from app.repositories.parties import BrandProfileRepository, BusinessPartyRepository, PartyFields
 from app.repositories.products import ProductRepository, ProductUpsert, Upserted
 from app.repositories.transactions import RowDbError, row_savepoint, unit_of_work
 from app.repositories.uow import repositories_on
 from app.repositories.variants import ColourwayRepository, MatrixCellRepository
+from app.services import family_conversion as conversion
 from app.services.category_confirm import settle_on_category_write
 from app.services.imports.column_map import Renamer, apply_map
 from app.services.imports.csv_file import CsvRow, ImportFileError, iter_rows
@@ -93,6 +100,13 @@ MAX_SIZE_RUN: Final = 40
 _PIN: Final = re.compile(r"(?<![0-9])([1-9][0-9]{5})(?![0-9])")
 _TRAILING_PIN: Final = re.compile(r"(?<![0-9])([1-9][0-9]{5})[\s.,;:)-]*$")
 _DIGITS: Final = re.compile(r"[^0-9]")
+# a saved standalone's identity fact no style may own (family_conversion.blocker)
+_HELD: Final = {
+    "product_identifier": "the saved product has a barcode; a barcode belongs to one variant, "
+    "so clear it on the product and give it to a variant row",
+    "stock_ref": "the saved product has a stock reference; clear it before adding variants",
+    "attributes.size": "the saved product has its own size; clear it before adding variants",
+}
 
 
 class StaleAttempt(Exception):  # noqa: N818 - control flow: this worker lost its lease
@@ -778,9 +792,15 @@ class _Writer:
                     await self._fail(p, p.errors or [item])
             return
         colourway_ids: dict[str, uuid.UUID] = {}
+        # a saved standalone's GTIN exemption, moved to the variants it gains (family_conversion)
+        carried_exemption = False
 
         async def write_style() -> uuid.UUID:
+            nonlocal carried_exemption
             if identity is not None:
+                standalone = await self.products.standalone_of_sku_for_update(key)
+                if standalone is not None:
+                    carried_exemption = await self._to_style(standalone)
                 before = await self.products.category_of_sku(key)
                 done = await self._upsert_product(
                     self._upsert(
@@ -832,17 +852,43 @@ class _Writer:
         assert style_id is not None  # noqa: S101
 
         # pass 2: the children and their cells (a retry's imported members stay as they are)
+        # the family's style row's exemption (a child lead names its own parent), else the one
+        # the saved standalone carried
+        exemption = style.identifier_exemption if style.parent_sku is None else None
+        if exemption is None and carried_exemption:
+            exemption = True
         for p in children:
             if p.skip:
                 continue
             if p.errors:
                 await self._fail(p, p.errors)
                 continue
-            await self._child(p, style_id, style, theme, colourway_ids)
+            await self._child(p, style_id, style, theme, colourway_ids, exemption)
         for p in [*orphans, *([rejected_style] if rejected_style is not None else [])]:
             if not p.skip:
                 await self._fail(p, p.errors)
         await self._fill_gaps(style_id, theme)
+
+    async def _to_style(self, row: Product) -> bool:
+        """The saved standalone `row` is about to take the family's theme: refuse what a style
+        may not own (PRV03 otherwise), void its listings' content and clear its exemption;
+        True when that exemption moves to the new variants."""
+        held = conversion.blocker(row)
+        if held is not None:
+            raise RowRefused(row_error(ErrorCode.VARIATION_INVALID, _HELD[held]))
+        uow = repositories_on(self.session, self.run.tenant)
+        try:
+            found = await conversion.listings(uow, row)
+        except ConflictError as exc:
+            message = (
+                "a listing of the product is being written; retry when it finishes"
+                if exc.code == ErrorCode.LISTING_BUSY
+                else "the product's listing was sent to a marketplace; it cannot gain variants"
+            )
+            raise RowRefused(row_error(ErrorCode.VARIATION_INVALID, message)) from exc
+        exempt = await conversion.drop_identity(uow, row)
+        await conversion.supersede(uow, found, UserActor(self.run.imp.created_by))
+        return exempt
 
     async def _fail_all(self, unit: Unit, reason: str) -> None:
         """The whole family fails: each written row with its own errors, else `reason`."""
@@ -963,6 +1009,7 @@ class _Writer:
         style: ProductImportRow,
         theme: str,
         colourway_ids: dict[str, uuid.UUID],
+        exemption: bool | None,
     ) -> None:
         row = p.row
         assert row is not None  # noqa: S101
@@ -986,15 +1033,7 @@ class _Writer:
                 await self.facts.set_attribute(
                     done.id, "size", self.run.facts.fact(row.size_name, row.size_key)
                 )
-            await self._row_facts(
-                done.id,
-                row,
-                level="variant",
-                # the family's style row (a child lead names its own parent)
-                inherited_exemption=(
-                    style.identifier_exemption if style.parent_sku is None else None
-                ),
-            )
+            await self._row_facts(done.id, row, level="variant", inherited_exemption=exemption)
             await self._child_money(done.id, style_id)
             await self.cells.upsert(
                 style_id,

@@ -322,6 +322,21 @@ class ProductRepository(TenantScopedRepository[Product]):
             deleted=found[3] is not None,
         )
 
+    async def standalone_of_sku_for_update(self, sku: str) -> Product | None:
+        """The stored standalone on `sku` (no parent, no theme; soft-deleted included, as an
+        upsert revives it), locked for the rest of the transaction; None otherwise."""
+        stmt = (
+            self._select()
+            .where(
+                Product.sku == sku,
+                Product.parent_product_id.is_(None),
+                Product.variation_theme.is_(None),
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()
