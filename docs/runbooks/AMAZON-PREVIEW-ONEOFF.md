@@ -37,11 +37,14 @@ fails the deploy command, after the job is deleted.
    (prefix `KTEST-`); never a live SKU.
 
    ```sql
-   SELECT l.id AS listing_id, l.status, l.status_reason, i.seller_sku,
+   SELECT l.id AS listing_id, l.status, l.status_reason, p.sku AS seller_sku,
           l.remote_check_status, a.status AS account_status
      FROM listings l
      JOIN tenants t ON t.id = l.tenant_id
-     JOIN listing_items i ON i.tenant_id = l.tenant_id AND i.listing_id = l.id
+     -- the SKUs the dry run sends: the product and its variants (listing_items is empty until
+     -- a first submission)
+     JOIN products p ON p.tenant_id = l.tenant_id AND p.deleted_at IS NULL
+                    AND (p.id = l.product_id OR p.parent_product_id = l.product_id)
      LEFT JOIN marketplace_accounts a
        ON a.tenant_id = l.tenant_id AND a.marketplace = 'amazon' AND a.status <> 'revoked'
     WHERE t.slug = '<slug>'
