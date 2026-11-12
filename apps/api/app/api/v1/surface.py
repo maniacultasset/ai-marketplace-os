@@ -79,7 +79,7 @@ from app.api.v1.schemas.catalog import (
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
-from app.api.v1.schemas.home import HomeSummaryOut
+from app.api.v1.schemas.home import HomeBrandsOut, HomeSummaryOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
     ImageCandidateOut,
@@ -678,7 +678,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.SKU_CONFLICT, etag=True,
               extra_codes=MappingProxyType({422: (E.UNKNOWN_FACT_KEY,)}), action=A.PRODUCT_IMPORT),
     Operation("products_list", "GET", "/products", 200, ProductPage, "products",
-              "List products", "S12", query=("limit", "cursor"), action=A.TENANT_READ),
+              "List products", "S12", query=("listing", "marketplace", "limit", "cursor"),
+              action=A.TENANT_READ),
     Operation("products_get", "GET", "/products/{product_id}", 200, ProductOut, "products",
               "Read one product", "S12", path_id="product_id", etag=True,
               action=A.TENANT_READ),
@@ -731,7 +732,8 @@ _ROWS: Final[tuple[Operation, ...]] = (
               body_ids=("items[].listing_id",), idempotency=True, action=A.LISTING_PUBLISH),
     Operation("listings_list", "GET", "/listings", 200, ListingPage, "listings",
               "List listings (the review queue)", "S19",
-              query=("status", "marketplace", "product_id", "limit", "cursor"), action=A.TENANT_READ),
+              query=("status", "marketplace", "product_id", "bucket", "limit", "cursor"),
+              action=A.TENANT_READ),
     Operation("listings_get", "GET", "/listings/{listing_id}", 200, ListingDetail, "listings",
               "Read one listing with its content and validation", "S19", path_id="listing_id",
               etag=True, action=A.TENANT_READ),
@@ -1002,6 +1004,9 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("home_summary", "GET", "/home/summary", 200, HomeSummaryOut, "home",
               "Exact listing counts, what needs you, recent agent work and marketplace status",
               "FB6", action=A.TENANT_READ),
+    Operation("home_brands", "GET", "/home/brands", 200, HomeBrandsOut, "home",
+              "Each of the caller's own brands with its counts, each counted inside that brand",
+              "FB18", action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

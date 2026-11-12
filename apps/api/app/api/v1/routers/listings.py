@@ -35,6 +35,7 @@ from app.api.v1.schemas.batches import (
     BatchResult,
     PublishRequest,
 )
+from app.api.v1.schemas.home import BUCKET_FILTER_DESCRIPTION, ListingBucketFilter
 from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.listings import (
     AuditEventOut,
@@ -171,9 +172,13 @@ async def listings_list(
     status: Annotated[ListingStatus | None, Query()] = None,
     marketplace: Annotated[Marketplace | None, Query()] = None,
     product_id: Annotated[UUID | None, Query()] = None,
+    bucket: Annotated[
+        ListingBucketFilter | None, Query(description=BUCKET_FILTER_DESCRIPTION)
+    ] = None,
 ) -> ListingPage:
-    """List the brand's listings, filtered by status, marketplace or product. `status=validated`
-    or `needs_review` is the review queue, oldest first; any other filter is newest first."""
+    """List the brand's listings, filtered by status, marketplace, product or Home bucket.
+    `status=validated` or `needs_review` is the review queue, oldest first; any other filter is
+    newest first."""
     wanted = None if status is None else ListingStatus(status).value
     tag = listing_reads.order_tag(wanted)
     after = None if page.cursor is None else decode_tagged_cursor(page.cursor, tag)
@@ -182,6 +187,7 @@ async def listings_list(
         status=wanted,
         marketplace=None if marketplace is None else Marketplace(marketplace).value,
         product_id=product_id,
+        bucket=bucket,
         after=after,
         limit=page.limit,
     )

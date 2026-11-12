@@ -950,10 +950,19 @@ async def get_product(principal: Principal, product_id: uuid.UUID) -> ProductVie
 
 
 async def list_products(
-    principal: Principal, *, limit: int, after: tuple[datetime, uuid.UUID] | None
+    principal: Principal,
+    *,
+    limit: int,
+    after: tuple[datetime, uuid.UUID] | None,
+    listing: str | None = None,
+    marketplace: str | None = None,
 ) -> tuple[list[ProductView], bool]:
+    """A page of products, newest first; `listing` and `marketplace` keep the products owning
+    a listing in that Home bucket and on that marketplace (`ProductRepository.list_page`)."""
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        rows, has_more = await uow.products.list_page(limit=limit, after=after)
+        rows, has_more = await uow.products.list_page(
+            limit=limit, after=after, listing=listing, marketplace=marketplace
+        )
         keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
         exempt = await uow.products.style_exemptions([r.id for r in rows if _is_style(r)])
         thumbs = await _main_views(uow, principal.tenant_id, rows)

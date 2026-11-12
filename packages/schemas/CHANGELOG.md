@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Home filters and the cross-brand overview (client feedback 11 Nov 2026, items 6 and 18; additive MINOR under the open 2.1.0 heading: one new operation, two optional query parameters, no new error code or enum member of an existing type).
+  - **Contract (MINOR).** `GET /listings?bucket=` and `GET /products?listing=&marketplace=` take a Home bucket (`live`, `partly_live`, `any_live`, `in_progress`, `problem`, `ready_to_approve`, `ready_to_publish`, `draft`, `inactive`). New op `GET /api/v1/home/brands` (`home_brands`, `tenant:read`, 125 ops) answers `HomeBrandsOut {as_of, brands, more}`, each `BrandSummary {tenant_id, name, role, current, products, listings, needs_you}`.
+  - **Behaviour.** The bucket filters use the summary's own bucket definition in SQL (`listing_bucket_sql`, the same order as `listing_bucket`), so a filtered list holds exactly what a Home count counts, on any catalog size. The overview lists only the caller's active memberships in live brands, by name, and counts each brand in its own transaction under that brand's tenant GUC (RLS scopes every count; no statement reads two tenants). `needs_you` follows the caller's role in that brand. Read only, a 5 s budget per brand, at most 25 brands.
+  - **FE notice.** Home links each count (marketplace cards too) to `/products?listing=&marketplace=`, which now walks the server-filtered lists. Show the brand selector only with 2+ memberships.
+
 - White background "already applied" shows the photo (client tester, 11 Nov 2026, item 12; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
   - **Contract (MINOR).** `ImageCandidateAccepted.applied_preview_url?` (default null) on `image_candidates_create`: a 10-minute signed GET of the applied candidate's stored image, set only with `accepted_image_id`.
   - **Behaviour.** Signed after the idempotent call and never stored with the answer (CP-D18): a replay signs a fresh URL, and none once the image is no longer the live main (or the size-chart image). The "already applied" rule itself is unchanged.
