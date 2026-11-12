@@ -4,6 +4,7 @@ refusal of every role but the shell, and the STOP judgement. Nothing here opens 
 
 from __future__ import annotations
 
+import dataclasses
 import uuid
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,7 @@ from app.workers.amazon_preview import (
     _PreviewOnly,
     live_skus,
     settings_refusal,
+    sku_refusal,
 )
 from tests.adapters.amazon_support import SELLER, amazon_adapter, amazon_item, spapi_client
 from tests.support.fake_marketplace import build_fake
@@ -213,6 +215,99 @@ async def test_the_wrapper_refuses_a_built_item_with_a_live_sku_unsent() -> None
     with pytest.raises(NotEligible, match="not test SKUs"):
         await _PreviewOnly(adapter).preview_remote(amazon_item(sku="KURTA-LIVE-1"))
     assert adapter.mock_calls == []
+
+
+def _source(product_sku: Any, *child_skus: Any, theme: str | None = "size_color") -> Any:
+    from app.repositories.listings import PreviewSource, SourceProduct
+
+    def product(sku: Any, variation_theme: str | None = None) -> SourceProduct:
+        return SourceProduct(id=uuid.uuid4(), sku=sku, variation_theme=variation_theme)
+
+    return PreviewSource(
+        listing_id=uuid.uuid4(),
+        marketplace="amazon",
+        category="kurta",
+        status="validated",
+        product=product(product_sku, theme if child_skus else None),
+        version=None,
+        children=tuple(product(sku) for sku in child_skus),
+    )
+
+
+def test_a_listing_whose_skus_are_all_test_skus_passes() -> None:
+    assert sku_refusal(_source("KTEST-KURTA"), ["KTEST-KURTA"]) is None
+    family = _source("KTEST-STYLE", "KTEST-STYLE-M", "KTEST-STYLE-L")
+    assert sku_refusal(family, ["KTEST-STYLE", "KTEST-STYLE-L", "KTEST-STYLE-M"]) is None
+
+
+@pytest.mark.parametrize(
+    ("source", "sent"),
+    [
+        # the product's own SKU
+        (_source("KURTA-1"), ["KURTA-1"]),
+        (_source("ktest-kurta"), ["ktest-kurta"]),
+        # one variant of a test family
+        (_source("KTEST-STYLE", "KTEST-STYLE-M", "STYLE-L"), ["KTEST-STYLE", "KTEST-STYLE-M"]),
+        # the parent of test variants
+        (_source("STYLE", "KTEST-STYLE-M"), ["STYLE", "KTEST-STYLE-M"]),
+        # a variant the build would not send (a standalone product with variant rows)
+        (_source("KTEST-KURTA", "LIVE-1", theme=None), ["KTEST-KURTA"]),
+        # an empty or missing variant SKU is not a test SKU
+        (_source("KTEST-STYLE", ""), ["KTEST-STYLE"]),
+        (_source("KTEST-STYLE", None), ["KTEST-STYLE"]),
+        # a SKU the build would send that is not on the product rows
+        (_source("KTEST-KURTA"), ["KTEST-KURTA", "KURTA-REPAIRED"]),
+    ],
+)
+def test_a_listing_with_any_sku_that_is_not_a_test_sku_is_refused(source: Any, sent: Any) -> None:
+    refusal = sku_refusal(source, sent)
+    assert refusal is not None and "not test SKUs" in refusal and "KTEST-" in refusal
+
+
+def test_live_skus_takes_a_missing_sku_as_live() -> None:
+    assert live_skus(["KTEST-1", "", None, 7]) == ["", None, 7]
+
+
+async def test_the_wrapper_refuses_a_built_family_with_one_live_variant_unsent() -> None:
+    from app.adapters.base import AdapterItem
+    from app.workers.amazon_preview import NotEligible
+
+    base = amazon_item(sku="KTEST-STYLE")
+    items = (
+        AdapterItem(uuid.uuid4(), "KTEST-STYLE", "parent"),
+        AdapterItem(uuid.uuid4(), "KTEST-STYLE-M", "child", {"size": "M"}),
+        AdapterItem(uuid.uuid4(), "STYLE-L", "child", {"size": "L"}),
+    )
+    family = dataclasses.replace(base, items=items)
+    adapter = MagicMock()
+    with pytest.raises(NotEligible, match="not test SKUs"):
+        await _PreviewOnly(adapter).preview_remote(family)
+    assert adapter.mock_calls == []
+
+
+async def test_entrypoint_exits_4_and_sends_nothing_for_a_listing_that_is_not_test_data(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import argparse
+
+    from app.db import session as db_session
+    from app.workers import amazon_preview
+    from app.workers.amazon_preview import EXIT_NOT_ELIGIBLE, NotEligible, _main
+
+    async def refuse(*args: Any, **kwargs: Any) -> Any:
+        raise NotEligible("1 SKU(s) of the product and its variants are not test SKUs")
+
+    async def nothing() -> None:
+        return None
+
+    monkeypatch.setattr(amazon_preview, "run_oneoff", refuse)
+    monkeypatch.setattr(db_session, "dispose_engine", nothing)
+    args = argparse.Namespace(
+        tenant_id=uuid.uuid4(), listing_id=uuid.uuid4(), staff_email="s@b.test", precheck=False
+    )
+    assert await _main(args) == EXIT_NOT_ELIGIBLE == 4
+    out = capsys.readouterr()
+    assert "not test SKUs" in out.err and "nothing was sent" in out.err and out.out == ""
 
 
 # ---- the enqueue guard ----
