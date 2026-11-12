@@ -473,6 +473,33 @@
   {
     "marketplace": "amazon",
     "match_on": "code",
+    "raw_value": "8560",
+    "version": 2,
+    "error_code": "MISSING_ATTRIBUTE",
+    "error_class": "missing_data",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": null,
+    "plain_text": "Amazon could not match this listing to a product it knows and needs more details to create one. Amazon also says this when a GTIN exemption is claimed for a brand or category it has not approved.",
+    "seller_action": "Check the product's barcode. If you chose the GTIN exemption, check that Amazon approved it for this exact brand name and category, or add the barcode instead. Add any detail Amazon names in its message, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://docs.wplab.com/article/14-amazon-error-8560",
+      "observed": false,
+      "also": [
+        "https://helpcenter.channable.com/list-advertise/amazon/list-items-on-amazon/how-to-solve-common-amazon-errors",
+        "https://www.effectconnect.com/knowledge/amazon-errors",
+        "https://blog.lengow.com/amazon-marketplace/amazon-errors-1"
+      ],
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning is the one these public integrator guides agree on, kept generic. Version 2 adds the GTIN exemption case the Channable and EffectConnect guides list under this code."
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
     "raw_value": "99010",
     "version": 1,
     "error_code": "MISSING_ATTRIBUTE",
@@ -2079,6 +2106,50 @@
       "source": "sp-api-docs",
       "doc": "https://developer-docs.amazon.com/sp-api/docs/listings-items-api-issues-troubleshooting",
       "observed": false
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8550",
+    "version": 1,
+    "error_code": "IDENTIFIER_MISSING",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon needs a barcode for this product, or a GTIN exemption that Amazon approved for its brand and category.",
+    "seller_action": "Add the barcode from the pack on the product's Barcode. If the product has none, get a GTIN exemption from Amazon for this brand and category, choose the exemption on the product's Barcode, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://www.godatafeed.com/disapproval/amazon-8550-gtin-exemption-needed",
+      "observed": false,
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning rests on one public integrator guide (GoDataFeed), kept generic until Amazon returns it."
+    },
+    "enabled": true
+  },
+  {
+    "marketplace": "amazon",
+    "match_on": "code",
+    "raw_value": "8572",
+    "version": 1,
+    "error_code": "IDENTIFIER_DUPLICATE",
+    "error_class": "identifier_error",
+    "retry_class": "user_action",
+    "severity": "error",
+    "auto_fixable": false,
+    "fix_action": null,
+    "field_hint": "facts.identifier",
+    "plain_text": "Amazon says this barcode does not match the brand or the product being listed.",
+    "seller_action": "Check the product's barcode against the pack and fix it. If it is right, send Amazon your GS1 certificate, then send the listing again.",
+    "policy_ref": {
+      "source": "public-integrator-docs",
+      "doc": "https://helpcenter.channable.com/list-advertise/amazon/list-items-on-amazon/how-to-solve-common-amazon-errors",
+      "observed": false,
+      "note": "Amazon publishes this code's help only behind a Seller Central login; the meaning rests on one public integrator guide (Channable), kept generic until Amazon returns it."
     },
     "enabled": true
   }

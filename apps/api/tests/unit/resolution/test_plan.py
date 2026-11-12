@@ -251,6 +251,8 @@ def test_a_seller_step_is_always_one_the_inbox_can_ask(
             assert (code, step.action) in (
                 (ErrorCode.CATEGORY_MISMATCH, "recategorize"),
                 (ErrorCode.IDENTIFIER_DUPLICATE, "edit_identifier"),
+                (ErrorCode.IDENTIFIER_INVALID, "edit_identifier"),
+                (ErrorCode.IDENTIFIER_MISSING, "edit_identifier"),
             ), (path, code)
             assert fact_key(path) is not None, path
             continue
@@ -418,6 +420,40 @@ def test_other_brand_barcode_is_seller_edit(path: str) -> None:
     )
     (step,) = plan([issue], PlanContext())
     assert (step.lane, step.action) == ("seller", "edit_identifier")
+
+
+@pytest.mark.parametrize("path", ["facts.identifier", "variants[A-1].facts.identifier"])
+@pytest.mark.parametrize(
+    ("code", "marketplace_code"),
+    [("IDENTIFIER_INVALID", "90188"), ("IDENTIFIER_MISSING", "8550")],
+)
+def test_amazon_barcode_or_exemption_refusal_is_seller_edit(
+    path: str, code: str, marketplace_code: str
+) -> None:
+    """Item 13: a barcode Amazon calls invalid, or a create Amazon refuses for want of a barcode
+    or an approved GTIN exemption, sends the seller back to the barcode choice."""
+    issue = _issue(
+        field_path=path,
+        error_code=code,
+        error_class="identifier_error",
+        marketplace_code=marketplace_code,
+    )
+    (step,) = plan([issue], PlanContext())
+    assert (step.lane, step.action) == ("seller", "edit_identifier")
+
+
+@pytest.mark.parametrize("source", ["rules_engine", "schema"])
+def test_local_identifier_findings_stay_off_the_seller_action(source: str) -> None:
+    """Only a marketplace's own refusal opens the seller action; Kuinn's own checks keep their
+    lanes."""
+    issue = _issue(
+        source=source,
+        field_path="facts.identifier",
+        error_code="IDENTIFIER_INVALID",
+        error_class="identifier_error",
+    )
+    for step in plan([issue], PlanContext()):
+        assert step.action != "edit_identifier"
 
 
 @pytest.mark.parametrize("path", ["variants[A-1]", "listing", "facts.identifier_type"])
