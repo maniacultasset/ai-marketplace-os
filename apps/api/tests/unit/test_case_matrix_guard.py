@@ -101,6 +101,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "products_category_suggest",  # SI14
         "products_size_run_create",  # V1.1
         "images_photo_match_keep",  # V1.1
+        "images_update",  # V1.1 (feedback 7)
         "tenants_create",  # ADR-0032
         "imports_column_map_create",  # SI14
         "imports_column_map_get",  # SI14

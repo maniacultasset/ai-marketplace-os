@@ -69,6 +69,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "listings_regenerate": {"instructions": "Shorter title."},
     "marketplaces_connect": {"marketplace": "amazon"},
     "marketplaces_connect_confirm": {"pending": "p" * 43},
+    # V1.1 (feedback 7): the seeded photo is a plain secondary, so this move changes nothing
+    "images_update": {"slot": "secondary"},
     "images_upload_url": {
         "product_id": ID,
         "slot": "main",

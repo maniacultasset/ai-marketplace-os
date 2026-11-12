@@ -112,6 +112,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("images_report", "GET", "/images/{image_id}/report"),
     # SI1: the image delete (78 + 1)
     ("images_delete", "DELETE", "/images/{image_id}"),
+    # V1.1 (client feedback item 7): move a saved photo to another view
+    ("images_update", "PATCH", "/images/{image_id}"),
     ("image_candidates_create", "POST", "/products/{product_id}/image-candidates"),
     ("image_candidates_list", "GET", "/products/{product_id}/image-candidates"),
     ("image_candidates_accept", "POST", "/image-candidates/{candidate_id}/accept"),
@@ -507,6 +509,7 @@ def test_operation_count() -> None:
     # item 17 adds the listing versions read
     # client item 2 adds the admin's one question and the applicant's one reply
     # item 3 adds the batch SKU check (variants grid, bulk upload)
+    # client item 7 adds the move of a saved photo to another view
     assert len(OPS) == 125
 
 

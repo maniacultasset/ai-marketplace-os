@@ -1088,6 +1088,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "images_update": {  # V1.1 (client feedback item 7): an extra photo marked as the Back
+            "image_id": IMAGE,
+            "slot": "secondary",
+            "role": "back",
+            "compliance_status": "passed",
+            "job_id": None,
+            "swapped": None,
+        },
         "images_photo_match_keep": {  # V1.1 (client feedback item 9)
             "image_id": IMAGE,
             "photo_match": {

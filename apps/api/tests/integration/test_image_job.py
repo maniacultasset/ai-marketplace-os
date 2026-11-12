@@ -350,3 +350,35 @@ async def test_corrupt_image_writes_no_derivative(images_db: JobWorld, store: Fa
     image_id, _ = await checked(images_db, store, b"\xff\xd8\xff not really a jpeg")
     assert image_db_row(images_db.conn, image_id)["clean_content_hash"] is None
     assert not [k for k in store.objects if "/derived/" in k]
+
+
+async def test_image_job_skips_a_photo_moved_while_it_ran(
+    images_db: JobWorld, store: FakeStorage, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """V1.1 (feedback 7): a check that read the photo as Front writes no Front report once the
+    seller moved it to lifestyle meanwhile; the move's own re-check writes the lifestyle one."""
+    acme = images_db.tenant("acme")
+    image_id = image_row(images_db.conn, acme, product(images_db.conn, acme), slot="main")
+    key = image_db_row(images_db.conn, image_id)["storage_key"]
+    store.objects[key] = (picture(1000, 1000), "image/jpeg", datetime.now(UTC))
+    real_run = image_runner.run_checks_isolated
+
+    async def run(*a: Any, **k: Any) -> CheckOutcome:
+        images_db.conn.execute(
+            "UPDATE images SET slot = 'lifestyle', compliance_status = 'pending', "
+            "image_report_json = NULL WHERE id = %s",
+            [image_id],
+        )
+        return await real_run(*a, **k)
+
+    monkeypatch.setattr(image_runner, "run_checks_isolated", run)
+    job_id = await enqueue_image_job(acme, image_id)
+    await run_image_job(job_id)
+    row = image_db_row(images_db.conn, image_id)
+    assert (row["slot"], row["compliance_status"], row["image_report_json"]) == (
+        "lifestyle",
+        "pending",
+        None,
+    )
+    job = job_row(images_db.conn, job_id)
+    assert job["status"] == "succeeded" and job["result_json"]["skipped"] == "image_gone"
