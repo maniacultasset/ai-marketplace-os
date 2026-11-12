@@ -10,15 +10,16 @@ ADR-0028 (amendment of 2026-11-12) records the design.
 ## What the job does and does not do
 
 - `deploy.sh prod amazon-preview ...` creates the Cloud Run job `aimos-amazon-preview` (worker identity, shell role,
-  `DATABASE_URL` and `AMAZON_CLIENT_SECRET` only), executes it once, waits, prints its log, then deletes the job.
+  `DATABASE_URL` and `AMAZON_CLIENT_SECRET` only, one task, no retry), executes it once, waits, prints the log of this
+  execution only, then deletes the job. Any exit after the job is created (a failure, Ctrl-C) deletes it too.
 - Only that job's env has `AMAZON_PUBLISH_ENABLED=true`, `AMAZON_VALIDATION_PREVIEW_ENABLED=true`,
   `AMAZON_CATALOG_PRECHECK_ENABLED` (true only with `--precheck`) and `AMAZON_PREVIEW_ONEOFF=1`. Any role but the shell
   refuses to boot with `AMAZON_PREVIEW_ONEOFF`, and the job refuses to run without it.
 - It refuses (nothing sent) unless: the staff email is an active platform admin; the listing is Amazon, not paused or
   archived, in `validated`, `needs_review`, `approved` or `blocked/validation_errors`; its account is `active`; the
   account's preview breaker is closed; no `listing_status_sync` job of the listing is live; and every seller SKU
-  it would send starts with `KTEST-` (checked on the listing's SKUs before any call, and again on the built item
-  right before the preview).
+  starts with `KTEST-` (case-sensitive): the product's own SKU and every variant's, sent or not, checked before any
+  call, and again on the built item right before the preview. An empty variant SKU is refused too (exit 4).
 - It GETs each SKU first. If any SKU already exists on Amazon it prints STOP and sends no preview.
 - It runs the preview job body once. Every SP-API request must be a GET or a listings-item PUT with
   `mode=VALIDATION_PREVIEW`; anything else is refused before it is sent. `--precheck` adds the read-only catalog search
@@ -89,8 +90,9 @@ fails the deploy command, after the job is deleted.
 
 ## Rollback
 
-Nothing to roll back in the app: no setting of the api or the worker changed, and no job or verdict was written. If
-the deploy command was interrupted after the job was created, delete it by hand:
+Nothing to roll back in the app: no setting of the api or the worker changed, and no job or verdict was written. The
+deploy command deletes the Cloud Run job on any exit; if it says it could not (or the machine died mid-run), delete it
+by hand:
 
 ```bash
 gcloud run jobs delete aimos-amazon-preview --region=asia-south1 --project=<project> --quiet
