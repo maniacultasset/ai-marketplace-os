@@ -13,8 +13,9 @@ Guards, in order; any refusal sends nothing to Amazon:
 2. The staff email is an active platform admin (exit 4).
 3. The listing (exit 4): Amazon, not paused or archived, `validated`, `needs_review`, `approved`
    or `blocked/validation_errors`, with a current version; its account `active`; the account's
-   preview breaker (CP-D24) closed; no live `listing_status_sync` job of the listing. One
-   `listing.preview_oneoff` audit row names the staff actor.
+   preview breaker (CP-D24) closed; no live `listing_status_sync` job of the listing; and every
+   seller SKU the dry run would send is a test SKU (`KTEST-` prefix, the owner's rule: never a
+   live product). One `listing.preview_oneoff` audit row names the staff actor.
 4. A GET (getListingsItem) of each of the listing's SKUs. Any SKU found on Amazon: STOP (exit 5),
    and no preview is sent.
 
@@ -33,7 +34,8 @@ publish method at all.
 After the preview, a GET of each SKU again. The output is the verdict, each issue (code, Amazon's
 code, severity, attribute path, message), each SKU's reply status and its GET result. A SKU found
 on Amazon, a reply that looked applied, or a request the transport refused prints STOP and exits
-5; an applied-looking reply also opens the account's breaker task (CP-D24, our own row).
+5, and any such STOP after the preview also opens the account's breaker task (CP-D24, our own
+row), so no later dry run of the account runs until staff close it.
 
 | outcome                                  | stream | exit |
 |------------------------------------------|--------|------|
@@ -93,6 +95,8 @@ REASON: Final = "amazon_preview_oneoff"
 AUDIT_ACTION: Final = "listing.preview_oneoff"
 PREVIEW_MODE: Final = "VALIDATION_PREVIEW"
 VERDICTS: Final = frozenset({"VALID", "INVALID"})
+# the owner allowed the dry run on test listings only (2026-11-12): every SKU must carry it
+TEST_SKU_PREFIX: Final = "KTEST-"
 
 
 class Refused(Exception):  # noqa: N818 - an outcome, as the CLI's NotEligibleError
@@ -175,6 +179,9 @@ class _PreviewOnly:
         return "_PreviewOnly()"
 
     async def preview_remote(self, item: AdapterListing) -> RemotePreview:
+        # the item as built is what is sent: its SKUs are checked again, not only the guard's
+        if not_test := live_skus([unit.seller_sku for unit in item.units()]):
+            raise NotEligible(f"{len(not_test)} SKU(s) of the built item are not test SKUs")
         self.verdict = await self.__adapter.preview_remote(item)  # type: ignore[attr-defined]
         return self.verdict
 
@@ -278,6 +285,11 @@ class OneoffReport:
         return "".join(f"{line}\n" for line in lines)
 
 
+def live_skus(skus: Sequence[str]) -> list[str]:
+    """The SKUs that are not test SKUs (no `KTEST-` prefix): any one refuses the run."""
+    return [sku for sku in skus if not sku.startswith(TEST_SKU_PREFIX)]
+
+
 def settings_refusal(settings: Settings, *, precheck: bool) -> str | None:
     """Why the settings refuse the one-off run, or None (module docstring, guard 1)."""
     if not settings.amazon_preview_oneoff:
@@ -348,6 +360,11 @@ async def _target(tenant_id: uuid.UUID, listing_id: uuid.UUID, staff_email: str)
         skus = seller_skus(source)
         if not skus:
             raise NotEligible("the listing has no SKU")
+        if live_skus(skus):
+            raise NotEligible(
+                f"{len(live_skus(skus))} of {len(skus)} SKU(s) are not test SKUs "
+                f"(prefix {TEST_SKU_PREFIX}); the dry run runs on test listings only"
+            )
         await uow.audit.write(
             tenant_id=tenant_id,
             actor_type="staff",
@@ -429,7 +446,7 @@ async def run_oneoff(
             row.reply = replies.get(sku, "-")
         report.skus = [rows[sku] for sku in sorted(rows)]
         _judge(report, after, replies)
-        if verdict is not None and verdict.applied:
+        if report.stop:  # Amazon may hold something now: no later dry run until staff look
             async with tenant_uow(tenant_id) as uow:
                 await open_breaker(uow, target.account_id)
     log.info(

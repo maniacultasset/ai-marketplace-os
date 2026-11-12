@@ -52,9 +52,20 @@ async def _validated(pw: PubWorld) -> Any:
     return made
 
 
+def _ktest(pw: PubWorld) -> None:
+    """The owner allowed the dry run on test listings only: give the tenant's products the
+    `KTEST-` test SKU prefix the job requires."""
+    pw.conn.execute(
+        "UPDATE products SET sku = 'KTEST-' || sku WHERE tenant_id = %s AND sku NOT LIKE 'KTEST-%%'",
+        [pw.world.tenant("acme")],
+    )
+
+
 async def _oneoff(pw: PubWorld, made: Any, **kwargs: Any) -> Any:
     from app.workers.amazon_preview import run_oneoff
 
+    if kwargs.pop("ktest", True):
+        _ktest(pw)
     return await run_oneoff(
         pw.world.tenant("acme"),
         made.listing_id,
@@ -108,6 +119,18 @@ async def test_one_off_previews_prints_and_writes_nothing(prev: PubWorld) -> Non
     (audit,) = audit_rows(prev.conn, "listing.preview_oneoff")
     assert audit[1] == "staff" and audit[3] == STAFF and audit[5] == made.listing_id
     assert audit[9] == "amazon_preview_oneoff"
+
+
+async def test_refused_for_a_listing_without_test_skus(prev: PubWorld) -> None:
+    from app.workers.amazon_preview import NotEligible
+
+    _admin(prev)
+    made = await _validated(prev)
+    calls = prev.fake.preview_calls
+    with pytest.raises(NotEligible, match="not test SKUs"):
+        await _oneoff(prev, made, ktest=False)
+    assert prev.fake.preview_calls == calls
+    assert audit_rows(prev.conn, "listing.preview_oneoff") == []
 
 
 async def test_refused_without_the_one_off_switch(prev: PubWorld) -> None:
@@ -204,6 +227,45 @@ async def test_stop_before_the_preview_when_a_sku_exists(prev: PubWorld) -> None
     report = await _oneoff(prev, made, deps=_deps(_Exists()))
     assert report.exit_code == 5 and report.verdict is None
     assert "already exist on Amazon; no preview sent" in report.render()
+
+
+class _AppearsAfter:
+    """An adapter whose preview answers VALID and after which every SKU exists on Amazon."""
+
+    def __init__(self) -> None:
+        self.previewed = False
+
+    async def get_listing(self, seller_sku: str, *, listing_id: uuid.UUID | None = None) -> Any:
+        return object() if self.previewed else None
+
+    async def preview_remote(self, item: Any) -> Any:
+        from app.adapters.base import RemotePreview
+
+        self.previewed = True
+        return RemotePreview(
+            status="clean", per_sku={unit.seller_sku: "VALID" for unit in item.units()}
+        )
+
+    async def aclose(self) -> None:
+        return None
+
+
+def _breaker_tasks(pw: PubWorld) -> list[Any]:
+    return pw.rows(
+        "SELECT kind, status FROM human_tasks WHERE marketplace_account_id = %s "
+        "AND target_path = 'account.preview_applied'",
+        [pw.accounts["acme"]],
+    )
+
+
+async def test_stop_and_breaker_when_a_sku_exists_after_the_preview(prev: PubWorld) -> None:
+    _admin(prev)
+    made = await _validated(prev)
+    jobs = _jobs(prev)
+    report = await _oneoff(prev, made, deps=_deps(_AppearsAfter()))
+    assert report.exit_code == 5 and "exist on Amazon after the preview" in report.render()
+    assert _breaker_tasks(prev) == [("marketplace_error_review", "open")]
+    assert _jobs(prev) == jobs
 
 
 async def test_stop_and_breaker_when_the_reply_looks_applied(prev: PubWorld) -> None:

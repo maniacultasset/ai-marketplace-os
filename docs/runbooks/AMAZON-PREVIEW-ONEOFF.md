@@ -16,7 +16,9 @@ ADR-0028 (amendment of 2026-11-12) records the design.
   refuses to boot with `AMAZON_PREVIEW_ONEOFF`, and the job refuses to run without it.
 - It refuses (nothing sent) unless: the staff email is an active platform admin; the listing is Amazon, not paused or
   archived, in `validated`, `needs_review`, `approved` or `blocked/validation_errors`; its account is `active`; the
-  account's preview breaker is closed; and no `listing_status_sync` job of the listing is live.
+  account's preview breaker is closed; no `listing_status_sync` job of the listing is live; and every seller SKU
+  it would send starts with `KTEST-` (checked on the listing's SKUs before any call, and again on the built item
+  right before the preview).
 - It GETs each SKU first. If any SKU already exists on Amazon it prints STOP and sends no preview.
 - It runs the preview job body once. Every SP-API request must be a GET or a listings-item PUT with
   `mode=VALIDATION_PREVIEW`; anything else is refused before it is sent. `--precheck` adds the read-only catalog search
@@ -24,8 +26,9 @@ ADR-0028 (amendment of 2026-11-12) records the design.
 - It GETs each SKU again and prints the verdict, each issue (code, Amazon's code, severity, attribute path, message),
   and each SKU's preview reply and GET result.
 - It never enqueues a job (no publish, no automatic resend, no fix), never runs the resolution engine, and writes no
-  verdict to the listing (no issue rows, no status move). It writes one `listing.preview_oneoff` audit row. If a reply
-  looks applied, it also opens the account's breaker task (`marketplace_error_review`, `account.preview_applied`).
+  verdict to the listing (no issue rows, no status move). It writes one `listing.preview_oneoff` audit row. On any
+  STOP after the preview (a SKU found on Amazon, or a reply that is not VALID or INVALID) it also opens the account's
+  breaker task (`marketplace_error_review`, `account.preview_applied`).
 
 Exit codes: 0 done (every SKU still 404), 1 failure, 3 refused by settings, 4 not eligible, 5 STOP. Any non-zero exit
 fails the deploy command, after the job is deleted.
@@ -34,7 +37,8 @@ fails the deploy command, after the job is deleted.
 
 1. **Pick the test listings (read-only).** Through `cloud-sql-proxy` as `app_ro` (read-only role, see
    `INCIDENTS.md`), list the brand's Amazon listings that can be previewed, with their SKUs. Use test SKUs only
-   (prefix `KTEST-`); never a live SKU.
+   (prefix `KTEST-`); never a live SKU. The job also refuses (exit 4, nothing sent) a listing with any SKU
+   without that prefix, a variant's included.
 
    ```sql
    SELECT l.id AS listing_id, l.status, l.status_reason, p.sku AS seller_sku,

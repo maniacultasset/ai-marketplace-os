@@ -19,6 +19,7 @@ from app.workers.amazon_preview import (
     TransportLog,
     _judge,
     _PreviewOnly,
+    live_skus,
     settings_refusal,
 )
 from tests.adapters.amazon_support import SELLER, amazon_adapter, amazon_item, spapi_client
@@ -148,7 +149,7 @@ async def test_the_real_adapter_sends_only_the_preview_put_and_gets() -> None:
     recorder = Recorder(httpx.ASGITransport(fake))
     seen = TransportLog()
     adapter = amazon_adapter(fake, transport=PreviewOnlyTransport(recorder, seen))
-    item = amazon_item()
+    item = amazon_item(sku="KTEST-KURTA-1")
     verdict = await _PreviewOnly(adapter).preview_remote(item)
     for unit in item.units():
         assert await ReaderView(adapter).get_listing(unit.seller_sku) is None
@@ -192,6 +193,26 @@ def test_the_wrapper_exposes_no_write() -> None:
         assert not hasattr(wrapper, name), name
     with pytest.raises(AttributeError):
         wrapper.anything = 1  # type: ignore[attr-defined]
+
+
+def test_only_test_skus_pass() -> None:
+    assert live_skus(["KTEST-1", "KTEST-KURTA-M"]) == []
+    assert live_skus(["KTEST-1", "KURTA-1", "ktest-2", " KTEST-3", "XKTEST-4"]) == [
+        "KURTA-1",
+        "ktest-2",
+        " KTEST-3",
+        "XKTEST-4",
+    ]
+
+
+async def test_the_wrapper_refuses_a_built_item_with_a_live_sku_unsent() -> None:
+    """The second KTEST check: the item as built, right before the adapter is called."""
+    from app.workers.amazon_preview import NotEligible
+
+    adapter = MagicMock()
+    with pytest.raises(NotEligible, match="not test SKUs"):
+        await _PreviewOnly(adapter).preview_remote(amazon_item(sku="KURTA-LIVE-1"))
+    assert adapter.mock_calls == []
 
 
 # ---- the enqueue guard ----

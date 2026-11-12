@@ -80,8 +80,9 @@ payload go back to the marketplace without a second approval?
   transport that passes a GET or a listings-item PUT whose only `mode` is `VALIDATION_PREVIEW` and refuses
   anything else before it is sent, and an adapter wrapper with no create, update or publish method. A GET of each
   SKU runs before (a SKU already on Amazon stops the run before any preview) and after (a SKU found, or a reply
-  other than VALID or INVALID, prints STOP and fails the job; an applied-looking reply also opens the CP-D24
-  breaker task).
+  other than VALID or INVALID, prints STOP and fails the job; any STOP after the preview also opens the CP-D24
+  breaker task). Every seller SKU must carry the test prefix `KTEST-`: the job checks the listing's SKUs before
+  any call and the built item's SKUs again right before the preview, and refuses a live SKU unsent.
 - **What it never does.** No job of any kind is enqueued (`no_enqueue` around the whole run: no publish, no
   automatic resend, no fix job); the kind's terminal hook and the resolution engine never run; the verdict is
   printed, not written (no issue rows, no `remote_check_*`, no status move), so a test listing is never left
