@@ -292,6 +292,13 @@ for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENAB
   esac
   printf -v "$switch" '%s' "$value"
 done
+# Client feedback 11 and 19: copy v5, read by mkos-pipeline (>= 0.8.0) itself from the worker's
+# env. Off by default; true | false here, sent to the worker only (the one role that generates).
+MKOS_CONTENT_V5="${MKOS_CONTENT_V5:-false}"
+case "$MKOS_CONTENT_V5" in
+  true | false) ;;
+  *) die "MKOS_CONTENT_V5 must be true or false (in $ENV_NAME.env)" ;;
+esac
 # The classifier's model route: vision (LLM_MODEL_VISION with photos) or text (LLM_MODEL_DEFAULT,
 # product text only). One value on the api (the reservation) and the worker (the call).
 CATEGORY_SUGGEST_MODEL="${CATEGORY_SUGGEST_MODEL:-vision}"
@@ -1116,6 +1123,8 @@ app_env() {
     # V1 hardening #9: the parallel image check children (the worker runs every image job)
     [ -z "$IMAGE_CHECK_CONCURRENCY" ] ||
       printf 'IMAGE_CHECK_CONCURRENCY\t%s\n' "$IMAGE_CHECK_CONCURRENCY"
+    # feedback 11 and 19: the pipeline's copy v5 switch (its own env name)
+    printf 'MKOS_CONTENT_V5\t%s\n' "$MKOS_CONTENT_V5"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.

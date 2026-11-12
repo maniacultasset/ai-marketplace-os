@@ -280,6 +280,10 @@ class Settings(BaseSettings):
     # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
     # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
     photo_match_enabled: bool = False
+    # Client feedback 11 and 19: copy v5 (keywords first, prompt v5, brand voice, copy checks).
+    # Read by mkos-pipeline itself (>= 0.8.0, its `content_v5` setting) from the worker's process
+    # env; the backend never reads it, the field only registers the name. Off: v4 copy as before.
+    mkos_content_v5: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None
