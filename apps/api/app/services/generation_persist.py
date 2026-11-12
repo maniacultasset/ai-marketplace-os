@@ -65,6 +65,7 @@ from app.services.generation_result import Move, escalate
 from app.services.image_gate import image_issue_report
 from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcile_tasks
 from app.services.issues import record_auto_fixes, sync_issues
+from app.services.keyword_reasons import refresh_keyword_reasons
 from app.services.photo_facts import PhotoDecision, PhotoSet
 from app.services.photo_facts_store import apply_photo_decision
 from app.services.photo_views import listing_findings
@@ -303,7 +304,10 @@ def make_persist(plan: PersistPlan) -> Any:
         move = escalate(plan.move, adapter)
         if plan.result is not None and move is not plan.move:
             plan.result["status"] = move.to
-        content = plan.listing.model_copy(
+        # client feedback 11: `used_in` of each keyword reason on the copy this version stores,
+        # for every generation version (the auto-fix job's trim included), terms no longer
+        # listed dropped
+        content = refresh_keyword_reasons(plan.listing).model_copy(
             update={
                 "version": number,
                 "status": ListingStatus(move.to),
