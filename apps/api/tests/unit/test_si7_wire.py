@@ -107,3 +107,17 @@ def test_create_answer_names_the_applied_image_only_when_given() -> None:
         candidate_id=uuid4(), status="accepted", accepted_image_id=image
     )
     assert applied.model_dump(mode="json")["accepted_image_id"] == str(image)
+
+
+def test_create_answer_carries_a_signed_applied_preview_only_when_given() -> None:
+    plain = ImageCandidateAccepted.model_validate(
+        {"candidate_id": str(uuid4()), "status": "queued", "job_id": str(uuid4()), "poll_url": "/x"}
+    )
+    assert plain.applied_preview_url is None  # a stored answer never holds one
+    applied = ImageCandidateAccepted(
+        candidate_id=uuid4(),
+        status="accepted",
+        accepted_image_id=uuid4(),
+        applied_preview_url="https://store.test/c.jpg?X-Amz-Signature=x",
+    )
+    assert applied.model_dump(mode="json")["applied_preview_url"].endswith("Signature=x")

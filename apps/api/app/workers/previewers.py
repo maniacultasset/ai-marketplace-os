@@ -77,10 +77,13 @@ async def _default(tenant_id: uuid.UUID, account_id: uuid.UUID) -> object:
 _factory: PreviewerFactory = _default
 
 
-def set_previewer_factory(factory: PreviewerFactory | None) -> None:
-    """Tests install an in-process adapter; None restores `open_adapter`."""
+def set_previewer_factory(factory: PreviewerFactory | None) -> PreviewerFactory:
+    """Tests (and the one-off dry run, `app.workers.amazon_preview`) install their own adapter;
+    None restores `open_adapter`. Returns the factory it replaced, so a caller can put it back."""
     global _factory
+    previous = _factory
     _factory = factory or _default
+    return previous
 
 
 async def open_previewer(tenant_id: uuid.UUID, account_id: uuid.UUID) -> PreviewView:

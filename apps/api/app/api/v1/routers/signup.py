@@ -10,6 +10,7 @@ from app.api.rate_limit import (
     enforce_login_limit,
     enforce_signup_limit,
     enforce_signup_poll_limit,
+    enforce_signup_reply_limit,
     request_ip,
 )
 from app.api.v1.schemas.signup import (
@@ -17,11 +18,12 @@ from app.api.v1.schemas.signup import (
     SignupCreate,
     SignupPollOut,
     SignupPollRequest,
+    SignupReplyRequest,
     SignupStatusOut,
     SignupStatusRequest,
 )
 from app.api.v1.surface import OPS, route
-from app.core.errors import NotFoundError
+from app.core.errors import ConflictError, NotFoundError
 from app.core.password_policy import PolicyError
 from app.services import signup
 
@@ -102,10 +104,41 @@ async def signup_status_poll(body: SignupPollRequest, request: Request) -> Signu
     found = await signup.poll_status(body.status_handle)
     if found is None:
         raise NotFoundError("status_handle")
+    return _poll_out(found)
+
+
+@route(router, OPS["signup_status_reply"])
+async def signup_status_reply(body: SignupReplyRequest, request: Request) -> SignupPollOut:
+    """Client item 2: the applicant's one reply to the question a platform admin asked (the
+    poll's `question`), authorised by the same `status_handle` alone, in the body. Plain text up
+    to 1000 characters. The answer is the poll's, with `reply` set; the request stays `pending`
+    and goes back to the admin. Sending the same reply again answers it again; a different second
+    reply, no open question or a decided request is 409 `INVALID_STATUS_TRANSITION`. An unknown,
+    replaced or expired handle is the poll's 404."""
+    await enforce_signup_reply_limit(request, body.status_handle)
+    try:
+        found = await signup.reply(body.status_handle, body.reply, ip=request_ip(request))
+    except ConflictError as exc:
+        if exc.code is not ErrorCode.INVALID_STATUS_TRANSITION:
+            raise
+        raise ApiError(409, ErrorCode.INVALID_STATUS_TRANSITION) from None
+    if found is None:
+        raise NotFoundError("status_handle")
+    return _poll_out(found)
+
+
+def _poll_out(found: signup.SignupPollRow) -> SignupPollOut:
+    """Only what a handle may read; the reason only when rejected, the question and the reply
+    only while pending."""
+    pending = found.status == "pending"
     return SignupPollOut(
         status=found.status,
         brand_name=found.brand_name,
         requested_at=found.requested_at,
         decided_at=found.decided_at,
         reason=found.reason if found.status == "rejected" else None,
+        question=found.info_question if pending else None,
+        asked_at=found.info_asked_at if pending else None,
+        reply=found.info_reply if pending else None,
+        replied_at=found.info_replied_at if pending else None,
     )

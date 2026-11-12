@@ -9,7 +9,10 @@ under `<marketplace>_adapter`, whose rows belong to real marketplace answers.
 - `check_source(source, facts, schema, parent_schema)` is pure: None for a marketplace with no
   previewer; otherwise a
   report whose items are re-stamped `source = schema`, capped at `MAX_ERROR_ITEMS`, `failed`
-  when any item is an ERROR. A bug in the check fails closed (CP-D5): one `INTERNAL_ERROR` item
+  when any item is an ERROR. Item 15: the marketplace's readiness warnings
+  (`registry.readiness_warnings`, Amazon's missing package) follow the preview's items; a warning
+  on a field the preview already reported (a stored definition that requires the package: an
+  ERROR while enforced) is left out, so it is reported once. A bug in the check fails closed (CP-D5): one `INTERNAL_ERROR` item
   on `listing`, logged as `adapter_check.failed` with ids only.
 - `adapter_check(uow, listing_id, version=...)` reads the source, the family's resolved facts
   (SI2 `resolve_family`) and both current definitions (LISTING, and PRODUCT_ONLY for a parent),
@@ -30,7 +33,7 @@ from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 from sqlalchemy.exc import DBAPIError
 
 from app.adapters.base import AdapterListing, ProductTypeSchema
-from app.adapters.registry import previewer
+from app.adapters.registry import previewer, readiness_warnings
 from app.core.config import get_settings
 from app.core.logging import get_logger
 from app.repositories.listings import PreviewSource, SourceVersion
@@ -85,6 +88,11 @@ def _failed(listing_id: uuid.UUID) -> ErrorReport:
     )
 
 
+def _covers(field: str, fact: str) -> bool:
+    """`field` is the fact path itself or a child's (`variants[<sku>].facts.<key>`)."""
+    return field == fact or field.endswith(f".{fact}")
+
+
 def check_source(
     source: PreviewSource,
     facts: FamilyFacts,
@@ -96,15 +104,16 @@ def check_source(
     except NotImplementedError:
         return None
     try:
-        result = preview(
-            adapter_listing_for(
-                source,
-                facts,
-                schema,
-                parent_schema,
-                idempotency_key=f"check:{source.listing_id}",
-            )
+        built = adapter_listing_for(
+            source,
+            facts,
+            schema,
+            parent_schema,
+            idempotency_key=f"check:{source.listing_id}",
         )
+        result = preview(built)
+        warner = readiness_warnings(source.marketplace)
+        warnings = [] if warner is None else warner(built)
     except Exception as exc:
         log.warning(
             "adapter_check.failed",
@@ -112,9 +121,13 @@ def check_source(
             error_class=type(exc).__name__,
         )
         return _failed(source.listing_id)
+    reported = {e.field for e in result.report.errors}
+    found = [
+        *result.report.errors,
+        *(w for w in warnings if not any(_covers(f, w.field) for f in reported)),
+    ]
     items = [
-        item.model_copy(update={"source": ErrorSource.SCHEMA})
-        for item in result.report.errors[:MAX_ERROR_ITEMS]
+        item.model_copy(update={"source": ErrorSource.SCHEMA}) for item in found[:MAX_ERROR_ITEMS]
     ]
     blocking = [item for item in items if item.severity is Severity.ERROR]
     return ErrorReport(

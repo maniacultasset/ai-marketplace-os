@@ -990,14 +990,40 @@ async def test_click_on_a_stale_page_answers_already_applied(
         api, images_db, p, {"kind": "white_background", "source_image_id": str(src)}
     )
     assert again.status_code == 202, again.text
-    assert again.json() == {
+    body = again.json()
+    preview = body.pop("applied_preview_url")
+    assert body == {
         "candidate_id": str(candidate),
         "status": "accepted",
         "job_id": None,
         "poll_url": None,
         "accepted_image_id": str(new_main),
     }
+    assert "X-Amz-Signature" in preview  # the processed photo, shown at once
     assert count(images_db.conn, "SELECT count(*) FROM job_runs", []) == jobs_before
+
+
+async def test_an_applied_answer_is_signed_afresh_and_never_stored(
+    images_db: JobWorld, api: httpx.AsyncClient, store: FakeStorage
+) -> None:
+    """CP-D18: the stored idempotent answer holds no signed URL; a replay under the same key
+    signs a new one, and none once the applied image was replaced."""
+    _, p, src, new_main = await _accepted_main(api, images_db, store)
+    key = str(uuid.uuid4())
+    body = {"kind": "fix", "source_image_id": str(src)}
+    first = await _create(api, images_db, p, body, key=key)
+    assert first.status_code == 202, first.text
+    assert "X-Amz-Signature" in first.json()["applied_preview_url"]
+    stored = images_db.conn.execute(
+        "SELECT response_json FROM idempotency_keys WHERE key = %s", [key]
+    ).fetchone()
+    assert stored is not None and stored[0]["status"] == "accepted"
+    assert "applied_preview_url" not in stored[0]
+    images_db.conn.execute("UPDATE images SET slot = 'secondary' WHERE id = %s", [new_main])
+    replay = await _create(api, images_db, p, body, key=key)
+    assert replay.status_code == 202
+    assert replay.json()["status"] == "accepted"  # the stored answer, replayed
+    assert replay.json()["applied_preview_url"] is None
 
 
 async def test_another_kind_on_the_demoted_source_is_still_404(

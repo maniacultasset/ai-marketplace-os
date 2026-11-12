@@ -86,6 +86,8 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "signup_status_poll": {"status_handle": "S" * 43},
     "admin_signup_requests_approve": {"trial_days": 14},
     "admin_signup_requests_reject": {"reason": "Could not verify the brand."},
+    "admin_signup_requests_ask": {"question": "Which marketplaces do you sell on?"},
+    "signup_status_reply": {"status_handle": "S" * 43, "reply": "Amazon India."},
     # ADR-0020
     "auth_google_complete": {"handle": "gh", "binding": "b" * 43},
     "auth_google_link": {"link_handle": "gl", "binding": "b" * 43, "password": "pw"},

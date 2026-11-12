@@ -10,7 +10,10 @@ listing reads as missing (404), exactly as an unknown id.
 - both carry the display state (`listing_display`): a stale reviewable listing is validated again
   first (detail; every row of a product; at most `LIST_RECHECK_CAP` rows of a list's first page),
   and each row's open blocking issues are counted in one query.
-- `history`: the listing's `audit_log` rows, newest first; no actor email, no IP.
+- `history`: the listing's `audit_log` rows, newest first; no actor email, no IP. A person's row
+  carries `actor_name` (item 17): a member's display name, else email, read in this tenant only.
+- `versions`: the listing's versions, newest first, each with who asked Kuinn for it (or imported
+  it), who edited it and who approved it, named the same way, and the self-approval mark.
 """
 
 from __future__ import annotations
@@ -201,9 +204,74 @@ async def history(
             raise NotFoundError("listing_id")
         rows, more = await uow.audit_log.page_for_listing(listing_id, after=after, limit=limit)
         reviews = await _reviews(uow, listing_id, rows)
+        people = [r.actor_user_id for r in rows if r.actor_type == "user" and r.actor_user_id]
+        names = await uow.members.names(people)
     next_key = (rows[-1].occurred_at, rows[-1].id) if more and rows else None
-    items = [{**_event(r), "review": reviews.get((r.action, r.request_id))} for r in rows]
+    items = [
+        {
+            **_event(r),
+            "actor_name": (
+                names.get(r.actor_user_id) if r.actor_type == "user" and r.actor_user_id else None
+            ),
+            "review": reviews.get((r.action, r.request_id)),
+        }
+        for r in rows
+    ]
     return HistoryPage(items=items, has_more=more, next_key=next_key)
+
+
+# Item 17: the origins whose content Kuinn wrote (an automatic fix is a regeneration)
+KUINN_ORIGINS: Final = frozenset({"generation", "regeneration"})
+
+
+def written_by(origin: str) -> str:
+    """Who wrote a version's content: Kuinn for a generation or regeneration, else a person (an
+    edit, an import)."""
+    return "kuinn" if origin in KUINN_ORIGINS else "person"
+
+
+def _person(user_id: uuid.UUID | None, names: dict[uuid.UUID, str | None]) -> dict[str, Any] | None:
+    return None if user_id is None else {"user_id": user_id, "name": names.get(user_id)}
+
+
+def version_item(v: Any, names: dict[uuid.UUID, str | None]) -> dict[str, Any]:
+    return {
+        "id": v.id,
+        "version": v.version,
+        "origin": v.origin,
+        "written_by": written_by(v.origin),
+        "created_at": v.created_at,
+        "generated_by": _person(v.generated_by_user_id, names),
+        "edited_by": _person(v.edited_by_user_id, names),
+        "approved_by": _person(v.approved_by_user_id, names),
+        "approved_at": v.approved_at,
+        "self_approved": bool(v.self_approved),
+    }
+
+
+async def versions(
+    principal: Principal, listing_id: uuid.UUID, *, after: Keyset | None, limit: int
+) -> HistoryPage:
+    """Item 17 (client feedback, 11 Nov 2026): who made, edited and approved each version. The
+    three user columns reference this tenant's memberships (`to_membership`), and the names are
+    read through the tenant-scoped members select, so nothing of another tenant is named."""
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        if await uow.listings.get(listing_id) is None:
+            raise NotFoundError("listing_id")
+        rows, more = await uow.listing_versions.page_for_listing(
+            listing_id, after=after, limit=limit
+        )
+        people = {
+            u
+            for v in rows
+            for u in (v.generated_by_user_id, v.edited_by_user_id, v.approved_by_user_id)
+            if u is not None
+        }
+        names = await uow.members.names(people)
+    next_key = (rows[-1].created_at, rows[-1].id) if more and rows else None
+    return HistoryPage(
+        items=[version_item(v, names) for v in rows], has_more=more, next_key=next_key
+    )
 
 
 REVIEW_ACTIONS: Final = {"listing.approved": "approve", "listing.rejected": "reject"}

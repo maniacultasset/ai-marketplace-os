@@ -753,6 +753,8 @@ Three screens. The flow is in FLOWS.md section 2.1b.
 | Waiting for approval | Update the page by itself (ADR-0019 amendment): keep the newest `status_handle` from any sign-up answer in local storage, poll every 15 s while the tab is visible, stop once decided | `POST /signup/status/poll` `{status_handle}` (body only): `status`, `brand_name`, `requested_at`, `decided_at`, `reason`; a 404 means the handle is gone (fall back to the checks above) |
 | Admin: sign-up requests | Only when `GET /auth/me` has `is_platform_admin: true` | `GET /admin/signup-requests?status=pending` (keyset pages) |
 | Admin: sign-up requests | Approve (optional `trial_days`, default 14) or reject (a `reason` the brand reads) | `POST /admin/signup-requests/{request_id}/approve`, `POST /admin/signup-requests/{request_id}/reject` |
+| Admin: sign-up requests | Ask one question instead of deciding (client item 2): the request stays `pending`; show `question` and, once sent, `reply` on the row | `POST /admin/signup-requests/{request_id}/ask` `{question}` (409 for a second, different question or a decided request) |
+| Waiting for approval | While the poll has `question` and no `reply`, show the question and one reply box (1000 characters); then "Reply sent", and keep polling | `POST /signup/status/reply` `{status_handle, reply}` (body only; 404 like the poll, 409 once replied with other text or decided) |
 
 Notes:
 - Do not keep the password to poll the status. Ask for it again on the waiting screen, or poll
@@ -817,7 +819,8 @@ Generate.
 | Re-run the checks | `POST /listings/validate` `{listing_id, listing_version_id?}` |
 | What will be sent to the marketplace | `GET /listings/{listing_id}/preview` (errors in `report.errors`) |
 | Rule help | `GET /rules?marketplace=...&category=...`, `POST /rules/dry-run` |
-| History | `GET /listings/{listing_id}/history` |
+| History | `GET /listings/{listing_id}/history` (a person's event carries `actor_name`) |
+| Who made, edited and approved each version | `GET /listings/{listing_id}/versions` (newest first; `written_by` `kuinn` or `person`, `generated_by`, `edited_by`, `approved_by` as `{user_id, name}`, `self_approved`) |
 | Cancel a queued job | `POST /jobs/{job_id}/cancel` (key) |
 
 ### Review queue

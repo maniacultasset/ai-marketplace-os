@@ -273,6 +273,20 @@ _AUDIT_EVENT: Final = {
     "request_id": REQUEST_ID,
     "job_id": None,
     "occurred_at": T1,
+    "actor_name": "Priya Sharma",
+}
+# item 17: version 1, written by Kuinn for USER, approved by USER_2
+_LISTING_VERSION: Final = {
+    "id": VERSION,
+    "version": 1,
+    "origin": "generation",
+    "written_by": "kuinn",
+    "created_at": T0,
+    "generated_by": {"user_id": USER, "name": "Ravi Kumar"},
+    "edited_by": None,
+    "approved_by": {"user_id": USER_2, "name": "Priya Sharma"},
+    "approved_at": T1,
+    "self_approved": False,
 }
 _SUBMISSION: Final = {
     "id": SUBMISSION,
@@ -520,7 +534,14 @@ _SIGNUP_REQUEST: Final = {
     "created_at": T0,
     "decided_at": None,
     "verified_via": None,
+    "question": None,
+    "asked_at": None,
+    "reply": None,
+    "replied_at": None,
 }
+# client item 2: the admin's one question and the applicant's one reply
+_SIGNUP_QUESTION: Final = "Which marketplaces do you sell on today, and under which store name?"
+_SIGNUP_REPLY: Final = "Amazon India as Kalakar Weaves, and our own website."
 _MFA_REQUIRED: Final = {
     "status": "mfa_required",
     "access_token": None,
@@ -1089,6 +1110,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "job_id": JOB,
             "poll_url": f"/api/v1/jobs/{JOB}",
             "accepted_image_id": None,
+            "applied_preview_url": None,
         },
         "image_candidates_list": {"items": [_CANDIDATE]},
         "image_candidates_accept": {
@@ -1148,6 +1170,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
         "jobs_get": _JOB_ENVELOPE,
         "jobs_cancel": {**_JOB_ENVELOPE, "status": "cancelled", "stage": None, "finished_at": T1},
         "listings_history": _page([_AUDIT_EVENT]),
+        "listings_versions": _page([_LISTING_VERSION]),
         "issues_list": _page([_ISSUE]),
         "issues_dismiss": {
             **_ISSUE,
@@ -1194,6 +1217,21 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "requested_at": T0,
             "decided_at": None,
             "reason": None,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
+            "reply": None,
+            "replied_at": None,
+        },
+        "signup_status_reply": {
+            "status": "pending",
+            "brand_name": "Kalakar Weaves",
+            "requested_at": T0,
+            "decided_at": None,
+            "reason": None,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
+            "reply": _SIGNUP_REPLY,
+            "replied_at": T1,
         },
         "signup_google": _GOOGLE_SIGNUP_STATUS,
         "admin_signup_requests_list": _page([_SIGNUP_REQUEST]),
@@ -1223,6 +1261,11 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "status": "rejected",
             "reason": "We could not verify the brand; write to support with your GSTIN.",
             "decided_at": T1,
+        },
+        "admin_signup_requests_ask": {
+            **_SIGNUP_REQUEST,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
         },
         "admin_ai_credit_get": _AI_CREDIT,
         "products_category_suggest": {"product_id": PRODUCT_1, "status": "queued", "job_id": JOB},

@@ -33,6 +33,7 @@ SUBCOMMANDS = (
     "tenant",
     "templates",
     "amazon-check",
+    "amazon-preview",
     "images",
     "status",
     "edge",
@@ -1425,7 +1426,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
         "false",
     )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
+    assert prod["PIPELINE_REF"] == "2d8bb2efe6898a8284ee5bb76d4cc45414a3d01c"
     assert staging["WORKER_ENABLED"] == "true"
 
 
@@ -2294,6 +2295,180 @@ def test_amazon_check_refuses_bad_flags(
     assert "run jobs deploy" not in result.stdout
 
 
+# ---- the owner's one-off Amazon dry run (app.workers.amazon_preview, 2026-11-12) ----
+
+LISTING_ID = "0b7e6c1a-2f3d-4c5b-9a8e-7d6c5b4a3f21"
+PREVIEW_SWITCHES = (
+    "AMAZON_VALIDATION_PREVIEW_ENABLED",
+    "AMAZON_CATALOG_PRECHECK_ENABLED",
+    "AMAZON_PREVIEW_ONEOFF",
+)
+
+
+def _preview_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-amazon-preview" in line)
+
+
+def _preview(toolkit: Path, tmp_path: Path, *extra: str) -> str:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    return _run(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", *extra, "--dry-run", "--sha", SHA,
+    ).stdout  # fmt: skip
+
+
+def test_amazon_preview_runs_once_as_the_worker_then_the_job_is_deleted(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    out = _preview(toolkit, tmp_path)
+    job = _preview_deploy(out)
+    assert "--service-account=aimos-worker@" in job
+    assert _secret_names(job) == ["DATABASE_URL", "AMAZON_CLIENT_SECRET"]
+    assert "--max-retries=0" in job and "--tasks=1" in job
+    assert (
+        "--args=^|^-m|app.cli|ops|amazon-preview|--tenant-slug=acme"
+        f"|--listing-id={LISTING_ID}|--staff-email=s@b.test" in job.replace("\\", "")
+    )
+    assert "--precheck" not in job
+    lines = out.splitlines()
+    deploy = lines.index(next(x for x in lines if "run jobs deploy aimos-amazon-preview" in x))
+    execute = lines.index(next(x for x in lines if "run jobs execute aimos-amazon-preview" in x))
+    delete = lines.index(next(x for x in lines if "run jobs delete aimos-amazon-preview" in x))
+    assert deploy < execute < delete
+    (block,) = _blocks(out, "amazon-preview env file")
+    assert block.count("AMAZON_PUBLISH_ENABLED:") == 1
+    env = {str(k): str(v) for k, v in yaml.safe_load(block).items()}
+    assert env["APP_ROLE"] == "shell" and env["APP_ENV"] == "production"
+    assert env["AMAZON_PUBLISH_ENABLED"] == "true"
+    assert env["AMAZON_VALIDATION_PREVIEW_ENABLED"] == "true"
+    assert env["AMAZON_CATALOG_PRECHECK_ENABLED"] == "false"
+    assert env["AMAZON_PREVIEW_ONEOFF"] == "1"
+    # the job boots as the shell role in production and passes the one-off's settings guard
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("AMAZON_CLIENT_SECRET", SECRET_VALUES["AMAZON_CLIENT_SECRET"])
+    from app.core.config import get_settings
+    from app.workers.amazon_preview import settings_refusal
+
+    get_settings.cache_clear()
+    try:
+        assert settings_refusal(get_settings(), precheck=False) is None
+        assert settings_refusal(get_settings(), precheck=True) is not None
+    finally:
+        get_settings.cache_clear()
+
+
+def test_amazon_preview_reads_only_this_runs_log(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    result = _run(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    read = next(
+        line for line in result.stderr.splitlines() if "logging read" in line and "amazon" in line
+    )
+    # an earlier run's verdict or STOP is never printed as this run's
+    assert re.search(r"timestamp>=.?\\?\"?\d{4}-\d\d-\d\dT", read.replace("\\", "")), read
+
+
+def test_amazon_preview_deletes_its_job_on_any_exit_after_creating_it(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    """A failure after the job (AMAZON_PUBLISH_ENABLED=true in its env) is created still deletes it:
+    here `date` fails right after the deploy, before the execute."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    fake_date = bin_dir / "date"
+    fake_date.write_text(
+        '#!/usr/bin/env bash\ncase "$*" in *"%Y-%m-%dT%H:%M:%SZ"*) exit 1 ;; esac\n'
+        'exec /bin/date "$@"\n',
+        encoding="utf-8",
+    )
+    fake_date.chmod(0o755)
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    lines = result.stdout.splitlines()
+    deploy = lines.index(next(x for x in lines if "run jobs deploy aimos-amazon-preview" in x))
+    delete = lines.index(next(x for x in lines if "run jobs delete aimos-amazon-preview" in x))
+    assert deploy < delete
+    assert not any("run jobs execute aimos-amazon-preview" in x for x in lines)
+    assert "interrupted; deleting aimos-amazon-preview" in result.stdout + result.stderr
+
+
+def test_amazon_preview_deletes_its_job_once_on_success(toolkit: Path, tmp_path: Path) -> None:
+    out = _preview(toolkit, tmp_path)
+    assert sum("run jobs delete aimos-amazon-preview" in x for x in out.splitlines()) == 1
+    assert "interrupted" not in out
+
+
+def test_amazon_preview_precheck_turns_on_the_catalog_check_for_the_job_only(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    out = _preview(toolkit, tmp_path, "--precheck")
+    assert _preview_deploy(out).replace("\\", "").count("|--precheck") == 1
+    env = yaml.safe_load(_blocks(out, "amazon-preview env file")[0])
+    assert str(env["AMAZON_CATALOG_PRECHECK_ENABLED"]) == "true"
+
+
+@pytest.mark.parametrize("env_name", ["staging", "prod"])
+def test_the_api_and_the_worker_never_get_the_preview_switches(
+    toolkit: Path, tmp_path: Path, repo_root: Path, env_name: str
+) -> None:
+    out = _run(
+        toolkit, tmp_path, env_name, "deploy", "--dry-run", "--sha", SHA, worker_deploy=True
+    ).stdout
+    blocks = _blocks(out, "env file")
+    assert blocks
+    for block in blocks:
+        env = yaml.safe_load(block)
+        for name in PREVIEW_SWITCHES:
+            assert name not in env, name
+    prod = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
+    assert re.search(r"^AMAZON_PUBLISH_ENABLED=false$", prod, re.MULTILINE)
+    for name in PREVIEW_SWITCHES:
+        assert not re.search(rf"^{name}=", prod, re.MULTILINE), name
+
+
+def test_amazon_preview_refuses_when_the_amazon_app_is_off(toolkit: Path, tmp_path: Path) -> None:
+    result = _run_fail(
+        toolkit, tmp_path, "staging", "amazon-preview", "--slug", "acme", "--listing-id",
+        LISTING_ID, "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "amazon-preview needs the Amazon app" in result.stderr
+    assert "aimos-amazon-preview" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("--slug", "acme", "--staff-email", "s@b.test"),
+        ("--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug", "acme", "--listing-id", LISTING_ID),
+        ("--slug", "acme", "--listing-id", "not-a-uuid", "--staff-email", "s@b.test"),
+        ("--slug", "a|b", "--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug", "acme", "--listing-id", LISTING_ID, "--staff-email", "s@b.test", "--ean", "1"),
+        ("--seller-id", "A1CHECKSELLER9", "--listing-id", LISTING_ID, "--staff-email", "s@b.test"),
+        ("--slug",),
+    ],
+)
+def test_amazon_preview_refuses_bad_flags(
+    toolkit: Path, tmp_path: Path, args: tuple[str, ...]
+) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "amazon-preview", *args, "--dry-run", "--sha", SHA
+    )
+    assert "amazon-preview" in result.stderr
+    assert "run jobs deploy" not in result.stdout
+
+
 # ---- images recheck (photo rules 2.1.0: re-queue the photos the old rules judged) ----
 
 TENANT_ID = "6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b"
@@ -2684,60 +2859,6 @@ def test_photo_match_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) ->
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0
     assert "PHOTO_MATCH_ENABLED must be true or false" in result.stderr
-
-
-def test_copy_v5_switch_reaches_the_worker_only(toolkit: Path, tmp_path: Path) -> None:
-    """Client feedback 11 and 19: MKOS_CONTENT_V5 is the pipeline's own env name (mkos-pipeline
-    settings `content_v5`). Off unless the env file sets it, it reaches the worker (the one role
-    that generates) and never the api, and a bad value stops the deploy."""
-    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
-    assert _worker_container(out)[0]["MKOS_CONTENT_V5"] == "false"
-    assert "MKOS_CONTENT_V5" not in _api_env(out)
-    env_file = toolkit / "staging.env"  # staging.env does not name the switch: off
-    env_file.write_text(env_file.read_text(encoding="utf-8") + "MKOS_CONTENT_V5=true\n")
-    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
-    assert _worker_container(out)[0]["MKOS_CONTENT_V5"] == "true"
-    assert "MKOS_CONTENT_V5" not in _api_env(out)
-    _set_env(toolkit, "staging", MKOS_CONTENT_V5="1")
-    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
-    assert result.returncode != 0
-    assert "MKOS_CONTENT_V5 must be true or false" in result.stderr
-
-
-# The B/C release (client feedback 7, 8, 9, 11, 18, 19), on together with mkos-pipeline v0.8.1.
-PROD_BC_ON = {
-    "PHOTO_VIEWS_ENABLED": ("api", "worker"),
-    "PHOTO_MATCH_ENABLED": ("api", "worker"),
-    "MKOS_CONTENT_V5": ("worker",),
-    "TENANT_CREATE_ENABLED": ("api",),
-}
-
-
-def test_prod_bc_release_switches_as_committed(repo_root: Path) -> None:
-    """prod.env turns every B/C switch on with the v0.8.1 pin, keeps the classifier on and Amazon
-    publishing off."""
-    text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
-    values = dict(re.findall(r"^([A-Z0-9_]+)=(.*)$", text, re.MULTILINE))
-    for name in PROD_BC_ON:
-        assert values[name] == "true", name
-    assert values["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
-    assert values["CATEGORY_SUGGEST_ENABLED"] == "true"
-    assert values["AMAZON_PUBLISH_ENABLED"] == "false"
-
-
-def test_prod_bc_release_switches_reach_their_roles(toolkit: Path, tmp_path: Path) -> None:
-    """A prod dry run sends each B/C switch, on, to its roles and to no other."""
-    _set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF=PIPELINE_SHA)
-    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
-    by_role = {"api": _api_env(out), "worker": _worker_container(out)[0]}
-    for name, roles in PROD_BC_ON.items():
-        for role, env in by_role.items():
-            if role in roles:
-                assert env[name] == "true", (name, role)
-            else:
-                assert name not in env, (name, role)
-    assert by_role["api"]["AMAZON_PUBLISH_ENABLED"] == "false"
-    assert by_role["worker"]["AMAZON_PUBLISH_ENABLED"] == "false"
 
 
 # ---- V1 hardening #9: the worker's size and its parallel image check children ----

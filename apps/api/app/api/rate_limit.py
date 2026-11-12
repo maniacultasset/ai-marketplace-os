@@ -14,6 +14,8 @@
   (ADR-0019).
 - `enforce_signup_poll_limit(request, handle)`: the sign-up status poll (ADR-0019 amendment),
   per `sha256(ip|handle)` and, at a higher ceiling, per `sha256(ip)`.
+- `enforce_signup_reply_limit(request, handle)`: the applicant's one reply (client item 2), at the
+  login rate per `sha256(ip|handle)` and `SIGNUP_POLL_IP_CEILING` times that per `sha256(ip)`.
 - `enforce_google_limit(request)`: `AUTH_GOOGLE_RATE_LIMIT_PER_MIN` (10) per `sha256(ip)` on
   every Google sign-in step (ADR-0020); the JSON steps then add the login limiter keyed on the
   email their handle carries, before the handle is consumed.
@@ -187,6 +189,23 @@ async def enforce_signup_poll_limit(request: Request, handle: str) -> None:
     ip = request_ip(request)
     await _enforce(signup_poll_ip_bucket(ip), limit * SIGNUP_POLL_IP_CEILING)
     await _enforce(signup_poll_bucket(ip, handle), limit)
+
+
+def signup_reply_bucket(ip: str, handle: str) -> str:
+    return f"signup-reply:{hashlib.sha256(f'{ip}|{handle}'.encode()).hexdigest()}"
+
+
+def signup_reply_ip_bucket(ip: str) -> str:
+    return f"signup-reply-ip:{hashlib.sha256(ip.encode()).hexdigest()}"
+
+
+async def enforce_signup_reply_limit(request: Request, handle: str) -> None:
+    """The reply to an admin's question, before the handle is looked up: the login rate per
+    `sha256(ip|handle)` (one reply is ever stored) and a ceiling per `sha256(ip)`."""
+    limit = get_settings().auth_login_rate_limit_per_min
+    ip = request_ip(request)
+    await _enforce(signup_reply_ip_bucket(ip), limit * SIGNUP_POLL_IP_CEILING)
+    await _enforce(signup_reply_bucket(ip, handle), limit)
 
 
 def invite_bucket(ip: str) -> str:

@@ -32,8 +32,9 @@ SI13 (T7; CP-D8) adds, after rule 2 and before rule 3:
 - an adapter `CATEGORY_MISMATCH` -> `seller` `recategorize` when the listing can still be
   recategorised (`ctx.recategorizable`: never live, failed or never seen, no live variants), else
   `staff` `recategorize_review`;
-- an adapter `IDENTIFIER_DUPLICATE` on exactly `facts.identifier` or
-  `variants[<sku>].facts.identifier` -> `seller` `edit_identifier`.
+- an adapter `IDENTIFIER_DUPLICATE`, `IDENTIFIER_INVALID` or `IDENTIFIER_MISSING` (item 13: a
+  barcode of another brand, an invalid barcode, or no barcode and no approved GTIN exemption) on
+  exactly `facts.identifier` or `variants[<sku>].facts.identifier` -> `seller` `edit_identifier`.
 The two seller actions open no inbox question: the issue row is the seller's signal and the action
 is on the listing (`SELLER_ACTIONS`). And a plan-level hold: while an adapter `CATEGORY_MISMATCH`
 ERROR is planned, adapter `MISSING_ATTRIBUTE` rows get no step (one ask, not ten).
@@ -78,6 +79,14 @@ SKU_CODES: Final = frozenset({ErrorCode.SKU_CONFLICT.value, ErrorCode.SELLER_SKU
 # SI13 (CP-D8): seller steps that open no inbox question (the action is on the listing)
 SELLER_ACTIONS: Final = frozenset({"recategorize", "edit_identifier", "edit_content"})
 _IDENTIFIER_PATH: Final = re.compile(r"(variants\[[^\]]+\]\.)?facts\.identifier")
+# The marketplace's barcode refusals the seller fixes at the product's barcode choice
+IDENTIFIER_EDIT_CODES: Final = frozenset(
+    {
+        ErrorCode.IDENTIFIER_DUPLICATE.value,
+        ErrorCode.IDENTIFIER_INVALID.value,
+        ErrorCode.IDENTIFIER_MISSING.value,
+    }
+)
 ANSWERABLE_FACTS: Final = ("facts.gender", "facts.brand_name")
 ADAPTER_SOURCES: Final = frozenset({"amazon_adapter", "flipkart_adapter"})
 _CONTENT_ROOTS: Final = ("content.", "keywords.")
@@ -244,7 +253,7 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         return "staff", "recategorize_review"
     if (
         adapter
-        and issue.error_code == ErrorCode.IDENTIFIER_DUPLICATE.value
+        and issue.error_code in IDENTIFIER_EDIT_CODES
         and _IDENTIFIER_PATH.fullmatch(issue.field_path)
     ):
         return "seller", "edit_identifier"

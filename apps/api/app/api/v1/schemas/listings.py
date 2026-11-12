@@ -172,6 +172,14 @@ class AuditEventOut(WireModel):
     request_id: str | None = None
     job_id: UUID | None = None
     occurred_at: AwareDatetime
+    actor_name: str | None = Field(
+        default=None,
+        description=(
+            "Item 17: for a person (`actor_type` `user`) who is a member of this brand, the "
+            "display name, else the email. Null for Kuinn, the support team, an erased account "
+            "and anyone who is not a member."
+        ),
+    )
     review: AuditReviewOut | None = Field(
         default=None,
         description=(
@@ -184,6 +192,51 @@ class AuditEventOut(WireModel):
 
 
 class ListingHistoryPage(Page[AuditEventOut]):
+    pass
+
+
+class VersionPersonOut(WireModel):
+    """A member of this brand named on a version (item 17, client feedback 11 Nov 2026)."""
+
+    user_id: UUID
+    name: str | None = Field(
+        default=None,
+        description="The display name, else the email. Null for an erased account.",
+    )
+
+
+class ListingVersionOut(WireModel):
+    """Who made, edited and approved one version of a listing (item 17). The content itself is
+    read through `listings_get`."""
+
+    id: UUID
+    version: int = Field(ge=1, description="The version's number.")
+    origin: Literal["generation", "regeneration", "edit", "import"]
+    written_by: Literal["kuinn", "person"] = Field(
+        description=(
+            "Who wrote the content: `kuinn` for a generation or regeneration (an automatic fix "
+            "included), `person` for an edit or an import."
+        )
+    )
+    created_at: AwareDatetime
+    generated_by: VersionPersonOut = Field(
+        description=(
+            "The maker: the member who asked Kuinn for the draft (or imported it); an edit "
+            "keeps its parent's."
+        )
+    )
+    edited_by: VersionPersonOut | None = Field(
+        default=None, description="The member whose edit made this version."
+    )
+    approved_by: VersionPersonOut | None = None
+    approved_at: AwareDatetime | None = None
+    self_approved: bool = Field(
+        default=False,
+        description="ADR-0031: an owner approved its own work under `owner_self_approval`.",
+    )
+
+
+class ListingVersionPage(Page[ListingVersionOut]):
     pass
 
 

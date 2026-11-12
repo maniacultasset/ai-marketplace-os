@@ -42,7 +42,8 @@ async def image_candidates_create(
     `size_chart` (an image of the product's size chart, no AI). A candidate is never a product
     image until it is accepted. The same source asked again answers the same candidate; 202 names
     its job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`
-    means it is already applied: that image is still this colourway's live main. An accepted
+    means it is already applied: that image is still this colourway's live main, and
+    `applied_preview_url` signs it for 10 minutes so the page can show it. An accepted
     candidate whose image was replaced or deleted no longer answers: a new one is made. A new
     AI edit while AI is paused for every brand is 503 with the pause's code and no
     `Retry-After` (SI10)."""

@@ -69,6 +69,7 @@ Q7: dict[str, str] = {
     "listings_preview": "tenant:read",
     "listings_status": "tenant:read",
     "listings_history": "tenant:read",
+    "listings_versions": "tenant:read",  # item 17
     "issues_list": "tenant:read",
     "issues_dismiss": "listing:approve",
     "tasks_list": "tenant:read",
@@ -123,10 +124,12 @@ Q7: dict[str, str] = {
     "signup_create": PUBLIC,
     "signup_status": PUBLIC,
     "signup_status_poll": PUBLIC,
+    "signup_status_reply": PUBLIC,
     "signup_google": PUBLIC,
     "admin_signup_requests_list": PLATFORM_ADMIN,
     "admin_signup_requests_approve": PLATFORM_ADMIN,
     "admin_signup_requests_reject": PLATFORM_ADMIN,
+    "admin_signup_requests_ask": PLATFORM_ADMIN,
     # SI5 (ADR-0029)
     "invites_create": "team:manage",
     "invites_list": "team:manage",

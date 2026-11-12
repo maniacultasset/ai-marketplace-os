@@ -294,7 +294,7 @@ SI13_CODES: Final = {
     "101168": ("SKU_CONFLICT", None),
     "4005033": ("VALUE_NOT_ALLOWED", None),
 }
-LEFT_OUT: Final = ("8541", "8572")  # kept out on purpose (KNOWN-ISSUES, V1 checklist)
+LEFT_OUT: Final = ("8541",)  # kept out on purpose (KNOWN-ISSUES, V1 checklist); 8572: item 13
 
 
 def test_si13_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
@@ -355,6 +355,7 @@ PROD_CODES: Final = {
 
 
 def test_prod_code_rows_present(rows: list[ErrorMapIn]) -> None:
+    # each code's row in the file (8560's version 2 replaced its version 1 since item 13)
     by_code = {r.raw_value: r for r in rows if r.match_on == "code"}
     for code, (error_code, klass, hint, _lane) in PROD_CODES.items():
         row = by_code[code]
@@ -363,7 +364,7 @@ def test_prod_code_rows_present(rows: list[ErrorMapIn]) -> None:
             klass,
             hint,
         ), code
-        assert row.version == 1 and row.enabled, code
+        assert row.version == (2 if code == "8560" else 1) and row.enabled, code
         source = (row.policy_ref or {}).get("source")
         # only Amazon's public seller page documents the brand codes; the rest are generic
         want = "amazon-seller-docs" if code in ("5665", "5461") else "public-integrator-docs"
@@ -432,3 +433,95 @@ def test_8542_is_a_catalog_conflict_not_a_permission() -> None:
     )
     (step,) = plan([view], PlanContext())
     assert step.lane != "marketplace"
+
+
+# ---- Item 13: GTIN exemption and barcode refusals lead back to the barcode choice ----
+
+GTIN_CODES: Final = {
+    # code: (error code, policy_ref source)
+    "8550": ("IDENTIFIER_MISSING", "public-integrator-docs"),
+    "8572": ("IDENTIFIER_DUPLICATE", "public-integrator-docs"),
+    "90188": ("IDENTIFIER_INVALID", "sp-api-docs"),
+}
+
+
+def _best(rows: list[ErrorMapIn]) -> dict[str, ErrorMapIn]:
+    """Each code's highest enabled version: the row the mapper uses."""
+    out: dict[str, ErrorMapIn] = {}
+    for r in rows:
+        if r.match_on == "code" and r.enabled:
+            held = out.get(r.raw_value)
+            if held is None or r.version > held.version:
+                out[r.raw_value] = r
+    return out
+
+
+def test_gtin_rows_present_and_documented(rows: list[ErrorMapIn]) -> None:
+    best = _best(rows)
+    for code, (error_code, source) in GTIN_CODES.items():
+        row = best[code]
+        assert (row.error_code.value, row.error_class.value) == (error_code, "identifier_error")
+        assert row.field_hint == "facts.identifier", code
+        assert row.version == 1, code
+        assert (row.policy_ref or {}).get("source") == source, code
+        # the seller is sent back to the product's barcode
+        assert "barcode" in (row.seller_action or "").lower(), code
+    assert "exemption" in (best["8550"].seller_action or "").lower()
+    doc = str((best["90188"].policy_ref or {}).get("doc"))
+    assert doc.startswith("https://developer-docs.amazon.com/sp-api/"), doc
+
+
+def test_8560_version_2_names_the_unapproved_exemption(rows: list[ErrorMapIn]) -> None:
+    """Integrators report Amazon's 8560 when a GTIN exemption is claimed for a brand or category
+    Amazon has not approved: version 2 says so and keeps the code's class."""
+    # the file holds one version per key (`test_error_map_coverage.py`): version 2 replaced the
+    # version 1 row, which stays stored where it was loaded
+    versions = sorted(r.version for r in rows if r.match_on == "code" and r.raw_value == "8560")
+    assert versions == [2]
+    row = _best(rows)["8560"]
+    assert row.version == 2
+    assert (row.error_code.value, row.error_class.value, row.field_hint) == (
+        "MISSING_ATTRIBUTE",
+        "missing_data",
+        None,
+    )
+    text = f"{row.plain_text} {row.seller_action}".lower()
+    assert "gtin exemption" in text and "brand" in text and "category" in text
+    assert len((row.policy_ref or {}).get("also", [])) >= 1
+
+
+@pytest.mark.parametrize("code", sorted(GTIN_CODES))
+def test_gtin_code_maps_through_the_mapper_to_the_barcode(code: str) -> None:
+    item = _mapped(code, "", [])
+    assert item.field == "facts.identifier"
+    assert item.error_code is ErrorCode(GTIN_CODES[code][0])
+    assert item.message.startswith("Amazon "), code
+    assert item.message.endswith("Marketplace message: Raw."), code
+    assert item.suggestion and "barcode" in item.suggestion.lower(), code
+
+
+def test_8560_maps_to_version_2() -> None:
+    item = _mapped("8560", "listing", [])
+    assert item.error_code is ErrorCode.MISSING_ATTRIBUTE
+    assert "GTIN exemption" in (item.suggestion or "")
+
+
+def test_gtin_rows_route_to_the_seller_barcode_edit(rows: list[ErrorMapIn]) -> None:
+    import uuid
+
+    from app.services.resolution.plan import IssueView, PlanContext, plan
+
+    best = _best(rows)
+    for code in GTIN_CODES:
+        row = best[code]
+        view = IssueView(
+            uuid.uuid4(),
+            "amazon_adapter",
+            row.field_hint or "listing",
+            row.error_code.value,
+            row.error_class.value,
+            "error",
+            marketplace_code=code,
+        )
+        (step,) = plan([view], PlanContext())
+        assert (step.lane, step.action) == ("seller", "edit_identifier"), code

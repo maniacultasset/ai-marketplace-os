@@ -35,7 +35,10 @@ FORM: dict[str, Any] = {
     "email": "founder@kalakar.test",
     "password": PASSWORD,
 }
-POLL_FIELDS = {"status", "brand_name", "requested_at", "decided_at", "reason"}
+POLL_FIELDS = {
+    "status", "brand_name", "requested_at", "decided_at", "reason",
+    "question", "asked_at", "reply", "replied_at",  # client item 2 (test_signup_info_request.py)
+}  # fmt: skip
 HANDLE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
 
 

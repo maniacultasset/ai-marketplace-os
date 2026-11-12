@@ -919,6 +919,34 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
         stmt = self._select().where(ListingVersion.id.in_(wanted))
         return {row.id: row for row in (await self.db.execute(stmt)).scalars()}
 
+    async def page_for_listing(
+        self,
+        listing_id: uuid.UUID,
+        *,
+        after: tuple[datetime, uuid.UUID] | None,
+        limit: int,
+    ) -> tuple[builtins.list[ListingVersion], bool]:
+        """Item 17: one page of the listing's versions, the highest version number first, and
+        whether more rows follow. The order is `version` (unique per listing), not `created_at`:
+        `now()` is the transaction start, so a slow generation can take the next number after a
+        quicker edit yet carry the earlier stamp. The cursor keeps the shared `(created_at, id)`
+        shape; its id anchors the page at that row's version (an unknown id gives no rows)."""
+        if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
+            raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
+        v = ListingVersion
+        stmt = self._select().where(v.listing_id == listing_id)
+        if after is not None:
+            _, row_id = after
+            anchor = (
+                select(v.version)
+                .where(v.listing_id == listing_id, v.id == literal(row_id, v.id.type))
+                .scalar_subquery()
+            )
+            stmt = stmt.where(v.version < anchor)
+        stmt = stmt.order_by(v.version.desc()).limit(limit + 1)
+        rows = builtins.list((await self.db.execute(stmt)).scalars())
+        return rows[:limit], len(rows) > limit
+
     async def chain_links(self, listing_id: uuid.UUID) -> builtins.list[Any]:
         """Every version of a listing with the columns the contributor chain walks (S19 T4)."""
         v = ListingVersion

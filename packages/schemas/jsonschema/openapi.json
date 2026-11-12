@@ -598,6 +598,18 @@
             "title": "Action",
             "type": "string"
           },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Item 17: for a person (`actor_type` `user`) who is a member of this brand, the display name, else the email. Null for Kuinn, the support team, an erased account and anyone who is not a member.",
+            "title": "Actor Name"
+          },
           "actor_type": {
             "enum": [
               "user",
@@ -3777,6 +3789,19 @@
             "description": "Set only with status `accepted`: the candidate's image already took this place and still holds it (the live main of the same product and colourway, or the product's size-chart image for a size chart). No new job was started.",
             "title": "Accepted Image Id"
           },
+          "applied_preview_url": {
+            "anyOf": [
+              {
+                "maxLength": 4096,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set only with `accepted_image_id`: a short-lived signed GET (10 minutes) of the applied image, so a page read before the accept can show it at once. Never stored with the idempotent answer: a replay signs a fresh one.",
+            "title": "Applied Preview Url"
+          },
           "candidate_id": {
             "format": "uuid",
             "title": "Candidate Id",
@@ -6172,6 +6197,119 @@
           "status_changed_at"
         ],
         "title": "ListingStatusOut",
+        "type": "object"
+      },
+      "ListingVersionOut": {
+        "description": "Who made, edited and approved one version of a listing (item 17). The content itself is\nread through `listings_get`.",
+        "properties": {
+          "approved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved At"
+          },
+          "approved_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionPersonOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "edited_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VersionPersonOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The member whose edit made this version."
+          },
+          "generated_by": {
+            "$ref": "#/components/schemas/VersionPersonOut",
+            "description": "The maker: the member who asked Kuinn for the draft (or imported it); an edit keeps its parent's."
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "generation",
+              "regeneration",
+              "edit",
+              "import"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "self_approved": {
+            "default": false,
+            "description": "ADR-0031: an owner approved its own work under `owner_self_approval`.",
+            "title": "Self Approved",
+            "type": "boolean"
+          },
+          "version": {
+            "description": "The version's number.",
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "written_by": {
+            "description": "Who wrote the content: `kuinn` for a generation or regeneration (an automatic fix included), `person` for an edit or an import.",
+            "enum": [
+              "kuinn",
+              "person"
+            ],
+            "title": "Written By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "origin",
+          "written_by",
+          "created_at",
+          "generated_by"
+        ],
+        "title": "ListingVersionOut",
+        "type": "object"
+      },
+      "ListingVersionPage": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ListingVersionOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageInfo"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "title": "ListingVersionPage",
         "type": "object"
       },
       "LoginConfirmOut": {
@@ -10472,6 +10610,23 @@
         "title": "SignupApprove",
         "type": "object"
       },
+      "SignupAsk": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "description": "One question the applicant reads and answers once.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "SignupAsk",
+        "type": "object"
+      },
       "SignupCreate": {
         "additionalProperties": false,
         "properties": {
@@ -10541,6 +10696,19 @@
       "SignupPollOut": {
         "description": "The one request a status handle names, and nothing else: no ids, email or tenant.",
         "properties": {
+          "asked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When `question` was asked.",
+            "title": "Asked At"
+          },
           "brand_name": {
             "minLength": 1,
             "title": "Brand Name",
@@ -10558,6 +10726,18 @@
             ],
             "title": "Decided At"
           },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client item 2: the one question a platform admin asked, while the request is `pending` (the status does not change). Answer it once with `POST /signup/status/reply`. Null when none was asked or once decided.",
+            "title": "Question"
+          },
           "reason": {
             "anyOf": [
               {
@@ -10569,6 +10749,31 @@
             ],
             "description": "The admin's reason, when `rejected`.",
             "title": "Reason"
+          },
+          "replied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When `reply` was sent.",
+            "title": "Replied At"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The applicant's own reply to `question`, once sent (null once decided).",
+            "title": "Reply"
           },
           "requested_at": {
             "format": "date-time",
@@ -10625,8 +10830,45 @@
         "title": "SignupReject",
         "type": "object"
       },
+      "SignupReplyRequest": {
+        "additionalProperties": false,
+        "description": "Client item 2: the applicant's one reply, authorised by the status handle alone.",
+        "properties": {
+          "reply": {
+            "description": "Plain text, up to 1000 characters; sent once.",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reply",
+            "type": "string"
+          },
+          "status_handle": {
+            "description": "The `status_handle` a sign-up answer returned (43 base64url characters). Never log it or put it in a URL.",
+            "pattern": "^[A-Za-z0-9_-]{43}$",
+            "title": "Status Handle",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status_handle",
+          "reply"
+        ],
+        "title": "SignupReplyRequest",
+        "type": "object"
+      },
       "SignupRequestOut": {
         "properties": {
+          "asked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asked At"
+          },
           "brand_name": {
             "minLength": 1,
             "title": "Brand Name",
@@ -10677,6 +10919,18 @@
             ],
             "title": "Phone"
           },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Client item 2: the one question asked with `.../ask` (the request stays `pending`). With no `reply` yet, the request waits for the applicant.",
+            "title": "Question"
+          },
           "reason": {
             "anyOf": [
               {
@@ -10687,6 +10941,30 @@
               }
             ],
             "title": "Reason"
+          },
+          "replied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replied At"
+          },
+          "reply": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The applicant's one reply to `question`: the request is back with the admin.",
+            "title": "Reply"
           },
           "status": {
             "enum": [
@@ -12935,6 +13213,33 @@
         ],
         "title": "ValidationSummary",
         "type": "object"
+      },
+      "VersionPersonOut": {
+        "description": "A member of this brand named on a version (item 17, client feedback 11 Nov 2026).",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The display name, else the email. Null for an erased account.",
+            "title": "Name"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "VersionPersonOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -14723,6 +15028,430 @@
           }
         ],
         "summary": "Approve a sign-up: create the trial tenant and its owner (idempotent)",
+        "tags": [
+          "admin"
+        ],
+        "x-mkos-action": "platform:admin"
+      }
+    },
+    "/api/v1/admin/signup-requests/{request_id}/ask": {
+      "post": {
+        "description": "Ask the applicant one question instead of deciding (client item 2). The request stays\n`pending`; the applicant reads the question on the waiting page (the status poll) and sends\none reply, shown here as `reply`. Asking the same question again answers it again; a\ndifferent second question, or any question on a decided request, is 409\n`INVALID_STATUS_TRANSITION`; an unknown id is 404. Approve and reject stay open throughout.",
+        "operationId": "admin_signup_requests_ask",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupAsk"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "asked_at": "2026-10-05T09:31:00Z",
+                  "brand_name": "Kalakar Weaves",
+                  "created_at": "2026-10-05T09:30:00Z",
+                  "email": "founder@kalakar.example",
+                  "id": "0b1c2d3e-0000-4000-8000-000000001501",
+                  "owner_name": "Meera Iyer",
+                  "phone": "+91 98765 43210",
+                  "question": "Which marketplaces do you sell on today, and under which store name?",
+                  "status": "pending",
+                  "user_id": "0b1c2d3e-0000-4000-8000-000000001502",
+                  "website": "https://kalakar.example"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SignupRequestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INVALID_STATUS_TRANSITION",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INVALID_STATUS_TRANSITION",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "INVALID_STATUS_TRANSITION"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `INVALID_STATUS_TRANSITION`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Ask the applicant one question; the request stays pending (idempotent)",
         "tags": [
           "admin"
         ],
@@ -40413,6 +41142,7 @@
                   "data": [
                     {
                       "action": "listing.approved",
+                      "actor_name": "Priya Sharma",
                       "actor_type": "user",
                       "actor_user_id": "0b1c2d3e-0000-4000-8000-000000000003",
                       "after": {
@@ -44019,6 +44749,390 @@
           }
         ],
         "summary": "The listing's publish attempts with their per-field results, newest first",
+        "tags": [
+          "listings"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/listings/{listing_id}/versions": {
+      "get": {
+        "description": "The listing's versions, newest first: who made, edited and approved each one.",
+        "operationId": "listings_versions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "listing_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Listing Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size, 1..200 (default 50).",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1..200 (default 50).",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque `page.next_cursor` from the previous page.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque `page.next_cursor` from the previous page.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": [
+                    {
+                      "approved_at": "2026-10-05T09:31:00Z",
+                      "approved_by": {
+                        "name": "Priya Sharma",
+                        "user_id": "0b1c2d3e-0000-4000-8000-000000000003"
+                      },
+                      "created_at": "2026-10-05T09:30:00Z",
+                      "generated_by": {
+                        "name": "Ravi Kumar",
+                        "user_id": "0b1c2d3e-0000-4000-8000-000000000002"
+                      },
+                      "id": "0b1c2d3e-0000-4000-8000-000000000202",
+                      "origin": "generation",
+                      "self_approved": false,
+                      "version": 1,
+                      "written_by": "kuinn"
+                    }
+                  ],
+                  "page": {
+                    "has_more": false,
+                    "limit": 50
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListingVersionPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The listing's versions with who made, edited and approved each, newest first",
         "tags": [
           "listings"
         ],
@@ -50758,7 +51872,7 @@
         "x-mkos-action": "tenant:read"
       },
       "post": {
-        "description": "Ask for a candidate: `white_background` (an AI edit of the live main photo; only while\nimage editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or\n`size_chart` (an image of the product's size chart, no AI). A candidate is never a product\nimage until it is accepted. The same source asked again answers the same candidate; 202 names\nits job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`\nmeans it is already applied: that image is still this colourway's live main. An accepted\ncandidate whose image was replaced or deleted no longer answers: a new one is made. A new\nAI edit while AI is paused for every brand is 503 with the pause's code and no\n`Retry-After` (SI10).",
+        "description": "Ask for a candidate: `white_background` (an AI edit of the live main photo; only while\nimage editing is switched on), `fix` (re-frame the main photo to a white square, no AI) or\n`size_chart` (an image of the product's size chart, no AI). A candidate is never a product\nimage until it is accepted. The same source asked again answers the same candidate; 202 names\nits job only when a new one started (poll `poll_url`). `accepted` with `accepted_image_id`\nmeans it is already applied: that image is still this colourway's live main, and\n`applied_preview_url` signs it for 10 minutes so the page can show it. An accepted\ncandidate whose image was replaced or deleted no longer answers: a new one is made. A new\nAI edit while AI is paused for every brand is 503 with the pause's code and no\n`Retry-After` (SI10).",
         "operationId": "image_candidates_create",
         "parameters": [
           {
@@ -54206,7 +55320,9 @@
             "content": {
               "application/json": {
                 "example": {
+                  "asked_at": "2026-10-05T09:31:00Z",
                   "brand_name": "Kalakar Weaves",
+                  "question": "Which marketplaces do you sell on today, and under which store name?",
                   "requested_at": "2026-10-05T09:30:00Z",
                   "status": "pending"
                 },
@@ -54466,6 +55582,333 @@
           }
         },
         "summary": "A sign-up request's status by its status handle (no password; read only)",
+        "tags": [
+          "signup"
+        ],
+        "x-mkos-action": "public"
+      }
+    },
+    "/api/v1/signup/status/reply": {
+      "post": {
+        "description": "Client item 2: the applicant's one reply to the question a platform admin asked (the\npoll's `question`), authorised by the same `status_handle` alone, in the body. Plain text up\nto 1000 characters. The answer is the poll's, with `reply` set; the request stays `pending`\nand goes back to the admin. Sending the same reply again answers it again; a different second\nreply, no open question or a decided request is 409 `INVALID_STATUS_TRANSITION`. An unknown,\nreplaced or expired handle is the poll's 404.",
+        "operationId": "signup_status_reply",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupReplyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "asked_at": "2026-10-05T09:31:00Z",
+                  "brand_name": "Kalakar Weaves",
+                  "question": "Which marketplaces do you sell on today, and under which store name?",
+                  "replied_at": "2026-10-05T09:31:00Z",
+                  "reply": "Amazon India as Kalakar Weaves, and our own website.",
+                  "requested_at": "2026-10-05T09:30:00Z",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/SignupPollOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_FOUND",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_FOUND",
+                          "field": "request",
+                          "message": "Not found.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not found.",
+                    "status": 404,
+                    "type": "NOT_FOUND"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not found. Codes: `NOT_FOUND`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INVALID_STATUS_TRANSITION",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INVALID_STATUS_TRANSITION",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "INVALID_STATUS_TRANSITION"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `INVALID_STATUS_TRANSITION`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1.0,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "summary": "Reply once to the admin's question, by the status handle (no password)",
         "tags": [
           "signup"
         ],

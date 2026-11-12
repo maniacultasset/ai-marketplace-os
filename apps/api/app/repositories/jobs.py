@@ -10,6 +10,10 @@ the job spine. Every write names the tenant and, for a running job, fences on th
   releases, all fenced on `status = 'running' AND attempt = :claimed`.
 - `cancel_queued`, `cancel_non_running`, `reap`, `requeue`: the API cancel, the non-running
   tenant cancel, the reaper and the staff requeue.
+- `no_enqueue(reason)`: while it is open, `enqueue` refuses every job of every kind with
+  `EnqueueRefused` before anything is written. The one-off Amazon dry run
+  (`app.workers.amazon_preview`) runs inside it, so that process can never queue a publish, a
+  resend, a fix or any other job.
 """
 
 from __future__ import annotations
@@ -17,7 +21,9 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Final
@@ -51,6 +57,23 @@ _KEY_BEGAN: Final = text(
 RUNNING_TENANT: Final = ("trial", "active")
 TERMINAL: Final = frozenset({"succeeded", "partial", "failed", "cancelled", "dead_letter"})
 LIVE: Final = ("queued", "running")
+_ENQUEUE_REFUSED: ContextVar[str | None] = ContextVar("enqueue_refused", default=None)
+
+
+class EnqueueRefused(RuntimeError):  # noqa: N818 - names the outcome, as WriteRefused does
+    """`enqueue` was called inside `no_enqueue`: nothing was written."""
+
+
+@contextmanager
+def no_enqueue(reason: str) -> Iterator[None]:
+    """Refuse every `enqueue` in this context (module docstring)."""
+    token = _ENQUEUE_REFUSED.set(reason)
+    try:
+        yield
+    finally:
+        _ENQUEUE_REFUSED.reset(token)
+
+
 # SI12: `size_chart_read` (0023 widened `ck_job_runs_entity_type`); SI13: `error_proposal` (0024);
 # SI14: `category_suggestion` and `column_map` (0027)
 ENTITY_TYPES: Final = frozenset(
@@ -474,6 +497,10 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
     # ---- enqueue (DW1, AC1-2) ----
 
     async def enqueue(self, spec: EnqueueSpec) -> Enqueued:
+        refused = _ENQUEUE_REFUSED.get()
+        if refused is not None:
+            log.error("job.enqueue_refused", kind=str(spec.kind), reason=refused)
+            raise EnqueueRefused(f"no job may be enqueued here ({refused})")
         self._own_session()
         kind = JobKind(spec.kind)
         if spec.entity_type not in ENTITY_TYPES:

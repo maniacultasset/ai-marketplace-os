@@ -19,6 +19,8 @@
 #   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
 #   amazon-check  (--slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]: the read-only
 #               Amazon connection check of one tenant (GET only, worker identity, one-off job)
+#   amazon-preview  --slug S --listing-id L --staff-email E [--precheck]: the owner's one-off Amazon
+#               dry run (VALIDATION_PREVIEW, saves nothing) of one listing; a one-off job, deleted after
 #   images      recheck (--tenant ID | --slug S | --seller-id ID) --staff-email E: queue the photo checks
 #               again for photos the old photo rules judged (worker identity, one-off job; rerun to remaining=0)
 #   sentry-alerts  the Sentry issue alert rules of sentry_rules.py (new issue, regression, spike, ops alert
@@ -162,6 +164,9 @@ PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
 # The read-only Amazon connection check (app.workers.amazon_check): a one-off job under the worker
 # identity, which already opens the tenant tokens (KMS) and reads DATABASE_URL and the LWA secret.
 AMZCHECK_JOB="${AMZCHECK_JOB:-aimos-amazon-check}"
+# The owner's one-off Amazon dry run (2026-11-12; docs/runbooks/AMAZON-PREVIEW-ONEOFF.md): the
+# same identity and secrets as the check; created, executed once and deleted by `amazon-preview`.
+AMZPREVIEW_JOB="${AMZPREVIEW_JOB:-aimos-amazon-preview}"
 # Photo rules 2.1.0: `images recheck` (app.cli images recheck) re-queues the photo checks of one
 # tenant in a one-off job under the worker identity, with DATABASE_URL only (app_rw, tenant scope).
 IMGRECHECK_JOB="${IMGRECHECK_JOB:-aimos-images-recheck}"
@@ -292,13 +297,6 @@ for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENAB
   esac
   printf -v "$switch" '%s' "$value"
 done
-# Client feedback 11 and 19: copy v5, read by mkos-pipeline (>= 0.8.0) itself from the worker's
-# env. Off by default; true | false here, sent to the worker only (the one role that generates).
-MKOS_CONTENT_V5="${MKOS_CONTENT_V5:-false}"
-case "$MKOS_CONTENT_V5" in
-  true | false) ;;
-  *) die "MKOS_CONTENT_V5 must be true or false (in $ENV_NAME.env)" ;;
-esac
 # The classifier's model route: vision (LLM_MODEL_VISION with photos) or text (LLM_MODEL_DEFAULT,
 # product text only). One value on the api (the reservation) and the worker (the call).
 CATEGORY_SUGGEST_MODEL="${CATEGORY_SUGGEST_MODEL:-vision}"
@@ -401,11 +399,15 @@ chmod 0700 "$WORK"
 CANDIDATE_ARMED=0
 # restore-drill: set once the throwaway instance may exist, so any exit deletes it (drill_cleanup).
 DRILL_ARMED=0
+# amazon-preview: set once its job (with AMAZON_PUBLISH_ENABLED=true in its env) may exist, so any
+# exit before the command's own delete deletes it (amazon_preview_cleanup).
+AMZPREVIEW_ARMED=0
 on_exit() {
   local rc=$?
   set +e
   [ "$CANDIDATE_ARMED" -eq 0 ] || candidate_close
   [ "$DRILL_ARMED" -eq 0 ] || drill_cleanup
+  [ "$AMZPREVIEW_ARMED" -eq 0 ] || amazon_preview_cleanup
   rm -rf "$WORK"
   exit "$rc"
 }
@@ -1123,8 +1125,6 @@ app_env() {
     # V1 hardening #9: the parallel image check children (the worker runs every image job)
     [ -z "$IMAGE_CHECK_CONCURRENCY" ] ||
       printf 'IMAGE_CHECK_CONCURRENCY\t%s\n' "$IMAGE_CHECK_CONCURRENCY"
-    # feedback 11 and 19: the pipeline's copy v5 switch (its own env name)
-    printf 'MKOS_CONTENT_V5\t%s\n' "$MKOS_CONTENT_V5"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
@@ -1857,6 +1857,90 @@ cmd_amazon_check() {
   run_job "$AMZCHECK_JOB"
   say "amazon-check passed (no step failed). The table is in the job log:"
   job_logs_hint "$AMZCHECK_JOB"
+}
+
+# ---- amazon-preview (the owner's one-off Amazon dry run) ----
+# `amazon-preview --slug S --listing-id L --staff-email E [--precheck]` runs `python -m app.cli ops
+# amazon-preview` (it resolves the slug, then execs `python -m app.workers.amazon_preview`) in
+# AMZPREVIEW_JOB as the worker identity, under the shell role, with the secrets amazon-check uses
+# (DATABASE_URL, AMAZON_CLIENT_SECRET). Only this job's env turns the dry run on:
+# AMAZON_PUBLISH_ENABLED=true (the SP-API client refuses a VALIDATION_PREVIEW PUT otherwise),
+# AMAZON_VALIDATION_PREVIEW_ENABLED=true, AMAZON_CATALOG_PRECHECK_ENABLED (true only with
+# --precheck) and AMAZON_PREVIEW_ONEOFF=1, which the worker entrypoint requires and every other
+# role refuses to boot with. The env file, the api and the worker are untouched. The job is
+# executed once and waited for, its log printed, then deleted, whatever the outcome; a failed
+# run or a STOP (exit 5: a SKU exists on Amazon, or a reply looked applied) fails the command.
+amazon_preview_cleanup() {
+  say "amazon-preview: interrupted; deleting $AMZPREVIEW_JOB"
+  gc run jobs delete "$AMZPREVIEW_JOB" --region="$REGION" ||
+    say "amazon-preview: could not delete $AMZPREVIEW_JOB; delete it by hand (docs/runbooks/AMAZON-PREVIEW-ONEOFF.md)"
+  AMZPREVIEW_ARMED=0
+}
+
+cmd_amazon_preview() {
+  local usage_line="usage: amazon-preview --slug S --listing-id L --staff-email E [--precheck]"
+  local image url args="-m|app.cli|ops|amazon-preview" slug="" listing="" staff="" precheck=false
+  local flag value status=0 started envf="$WORK/amazon-preview-env.yaml"
+  set -- ${REST[@]+"${REST[@]}"}
+  [ $# -ge 1 ] || die "$usage_line"
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --precheck) precheck=true; shift; continue ;;
+      --*=*) flag="${1%%=*}" value="${1#*=}"; shift ;;
+      --*) [ $# -ge 2 ] || die "$usage_line"; flag="$1" value="$2"; shift 2 ;;
+      *) die "$usage_line" ;;
+    esac
+    case "$value" in *"|"* | "") die "amazon-preview: $flag needs a value without '|'" ;; esac
+    case "$flag" in
+      --slug) slug="$value"; args="$args|--tenant-slug=$value" ;;
+      --listing-id)
+        printf '%s' "$value" | grep -Eq '^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$' \
+          || die "amazon-preview: --listing-id must be a listing UUID"
+        listing="$value"; args="$args|--listing-id=$value" ;;
+      --staff-email) staff="$value"; args="$args|--staff-email=$value" ;;
+      *) die "amazon-preview: unknown flag $flag ($usage_line)" ;;
+    esac
+  done
+  { [ -n "$slug" ] && [ -n "$listing" ] && [ -n "$staff" ]; } || die "$usage_line"
+  [ "$precheck" = false ] || args="$args|--precheck"
+  [ -n "$AMAZON_APP_ID" ] || die "amazon-preview needs the Amazon app: set AMAZON_APP_ID in $ENV_NAME.env"
+  image="$(image_ref)"
+  url="$(api_url)"
+  env_file shell "$url" "$envf"
+  # this job's switches replace the env file's publish value (prod.env keeps false)
+  grep -v '^AMAZON_PUBLISH_ENABLED:' "$envf" >"$envf.tmp"
+  mv "$envf.tmp" "$envf"
+  {
+    printf 'AMAZON_APP_ID: %s\n' "$(yaml_quote "$AMAZON_APP_ID")"
+    printf 'AMAZON_CLIENT_ID: %s\n' "$(yaml_quote "$AMAZON_CLIENT_ID")"
+    printf 'AMAZON_AUTHORIZE_URL: %s\n' "$(yaml_quote "$AMAZON_AUTHORIZE_URL")"
+    printf 'AMAZON_PUBLISH_ENABLED: "true"\nAMAZON_VALIDATION_PREVIEW_ENABLED: "true"\n'
+    printf 'AMAZON_CATALOG_PRECHECK_ENABLED: "%s"\nAMAZON_PREVIEW_ONEOFF: "1"\n' "$precheck"
+  } >>"$envf"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "amazon-preview env file $envf:"
+    sed 's/^/    /' "$envf"
+  fi
+  AMZPREVIEW_ARMED=1 # from here, any exit (die, error, Ctrl-C) deletes the job
+  gc run jobs deploy "$AMZPREVIEW_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_WORKER")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$envf" \
+    --set-secrets="$(secret_refs "DATABASE_URL AMAZON_CLIENT_SECRET")" \
+    --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=512Mi \
+    --labels="$LABELS"
+  # once, waited for; `run_job` dies on a failed execution, so it runs in a subshell and the
+  # job is deleted whatever happened. The log read starts at this run, so an earlier run's lines
+  # (another listing's verdict or STOP) are never printed as this one's.
+  started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  ( run_job "$AMZPREVIEW_JOB" ) || status=$?
+  [ "$DRY_RUN" -eq 1 ] || sleep 15 # the job's log lines reach Cloud Logging a little later
+  say "amazon-preview log:"
+  gq logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AMZPREVIEW_JOB\" AND timestamp>=\"$started\"" \
+    --freshness=1h --limit=300 --order=asc --format='value(textPayload)' || job_logs_hint "$AMZPREVIEW_JOB"
+  gc run jobs delete "$AMZPREVIEW_JOB" --region="$REGION"
+  AMZPREVIEW_ARMED=0
+  [ "$status" -eq 0 ] || die "amazon-preview: the job failed or printed STOP (see the log above); the job was deleted"
+  say "amazon-preview done (every SKU still 404 on Amazon); the job was deleted"
 }
 
 # ---- images recheck (photo rules 2.1.0) ----
@@ -2958,6 +3042,7 @@ case "$CMD" in
   tenant) cmd_tenant ;;
   templates) cmd_templates ;;
   amazon-check) cmd_amazon_check ;;
+  amazon-preview) cmd_amazon_preview ;;
   images) cmd_images ;;
   sentry-alerts) cmd_sentry_alerts ;;
   status) cmd_status ;;

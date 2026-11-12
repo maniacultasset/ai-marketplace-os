@@ -96,6 +96,13 @@ def _items(source: PreviewSource) -> tuple[AdapterItem, ...]:
     return (AdapterItem(product.id, product.sku, "parent"), *children)
 
 
+def seller_skus(source: PreviewSource) -> list[str]:
+    """The seller SKUs a build of this source sends to the marketplace (`AdapterListing.units`):
+    known before any submission, unlike `listing_items`, which a first submission writes."""
+    units = _items(source) or (AdapterItem(source.product.id, source.product.sku, "standalone"),)
+    return sorted({unit.seller_sku for unit in units if unit.seller_sku})
+
+
 def approved_colour_images(source: PreviewSource) -> dict[str, tuple[uuid.UUID, ...]]:
     """Each colour key's images, kept only where the approved version holds them (F2)."""
     approved = {image.image_id for image in canonical_listing(source).images}

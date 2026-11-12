@@ -156,7 +156,7 @@ def test_amazon_covers_the_documented_codes(amazon: list[ErrorMapIn]) -> None:
 
 
 def test_new_amazon_rows_cite_amazon_pages(amazon: list[ErrorMapIn]) -> None:
-    for row in amazon[24:]:  # the rows after the SI9 and SI13 set
+    for row in amazon[26:]:  # the rows after the SI9, SI13, prod-code and GTIN (8550, 8572) set
         ref = row.policy_ref or {}
         assert ref.get("source") == "sp-api-docs", row.raw_value
         assert ref.get("doc") in AMAZON_DOCS, row.raw_value

@@ -280,10 +280,6 @@ class Settings(BaseSettings):
     # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
     # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
     photo_match_enabled: bool = False
-    # Client feedback 11 and 19: copy v5 (keywords first, prompt v5, brand voice, copy checks).
-    # Read by mkos-pipeline itself (>= 0.8.0, its `content_v5` setting) from the worker's process
-    # env; the backend never reads it, the field only registers the name. Off: v4 copy as before.
-    mkos_content_v5: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None
@@ -347,6 +343,10 @@ class Settings(BaseSettings):
     # (listing PUT, PATCH, the VALIDATION_PREVIEW dry run) reaches Amazon and no publish job is
     # enqueued; reads stay allowed. On in code for dev and tests; production pins it in prod.env.
     amazon_publish_enabled: bool = True
+    # The owner's one-off dry run (2026-11-12; docs/runbooks/AMAZON-PREVIEW-ONEOFF.md): only the
+    # staff job `deploy.sh amazon-preview` sets it, as the shell role. `app.workers.amazon_preview`
+    # refuses to run without it; any other role refuses to boot with it set.
+    amazon_preview_oneoff: bool = False
 
     # ---- flipkart ----
     flipkart_client_id: str | None = None
@@ -907,6 +907,11 @@ def _ptd_errors(s: Settings) -> list[str]:
     ):
         errors.append(
             f"APP_ROLE={s.app_role} refuses AMAZON_PLATFORM_REFRESH_TOKEN (the CLI job alone uses it)"
+        )
+    if s.amazon_preview_oneoff and s.app_role != "shell":
+        # the one-off dry run is a staff job: an api, worker, migrate or seed process never runs it
+        errors.append(
+            f"APP_ROLE={s.app_role} refuses AMAZON_PREVIEW_ONEOFF (the one-off staff job alone)"
         )
     return errors
 

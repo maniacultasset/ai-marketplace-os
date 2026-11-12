@@ -108,6 +108,7 @@ from app.api.v1.schemas.listings import (
     ListingHistoryPage,
     ListingPage,
     ListingStatusOut,
+    ListingVersionPage,
 )
 from app.api.v1.schemas.marketplaces import (
     ConnectOut,
@@ -744,6 +745,11 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("listings_history", "GET", "/listings/{listing_id}/history", 200,
               ListingHistoryPage, "listings", "The listing's audit history, newest first", "S19",
               path_id="listing_id", query=("limit", "cursor"), action=A.TENANT_READ),
+    # item 17 (client feedback, 11 Nov 2026): who made, edited and approved each version
+    Operation("listings_versions", "GET", "/listings/{listing_id}/versions", 200,
+              ListingVersionPage, "listings", "The listing's versions with who made, edited "
+              "and approved each, newest first", "S19", path_id="listing_id",
+              query=("limit", "cursor"), action=A.TENANT_READ),
     Operation("listings_content_patch", "PATCH", "/listings/{listing_id}/content", 200,
               ListingDetail, "listings", "Edit content (creates a new version)", "S18",
               path_id="listing_id", has_body=True, if_match=True,
@@ -879,6 +885,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("signup_status_poll", "POST", "/signup/status/poll", 200, SignupPollOut, "signup",
               "A sign-up request's status by its status handle (no password; read only)",
               "ADR-0019", public=True, has_body=True, extra_codes=_404),
+    Operation("signup_status_reply", "POST", "/signup/status/reply", 200, SignupPollOut, "signup",
+              "Reply once to the admin's question, by the status handle (no password)",
+              "ADR-0019", public=True, has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=_404),
     Operation("signup_google", "POST", "/signup/google", 202, SignupStatusOut, "signup",
               "Sign up with the Google identity: a pending request a platform admin approves",
               "ADR-0020", public=True, has_body=True, extra_codes=_GOOGLE_PUBLIC),
@@ -894,6 +904,11 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "/admin/signup-requests/{request_id}/reject", 200, SignupRequestOut, "admin",
               "Reject a sign-up with a reason (idempotent)", "ADR-0019", has_body=True,
               conflict_code=E.INVALID_STATUS_TRANSITION,
+              extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
+    Operation("admin_signup_requests_ask", "POST",
+              "/admin/signup-requests/{request_id}/ask", 200, SignupRequestOut, "admin",
+              "Ask the applicant one question; the request stays pending (idempotent)",
+              "ADR-0019", has_body=True, conflict_code=E.INVALID_STATUS_TRANSITION,
               extra_codes=MappingProxyType({404: (E.NOT_FOUND,)}), platform_admin=True),
     # ---- trial recovery (SI5, ADR-0029) ----
     Operation("admin_tenants_list", "GET", "/admin/tenants", 200, TenantAdminPage, "admin",
