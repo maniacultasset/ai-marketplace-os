@@ -466,6 +466,10 @@ export interface CanonicalListing {
    * Set by the backend from the product's images; a pipeline value is replaced.
    */
   images?: ImageRef[];
+  /**
+   * @maxItems 50
+   */
+  keyword_reasons?: KeywordReason[];
   keywords?: ListingKeywords;
   listing_id?: string | null;
   locale?: "en-IN";
@@ -521,6 +525,55 @@ export interface ImageRef {
   image_id: string;
   position?: number;
   slot: ImageSlot;
+  [k: string]: unknown;
+}
+/**
+ * Why the keyword agent chose one search term, and where the copy uses it (2.1.0).
+ *
+ * `source` is where the term comes from: the product's own facts, the category's usual search
+ * words, or how shoppers search. `fact_keys` are the product paths whose values the term repeats
+ * (set by the pipeline, never the model). `used_in` is where the current copy uses the term
+ * (`title`, `bullets`, `description`) plus `backend`: every listed term is sent to the
+ * marketplace's search-term field. A seller edit refreshes `used_in` and drops removed terms.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "KeywordReason".
+ */
+export interface KeywordReason {
+  /**
+   * @maxItems 8
+   */
+  fact_keys?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string];
+  reason: string;
+  source: "product_facts" | "category" | "search_intent";
+  term: string;
+  /**
+   * @maxItems 4
+   */
+  used_in?:
+    | []
+    | ["title" | "bullets" | "description" | "backend"]
+    | ["title" | "bullets" | "description" | "backend", "title" | "bullets" | "description" | "backend"]
+    | [
+        "title" | "bullets" | "description" | "backend",
+        "title" | "bullets" | "description" | "backend",
+        "title" | "bullets" | "description" | "backend"
+      ]
+    | [
+        "title" | "bullets" | "description" | "backend",
+        "title" | "bullets" | "description" | "backend",
+        "title" | "bullets" | "description" | "backend",
+        "title" | "bullets" | "description" | "backend"
+      ];
   [k: string]: unknown;
 }
 /**

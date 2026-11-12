@@ -72,5 +72,29 @@
     "color": "attributes.color",
     "size": "attributes.size",
     "fit": "attributes.fit"
-  }
+  },
+  "keyword_reasons": [
+    {
+      "term": "organic cotton kurta",
+      "reason": "Names the fabric and product type shoppers search for.",
+      "source": "product_facts",
+      "fact_keys": [
+        "attributes.material"
+      ],
+      "used_in": [
+        "title",
+        "bullets",
+        "backend"
+      ]
+    },
+    {
+      "term": "ethnic wear women",
+      "reason": "A broad category search for this kind of product.",
+      "source": "category",
+      "fact_keys": [],
+      "used_in": [
+        "backend"
+      ]
+    }
+  ]
 }

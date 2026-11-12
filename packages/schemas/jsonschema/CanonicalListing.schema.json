@@ -74,6 +74,63 @@
       "title": "ImageSlot",
       "type": "string"
     },
+    "KeywordReason": {
+      "description": "Why the keyword agent chose one search term, and where the copy uses it (2.1.0).\n\n`source` is where the term comes from: the product's own facts, the category's usual search\nwords, or how shoppers search. `fact_keys` are the product paths whose values the term repeats\n(set by the pipeline, never the model). `used_in` is where the current copy uses the term\n(`title`, `bullets`, `description`) plus `backend`: every listed term is sent to the\nmarketplace's search-term field. A seller edit refreshes `used_in` and drops removed terms.",
+      "properties": {
+        "fact_keys": {
+          "items": {
+            "maxLength": 192,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Fact Keys",
+          "type": "array"
+        },
+        "reason": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "product_facts",
+            "category",
+            "search_intent"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "term": {
+          "maxLength": 256,
+          "minLength": 1,
+          "title": "Term",
+          "type": "string"
+        },
+        "used_in": {
+          "items": {
+            "enum": [
+              "title",
+              "bullets",
+              "description",
+              "backend"
+            ],
+            "type": "string"
+          },
+          "maxItems": 4,
+          "title": "Used In",
+          "type": "array"
+        }
+      },
+      "required": [
+        "term",
+        "reason",
+        "source"
+      ],
+      "title": "KeywordReason",
+      "type": "object"
+    },
     "ListingContent": {
       "properties": {
         "bullets": {
@@ -260,6 +317,14 @@
         "$ref": "#/$defs/ImageRef"
       },
       "title": "Images",
+      "type": "array"
+    },
+    "keyword_reasons": {
+      "items": {
+        "$ref": "#/$defs/KeywordReason"
+      },
+      "maxItems": 50,
+      "title": "Keyword Reasons",
       "type": "array"
     },
     "keywords": {

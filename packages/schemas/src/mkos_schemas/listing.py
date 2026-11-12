@@ -19,6 +19,10 @@ MAX_LISTING_ATTRIBUTES: Final = 128
 MAX_LISTING_CLAIMS: Final = 64
 MAX_ATTRIBUTE_SOURCE_LENGTH: Final = 192
 MAX_KEYWORD_OR_ATTR_STRING: Final = 256
+# 2.1.0: why the agent chose a search term, for the seller (client feedback 11, item 6).
+MAX_KEYWORD_REASONS: Final = 50
+MAX_KEYWORD_REASON_LENGTH: Final = 200
+MAX_KEYWORD_REASON_FACTS: Final = 8
 _CLAIM_TEXT_PATH: Final = re.compile(r"^content\.(title|description|bullets\[[0-9]{1,3}\])$")
 
 
@@ -47,6 +51,27 @@ class ListingKeywords(WireModel):
             if len(term) > MAX_KEYWORD_OR_ATTR_STRING:
                 raise ValueError("term too long")
         return terms
+
+
+class KeywordReason(WireModel):
+    """Why the keyword agent chose one search term, and where the copy uses it (2.1.0).
+
+    `source` is where the term comes from: the product's own facts, the category's usual search
+    words, or how shoppers search. `fact_keys` are the product paths whose values the term repeats
+    (set by the pipeline, never the model). `used_in` is where the current copy uses the term
+    (`title`, `bullets`, `description`) plus `backend`: every listed term is sent to the
+    marketplace's search-term field. A seller edit refreshes `used_in` and drops removed terms."""
+
+    term: Annotated[NonBlankStr, Field(max_length=MAX_KEYWORD_OR_ATTR_STRING)]
+    reason: Annotated[NonBlankStr, Field(max_length=MAX_KEYWORD_REASON_LENGTH)]
+    source: Literal["product_facts", "category", "search_intent"]
+    fact_keys: Annotated[
+        list[Annotated[NonBlankStr, Field(max_length=MAX_ATTRIBUTE_SOURCE_LENGTH)]],
+        Field(max_length=MAX_KEYWORD_REASON_FACTS),
+    ] = Field(default_factory=list)
+    used_in: Annotated[
+        list[Literal["title", "bullets", "description", "backend"]], Field(max_length=4)
+    ] = Field(default_factory=list)
 
 
 class ImageRef(WireModel):
@@ -108,6 +133,10 @@ class CanonicalListing(WireModel):
         dict[AttrKey, Annotated[NonBlankStr, Field(max_length=MAX_ATTRIBUTE_SOURCE_LENGTH)]],
         Field(max_length=MAX_LISTING_ATTRIBUTES),
     ] = Field(default_factory=dict)
+    # 2.1.0: why each search term was chosen and where the copy uses it (empty when unknown).
+    keyword_reasons: Annotated[list[KeywordReason], Field(max_length=MAX_KEYWORD_REASONS)] = Field(
+        default_factory=list
+    )
 
     @field_validator("attributes")
     @classmethod

@@ -3208,6 +3208,8 @@ export interface components {
              * @description Set by the backend from the product's images; a pipeline value is replaced.
              */
             images?: components["schemas"]["ImageRef"][];
+            /** Keyword Reasons */
+            keyword_reasons?: components["schemas"]["KeywordReason"][];
             keywords?: components["schemas"]["ListingKeywords"];
             /** Listing Id */
             listing_id?: string | null;
@@ -4683,6 +4685,31 @@ export interface components {
          */
         JobState: "queued" | "running" | "succeeded" | "partial" | "failed" | "cancelled" | "dead_letter";
         JsonValue: unknown;
+        /**
+         * KeywordReason
+         * @description Why the keyword agent chose one search term, and where the copy uses it (2.1.0).
+         *
+         *     `source` is where the term comes from: the product's own facts, the category's usual search
+         *     words, or how shoppers search. `fact_keys` are the product paths whose values the term repeats
+         *     (set by the pipeline, never the model). `used_in` is where the current copy uses the term
+         *     (`title`, `bullets`, `description`) plus `backend`: every listed term is sent to the
+         *     marketplace's search-term field. A seller edit refreshes `used_in` and drops removed terms.
+         */
+        KeywordReason: {
+            /** Fact Keys */
+            fact_keys?: string[];
+            /** Reason */
+            reason: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "product_facts" | "category" | "search_intent";
+            /** Term */
+            term: string;
+            /** Used In */
+            used_in?: ("title" | "bullets" | "description" | "backend")[];
+        };
         /** ListingContent */
         ListingContent: {
             /** Bullets */

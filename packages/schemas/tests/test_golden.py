@@ -137,7 +137,7 @@ _NEW_IN_1_2_0: dict[str, dict[str, object]] = {
         "images": [],
     },
     "GenerationResult": {"questions": [], "changes": []},
-    "CanonicalListing": {"claims": [], "attribute_sources": {}},
+    "CanonicalListing": {"claims": [], "attribute_sources": {}, "keyword_reasons": []},
     "ErrorReport": {},
     "RuleSet": {},
 }

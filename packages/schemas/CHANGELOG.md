@@ -20,6 +20,10 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Why these keywords (client feedback item 11, bullet 6, 11 Nov 2026; additive optional field under the open 2.1.0 heading; no new error code, operation or migration).
+  - **Contract (MINOR).** `CanonicalListing.keyword_reasons` (default `[]`, at most 50) of `KeywordReason {term, reason, source, fact_keys, used_in}`: `reason` at most 200 characters; `source` is `product_facts | category | search_intent` (a new field's own vocabulary); `fact_keys` (at most 8) are the product paths whose values the term repeats; `used_in` is any of `title | bullets | description | backend`. It reaches the API on every `ListingDetail.content` read.
+  - **Behaviour.** Written by `mkos-pipeline` 0.8.2 with copy v5 on (the keyword agent gives the reason and source; the pipeline sets `fact_keys` and `used_in`, and says `product_facts` only when a product value backs the term). A merge of a section regenerate or an AI fix, and a seller edit, keep the reasons of the terms still listed and refresh `used_in` against the new copy (`services/keyword_reasons.py`); a term the seller added has no reason. A pinned pipeline that does not write it leaves it empty.
+  - **FE notice.** The keywords card shows "Why: <reason>" and where each term is used; nothing when the list is empty.
 - White background "already applied" shows the photo (client tester, 11 Nov 2026, item 12; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
   - **Contract (MINOR).** `ImageCandidateAccepted.applied_preview_url?` (default null) on `image_candidates_create`: a 10-minute signed GET of the applied candidate's stored image, set only with `accepted_image_id`.
   - **Behaviour.** Signed after the idempotent call and never stored with the answer (CP-D18): a replay signs a fresh URL, and none once the image is no longer the live main (or the size-chart image). The "already applied" rule itself is unchanged.
