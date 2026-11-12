@@ -27,7 +27,13 @@ SECRETS = {
 }
 
 
-async def _context(world: GenWorld, job_id: uuid.UUID, *, max_attempts: int = 3) -> Any:
+async def _context(
+    world: GenWorld,
+    job_id: uuid.UUID,
+    *,
+    max_attempts: int = 3,
+    target_fields: tuple[str, ...] = (),
+) -> Any:
     from app.repositories.uow import tenant_uow
     from app.services.generation_context import build_context
     from app.services.rules_loader import load_rules
@@ -51,6 +57,7 @@ async def _context(world: GenWorld, job_id: uuid.UUID, *, max_attempts: int = 3)
             facts=facts,
             request_id="req-s18-ctx",
             max_attempts=max_attempts,
+            target_fields=target_fields,
         )
 
 
@@ -354,6 +361,17 @@ async def test_context_carries_brand_voice_and_description(gen_world: GenWorld) 
     assert ctx.brand_profile["brand_voice"] == VOICE
     assert ctx.brand_profile["brand_description"] == "Cotton wear from Jaipur."
     assert "acme.example" not in ctx.model_dump_json()
+
+
+async def test_section_regenerate_context_carries_brand_voice(gen_world: GenWorld) -> None:
+    """Client feedback 19: a section-only regenerate (target_fields) gets the same brand voice as a
+    full generation, so the regenerated section can follow it."""
+    _set_brand(gen_world, VOICE, "Cotton wear from Jaipur.")
+    accepted = await make_generating(gen_world)
+    ctx = await _context(gen_world, accepted.job_id, target_fields=("content.bullets",))
+    assert ctx.target_fields == ["content.bullets"]
+    assert ctx.brand_profile["brand_voice"] == VOICE
+    assert ctx.brand_profile["brand_description"] == "Cotton wear from Jaipur."
 
 
 @pytest.mark.parametrize("voice", [None, {}, {**VOICE, "price_segment": "cheap"}])
