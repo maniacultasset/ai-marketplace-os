@@ -14,8 +14,8 @@ Guards, in order; any refusal sends nothing to Amazon:
 3. The listing (exit 4): Amazon, not paused or archived, `validated`, `needs_review`, `approved`
    or `blocked/validation_errors`, with a current version; its account `active`; the account's
    preview breaker (CP-D24) closed; no live `listing_status_sync` job of the listing; and every
-   seller SKU the dry run would send is a test SKU (`KTEST-` prefix, the owner's rule: never a
-   live product). One `listing.preview_oneoff` audit row names the staff actor.
+   seller SKU of the product and of every variant is a test SKU (`KTEST-` prefix, the owner's
+   rule: never a live product); the built item's SKUs are checked again right before the preview. One `listing.preview_oneoff` audit row names the staff actor.
 4. A GET (getListingsItem) of each of the listing's SKUs. Any SKU found on Amazon: STOP (exit 5),
    and no preview is sent.
 
@@ -57,7 +57,7 @@ import sys
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import httpx
 from mkos_schemas.enums import JobKind
@@ -83,6 +83,9 @@ from app.workers.payloads import StatusSyncPayload, dump
 from app.workers.readers import AccountInactive, ReaderView, ReadFailed
 from app.workers.registry import JobContext
 from app.workers.remote_preview import run_remote_preview, with_precheck
+
+if TYPE_CHECKING:
+    from app.repositories.listings import PreviewSource
 
 log = get_logger(__name__)
 
@@ -180,7 +183,7 @@ class _PreviewOnly:
 
     async def preview_remote(self, item: AdapterListing) -> RemotePreview:
         # the item as built is what is sent: its SKUs are checked again, not only the guard's
-        if not_test := live_skus([unit.seller_sku for unit in item.units()]):
+        if not_test := live_skus([item.seller_sku, *(unit.seller_sku for unit in item.units())]):
             raise NotEligible(f"{len(not_test)} SKU(s) of the built item are not test SKUs")
         self.verdict = await self.__adapter.preview_remote(item)  # type: ignore[attr-defined]
         return self.verdict
@@ -285,9 +288,24 @@ class OneoffReport:
         return "".join(f"{line}\n" for line in lines)
 
 
-def live_skus(skus: Sequence[str]) -> list[str]:
-    """The SKUs that are not test SKUs (no `KTEST-` prefix): any one refuses the run."""
-    return [sku for sku in skus if not sku.startswith(TEST_SKU_PREFIX)]
+def live_skus(skus: Sequence[object]) -> list[object]:
+    """The SKUs that are not test SKUs (no `KTEST-` prefix, case-sensitive): any one refuses the
+    run. A missing or empty SKU is not a test SKU either."""
+    return [sku for sku in skus if not (isinstance(sku, str) and sku.startswith(TEST_SKU_PREFIX))]
+
+
+def sku_refusal(source: PreviewSource, sent: Sequence[str]) -> str | None:
+    """Why the listing is not a test listing, or None. Every seller SKU must be a test SKU: the
+    product's own, every variant's (sent or not: a family that is not fully test data is not
+    previewed) and every SKU the build would send."""
+    skus = [source.product.sku, *(child.sku for child in source.children), *sent]
+    not_test = live_skus(skus)
+    if not not_test:
+        return None
+    return (
+        f"{len(not_test)} SKU(s) of the product and its variants are not test SKUs "
+        f"(prefix {TEST_SKU_PREFIX}); the dry run runs on test listings only"
+    )
 
 
 def settings_refusal(settings: Settings, *, precheck: bool) -> str | None:
@@ -358,13 +376,11 @@ async def _target(tenant_id: uuid.UUID, listing_id: uuid.UUID, staff_email: str)
         if source is None or source.version is None:
             raise NotEligible("the listing has no current version")
         skus = seller_skus(source)
+        refusal = sku_refusal(source, skus)
+        if refusal is not None:
+            raise NotEligible(refusal)
         if not skus:
             raise NotEligible("the listing has no SKU")
-        if live_skus(skus):
-            raise NotEligible(
-                f"{len(live_skus(skus))} of {len(skus)} SKU(s) are not test SKUs "
-                f"(prefix {TEST_SKU_PREFIX}); the dry run runs on test listings only"
-            )
         await uow.audit.write(
             tenant_id=tenant_id,
             actor_type="staff",
