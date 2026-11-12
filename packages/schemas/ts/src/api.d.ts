@@ -5553,6 +5553,11 @@ export interface components {
              */
             id: string;
             marketplace: components["schemas"]["Marketplace"];
+            /**
+             * Marketplace Id
+             * @description The marketplace this account sells on: Amazon's marketplace id (`A21TJRUUN4KGV`, Amazon.in), or null when there is none to name.
+             */
+            marketplace_id?: string | null;
             /** Needs Reconnect Since */
             needs_reconnect_since?: string | null;
             /**
@@ -5561,7 +5566,10 @@ export interface components {
              * @default true
              */
             publishing_enabled: boolean;
-            /** Region */
+            /**
+             * Region
+             * @description Where the account sells: the stored region, else the country of this deployment's marketplace (`India` for Amazon.in and Flipkart).
+             */
             region?: string | null;
             /** Seller Id */
             seller_id: string;
@@ -39720,7 +39728,8 @@ export interface operations {
                      *           "created_at": "2026-10-05T09:30:00Z",
                      *           "id": "0b1c2d3e-0000-4000-8000-000000000601",
                      *           "marketplace": "amazon",
-                     *           "region": "eu",
+                     *           "marketplace_id": "A21TJRUUN4KGV",
+                     *           "region": "India",
                      *           "seller_id": "A1EXAMPLESELLER",
                      *           "status": "active"
                      *         }
@@ -40006,7 +40015,8 @@ export interface operations {
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "id": "0b1c2d3e-0000-4000-8000-000000000601",
                      *       "marketplace": "amazon",
-                     *       "region": "eu",
+                     *       "marketplace_id": "A21TJRUUN4KGV",
+                     *       "region": "India",
                      *       "seller_id": "A1EXAMPLESELLER",
                      *       "status": "revoked"
                      *     }
@@ -40721,7 +40731,8 @@ export interface operations {
                      *       "created_at": "2026-10-05T09:30:00Z",
                      *       "id": "0b1c2d3e-0000-4000-8000-000000000601",
                      *       "marketplace": "amazon",
-                     *       "region": "eu",
+                     *       "marketplace_id": "A21TJRUUN4KGV",
+                     *       "region": "India",
                      *       "seller_id": "A1EXAMPLESELLER",
                      *       "status": "active"
                      *     }
