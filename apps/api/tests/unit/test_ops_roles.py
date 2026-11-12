@@ -120,6 +120,7 @@ Q7: dict[str, str] = {
     "analytics_summary": "analytics:read",
     "analytics_quality": "analytics:read",  # SI14
     "home_summary": "tenant:read",  # FB6
+    "home_brands": "tenant:read",  # FB18
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)

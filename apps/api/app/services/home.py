@@ -498,22 +498,55 @@ async def get_summary(principal: Principal) -> dict[str, Any]:
         raise budget from None
 
 
+@dataclass(frozen=True, slots=True)
+class Counted:
+    """The counts one brand's Home and its cross-brand row share, read for one role."""
+
+    accounts: dict[str, str]
+    sending: dict[str, SendState]
+    whole: Tally
+    per: dict[str, Tally]
+    live_products: int
+    own_work: int
+    questions: int
+    improve: int
+    products: int
+
+    def listings(self) -> dict[str, int]:
+        return {**_counts(self.whole), "live_products": self.live_products}
+
+    def needs_you(self, can: Permissions) -> dict[str, int]:
+        return needs_you_counts(
+            self.per, self.questions, self.improve, can, self.sending, self.own_work
+        )
+
+
+async def _count(reads: Any, can: Permissions, user: Any, settings: Any) -> Counted:
+    """The tenant-wide counts and the caller's work counts, in the bounded transaction."""
+    await reads.listings.bounded()
+    accounts = await reads.accounts.current()
+    sending = {
+        m.value: send_state(publish_enabled(m, settings), accounts.get(m.value))
+        for m in Marketplace
+    }
+    whole, per = tally(await reads.listings.bucket_groups())
+    live_products = await reads.listings.live_products()
+    own_work = await reads.listings.own_work(user) if can.approve else 0
+    questions, improve = await reads.tasks.open_counts() if can.answer else (0, 0)
+    products = await reads.products.count()
+    return Counted(
+        accounts, sending, whole, per, live_products, own_work, questions, improve, products
+    )
+
+
 async def _read_summary(principal: Principal) -> dict[str, Any]:
     settings = get_settings()
     can = Permissions.of(principal.role)
     user = principal.user_id
     async with unit_of_work(principal.tenant_id, user_id=user) as session:
         reads = home_reads(session, principal.tenant_id)
-        await reads.listings.bounded()
-        accounts = await reads.accounts.current()
-        sending = {
-            m.value: send_state(publish_enabled(m, settings), accounts.get(m.value))
-            for m in Marketplace
-        }
-        whole, per = tally(await reads.listings.bucket_groups())
-        live_products = await reads.listings.live_products()
-        own_work = await reads.listings.own_work(user) if can.approve else 0
-        questions, improve = await reads.tasks.open_counts() if can.answer else (0, 0)
+        c = await _count(reads, can, user, settings)
+        per = c.per
         blocked = await reads.listings.blocked_rows(ITEMS_MAX) if can.fix else []
         issues = await reads.issues.newest_open_errors(
             [(r.listing_id, r.current_version_id) for r in blocked]
@@ -532,7 +565,7 @@ async def _read_summary(principal: Principal) -> dict[str, Any]:
             else []
         )
         room -= len(approve)
-        open_markets = [m for m, state in sending.items() if state == "open"]
+        open_markets = [m for m, state in c.sending.items() if state == "open"]
         publish = (
             await reads.listings.ready_rows(approve=False, marketplaces=open_markets, limit=room)
             if can.publish and room > 0
@@ -540,20 +573,70 @@ async def _read_summary(principal: Principal) -> dict[str, Any]:
         )
         jobs = await reads.jobs.recent(JOB_SCAN)
         fixes = await reads.issues.recent_fixes(ACTIVITY_MAX)
-        products = await reads.products.count()
     return {
         "as_of": datetime.now(UTC),
-        "listings": {**_counts(whole), "live_products": live_products},
+        "listings": c.listings(),
         "by_marketplace": [
             {"marketplace": m.value, "listings": per[m.value].total, **_market(per[m.value])}
             for m in Marketplace
         ],
-        "needs_you": needs_you_counts(per, questions, improve, can, sending, own_work),
+        "needs_you": c.needs_you(can),
         "needs_you_items": needs_you_items(blocked, issues, tasks, approve, publish),
         "activity": activity(jobs, fixes),
-        "marketplaces": marketplace_rows(accounts, per, settings),
-        "products": products,
+        "marketplaces": marketplace_rows(c.accounts, per, settings),
+        "products": c.products,
     }
+
+
+# ---- every brand of the caller (client feedback 11 Nov 2026, item 18; ADR-0032 light path) ----
+
+BRANDS_MAX: Final = 25
+"""The most brands one overview reads (each is its own bounded transaction)."""
+
+
+def brand_order(rows: Sequence[Any]) -> list[Any]:
+    """By name (case-folded), then id: a stable list whatever was used last."""
+    return sorted(rows, key=lambda m: (m.tenant_name.casefold(), str(m.tenant_id)))
+
+
+def brand_row(m: Any, current: Any, c: Counted) -> dict[str, Any]:
+    """One brand's overview row, its work counted for the caller's role in that brand."""
+    return {
+        "tenant_id": m.tenant_id,
+        "name": m.tenant_name,
+        "role": m.role,
+        "current": m.tenant_id == current,
+        "products": c.products,
+        "listings": c.listings(),
+        "needs_you": c.needs_you(Permissions.of(m.role))["total"],
+    }
+
+
+async def get_brands(principal: Principal) -> dict[str, Any]:
+    """`GET /home/brands`: the caller's own active memberships in live brands (read under
+    `app.user_id`, `memberships_own`, as `/auth/me` lists them), then each brand's counts in its
+    own transaction under that brand's tenant GUC, so RLS scopes every count to that one brand.
+    No statement ever reads two tenants. Read only, without the review-queue re-check (a write),
+    so a brand's row can trail its own Home by that re-check until someone opens it."""
+    from app.repositories.identity import MembershipRepository
+
+    async with unit_of_work(principal.tenant_id, user_id=principal.user_id) as session:
+        rows = await MembershipRepository(session).list_active_for_user(principal.user_id)
+    ordered = brand_order(rows)
+    settings = get_settings()
+    brands = []
+    try:
+        for m in ordered[:BRANDS_MAX]:
+            async with unit_of_work(m.tenant_id, user_id=principal.user_id) as session:
+                reads = home_reads(session, m.tenant_id)
+                counted = await _count(reads, Permissions.of(m.role), principal.user_id, settings)
+            brands.append(brand_row(m, principal.tenant_id, counted))
+    except DBAPIError as exc:
+        budget = _budget_error(exc)
+        if budget is None:
+            raise
+        raise budget from None
+    return {"as_of": datetime.now(UTC), "brands": brands, "more": len(ordered) > BRANDS_MAX}
 
 
 def _market(t: Tally) -> dict[str, int]:

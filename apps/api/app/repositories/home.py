@@ -30,6 +30,7 @@ from sqlalchemy import (
     ColumnElement,
     Select,
     and_,
+    case,
     false,
     func,
     literal,
@@ -194,6 +195,49 @@ def ready_to_approve() -> builtins.list[ColumnElement[bool]]:
         Listing.status.in_(REVIEWABLE),
         not_(open_errors()),
     ]
+
+
+BUCKET_FILTERS: Final[dict[str, tuple[str, ...]]] = {
+    "live": ("live",),
+    "partly_live": ("partly_live",),
+    "any_live": ("live", "partly_live"),
+    "in_progress": ("in_progress",),
+    "problem": ("problem",),
+    "ready_to_approve": ("ready_to_approve",),
+    "ready_to_publish": ("ready_to_publish",),
+    "draft": ("draft",),
+    "inactive": ("inactive",),
+}
+"""The list filters over the Home buckets (`GET /listings?bucket=`, `GET /products?listing=`):
+one bucket each, and `any_live` for the Live tile, which counts live and partly live."""
+
+
+def _word(value: str) -> ColumnElement[str]:
+    return literal_column(f"'{value}'")
+
+
+def listing_bucket_sql() -> ColumnElement[str]:
+    """The bucket of a listing in SQL: `app.services.home.listing_bucket`, the same order, so a
+    list filtered by it holds exactly the listings a Home count counts."""
+    state, status = Listing.marketplace_state, Listing.status
+    return case(
+        (state == "live", _word("live")),
+        (state == "partially_live", _word("partly_live")),
+        (state == "rejected", _word("problem")),
+        (and_(status.in_(NEEDS_YOU_STATUSES), open_errors()), _word("problem")),
+        (status.in_(("generating", "publishing")), _word("in_progress")),
+        (status.in_(REVIEWABLE), _word("ready_to_approve")),
+        (status == "approved", _word("ready_to_publish")),
+        (status.in_(STOPPED_STATUSES), _word("problem")),
+        (and_(status == "published", state.in_(("inactive", "removed"))), _word("inactive")),
+        (status == "published", _word("in_progress")),
+        else_=_word("draft"),
+    )
+
+
+def in_bucket(name: str) -> ColumnElement[bool]:
+    """The listing is in the `BUCKET_FILTERS[name]` buckets. An unknown name is a bug."""
+    return listing_bucket_sql().in_([_word(b) for b in BUCKET_FILTERS[name]])
 
 
 def _chain_root(origin: Any, changed_paths: Any) -> ColumnElement[bool]:

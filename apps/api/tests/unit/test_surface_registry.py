@@ -175,6 +175,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("admin_quality", "GET", "/admin/quality"),
     # client feedback 11 Nov 2026, item 6: the Home summary
     ("home_summary", "GET", "/home/summary"),
+    # client feedback 11 Nov 2026, item 18: every brand of the caller
+    ("home_brands", "GET", "/home/brands"),
 )
 
 E = ErrorCode
@@ -510,6 +512,7 @@ def test_operation_count() -> None:
     # client item 2 adds the admin's one question and the applicant's one reply
     # item 3 adds the batch SKU check (variants grid, bulk upload)
     # client item 7 adds the move of a saved photo to another view
+    # FB18 (client feedback item 18) adds the cross-brand overview
     assert len(OPS) == 125
 
 
@@ -677,7 +680,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1", "FB6", "ADR-0032",
+        "SI12", "SI14", "PD1", "FB6", "FB18", "ADR-0032",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

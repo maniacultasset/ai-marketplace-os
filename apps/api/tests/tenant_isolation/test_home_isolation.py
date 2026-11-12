@@ -73,3 +73,32 @@ async def test_iso_rls_backstop_on_the_home_tables(world: GenWorld) -> None:
         for model in (Listing, ListingIssue, HumanTask, JobRun):
             stmt = select(model.tenant_id).distinct().execution_options(**{SCOPE_OK: True})
             assert set((await session.execute(stmt)).scalars()) <= {acme}, model.__name__
+
+
+async def test_iso_brand_overview_counts_each_brand_inside_itself(world: GenWorld) -> None:
+    """Item 18: the cross-brand overview as `app_rw` lists only the caller's memberships, and
+    each brand's counts equal that brand's own reads under its own tenant context."""
+    from app.services.home import get_brands
+    from tests.integration import factories as f
+
+    scenario(world, "bharat")
+    owner = world.principal("owner@acme.test")
+    alone = await get_brands(owner)
+    assert [b["tenant_id"] for b in alone["brands"]] == [world.tenant("acme")]
+
+    f.insert(
+        world.conn,
+        "tenant_memberships",
+        tenant_id=world.tenant("bharat"),
+        user_id=owner.user_id,
+        role="reviewer",
+    )
+    world.conn.commit()
+    both = {b["tenant_id"]: b for b in (await get_brands(owner))["brands"]}
+    assert set(both) == {world.tenant("acme"), world.tenant("bharat")}
+    for slug in ("acme", "bharat"):
+        reads = await _reads(world.tenant(slug))
+        assert both[world.tenant(slug)]["listings"]["total"] == reads["total"], slug
+        assert both[world.tenant(slug)]["products"] == reads["products"], slug
+    assert both[world.tenant("bharat")]["role"] == "reviewer"
+    assert both[world.tenant("acme")]["current"] is True

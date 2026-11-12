@@ -11,15 +11,17 @@ from decimal import Decimal
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile
 from fastapi import Path as PathParam
 from mkos_schemas.codes import ErrorCode
+from mkos_schemas.enums import Marketplace
 
 from app.api.errors import ApiError
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.routers.catalog import photo_view_fields
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
+from app.api.v1.schemas.home import ListingBucketFilter
 from app.api.v1.schemas.images import PhotoMatchOut
 from app.api.v1.schemas.imports import ImportAccepted
 from app.api.v1.schemas.products import (
@@ -298,10 +300,33 @@ def _package_dims(package: PackageIn | None) -> tuple[Decimal, Decimal, Decimal]
 
 @route(router, OPS["products_list"])
 async def products_list(
-    page: Annotated[PageParams, Depends()], principal: CurrentPrincipal
+    page: Annotated[PageParams, Depends()],
+    principal: CurrentPrincipal,
+    listing: Annotated[
+        ListingBucketFilter | None,
+        Query(
+            description=(
+                "Only products owning a listing in this Home bucket (`HomeSummaryOut.listings`, "
+                "the same definition; with `marketplace`, a listing on that marketplace), so "
+                "the list a Home count opens is filtered on the server. `any_live` is live or "
+                "partly live."
+            )
+        ),
+    ] = None,
+    marketplace: Annotated[
+        Marketplace | None,
+        Query(description="Only products owning a listing on this marketplace."),
+    ] = None,
 ) -> ProductPage:
-    """List the brand's products, newest first."""
-    views, has_more = await products.list_products(principal, limit=page.limit, after=page.after)
+    """List the brand's products, newest first, optionally only those owning a listing in a
+    Home bucket or on a marketplace."""
+    views, has_more = await products.list_products(
+        principal,
+        limit=page.limit,
+        after=page.after,
+        listing=listing,
+        marketplace=None if marketplace is None else Marketplace(marketplace).value,
+    )
     last = views[-1] if views else None
     next_cursor = encode_cursor(last.created_at, last.id) if has_more and last else None
     return ProductPage(

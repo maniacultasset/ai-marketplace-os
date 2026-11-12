@@ -1016,6 +1016,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/home/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Each of the caller's own brands with its counts, each counted inside that brand
+         * @description Client feedback item 18: each of the caller's own brands (active memberships in live
+         *     brands, by name) with its exact listing counts, products and what waits on the caller there
+         *     for the caller's role in it. Each brand is counted in its own transaction under its own
+         *     tenant, so RLS scopes every count; no statement reads two brands. A read past its 5 s budget
+         *     answers 500 `INTERNAL_ERROR`, as the summary does.
+         */
+        get: operations["home_brands"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/home/summary": {
         parameters: {
             query?: never;
@@ -1538,8 +1562,9 @@ export interface paths {
         };
         /**
          * List listings (the review queue)
-         * @description List the brand's listings, filtered by status, marketplace or product. `status=validated`
-         *     or `needs_review` is the review queue, oldest first; any other filter is newest first.
+         * @description List the brand's listings, filtered by status, marketplace, product or Home bucket.
+         *     `status=validated` or `needs_review` is the review queue, oldest first; any other filter is
+         *     newest first.
          */
         get: operations["listings_list"];
         put?: never;
@@ -2076,7 +2101,8 @@ export interface paths {
         };
         /**
          * List products
-         * @description List the brand's products, newest first.
+         * @description List the brand's products, newest first, optionally only those owning a listing in a
+         *     Home bucket or on a marketplace.
          */
         get: operations["products_list"];
         put?: never;
@@ -3148,6 +3174,41 @@ export interface components {
             website_url?: string | null;
         };
         /**
+         * BrandSummary
+         * @description One of the caller's brands, counted inside that brand (its own tenant context).
+         */
+        BrandSummary: {
+            /**
+             * Current
+             * @description The brand the caller's token is signed in to.
+             */
+            current: boolean;
+            listings: components["schemas"]["ListingCounts"];
+            /** Name */
+            name: string;
+            /**
+             * Needs You
+             * @description What waits on the caller in this brand, for the caller's role there (`NeedsYouCounts.total`, the same definition).
+             */
+            needs_you: number;
+            /**
+             * Products
+             * @description Products that are not deleted (styles and standalones).
+             */
+            products: number;
+            /**
+             * Role
+             * @description The caller's role in this brand.
+             * @enum {string}
+             */
+            role: "owner" | "operator" | "reviewer" | "admin";
+            /**
+             * Tenant Id
+             * Format: uuid
+             */
+            tenant_id: string;
+        };
+        /**
          * BrandVoice
          * @description How Kuinn writes for this brand. Absent answers are empty; nothing here is a fact.
          */
@@ -4050,6 +4111,27 @@ export interface components {
             status: "open" | "auto_fixed" | "resolved" | "dismissed";
             /** Value Submitted */
             value_submitted?: string | null;
+        };
+        /**
+         * HomeBrandsOut
+         * @description Client feedback 11 Nov 2026, item 18 (ADR-0032 light path): the caller's own brands side
+         *     by side, by name. Only brands the caller is an active member of; each is counted under its
+         *     own tenant, never across tenants.
+         */
+        HomeBrandsOut: {
+            /**
+             * As Of
+             * Format: date-time
+             */
+            as_of: string;
+            /** Brands */
+            brands: components["schemas"]["BrandSummary"][];
+            /**
+             * More
+             * @description The caller has more brands than the overview reads (25).
+             * @default false
+             */
+            more: boolean;
         };
         /** HomeSummaryOut */
         HomeSummaryOut: {
@@ -22489,6 +22571,274 @@ export interface operations {
             };
         };
     };
+    home_brands: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "as_of": "2026-10-05T09:31:00Z",
+                     *       "brands": [
+                     *         {
+                     *           "current": true,
+                     *           "listings": {
+                     *             "draft": 1,
+                     *             "in_progress": 1,
+                     *             "inactive": 0,
+                     *             "live": 3,
+                     *             "live_products": 2,
+                     *             "partly_live": 0,
+                     *             "problem": 2,
+                     *             "ready_to_approve": 1,
+                     *             "ready_to_publish": 1,
+                     *             "total": 9
+                     *           },
+                     *           "name": "Bharat Threads",
+                     *           "needs_you": 3,
+                     *           "products": 12,
+                     *           "role": "owner",
+                     *           "tenant_id": "0b1c2d3e-0000-4000-8000-000000000001"
+                     *         },
+                     *         {
+                     *           "current": false,
+                     *           "listings": {
+                     *             "draft": 0,
+                     *             "in_progress": 0,
+                     *             "inactive": 0,
+                     *             "live": 1,
+                     *             "live_products": 2,
+                     *             "partly_live": 1,
+                     *             "problem": 0,
+                     *             "ready_to_approve": 2,
+                     *             "ready_to_publish": 0,
+                     *             "total": 4
+                     *           },
+                     *           "name": "Kuinn Kids",
+                     *           "needs_you": 2,
+                     *           "products": 4,
+                     *           "role": "reviewer",
+                     *           "tenant_id": "0b1c2d3e-0000-4000-8000-000000000099"
+                     *         }
+                     *       ],
+                     *       "more": false
+                     *     }
+                     */
+                    "application/json": components["schemas"]["HomeBrandsOut"];
+                };
+            };
+            /** @description The request could not be parsed. Codes: `VALIDATION_FAILED`. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "VALIDATION_FAILED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "VALIDATION_FAILED",
+                     *               "field": "request",
+                     *               "message": "The request could not be parsed.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "The request could not be parsed.",
+                     *         "status": 400,
+                     *         "type": "VALIDATION_FAILED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Authentication required. Codes: `UNAUTHENTICATED`. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "UNAUTHENTICATED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "UNAUTHENTICATED",
+                     *               "field": "request",
+                     *               "message": "Authentication required.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Authentication required.",
+                     *         "status": 401,
+                     *         "type": "UNAUTHENTICATED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Request body too large. Codes: `PAYLOAD_TOO_LARGE`. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "PAYLOAD_TOO_LARGE",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "PAYLOAD_TOO_LARGE",
+                     *               "field": "request",
+                     *               "message": "Request body too large.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Request body too large.",
+                     *         "status": 413,
+                     *         "type": "PAYLOAD_TOO_LARGE"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Too many requests. Codes: `RATE_LIMITED`. */
+            429: {
+                headers: {
+                    /**
+                     * @description Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.
+                     * @example 30
+                     */
+                    "Retry-After"?: number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "RATE_LIMITED",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "RATE_LIMITED",
+                     *               "field": "request",
+                     *               "message": "Too many requests.",
+                     *               "retryable": true,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": true,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Too many requests.",
+                     *         "status": 429,
+                     *         "type": "RATE_LIMITED"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`. */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "error": {
+                     *         "correlation_id": "req-example-0001",
+                     *         "error_report": {
+                     *           "attempts_used": 0,
+                     *           "error_code": "INTERNAL_ERROR",
+                     *           "errors": [
+                     *             {
+                     *               "auto_fixable": false,
+                     *               "error_code": "INTERNAL_ERROR",
+                     *               "field": "request",
+                     *               "message": "Internal server error.",
+                     *               "retryable": false,
+                     *               "severity": "error",
+                     *               "source": "system"
+                     *             }
+                     *           ],
+                     *           "max_attempts": 3,
+                     *           "request_id": "req-example-0001",
+                     *           "retryable": false,
+                     *           "schema_version": "2.1.0",
+                     *           "status": "failed"
+                     *         },
+                     *         "message": "Internal server error.",
+                     *         "status": 500,
+                     *         "type": "INTERNAL_ERROR"
+                     *       }
+                     *     }
+                     */
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     home_summary: {
         parameters: {
             query?: never;
@@ -31668,6 +32018,8 @@ export interface operations {
                 status?: components["schemas"]["ListingStatus"] | null;
                 marketplace?: components["schemas"]["Marketplace"] | null;
                 product_id?: string | null;
+                /** @description Only listings in this Home bucket (`HomeSummaryOut.listings`, the same definition), so the list a Home count opens holds exactly what it counts. `any_live` is live or partly live. */
+                bucket?: ("live" | "partly_live" | "any_live" | "in_progress" | "problem" | "ready_to_approve" | "ready_to_publish" | "draft" | "inactive") | null;
                 /** @description Page size, 1..200 (default 50). */
                 limit?: number;
                 /** @description Opaque `page.next_cursor` from the previous page. */
@@ -41183,6 +41535,10 @@ export interface operations {
     products_list: {
         parameters: {
             query?: {
+                /** @description Only products owning a listing in this Home bucket (`HomeSummaryOut.listings`, the same definition; with `marketplace`, a listing on that marketplace), so the list a Home count opens is filtered on the server. `any_live` is live or partly live. */
+                listing?: ("live" | "partly_live" | "any_live" | "in_progress" | "problem" | "ready_to_approve" | "ready_to_publish" | "draft" | "inactive") | null;
+                /** @description Only products owning a listing on this marketplace. */
+                marketplace?: components["schemas"]["Marketplace"] | null;
                 /** @description Page size, 1..200 (default 50). */
                 limit?: number;
                 /** @description Opaque `page.next_cursor` from the previous page. */
