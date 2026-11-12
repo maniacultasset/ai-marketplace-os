@@ -6709,6 +6709,18 @@
           "marketplace": {
             "$ref": "#/components/schemas/Marketplace"
           },
+          "marketplace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The marketplace this account sells on: Amazon's marketplace id (`A21TJRUUN4KGV`, Amazon.in), or null when there is none to name.",
+            "title": "Marketplace Id"
+          },
           "needs_reconnect_since": {
             "anyOf": [
               {
@@ -6736,6 +6748,7 @@
                 "type": "null"
               }
             ],
+            "description": "Where the account sells: the stored region, else the country of this deployment's marketplace (`India` for Amazon.in and Flipkart).",
             "title": "Region"
           },
           "seller_id": {
@@ -45189,7 +45202,8 @@
                       "created_at": "2026-10-05T09:30:00Z",
                       "id": "0b1c2d3e-0000-4000-8000-000000000601",
                       "marketplace": "amazon",
-                      "region": "eu",
+                      "marketplace_id": "A21TJRUUN4KGV",
+                      "region": "India",
                       "seller_id": "A1EXAMPLESELLER",
                       "status": "active"
                     }
@@ -45490,7 +45504,8 @@
                   "created_at": "2026-10-05T09:30:00Z",
                   "id": "0b1c2d3e-0000-4000-8000-000000000601",
                   "marketplace": "amazon",
-                  "region": "eu",
+                  "marketplace_id": "A21TJRUUN4KGV",
+                  "region": "India",
                   "seller_id": "A1EXAMPLESELLER",
                   "status": "revoked"
                 },
@@ -46223,7 +46238,8 @@
                   "created_at": "2026-10-05T09:30:00Z",
                   "id": "0b1c2d3e-0000-4000-8000-000000000601",
                   "marketplace": "amazon",
-                  "region": "eu",
+                  "marketplace_id": "A21TJRUUN4KGV",
+                  "region": "India",
                   "seller_id": "A1EXAMPLESELLER",
                   "status": "active"
                 },

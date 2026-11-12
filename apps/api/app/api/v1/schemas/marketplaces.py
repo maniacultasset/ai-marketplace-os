@@ -45,7 +45,20 @@ class MarketplaceAccountOut(WireModel):
     id: UUID
     marketplace: Marketplace
     seller_id: NonBlankStr
-    region: str | None = None
+    region: str | None = Field(
+        default=None,
+        description=(
+            "Where the account sells: the stored region, else the country of this deployment's "
+            "marketplace (`India` for Amazon.in and Flipkart)."
+        ),
+    )
+    marketplace_id: str | None = Field(
+        default=None,
+        description=(
+            "The marketplace this account sells on: Amazon's marketplace id (`A21TJRUUN4KGV`, "
+            "Amazon.in), or null when there is none to name."
+        ),
+    )
     status: Literal["active", "needs_reconnect", "revoked"]
     needs_reconnect_since: AwareDatetime | None = None
     expires_at: AwareDatetime | None = None

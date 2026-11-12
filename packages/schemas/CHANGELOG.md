@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- A connected account says where it sells (client Chrome pass 2, 12 Nov 2026: Region read "—"; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
+  - **Contract (MINOR).** `MarketplaceAccountOut.marketplace_id?` (default null) on `marketplaces_accounts`: Amazon's marketplace id (`A21TJRUUN4KGV` for Amazon.in), null for Flipkart.
+  - **Behaviour.** `region` is the stored region, else the country of the deployment's marketplace (`India`): Amazon's OAuth reply names no region, so the stored one was always null.
+  - **FE notice.** Show `region` (and `marketplace_id` when set) on the Marketplaces page.
+
 - White background "already applied" shows the photo (client tester, 11 Nov 2026, item 12; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
   - **Contract (MINOR).** `ImageCandidateAccepted.applied_preview_url?` (default null) on `image_candidates_create`: a 10-minute signed GET of the applied candidate's stored image, set only with `accepted_image_id`.
   - **Behaviour.** Signed after the idempotent call and never stored with the answer (CP-D18): a replay signs a fresh URL, and none once the image is no longer the live main (or the size-chart image). The "already applied" rule itself is unchanged.

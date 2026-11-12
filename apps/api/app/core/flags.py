@@ -22,6 +22,11 @@ refresh query and `open_adapter`) asks the same question the same way:
 - `PublishingPaused` / `publishing_paused_report(marketplace)`: that refusal, the same 501
   `NOT_IMPLEMENTED` shape as a switched-off marketplace with its own message.
 
+- `account_marketplace(marketplace, settings)`: the marketplace a connected account sells on,
+  `(marketplace_id, region)`. Amazon's OAuth reply names no region, so the stored region is null;
+  the account sells on this deployment's `AMAZON_MARKETPLACE_ID` (A21TJRUUN4KGV, India). Flipkart
+  is India only and has no marketplace id.
+
 The message names the marketplace only: never a URL, an id or a setting value.
 """
 
@@ -60,6 +65,26 @@ def publish_enabled(marketplace: Marketplace | str, settings: Settings) -> bool:
     if market is Marketplace.AMAZON:
         return bool(settings.amazon_publish_enabled)
     return True
+
+
+AMAZON_MARKETPLACE_REGION: Final = {
+    "A21TJRUUN4KGV": "India",
+    "A1F83G8C2ARO7P": "United Kingdom",
+    "A1PA6795UKMFR9": "Germany",
+    "ATVPDKIKX0DER": "United States",
+    "A2VIGQ35RCS4UG": "United Arab Emirates",
+}
+"""Amazon marketplace ids (SP-API "Marketplace IDs") to the country a seller sells in."""
+
+
+def account_marketplace(
+    marketplace: Marketplace | str, settings: Settings
+) -> tuple[str | None, str | None]:
+    """`(marketplace_id, region)` for an account of `marketplace` on this deployment."""
+    if Marketplace(marketplace) is Marketplace.AMAZON:
+        market_id = settings.amazon_marketplace_id
+        return market_id, AMAZON_MARKETPLACE_REGION.get(market_id)
+    return None, "India"
 
 
 def publishing_paused_message(marketplace: Marketplace | str) -> str:
