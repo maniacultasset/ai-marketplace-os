@@ -89,6 +89,7 @@ from app.services.generation_result import (
     recheck,
     salvage_records,
 )
+from app.services.keyword_reasons import refresh_keyword_reasons
 from app.services.photo_facts import (
     PHOTO_PROMPT_PREFIX,
     build_targets,
@@ -532,6 +533,10 @@ async def run_listing_generate(ctx: JobContext) -> Outcome:
                 fixes = tuple(f for f in fixes if not lock_holds(f.field, locked))
             plan_base.update(changed_paths=tuple(edited_paths(previous, final)) or ("content",))
         trusted = dataclasses.replace(trusted, listing=final)
+    if trusted.listing is not None:
+        # client feedback 11: `used_in` of each keyword reason on the copy the version stores
+        # (after the merge, the locked paths and the fix pass)
+        trusted = dataclasses.replace(trusted, listing=refresh_keyword_reasons(trusted.listing))
     move = map_outcome(
         trusted.result.terminal_state, trusted.listing, report, trusted.result.blocks
     )
