@@ -158,6 +158,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
         "/catalog/category-suggestions/{suggestion_id}",
     ),
     ("skus_availability", "GET", "/skus/availability"),
+    ("skus_availability_check", "POST", "/skus/availability-check"),  # item 3: the batch
     ("skus_suggest", "POST", "/skus/suggestion"),
     # SI14: the V1.1 assist
     ("products_category_suggest", "POST", "/products/{product_id}/category-suggestion"),
@@ -505,7 +506,8 @@ def test_operation_count() -> None:
     # ADR-0032 adds the brand create
     # item 17 adds the listing versions read
     # client item 2 adds the admin's one question and the applicant's one reply
-    assert len(OPS) == 124
+    # item 3 adds the batch SKU check (variants grid, bulk upload)
+    assert len(OPS) == 125
 
 
 def test_error_codes_per_d2() -> None:

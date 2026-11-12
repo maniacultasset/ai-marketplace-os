@@ -20,6 +20,11 @@ as `"@mkos/schemas": "npm:@maniacultasset/schemas@<version>"`) share one version
 
 ## 2.1.0 (unreleased)
 
+- Batch SKU check (client feedback item 3, 11 Nov 2026; additive MINOR under the open 2.1.0 heading: one new operation, no new error code or enum member).
+  - **Contract (MINOR).** New op `POST /skus/availability-check` (`skus_availability_check`, any member) takes `SkuBatchCheckIn {skus}` (1-1000 SKUs, the SKU pattern without a NUL) and answers `SkuBatchCheckOut {checked, taken}`: `taken` is a list of `SkuAvailabilityOut`, each `available: false` (125 ops with the A2 train). `SkuAvailabilityOut.family_role?` (`style` | `variant` | null, default null; on both SKU checks) says when the SKU belongs to a family, deleted or not, so a CSV row that must name `parent_style_id` or be sent with its variants is flagged before the upload.
+  - **Behaviour.** The rules of `GET /skus/availability` for many SKUs in one select: styles and variants share the SKUs, a deleted product's SKU stays taken, another brand's SKUs never count (tenant RLS). Repeats in the request are checked once and not reported; `checked` counts the distinct SKUs. Read only, behind the tenant limiter like every member op.
+  - **FE notice.** The variants grid checks its SKUs before the save and the bulk upload checks its `seller_sku` cells before the upload (in chunks of 1000); each clash is shown on its row with what to do.
+
 - White background "already applied" shows the photo (client tester, 11 Nov 2026, item 12; additive optional response field under the open 2.1.0 heading; no new error code, enum member or operation).
   - **Contract (MINOR).** `ImageCandidateAccepted.applied_preview_url?` (default null) on `image_candidates_create`: a 10-minute signed GET of the applied candidate's stored image, set only with `accepted_image_id`.
   - **Behaviour.** Signed after the idempotent call and never stored with the answer (CP-D18): a replay signs a fresh URL, and none once the image is no longer the live main (or the size-chart image). The "already applied" rule itself is unchanged.

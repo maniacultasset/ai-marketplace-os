@@ -106,6 +106,7 @@ Q7: dict[str, str] = {
     "catalog_category_suggest": "product:import",
     "catalog_category_suggestion_get": "tenant:read",
     "skus_availability": "tenant:read",
+    "skus_availability_check": "tenant:read",
     "skus_suggest": "product:import",
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",

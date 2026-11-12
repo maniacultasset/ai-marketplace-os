@@ -9,7 +9,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, Request
 
 from app.api.v1.deps import IdempotencyKey, get_current_principal
-from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionIn, SkuSuggestionOut
+from app.api.v1.schemas.skus import (
+    SkuAvailabilityOut,
+    SkuBatchCheckIn,
+    SkuBatchCheckOut,
+    SkuSuggestionIn,
+    SkuSuggestionOut,
+)
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import sku_help
@@ -29,6 +35,20 @@ async def skus_availability(sku: SkuQuery, principal: CurrentPrincipal) -> SkuAv
     it. Another brand's SKUs never count."""
     found = await sku_help.check_sku(principal, sku)
     return SkuAvailabilityOut.model_validate(found, from_attributes=True)
+
+
+@route(router, OPS["skus_availability_check"])
+async def skus_availability_check(
+    body: SkuBatchCheckIn, principal: CurrentPrincipal
+) -> SkuBatchCheckOut:
+    """Which of up to 1000 SKUs are already used in this brand, in one call: the variants grid
+    and the bulk upload check before they submit. Same rules as `GET /skus/availability`; only
+    the taken SKUs come back, each once. Another brand's SKUs never count. Nothing is written."""
+    taken = await sku_help.check_skus(principal, body.skus)
+    return SkuBatchCheckOut(
+        checked=len(set(body.skus)),
+        taken=[SkuAvailabilityOut.model_validate(t, from_attributes=True) for t in taken],
+    )
 
 
 @route(router, OPS["skus_suggest"])

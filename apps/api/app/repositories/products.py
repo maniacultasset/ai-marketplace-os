@@ -82,6 +82,8 @@ class SkuHolder:
     title: str
     parent_product_id: uuid.UUID | None
     deleted: bool
+    # set on a family's style (it has sizes or colours); a plain CSV row cannot update it
+    variation_theme: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -309,7 +311,11 @@ class ProductRepository(TenantScopedRepository[Product]):
             self._select()
             .where(Product.sku == sku)
             .with_only_columns(
-                Product.id, Product.title, Product.parent_product_id, Product.deleted_at
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+                Product.variation_theme,
             )
         )
         found = (await self.db.execute(stmt)).one_or_none()
@@ -320,7 +326,36 @@ class ProductRepository(TenantScopedRepository[Product]):
             title=found[1],
             parent_product_id=found[2],
             deleted=found[3] is not None,
+            variation_theme=found[4],
         )
+
+    async def holders_of_skus(self, skus: Sequence[str]) -> dict[str, SkuHolder]:
+        """`holder_of_sku` for many SKUs in one select (client feedback 11 Nov, item 3: the
+        batch check before a variants save or a bulk upload): only the held SKUs are keys."""
+        if not skus:
+            return {}
+        stmt = (
+            self._select()
+            .where(Product.sku.in_(list(skus)))
+            .with_only_columns(
+                Product.sku,
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+                Product.variation_theme,
+            )
+        )
+        return {
+            row[0]: SkuHolder(
+                id=row[1],
+                title=row[2],
+                parent_product_id=row[3],
+                deleted=row[4] is not None,
+                variation_theme=row[5],
+            )
+            for row in (await self.db.execute(stmt)).all()
+        }
 
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
