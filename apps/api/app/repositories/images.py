@@ -969,6 +969,29 @@ class ImageRepository(TenantScopedRepository[Image]):
             for image_id, raw, clean in (await self.db.execute(stmt)).all()
         }
 
+    async def never_matched(
+        self, slots: Sequence[str], *, since: datetime, limit: int
+    ) -> builtins.list[UUID]:
+        """F4 (client feedback item 9): the live product photos (`slots`) made since `since` that
+        passed their checks, have a clean copy and no stored `metadata.photo_match` at all, so no
+        trigger ever queued their photo match (uploaded while `PHOTO_MATCH_ENABLED` was off, or
+        a queue that failed). Newest first, at most `limit`."""
+        stmt = (
+            self._select()
+            .where(
+                Image.deleted_at.is_(None),
+                Image.slot.in_(list(slots)),
+                Image.compliance_status == "passed",
+                Image.clean_content_hash.is_not(None),
+                Image.created_at >= since,
+                Image.metadata_["photo_match"].is_(None),
+            )
+            .with_only_columns(Image.id)
+            .order_by(Image.created_at.desc(), Image.id)
+            .limit(limit)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
     async def registered_keys(self, keys: Sequence[str]) -> set[str]:
         """The keys among `keys` that have a row of this tenant (deleted rows count)."""
         if not keys:

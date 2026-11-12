@@ -18,6 +18,14 @@ Besides the upload, `queue_product_photo_matches` queues a product's due checks 
 edits the colour fact and when a listing is generated or regenerated: a check left with no call,
 a changed colour, and a photo uploaded before the switch went on are checked then.
 
+F4 (client feedback item 9, Chrome pass 2): a photo uploaded while the switch was off, on a
+product the seller never regenerates or recolours, was never checked at all (a Back photo of
+another garment read "Passed" with no question). `queue_never_matched` closes that gap: the
+worker's `schedule_photo_matches` pass (every 5 minutes) queues, tenant by tenant, every live
+product photo (Front, Back, Close-up, any other view, lifestyle) of the last
+`SWEEP_DAYS` that passed its checks and has no stored match at all. A check that ended with no
+call (`retry`) is stored, so the pass never loops on it; the existing triggers re-run it.
+
 The colour is the photo's colourway colour; on a product without colourways, the product's own
 colour fact; a photo shared by every colour of a colour style is checked for the product only.
 Queueing stores `metadata.photo_match = {status: "checking", ...}` on the image, so the product
@@ -66,6 +74,7 @@ __all__ = [
     "live_jobs",
     "match_key",
     "question_for",
+    "queue_never_matched",
     "queue_photo_match",
     "queue_product_photo_matches",
     "read_state",
@@ -88,6 +97,9 @@ CHECKING_STALE: Final = timedelta(hours=6)
 # How many already-finished jobs one queue walks past for a fresh job key (a colour changed back)
 FRESH_KEY_TRIES: Final = 8
 TITLE_WORDS: Final = 60
+# The never-checked sweep (F4): how far back it looks, and how many photos one tenant queues a pass
+SWEEP_DAYS: Final = 30
+SWEEP_BATCH: Final = 25
 
 
 def fold_colour(colour: str | None) -> str:
@@ -332,6 +344,29 @@ async def queue_product_photo_matches(uow: TenantUnitOfWork, product_id: uuid.UU
             log.warning(
                 "photo_match.queue_failed", image_id=str(row.image_id), error=type(error).__name__
             )
+    return queued
+
+
+async def queue_never_matched(uow: TenantUnitOfWork, *, now: datetime | None = None) -> int:
+    """Queue the checks of this tenant's product photos that no trigger ever queued (module
+    docstring, F4). Each photo in its own savepoint: one failed queue never stops the others. The
+    number of checks queued."""
+    if not get_settings().photo_match_enabled:
+        return 0
+    since = (now or datetime.now(UTC)) - timedelta(days=SWEEP_DAYS)
+    due = await uow.images.never_matched(sorted(MATCH_SLOTS), since=since, limit=SWEEP_BATCH)
+    queued = 0
+    for image_id in due:
+        try:
+            async with uow.session.begin_nested():
+                if await queue_photo_match(uow, image_id) is not None:
+                    queued += 1
+        except Exception as error:
+            log.warning(
+                "photo_match.queue_failed", image_id=str(image_id), error=type(error).__name__
+            )
+    if queued:
+        log.info("photo_match.swept", due=len(due), queued=queued)
     return queued
 
 
