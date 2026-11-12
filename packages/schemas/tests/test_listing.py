@@ -9,12 +9,14 @@ from uuid import UUID
 import pytest
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.listing import (
+    MAX_KEYWORD_REASONS,
     MAX_LISTING_ATTRIBUTES,
     MAX_LISTING_CLAIMS,
     MAX_LISTING_IMAGES,
     CanonicalListing,
     Claim,
     ImageRef,
+    KeywordReason,
     ListingContent,
     ListingKeywords,
 )
@@ -273,3 +275,59 @@ def test_attribute_sources_keys_are_attribute_keys_and_capped() -> None:
 def test_attribute_sources_values_are_short_and_non_blank(value: str) -> None:
     with pytest.raises(ValidationError):
         _listing(attribute_sources={"color": value})
+
+
+# ---- 2.1.0: keyword reasons (client feedback 11, item 6) ----
+
+
+def _reason(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "term": "cotton kurta set",
+        "reason": "Names the fabric and product type shoppers search for.",
+        "source": "product_facts",
+        "fact_keys": ["attributes.fabric"],
+        "used_in": ["title", "backend"],
+    }
+    base.update(overrides)
+    return base
+
+
+def test_keyword_reasons_default_empty_and_round_trip() -> None:
+    assert _listing().keyword_reasons == []
+    obj = _listing(
+        keyword_reasons=[_reason(), _reason(term="kurta for women", source="search_intent")]
+    )
+    again = CanonicalListing.model_validate_json(obj.model_dump_json())
+    assert again == obj
+    assert again.keyword_reasons[0].fact_keys == ["attributes.fabric"]
+    assert again.keyword_reasons[1].source == "search_intent"
+
+
+def test_keyword_reason_optional_lists_default_empty() -> None:
+    reason = KeywordReason.model_validate({"term": "a", "reason": "b", "source": "category"})
+    assert reason.fact_keys == [] and reason.used_in == []
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"source": "model_guess"},
+        {"used_in": ["keywords"]},
+        {"reason": ""},
+        {"reason": "x" * 201},
+        {"term": "   "},
+        {"term": "t" * 257},
+        {"fact_keys": ["attributes.a"] * 9},
+        {"used_in": ["title", "bullets", "description", "backend", "title"]},
+    ],
+)
+def test_keyword_reason_refuses_bad_values(overrides: dict[str, Any]) -> None:
+    with pytest.raises(ValidationError):
+        KeywordReason.model_validate(_reason(**overrides))
+
+
+def test_keyword_reasons_are_capped() -> None:
+    reasons = [_reason(term=f"term {n}") for n in range(MAX_KEYWORD_REASONS)]
+    assert len(_listing(keyword_reasons=reasons).keyword_reasons) == MAX_KEYWORD_REASONS
+    with pytest.raises(ValidationError):
+        _listing(keyword_reasons=[*reasons, _reason(term="one more")])

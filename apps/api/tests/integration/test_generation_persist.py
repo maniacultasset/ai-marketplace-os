@@ -292,3 +292,35 @@ async def test_persist_image_reports_vision_warn(gen_world: GenWorld) -> None:
     assert stored[0]["checks"][0]["method"] == "vision"
     assert stored[0]["pass"] is False
     assert gen_world.listing(accepted.listing_id)["status"] == "validated"
+
+
+async def test_persist_keeps_keyword_reasons_true_to_the_stored_copy(gen_world: GenWorld) -> None:
+    """Client feedback 11: every generation version (the auto-fix job's trim included) stores the
+    reasons of its listed terms only, with `used_in` read from the copy it stores."""
+    from mkos_schemas.listing import KeywordReason, ListingKeywords
+
+    accepted = await make_generating(gen_world)
+    body = _body(gen_world, gen_world.product("acme", "KURTA-002")).model_copy(
+        update={
+            "keywords": ListingKeywords(search_terms=["silk kurta"], hidden_terms=[]),
+            "keyword_reasons": [
+                # stale: written before a fix trimmed the copy
+                KeywordReason(
+                    term="silk kurta",
+                    reason="Names the fabric and the product type.",
+                    source="search_intent",
+                    used_in=["bullets", "backend"],
+                ),
+                KeywordReason(term="dropped term", reason="No longer listed.", source="category"),
+            ],
+        }
+    )
+    await _persist(gen_world, _plan(gen_world, accepted, listing=body))
+    row = gen_world.conn.execute(
+        "SELECT content_json FROM listing_versions WHERE listing_id = %s", [accepted.listing_id]
+    ).fetchone()
+    assert row is not None
+    reasons = row[0]["keyword_reasons"]
+    assert [item["term"] for item in reasons] == ["silk kurta"]
+    assert reasons[0]["used_in"] == ["title", "description", "backend"]
+    assert reasons[0]["reason"] == "Names the fabric and the product type."
