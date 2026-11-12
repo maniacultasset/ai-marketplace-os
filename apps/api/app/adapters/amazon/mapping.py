@@ -70,6 +70,7 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
+from types import MappingProxyType
 from typing import Any, Final
 from uuid import UUID
 
@@ -408,6 +409,34 @@ def _package(
         ]
         sent.append(PACKAGE_PATHS[1])
     return out, sent
+
+
+PACKAGE_WARNINGS: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        PACKAGE_PATHS[0]: "Amazon asks for the package size: the packed box's length, breadth "
+        "and height in cm. Add it before you publish.",
+        PACKAGE_PATHS[1]: "Amazon asks for the package weight: the packed box with the product "
+        "inside, in grams. Add it before you publish.",
+    }
+)
+
+
+def package_warnings(listing: AdapterListing) -> list[ErrorItem]:
+    """Item 15: one WARNING per package fact a sellable item would not send, at `facts.<key>`
+    (once per listing, never per child). A warning, not a block: the stored LISTING definitions
+    do not list the package as required. When a stored definition does, its schema check reports
+    the missing attribute (an ERROR while enforced) and the caller keeps that one only."""
+    missing: set[str] = set()
+    for unit in listing.units():
+        if unit.item_role == "parent":
+            continue
+        _, sent = _package(unit, listing.unit_facts.get(unit.product_id), DEFAULT_MARKETPLACE_ID)
+        missing |= set(PACKAGE_PATHS) - set(sent)
+    return [
+        error(path, ErrorCode.MISSING_ATTRIBUTE, PACKAGE_WARNINGS[path], severity=Severity.WARNING)
+        for path in PACKAGE_PATHS
+        if path in missing
+    ]
 
 
 def _fact_attributes(

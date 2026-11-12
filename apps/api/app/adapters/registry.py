@@ -9,6 +9,9 @@ mappings, never a client, a token or a socket (`.importlinter` `pure-mapping-no-
   only (Flipkart: DATABASE.md:471, :754-755, :848; T45). The shared input builder
   (`app.services.adapter_input.build_adapter_listing`) reads it, so preview, publish and the
   item ledger see the same items.
+- `readiness_warnings(marketplace)`: the marketplace's pure warnings for what it asks for but
+  does not require (item 15: Amazon's package), or None. Only the check before approval adds
+  them; the preview and the payload are unchanged.
 """
 
 from __future__ import annotations
@@ -17,12 +20,14 @@ from collections.abc import Callable
 from typing import Any
 
 from mkos_schemas.enums import Marketplace
+from mkos_schemas.errors import ErrorItem
 
 from app.adapters.amazon import mapping as amazon_mapping
 from app.adapters.base import AdapterListing, AdapterPreview
 from app.adapters.flipkart import mapping as flipkart_mapping
 
 Previewer = Callable[[AdapterListing], AdapterPreview]
+Warner = Callable[[AdapterListing], list[ErrorItem]]
 
 
 def previewer(marketplace: Marketplace | str) -> Previewer:
@@ -33,6 +38,13 @@ def previewer(marketplace: Marketplace | str) -> Previewer:
     if market is Marketplace.FLIPKART:
         return flipkart_mapping.preview
     raise NotImplementedError(f"no {market.value} adapter yet")
+
+
+def readiness_warnings(marketplace: Marketplace | str) -> Warner | None:
+    """The pure readiness warnings for `marketplace`, or None when it has none."""
+    if Marketplace(marketplace) is Marketplace.AMAZON:
+        return amazon_mapping.package_warnings
+    return None
 
 
 def family_has_parent(marketplace: Marketplace | str) -> bool:

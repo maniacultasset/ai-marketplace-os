@@ -16,6 +16,7 @@ from app.core.resolved_facts import (
     Compliance,
     Identifier,
     Identity,
+    Package,
     PartyFacts,
     ProductFacts,
     ResolvedFact,
@@ -60,11 +61,14 @@ def _source(body: CanonicalListing | None = None, *, marketplace: str = "amazon"
     )
 
 
-def _family(source: PreviewSource) -> Any:
+BOX = Package(length_cm="30.00", breadth_cm="22.50", height_cm="4.00", weight_g=350)
+
+
+def _family(source: PreviewSource, package: Package = BOX) -> Any:
     """SI2: the family facts the check builds the payload from (a standalone, no children): the
     seller gave the version's attributes, a price, the MRP, the origin, the manufacturer, (SI5
-    B2: an Amazon create needs it) a valid EAN-13 barcode and (SI8: so does a brand, and a Kurta
-    set an audience) the brand and the gender."""
+    B2: an Amazon create needs it) a valid EAN-13 barcode, (SI8: so does a brand, and a Kurta
+    set an audience) the brand and the gender, and (item 15) the packed box."""
     assert source.version is not None
     attributes = CanonicalListing.model_validate(source.version.content).attributes
     main = ProductFacts(
@@ -74,6 +78,7 @@ def _family(source: PreviewSource) -> Any:
         identity=Identity(brand_name="Test Brand", gender="women"),
         commercial=Commercial(mrp="999.00", selling_price="499.00", currency="INR"),
         identifier=Identifier(type="ean", value="4006381333931", status="provided"),
+        package=package,
         compliance=Compliance(
             country_of_origin="IN",
             manufacturer=PartyFacts(
@@ -113,6 +118,57 @@ async def test_missing_required_attribute_is_one_schema_error() -> None:
         Severity.ERROR,
     )
     assert report.error_code is ErrorCode.MISSING_ATTRIBUTE
+
+
+# ---- item 15: Amazon asks for the packed box ----
+
+
+async def test_a_missing_package_is_two_warnings_and_the_check_passes() -> None:
+    source = _source()
+    report = check.check_source(source, _family(source, Package()), await ready(_kurta()))
+    assert report is not None and report.status == "passed" and report.error_code is None
+    assert [(i.field, i.error_code, i.severity, i.source) for i in report.errors] == [
+        (
+            "facts.package_dimensions",
+            ErrorCode.MISSING_ATTRIBUTE,
+            Severity.WARNING,
+            ErrorSource.SCHEMA,
+        ),
+        ("facts.package_weight", ErrorCode.MISSING_ATTRIBUTE, Severity.WARNING, ErrorSource.SCHEMA),
+    ]
+    assert "package size" in report.errors[0].message
+    assert "package weight" in report.errors[1].message
+
+
+async def test_only_the_missing_part_of_the_package_warns() -> None:
+    source = _source()
+    report = check.check_source(
+        source, _family(source, Package(weight_g=350)), await ready(_kurta())
+    )
+    assert report is not None and [i.field for i in report.errors] == ["facts.package_dimensions"]
+
+
+async def test_a_definition_that_requires_the_package_blocks_once() -> None:
+    kurta = _kurta()
+    listing_props = json.loads(ptd_fixture("KURTA.listing.schema.json"))["properties"]
+    kurta["properties"]["item_package_dimensions"] = listing_props["item_package_dimensions"]
+    kurta["required"] = [*kurta["required"], "item_package_dimensions"]
+    source = _source()
+    report = check.check_source(source, _family(source, Package(weight_g=350)), await ready(kurta))
+    assert report is not None and report.status == "failed"
+    (item,) = report.errors
+    assert (item.field, item.error_code, item.severity) == (
+        "facts.package_dimensions",
+        ErrorCode.MISSING_ATTRIBUTE,
+        Severity.ERROR,
+    )
+
+
+def test_flipkart_has_no_package_warning() -> None:
+    source = _source(marketplace="flipkart")
+    report = check.check_source(source, _family(source, Package()), None)
+    assert report is not None
+    assert not [i for i in report.errors if "package" in i.field]
 
 
 def test_no_schema_runs_mapping_only() -> None:
