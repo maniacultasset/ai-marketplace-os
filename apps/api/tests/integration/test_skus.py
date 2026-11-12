@@ -190,11 +190,18 @@ async def test_batch_deleted_family_members_keep_their_role(
 ) -> None:
     """A deleted style or variant still needs its family shape in a CSV (an upsert revives it),
     so the batch says which it was without naming the product."""
-    _style_with_child(images_db.conn, images_db.tenant("acme"))
-    for sku in ("KS-1-S", "KS-1"):  # children first: a style with live children stays
+    style = _style_with_child(images_db.conn, images_db.tenant("acme"))
+    with images_db.conn.transaction():  # as the product delete: cells first, children first
         images_db.conn.execute(
-            "UPDATE products SET deleted_at = %s WHERE sku = %s", [datetime.now(UTC), sku]
+            "UPDATE variant_matrix_cells SET availability = 'unavailable', "
+            "variant_product_id = NULL, unavailable_reason = 'discontinued' "
+            "WHERE style_product_id = %s",
+            [style],
         )
+        for sku in ("KS-1-S", "KS-1"):
+            images_db.conn.execute(
+                "UPDATE products SET deleted_at = %s WHERE sku = %s", [datetime.now(UTC), sku]
+            )
     taken = (await _batch(api, images_db, ["KS-1", "KS-1-S"])).json()["taken"]
     assert [(t["sku"], t["deleted"], t["family_role"], t["product_id"]) for t in taken] == [
         ("KS-1", True, "style", None),
