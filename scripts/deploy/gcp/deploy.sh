@@ -384,11 +384,15 @@ chmod 0700 "$WORK"
 CANDIDATE_ARMED=0
 # restore-drill: set once the throwaway instance may exist, so any exit deletes it (drill_cleanup).
 DRILL_ARMED=0
+# amazon-preview: set once its job (with AMAZON_PUBLISH_ENABLED=true in its env) may exist, so any
+# exit before the command's own delete deletes it (amazon_preview_cleanup).
+AMZPREVIEW_ARMED=0
 on_exit() {
   local rc=$?
   set +e
   [ "$CANDIDATE_ARMED" -eq 0 ] || candidate_close
   [ "$DRILL_ARMED" -eq 0 ] || drill_cleanup
+  [ "$AMZPREVIEW_ARMED" -eq 0 ] || amazon_preview_cleanup
   rm -rf "$WORK"
   exit "$rc"
 }
@@ -1840,10 +1844,17 @@ cmd_amazon_check() {
 # role refuses to boot with. The env file, the api and the worker are untouched. The job is
 # executed once and waited for, its log printed, then deleted, whatever the outcome; a failed
 # run or a STOP (exit 5: a SKU exists on Amazon, or a reply looked applied) fails the command.
+amazon_preview_cleanup() {
+  say "amazon-preview: interrupted; deleting $AMZPREVIEW_JOB"
+  gc run jobs delete "$AMZPREVIEW_JOB" --region="$REGION" ||
+    say "amazon-preview: could not delete $AMZPREVIEW_JOB; delete it by hand (docs/runbooks/AMAZON-PREVIEW-ONEOFF.md)"
+  AMZPREVIEW_ARMED=0
+}
+
 cmd_amazon_preview() {
   local usage_line="usage: amazon-preview --slug S --listing-id L --staff-email E [--precheck]"
   local image url args="-m|app.cli|ops|amazon-preview" slug="" listing="" staff="" precheck=false
-  local flag value status=0 envf="$WORK/amazon-preview-env.yaml"
+  local flag value status=0 started envf="$WORK/amazon-preview-env.yaml"
   set -- ${REST[@]+"${REST[@]}"}
   [ $# -ge 1 ] || die "$usage_line"
   while [ $# -gt 0 ]; do
@@ -1884,6 +1895,7 @@ cmd_amazon_preview() {
     say "amazon-preview env file $envf:"
     sed 's/^/    /' "$envf"
   fi
+  AMZPREVIEW_ARMED=1 # from here, any exit (die, error, Ctrl-C) deletes the job
   gc run jobs deploy "$AMZPREVIEW_JOB" --image="$image" --region="$REGION" \
     --service-account="$(sa_email "$SA_WORKER")" --set-cloudsql-instances="$CONN" \
     --env-vars-file="$envf" \
@@ -1891,13 +1903,16 @@ cmd_amazon_preview() {
     --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=512Mi \
     --labels="$LABELS"
   # once, waited for; `run_job` dies on a failed execution, so it runs in a subshell and the
-  # job is deleted whatever happened
+  # job is deleted whatever happened. The log read starts at this run, so an earlier run's lines
+  # (another listing's verdict or STOP) are never printed as this one's.
+  started="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   ( run_job "$AMZPREVIEW_JOB" ) || status=$?
   [ "$DRY_RUN" -eq 1 ] || sleep 15 # the job's log lines reach Cloud Logging a little later
   say "amazon-preview log:"
-  gq logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AMZPREVIEW_JOB\"" \
+  gq logging read "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$AMZPREVIEW_JOB\" AND timestamp>=\"$started\"" \
     --freshness=1h --limit=300 --order=asc --format='value(textPayload)' || job_logs_hint "$AMZPREVIEW_JOB"
   gc run jobs delete "$AMZPREVIEW_JOB" --region="$REGION"
+  AMZPREVIEW_ARMED=0
   [ "$status" -eq 0 ] || die "amazon-preview: the job failed or printed STOP (see the log above); the job was deleted"
   say "amazon-preview done (every SKU still 404 on Amazon); the job was deleted"
 }

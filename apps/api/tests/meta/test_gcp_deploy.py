@@ -2343,6 +2343,54 @@ def test_amazon_preview_runs_once_as_the_worker_then_the_job_is_deleted(
         get_settings.cache_clear()
 
 
+def test_amazon_preview_reads_only_this_runs_log(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    result = _run(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    read = next(
+        line for line in result.stderr.splitlines() if "logging read" in line and "amazon" in line
+    )
+    # an earlier run's verdict or STOP is never printed as this run's
+    assert re.search(r"timestamp>=.?\\?\"?\d{4}-\d\d-\d\dT", read.replace("\\", "")), read
+
+
+def test_amazon_preview_deletes_its_job_on_any_exit_after_creating_it(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    """A failure after the job (AMAZON_PUBLISH_ENABLED=true in its env) is created still deletes it:
+    here `date` fails right after the deploy, before the execute."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(exist_ok=True)
+    fake_date = bin_dir / "date"
+    fake_date.write_text(
+        '#!/usr/bin/env bash\ncase "$*" in *"%Y-%m-%dT%H:%M:%SZ"*) exit 1 ;; esac\n'
+        'exec /bin/date "$@"\n',
+        encoding="utf-8",
+    )
+    fake_date.chmod(0o755)
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "amazon-preview", "--slug", "acme", "--listing-id", LISTING_ID,
+        "--staff-email", "s@b.test", "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    lines = result.stdout.splitlines()
+    deploy = lines.index(next(x for x in lines if "run jobs deploy aimos-amazon-preview" in x))
+    delete = lines.index(next(x for x in lines if "run jobs delete aimos-amazon-preview" in x))
+    assert deploy < delete
+    assert not any("run jobs execute aimos-amazon-preview" in x for x in lines)
+    assert "interrupted; deleting aimos-amazon-preview" in result.stdout + result.stderr
+
+
+def test_amazon_preview_deletes_its_job_once_on_success(toolkit: Path, tmp_path: Path) -> None:
+    out = _preview(toolkit, tmp_path)
+    assert sum("run jobs delete aimos-amazon-preview" in x for x in out.splitlines()) == 1
+    assert "interrupted" not in out
+
+
 def test_amazon_preview_precheck_turns_on_the_catalog_check_for_the_job_only(
     toolkit: Path, tmp_path: Path
 ) -> None:
