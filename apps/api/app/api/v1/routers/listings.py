@@ -8,6 +8,7 @@ refresh-status.
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Annotated
 from uuid import UUID
 
@@ -35,6 +36,11 @@ from app.api.v1.schemas.batches import (
     BatchResult,
     PublishRequest,
 )
+from app.api.v1.schemas.field_requirements import (
+    AttributeRequirementOut,
+    FieldRequirementOut,
+    ListingRequirementsOut,
+)
 from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.listings import (
     AuditEventOut,
@@ -54,6 +60,7 @@ from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
 from app.services import (
+    field_requirements,
     generation,
     listing_edit,
     listing_preview,
@@ -219,6 +226,30 @@ async def listings_preview(
         return await listing_preview.preview_listing(principal, listing_id)
     except listing_preview.MarketplaceNotSupported:
         raise NotImplementedYet("listings_preview") from None
+
+
+@route(router, OPS["listings_requirements"])
+async def listings_requirements(
+    listing_id: ListingId, principal: CurrentPrincipal
+) -> ListingRequirementsOut:
+    """The marketplace's limits and rules for each field of this listing, read from the same
+    rules and category template the checks run on: length and count limits, banned words,
+    claims that need an attribute, and each attribute's level and allowed values. It gives no
+    verdict (the checks decide)."""
+    found = await field_requirements.listing_requirements(principal, listing_id)
+    return ListingRequirementsOut.model_validate(
+        {
+            "listing_id": found.listing_id,
+            "marketplace": found.marketplace,
+            "category": found.category,
+            "rules_version": found.rules_version,
+            "has_template": found.has_template,
+            "fields": [FieldRequirementOut.model_validate(asdict(f)) for f in found.fields],
+            "attributes": [
+                AttributeRequirementOut.model_validate(asdict(a)) for a in found.attributes
+            ],
+        }
+    )
 
 
 @route(router, OPS["listings_status"])

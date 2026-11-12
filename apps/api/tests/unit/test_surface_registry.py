@@ -90,6 +90,7 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("listings_list", "GET", "/listings"),
     ("listings_get", "GET", "/listings/{listing_id}"),
     ("listings_preview", "GET", "/listings/{listing_id}/preview"),
+    ("listings_requirements", "GET", "/listings/{listing_id}/requirements"),  # item 16 (+ 1)
     ("listings_status", "GET", "/listings/{listing_id}/status"),
     # S19: the audit history (44 + 1)
     ("listings_history", "GET", "/listings/{listing_id}/history"),
@@ -505,7 +506,8 @@ def test_operation_count() -> None:
     # ADR-0032 adds the brand create
     # item 17 adds the listing versions read
     # client item 2 adds the admin's one question and the applicant's one reply
-    assert len(OPS) == 124
+    # item 16 adds the listing field requirements read
+    assert len(OPS) == 125
 
 
 def test_error_codes_per_d2() -> None:
