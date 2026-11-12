@@ -46,7 +46,7 @@ from app.services.generation_context import previous_listing
 from app.services.issue_questions import ask_after_check
 from app.services.issues import sync_issues
 from app.services.listing_display import needs_you_counts
-from app.services.listing_reads import affected
+from app.services.listing_reads import affected, approve_fields
 from app.services.listings import human_move, insert_run, rules_check, to_detail
 from app.services.sections import MAX_LOCKS, edited_paths, next_locks
 from app.services.seller_facts import FACTUAL_KEYS
@@ -270,9 +270,12 @@ async def edit(
     attributes: dict[str, Any] | None,
     unlock: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """The route's transaction: the caller's unit of work (the user is the move's actor)."""
+    """The route's transaction: the caller's unit of work (the user is the move's actor). The
+    answer carries the new version's approve state as the detail read does, so a client that
+    stores it never shows Approve as allowed for the version the caller just edited (prod Chrome
+    pass 12 Nov, B10: `can_approve` was null here and Approve showed active until a refetch)."""
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        return await edit_content(
+        body = await edit_content(
             uow,
             principal,
             listing_id,
@@ -282,6 +285,10 @@ async def edit(
             attributes=attributes,
             unlock=unlock,
         )
+        listing = await uow.listings.get(listing_id)
+        version = None if listing is None else await uow.listing_versions.current(listing)
+        body.update(await approve_fields(uow, principal, listing, version))
+        return body
 
 
 async def fact_edit(

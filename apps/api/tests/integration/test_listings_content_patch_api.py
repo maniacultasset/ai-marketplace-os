@@ -343,3 +343,25 @@ async def test_patch_wrong_tenant(api: httpx.AsyncClient, gen_world: GenWorld) -
     response = await _patch(api, gen_world, listing_id, parent, headers=headers)
     assert response.status_code == 404
     assert gen_world.count("listing_versions", "listing_id = %s", [listing_id]) == 1
+
+
+async def test_patch_answers_the_new_versions_approve_state(
+    api: httpx.AsyncClient, gen_world: GenWorld
+) -> None:
+    """Prod Chrome pass 12 Nov (B10): the edit's answer had `can_approve` null, the web stored it
+    as the listing and showed "Approve" active until a refetch said "own work". The answer now
+    holds what the detail read holds for the version the caller just made."""
+    owner = "owner@acme.test"
+    listing_id, parent = _seeded(gen_world)
+    response = await _patch(
+        api, gen_world, listing_id, parent, headers=_headers(gen_world, parent, owner)
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert (body["can_approve"], body["approve_hint"]) == (False, "own_work")
+    detail = await api.get(f"/api/v1/listings/{listing_id}", headers=gen_world.headers(owner))
+    assert detail.status_code == 200, detail.text
+    read = detail.json()
+    assert [body[k] for k in ("can_approve", "approve_hint", "self_approval")] == [
+        read[k] for k in ("can_approve", "approve_hint", "self_approval")
+    ]
