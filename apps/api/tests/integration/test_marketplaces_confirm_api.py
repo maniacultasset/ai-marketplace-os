@@ -76,6 +76,7 @@ async def test_confirm_activates(mkt: MktWorld, mapi: httpx.AsyncClient) -> None
         "marketplace",
         "seller_id",
         "region",
+        "marketplace_id",
         "status",
         "needs_reconnect_since",
         "expires_at",
@@ -83,6 +84,8 @@ async def test_confirm_activates(mkt: MktWorld, mapi: httpx.AsyncClient) -> None
         "publishing_enabled",
     }
     assert body["publishing_enabled"] is True
+    # Chrome pass 2: Amazon's OAuth reply names no region; the API names the deployment's
+    assert (body["region"], body["marketplace_id"]) == ("India", "A21TJRUUN4KGV")
     [row] = account_rows(mkt.conn)
     assert str(row["id"]) == body["id"]
     assert row["tenant_id"] == mkt.tenant("acme")
