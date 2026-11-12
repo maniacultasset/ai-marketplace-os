@@ -108,11 +108,17 @@ async def detail(principal: Principal, listing_id: uuid.UUID) -> tuple[dict[str,
         content = previous_listing(listing, version)
         counts = await needs_you_counts(uow, [listing])
         body = to_detail(listing, content, summary, counts.get(listing.id, 0))
-        body["can_approve"], body["approve_hint"], body["self_approval"] = await _approve_hint(
-            uow, principal, listing, version
-        )
+        body.update(await approve_fields(uow, principal, listing, version))
         body["affected_sections"] = await affected(uow, listing, version)
     return body, etag_of(body.get("current_version_id"))
+
+
+async def approve_fields(
+    uow: Any, principal: Principal, listing: Any, version: Any
+) -> dict[str, Any]:
+    """`can_approve`, `approve_hint` and `self_approval` of a `ListingDetail` (`_approve_hint`)."""
+    can, hint, own = await _approve_hint(uow, principal, listing, version)
+    return {"can_approve": can, "approve_hint": hint, "self_approval": own}
 
 
 async def affected(uow: Any, listing: Any, version: Any) -> list[str]:

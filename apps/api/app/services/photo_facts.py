@@ -681,6 +681,11 @@ def _conflict(
     )
 
 
+def _pieces_words(value: str) -> str:
+    """ "1 piece", "3 pieces" (client feedback 11 Nov, B7: "show 1 pieces")."""
+    return f"{value} piece" if value.strip() == "1" else f"{value} pieces"
+
+
 def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> PhotoTask | None:
     """A piece count is critical: never written, never an `ai` suggestion (C:46-47)."""
     if stored is None:
@@ -690,7 +695,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
             kind="missing_fact",
             key="number_of_pieces",
             question="How many pieces are in this set?",
-            reason=f"The photos seem to show {value} pieces. Please give the number of pieces.",
+            reason=f"The photos seem to show {_pieces_words(value)}. Please give the number of pieces.",
             suggestions=(),
             evidence=_evidence(value, obs.image_id),
             expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},
@@ -703,7 +708,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
         kind="conflicting_facts",
         key="number_of_pieces",
         question="How many pieces are in this set?",
-        reason=f"The photos seem to show {value} pieces, but the product says {said}.",
+        reason=f"The photos seem to show {_pieces_words(value)}, but the product says {said}.",
         suggestions=(_stored_suggestion(stored),),
         evidence=_evidence(value, obs.image_id),
         expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},

@@ -183,6 +183,18 @@ class ActivityItem(WireModel):
     product_title: str | None = None
     listing_id: UUID | None = None
     marketplace: Marketplace | None = None
+    import_id: UUID | None = Field(
+        default=None,
+        description="A spreadsheet import (`kind` `import`): its import, to open its rows.",
+    )
+    needs_fix: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "A finished spreadsheet import: its rows that failed and need a fix. An import "
+            "that imported none of its rows is `failed`."
+        ),
+    )
     at: datetime
 
 

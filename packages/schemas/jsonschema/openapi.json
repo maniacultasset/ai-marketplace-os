@@ -9,6 +9,19 @@
             "title": "At",
             "type": "string"
           },
+          "import_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A spreadsheet import (`kind` `import`): its import, to open its rows.",
+            "title": "Import Id"
+          },
           "kind": {
             "enum": [
               "write",
@@ -42,6 +55,13 @@
                 "type": "null"
               }
             ]
+          },
+          "needs_fix": {
+            "default": 0,
+            "description": "A finished spreadsheet import: its rows that failed and need a fix. An import that imported none of its rows is `failed`.",
+            "minimum": 0.0,
+            "title": "Needs Fix",
+            "type": "integer"
           },
           "product_id": {
             "anyOf": [

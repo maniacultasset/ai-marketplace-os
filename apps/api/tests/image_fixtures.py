@@ -437,8 +437,36 @@ def checked_pattern(side: int = 1024) -> bytes:
     return encode(img, "JPEG", quality=92)
 
 
+def garment_silhouette(
+    w: int = 1200, h: int = 1600, *, background: RGB = (150, 140, 120), product: RGB = (30, 70, 180)
+) -> bytes:
+    """A flat kurta outline on a grey background: the prod Chrome pass photo of 12 Nov (B6), whose
+    slanted shoulders, sleeves and sides were read as two lines of text."""
+    from PIL import ImageDraw
+
+    img = Image.new("RGB", (w, h), background)
+    points = [
+        (450, 200),
+        (750, 200),
+        (850, 350),
+        (950, 700),
+        (870, 730),
+        (800, 525),
+        (820, 1450),
+        (380, 1450),
+        (400, 525),
+        (330, 730),
+        (250, 700),
+        (350, 350),
+    ]
+    ImageDraw.Draw(img).polygon([(x * w / 1200, y * h / 1600) for x, y in points], fill=product)
+    return encode(img, "JPEG", quality=90)
+
+
 def clean_products() -> dict[str, bytes]:
     return {
+        "garment_silhouette": garment_silhouette(),
+        "garment_square": garment_silhouette(1024, 1024),
         "plain": encode(qa_product(), "JPEG", quality=92),
         "large": encode(qa_product(fill=0.9), "JPEG", quality=92),
         "light": encode(qa_product(product=(200, 180, 160)), "JPEG", quality=92),

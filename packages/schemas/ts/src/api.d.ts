@@ -2795,6 +2795,11 @@ export interface components {
              */
             at: string;
             /**
+             * Import Id
+             * @description A spreadsheet import (`kind` `import`): its import, to open its rows.
+             */
+            import_id?: string | null;
+            /**
              * Kind
              * @enum {string}
              */
@@ -2802,6 +2807,12 @@ export interface components {
             /** Listing Id */
             listing_id?: string | null;
             marketplace?: components["schemas"]["Marketplace"] | null;
+            /**
+             * Needs Fix
+             * @description A finished spreadsheet import: its rows that failed and need a fix. An import that imported none of its rows is `failed`.
+             * @default 0
+             */
+            needs_fix: number;
             /** Product Id */
             product_id?: string | null;
             /** Product Title */

@@ -73,9 +73,21 @@ AGENT: Final = "attribute"
 TRIGGERS: Final = frozenset({"generate", "vision"})
 SEAM_GRACE_S: Final = 15
 MAX_RATIONALE: Final = 300
+MIN_RATIONALE: Final = 12
 MAX_REFS: Final = 12
 MAX_REF_CHARS: Final = 200
-TEXT_REFS: Final = frozenset({"title", "description", "brand", "seller_category"})
+# `text.brand` is sent as context but is never evidence: a brand name says nothing about what
+# the product is (prod Chrome pass 12 Nov, B11: "brand is Staff, indicating ethnic wear")
+TEXT_REFS: Final = frozenset({"title", "description", "seller_category"})
+_CLAUSE: Final = re.compile(r"[^.;!?]+[.;!?]*")
+_BRAND_WORD: Final = re.compile(r"\bbrand(?:s|'s|ed)?\b", re.IGNORECASE)
+_REF_WORDS: Final = (
+    ("text.title", "the product name"),
+    ("text.description", "the description"),
+    ("text.seller_category", "your category words"),
+    ("attributes.", "the product details"),
+    ("images[", "the photos"),
+)
 _IMAGE_REF: Final = re.compile(r"^images\[([0-9a-f-]{36})\]$")
 REVIEW_REASON: Final = (
     "The suggested categories are not certain enough; pick the category that fits."
@@ -240,6 +252,41 @@ def clean_rationale(text: str) -> str:
     return " ".join(kept.split())[:MAX_RATIONALE]
 
 
+def _names_brand(clause: str, brand: str | None) -> bool:
+    if _BRAND_WORD.search(clause):
+        return True
+    if not brand:
+        return False
+    return re.search(rf"(?<!\w){re.escape(brand.strip())}(?!\w)", clause, re.IGNORECASE) is not None
+
+
+def _evidence_words(refs: list[str]) -> str:
+    words: list[str] = []
+    for prefix, word in _REF_WORDS:
+        if any(ref.startswith(prefix) for ref in refs) and word not in words:
+            words.append(word)
+    if not words:
+        return "Matches what the product is."
+    head = ", ".join(words[:-1])
+    return f"Matches {head + ' and ' if head else ''}{words[-1]}."
+
+
+def product_rationale(text: str, brand: str | None, refs: list[str]) -> str:
+    """The rationale without a clause that cites the brand (its name or the word): a reason
+    must name the product's own signals. When nothing is left, the evidence it cites, in words."""
+    clean = clean_rationale(text)
+    clauses = [c.strip() for c in _CLAUSE.findall(clean) if c.strip()]
+    kept = [c for c in clauses if not _names_brand(c, brand)]
+    if len(kept) == len(clauses):
+        return clean
+    out = " ".join(kept).rstrip(";, ")
+    if len(out) < MIN_RATIONALE:
+        return _evidence_words(refs)
+    if out[-1] not in ".!?":
+        out += "."
+    return out[0].upper() + out[1:]
+
+
 def _refs(refs: list[str], request: ClassifyRequest) -> list[str]:
     images = {str(image.image_id) for image in request.images}
     out: list[str] = []
@@ -257,7 +304,8 @@ def _refs(refs: list[str], request: ClassifyRequest) -> list[str]:
 
 def screen(result: ClassifyResult, request: ClassifyRequest) -> ClassifyResult:
     """Only offered categories, once each, highest confidence first, at most 3, with a clean
-    rationale and only the evidence refs that point at a sent input."""
+    rationale that never cites the brand, and only the evidence refs that point at a sent
+    product input (never `text.brand`)."""
     offered = {option.category for option in request.categories}
     seen: set[str] = set()
     kept = []
@@ -265,11 +313,12 @@ def screen(result: ClassifyResult, request: ClassifyRequest) -> ClassifyResult:
         if candidate.category not in offered or candidate.category in seen:
             continue
         seen.add(candidate.category)
+        refs = _refs(candidate.evidence_refs, request)
         kept.append(
             candidate.model_copy(
                 update={
-                    "rationale": clean_rationale(candidate.rationale),
-                    "evidence_refs": _refs(candidate.evidence_refs, request),
+                    "rationale": product_rationale(candidate.rationale, request.text.brand, refs),
+                    "evidence_refs": refs,
                 }
             )
         )
