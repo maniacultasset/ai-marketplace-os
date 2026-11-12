@@ -73,6 +73,7 @@ from app.core.logging import configure_logging, get_logger
 from app.core.request_context import new_request_id, request_context
 from app.repositories.jobs import EnqueueRefused, no_enqueue
 from app.repositories.uow import tenant_uow
+from app.services.adapter_input import seller_skus
 from app.services.remote_preview import open_breaker, previewable
 from app.workers import previewers
 from app.workers.errors import JobFailed, RetryableJobError
@@ -339,7 +340,12 @@ async def _target(tenant_id: uuid.UUID, listing_id: uuid.UUID, staff_email: str)
             raise NotEligible("the account's preview breaker is open (close its review task first)")
         if await uow.job_runs.live_for_listing(listing.id, JobKind.LISTING_STATUS_SYNC) is not None:
             raise NotEligible("a listing_status_sync job of this listing is live; try later")
-        skus = sorted({row.seller_sku for row in await uow.listing_items.for_listing(listing.id)})
+        # the SKUs the dry run would send, from the listing's product rows: `listing_items` is
+        # written by a first submission, so a never-sent listing has none there
+        source = await uow.listings.preview_source(listing.id)
+        if source is None or source.version is None:
+            raise NotEligible("the listing has no current version")
+        skus = seller_skus(source)
         if not skus:
             raise NotEligible("the listing has no SKU")
         await uow.audit.write(
