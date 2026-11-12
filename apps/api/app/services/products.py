@@ -50,7 +50,7 @@ from app.services import category_suggest, image_views, photo_views, product_ide
 from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
-from app.services.image_fixes import fixes_for
+from app.services.image_fixes import fix_unavailable_for, fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.photo_match import live_jobs, read_state
@@ -580,6 +580,9 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
             detail,
             fixes=tuple(
                 fixes_for(detail.slot, detail.report, detail.border, edit_enabled=edit_enabled)
+            ),
+            fix_unavailable=fix_unavailable_for(
+                detail.slot, detail.report, detail.border, edit_enabled=edit_enabled
             ),
         )
         for detail in await uow.images.details_for_product(row.id)
