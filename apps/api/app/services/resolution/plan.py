@@ -23,6 +23,9 @@ Pure: no I/O, no clock, no adapter (the `resolution-plan-pure` import contract).
    answers, CP-D25); otherwise `staff`: `content_review` on a content or keyword path, `mapping`
    on `listing`, else `unanswerable_fact`.
 
+Client feedback 14 adds, before rule 5: a DETERMINISTIC or AI_FIELD issue on a path the seller
+locked (`ctx.locked_paths`, `sections.covered`) -> `seller` `edit_content`.
+
 SI13 (T7; CP-D8) adds, after rule 2 and before rule 3:
 - an adapter `SKU_CONFLICT`/`SELLER_SKU_CONFLICT`, or a locked-SKU code (`LOCKED_SKU_CODES`) ->
   `staff` `sku_conflict` (a SKU cannot be renamed on Amazon; never a repair, never the seller);
@@ -61,6 +64,7 @@ from app.services.auto_fix.policy import (
     route,
 )
 from app.services.resolution.merge import mergeable
+from app.services.sections import covered
 
 Lane = Literal["auto_repair", "auto_content", "ai_field", "seller", "marketplace", "retry", "staff"]
 Cause = Literal["seller_fact", "ai_content", "mapping", "image", "marketplace", "unknown"]
@@ -110,6 +114,9 @@ class PlanContext:
     recategorizable: bool = False
     """SI13: the listing may still be recategorised by the seller (failed, never live, no
     family with live variants, no other listing of the product the marketplace has seen)."""
+    locked_paths: frozenset[str] = frozenset()
+    """Client feedback 14: the seller's locked edits (`listings.locked_paths`). No automatic
+    lane rewrites one: a refusal on it is the seller's `edit_content` (edit or unlock it)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,6 +255,10 @@ def _lane(issue: IssueView, ctx: PlanContext) -> tuple[Lane, str] | None:
         return "auto_repair", "repair"
     routing = route(_item(issue), source=issue.source, critical_keys=ctx.critical_keys)
     path = issue.field_path
+    if routing.route in (Route.DETERMINISTIC, Route.AI_FIELD) and covered(path, ctx.locked_paths):
+        # client feedback 14: the seller's locked edit is never Kuinn's to rewrite (no content
+        # fix, no AI rewrite); the seller edits it again or unlocks it
+        return "seller", "edit_content"
     if routing.route is Route.DETERMINISTIC:
         # T15: only an issue the content fix can change takes `auto_content` (its writer, the
         # auto-fix job); any other content or keyword path is a staff content review (round 3)

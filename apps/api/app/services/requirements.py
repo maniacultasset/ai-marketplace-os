@@ -3,8 +3,12 @@
 `requirements(uow, category)` answers, per marketplace, the sorted and de-duplicated union of
 the adapter's `REQUIRED_FACTS`, the current category template's `required_attributes` (none when
 the category has no template) and the adapter's reviewed `EXTRA_NEEDS` (CP-D1: marketplace
-knowledge stays in the adapters; this module only unions what they export). Every entry is an
+knowledge stays in the adapters; this module only unions what they export). With
+`PHOTO_VIEWS_ENABLED` on (feedback 7 and 8), `size_measurements` joins a marketplace's list where
+the photo view checklist requires the size chart, and the checklist itself is returned. Every entry is an
 attribute dictionary key, so the client can match a chip to its field. Platform rows only.
+Feedback item 10: `levels` adds the current template's requirement level per attribute
+(`rules_engine.requirement_levels`), the same levels the Rules Engine checks.
 """
 
 from __future__ import annotations
@@ -20,7 +24,9 @@ from app.adapters.flipkart import constants as flipkart
 from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
+from app.services import photo_views
 from app.services.category_gate import UNCATEGORIZED, category_enabled
+from app.services.rules_engine import requirement_levels
 
 __all__ = ["NEEDS", "Requirements", "get_requirements", "needs_for", "requirements"]
 
@@ -42,6 +48,9 @@ class Requirements:
     category: str
     amazon: tuple[str, ...]
     flipkart: tuple[str, ...]
+    levels: Mapping[Marketplace, Mapping[str, str]]
+    # feedback 7: the category's photo view checklist (empty while PHOTO_VIEWS_ENABLED is off)
+    photo_views: tuple[photo_views.MergedView, ...] = ()
 
 
 def needs_for(
@@ -62,13 +71,24 @@ async def requirements(uow: TenantUnitOfWork, category: str) -> Requirements:
     """SI14: a category switched off (lamps while CATEGORY_LAMPS_ENABLED is off) answers as an
     unknown one: the marketplace facts only."""
     enabled = category_enabled(category, get_settings())
+    views = photo_views.enabled()
+    slug = category if enabled else UNCATEGORIZED
     out: dict[Marketplace, tuple[str, ...]] = {}
+    levels: dict[Marketplace, Mapping[str, str]] = {}
     for marketplace in NEEDS:
         current = await uow.templates.current(marketplace.value, category) if enabled else None
         required = () if current is None else tuple(current.template.required_attributes)
-        out[marketplace] = needs_for(marketplace, category if enabled else UNCATEGORIZED, required)
+        if views and photo_views.size_chart_required(marketplace, slug):
+            # feedback 8: the checklist (data, not an adapter) requires the seller's size chart
+            required = (*required, photo_views.SIZE_CHART_KEY)
+        out[marketplace] = needs_for(marketplace, slug, required)
+        levels[marketplace] = {} if current is None else requirement_levels(current.template)
     return Requirements(
-        category=category, amazon=out[Marketplace.AMAZON], flipkart=out[Marketplace.FLIPKART]
+        category=category,
+        amazon=out[Marketplace.AMAZON],
+        flipkart=out[Marketplace.FLIPKART],
+        photo_views=photo_views.merged(slug) if views else (),
+        levels=levels,
     )
 
 

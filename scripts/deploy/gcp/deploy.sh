@@ -213,6 +213,18 @@ if [ "$GOOGLE_OAUTH_ENABLED" = "true" ]; then
   esac
   API_SECRETS="$API_SECRETS GOOGLE_OAUTH_CLIENT_SECRET"
 fi
+# ADR-0032: an owner adds another brand (POST /tenants) without a new sign-up review. Off by
+# default; the cap on live brands one user owns is the Settings default (10) unless set.
+TENANT_CREATE_ENABLED="${TENANT_CREATE_ENABLED:-false}"
+TENANT_CREATE_MAX_OWNED="${TENANT_CREATE_MAX_OWNED-}"
+case "$TENANT_CREATE_ENABLED" in
+  true | false) ;;
+  *) die "TENANT_CREATE_ENABLED must be true or false (in $ENV_NAME.env)" ;;
+esac
+case "$TENANT_CREATE_MAX_OWNED" in
+  '' | [1-9] | [1-9][0-9] | 100) ;;
+  *) die "TENANT_CREATE_MAX_OWNED must be 1-100 or blank (in $ENV_NAME.env)" ;;
+esac
 
 # ---- the Amazon publish kill switch, refused before any gcloud call ----
 # true | false, set explicitly in the env file: a missing or misspelt value never deploys (the
@@ -274,7 +286,10 @@ esac
 # SI14: the V1.1 assist switches (docs/runbooks/V1-1-SWITCHES.md), each off by default and live
 # only after its gate: the classifier, the column mapper's AI step, the lamps category and the
 # photo QA warnings. One value on the api and the worker, so the ask and the job agree.
-for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED; do
+# V1.1 (client feedback item 9): PHOTO_MATCH_ENABLED, the variant photo match (queue and gate on
+# the api, the check on the worker).
+for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED \
+  PHOTO_VIEWS_ENABLED PHOTO_MATCH_ENABLED; do
   value="${!switch:-false}"
   case "$value" in
     true | false) ;;
@@ -282,6 +297,13 @@ for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENAB
   esac
   printf -v "$switch" '%s' "$value"
 done
+# Client feedback 11 and 19: copy v5, read by mkos-pipeline (>= 0.8.0) itself from the worker's
+# env. Off by default; true | false here, sent to the worker only (the one role that generates).
+MKOS_CONTENT_V5="${MKOS_CONTENT_V5:-false}"
+case "$MKOS_CONTENT_V5" in
+  true | false) ;;
+  *) die "MKOS_CONTENT_V5 must be true or false (in $ENV_NAME.env)" ;;
+esac
 # The classifier's model route: vision (LLM_MODEL_VISION with photos) or text (LLM_MODEL_DEFAULT,
 # product text only). One value on the api (the reservation) and the worker (the call).
 CATEGORY_SUGGEST_MODEL="${CATEGORY_SUGGEST_MODEL:-vision}"
@@ -1110,6 +1132,8 @@ app_env() {
     # V1 hardening #9: the parallel image check children (the worker runs every image job)
     [ -z "$IMAGE_CHECK_CONCURRENCY" ] ||
       printf 'IMAGE_CHECK_CONCURRENCY\t%s\n' "$IMAGE_CHECK_CONCURRENCY"
+    # feedback 11 and 19: the pipeline's copy v5 switch (its own env name)
+    printf 'MKOS_CONTENT_V5\t%s\n' "$MKOS_CONTENT_V5"
   fi
   # The daily caps on the api and the worker alike: the api's generate precheck and the worker's
   # claim must refuse at the same cap.
@@ -1129,6 +1153,11 @@ app_env() {
         "$CATEGORY_SUGGEST_ENABLED" "$COLUMN_MAP_AI_ENABLED"
       printf 'CATEGORY_LAMPS_ENABLED\t%s\nPHOTO_QA_ENABLED\t%s\n' \
         "$CATEGORY_LAMPS_ENABLED" "$PHOTO_QA_ENABLED"
+      # feedback 7 and 8: the photo view checklist and size chart check (read and gates alike)
+      printf 'PHOTO_VIEWS_ENABLED\t%s\n' "$PHOTO_VIEWS_ENABLED"
+      # V1.1: the variant photo match, so the api's product read and approve gate and the
+      # worker's check agree
+      printf 'PHOTO_MATCH_ENABLED\t%s\n' "$PHOTO_MATCH_ENABLED"
       printf 'CATEGORY_SUGGEST_MODEL\t%s\n' "$CATEGORY_SUGGEST_MODEL"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||
@@ -1144,6 +1173,12 @@ app_env() {
   # URI is derived from DASHBOARD_BASE_URL by the api itself)
   [ "$role" != "api" ] || printf 'GOOGLE_OAUTH_ENABLED\t%s\nGOOGLE_OAUTH_CLIENT_ID\t%s\n' \
     "$GOOGLE_OAUTH_ENABLED" "$GOOGLE_OAUTH_CLIENT_ID"
+  # ADR-0032: the add-another-brand switch and its cap, on the api only
+  if [ "$role" = "api" ]; then
+    printf 'TENANT_CREATE_ENABLED\t%s\n' "$TENANT_CREATE_ENABLED"
+    [ -z "$TENANT_CREATE_MAX_OWNED" ] ||
+      printf 'TENANT_CREATE_MAX_OWNED\t%s\n' "$TENANT_CREATE_MAX_OWNED"
+  fi
   # The Amazon SP-API app's public ids and consent page, on the api (connect) and the worker
   # (token refresh), only while AMAZON_APP_ID is set
   if [ -n "$AMAZON_APP_ID" ]; then

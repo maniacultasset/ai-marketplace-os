@@ -69,6 +69,7 @@ async def test_context_contents(gen_world: GenWorld) -> None:
         "Never claim 'best' or 'guaranteed'.",
     ]
     assert "brand_description" in ctx.brand_profile
+    assert "brand_voice" in ctx.brand_profile
     assert ctx.marketplace_rules.marketplace.value == "amazon"
     assert all(
         s.marketplace_field is None and not s.value_map
@@ -317,3 +318,49 @@ async def test_context_provenance_for_photo_facts(gen_world: GenWorld) -> None:
         "attributes.fit": {"source": "ai", "confidence": 0.95, "confirmed": True},
     }
     assert ctx.product["attributes"]["neckline"] == "v-neck"  # the prompt still sees it
+
+
+# ---- client feedback item 19: the brand voice and description reach the context ----
+
+VOICE: dict[str, Any] = {
+    "audience": "Women 25 to 40",
+    "price_segment": "premium",
+    "positioning": None,
+    "differentiators": ["Hand-block printed"],
+    "words_to_use": ["breathable"],
+    "words_to_avoid": ["cheap"],
+    "claim_limits": ["No organic claims"],
+    "example_copy": None,
+}
+
+
+def _set_brand(world: GenWorld, voice: Any, description: str | None) -> None:
+    acme = world.tenant("acme")
+    world.conn.execute(
+        "INSERT INTO brand_profiles (tenant_id) VALUES (%s) ON CONFLICT (tenant_id) DO NOTHING",
+        [acme],
+    )
+    world.conn.execute(
+        "UPDATE brand_profiles SET brand_voice = %s, brand_description = %s, "
+        "website_url = 'https://acme.example' WHERE tenant_id = %s",
+        [None if voice is None else Jsonb(voice), description, acme],
+    )
+
+
+async def test_context_carries_brand_voice_and_description(gen_world: GenWorld) -> None:
+    _set_brand(gen_world, VOICE, "Cotton wear from Jaipur.")
+    accepted = await make_generating(gen_world)
+    ctx = await _context(gen_world, accepted.job_id)
+    assert ctx.brand_profile["brand_voice"] == VOICE
+    assert ctx.brand_profile["brand_description"] == "Cotton wear from Jaipur."
+    assert "acme.example" not in ctx.model_dump_json()
+
+
+@pytest.mark.parametrize("voice", [None, {}, {**VOICE, "price_segment": "cheap"}])
+async def test_context_brand_voice_absent_or_unreadable_is_none(
+    gen_world: GenWorld, voice: Any
+) -> None:
+    _set_brand(gen_world, voice, None)
+    accepted = await make_generating(gen_world)
+    ctx = await _context(gen_world, accepted.job_id)
+    assert ctx.brand_profile["brand_voice"] is None

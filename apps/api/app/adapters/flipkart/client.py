@@ -91,9 +91,15 @@ class _TooLarge(Exception):  # noqa: N818 - private signal
 
 
 def error_rows(row: Mapping[str, Any]) -> list[Any]:
-    """A reply row's `errors`, or [] when it drifted from a list (bool, number, string)."""
-    errors = row.get("errors")
-    return errors if isinstance(errors, list) else []
+    """A reply row's `errors` then its `attribute_errors` (Flipkart's Listing Management API
+    reference documents both on a per-SKU result; an attribute error adds `attribute` and the
+    JSON `path`); a key that drifted from a list (bool, number, string) adds nothing."""
+    out: list[Any] = []
+    for key in ("errors", "attribute_errors"):
+        rows = row.get(key)
+        if isinstance(rows, list):
+            out.extend(rows)
+    return out
 
 
 def _log_code(body: Any) -> str | None:

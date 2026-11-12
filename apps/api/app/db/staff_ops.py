@@ -63,26 +63,31 @@ async def _audit(
     conn: AsyncConnection,
     *,
     tenant_id: uuid.UUID | None,
-    staff_email: str,
+    staff_email: str | None,
     action: str,
     entity_type: str,
     entity_id: uuid.UUID,
     after: str | None,
     request_id: str,
+    actor_user_id: uuid.UUID | None = None,
 ) -> None:
+    """A `staff` row with the staff email, or (ADR-0032) a `user` row naming the owner who added
+    the brand themselves, when `actor_user_id` is given."""
     await conn.execute(
         text(
-            "SELECT public.audit(:t, 'staff', NULL, :action, :entity_type, :entity_id, NULL, "
-            "CAST(:after AS jsonb), NULL, :request_id, NULL, NULL, :email)"
+            "SELECT public.audit(:t, :actor_type, :actor_id, :action, :entity_type, :entity_id, "
+            "NULL, CAST(:after AS jsonb), NULL, :request_id, NULL, NULL, :email)"
         ),
         {
             "t": tenant_id,
+            "actor_type": "staff" if actor_user_id is None else "user",
+            "actor_id": actor_user_id,
             "action": action,
             "entity_type": entity_type,
             "entity_id": entity_id,
             "after": after,
             "request_id": request_id,
-            "email": staff_email,
+            "email": staff_email if actor_user_id is None else None,
         },
     )
 
@@ -146,8 +151,9 @@ async def _member(
     tenant_id: uuid.UUID,
     user_id: uuid.UUID,
     role: str,
-    staff_email: str,
+    staff_email: str | None,
     request_id: str,
+    actor_user_id: uuid.UUID | None = None,
 ) -> None:
     exists = (
         await conn.execute(
@@ -170,6 +176,7 @@ async def _member(
         entity_id=user_id,
         after=_json({"role": role, "is_active": True}),
         request_id=request_id,
+        actor_user_id=actor_user_id,
     )
 
 
@@ -179,16 +186,23 @@ async def insert_tenant(
     tenant_id: uuid.UUID,
     name: str,
     slug: str,
-    staff_email: str,
+    staff_email: str | None,
     trial_days: int | None,
     request_id: str,
+    actor_user_id: uuid.UUID | None = None,
+    trial_ends_at: datetime | None = None,
 ) -> None:
-    """The tenant row and its `tenant.created` staff audit row, on a connection whose
+    """The tenant row and its `tenant.created` audit row, on a connection whose
     `app.tenant_id` is already `tenant_id`. `SlugTakenError` (nothing written) when the slug is
-    used. Shared by `tenant create` and the platform admin's sign-up approval (ADR-0019), so both
-    create a tenant the same way."""
+    used. Shared by `tenant create`, the platform admin's sign-up approval (ADR-0019) and an
+    owner adding another brand (ADR-0032), so all three create a tenant the same way. With
+    `actor_user_id` the audit row is not written here: it names that `user`, who must be a member
+    first, so the caller writes it with `audit_tenant_created` after `add_owner`. `trial_ends_at` (with `trial_days` set) fixes the trial end instead of
+    `trial_days` from now (ADR-0032: an added brand keeps its owner's trial end)."""
     status = "active" if trial_days is None else "trial"
     trial_ends = None if trial_days is None else datetime.now(UTC) + timedelta(days=trial_days)
+    if trial_days is not None and trial_ends_at is not None:
+        trial_ends = trial_ends_at
     inserted = (
         await conn.execute(
             text(
@@ -201,6 +215,24 @@ async def insert_tenant(
     ).first()
     if inserted is None:
         raise SlugTakenError("slug taken")
+    if actor_user_id is None:
+        await audit_tenant_created(
+            conn, tenant_id=tenant_id, name=name, staff_email=staff_email, request_id=request_id
+        )
+
+
+async def audit_tenant_created(
+    conn: AsyncConnection,
+    *,
+    tenant_id: uuid.UUID,
+    name: str,
+    staff_email: str | None,
+    request_id: str,
+    actor_user_id: uuid.UUID | None = None,
+) -> None:
+    """The `tenant.created` audit row. A `user` row (ADR-0032) names a member of the tenant
+    (`fk_audit_log_actor_user_id`), so `insert_tenant` leaves it to the caller to write once the
+    owner membership exists."""
     await _audit(
         conn,
         tenant_id=tenant_id,
@@ -210,6 +242,7 @@ async def insert_tenant(
         entity_id=tenant_id,
         after=_json({"name": name}),
         request_id=request_id,
+        actor_user_id=actor_user_id,
     )
 
 
@@ -218,10 +251,12 @@ async def add_owner(
     *,
     tenant_id: uuid.UUID,
     user_id: uuid.UUID,
-    staff_email: str,
+    staff_email: str | None,
     request_id: str,
+    actor_user_id: uuid.UUID | None = None,
 ) -> None:
-    """The first owner membership and its `membership.created` staff audit row."""
+    """The first owner membership and its `membership.created` audit row (staff, or the owner
+    themselves with `actor_user_id`)."""
     await _member(
         conn,
         tenant_id=tenant_id,
@@ -229,6 +264,7 @@ async def add_owner(
         role="owner",
         staff_email=staff_email,
         request_id=request_id,
+        actor_user_id=actor_user_id,
     )
 
 

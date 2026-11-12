@@ -11,6 +11,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Computed,
     DateTime,
     ForeignKeyConstraint,
@@ -247,5 +248,25 @@ class VariantMatrixCell(TenantScoped, Base):
     unavailable_reason: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str] = mapped_column(Text)
     evidence_ref: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+class SkuCounter(TenantScoped, Base):
+    """The last number handed out per SKU code (0029, client feedback 11 Nov): `code` is
+    `<BRAND>-<CATEGORY>` and `last_value` only grows, so a made SKU is never offered twice."""
+
+    __tablename__ = "sku_counters"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_sku_counters")),
+        anchor("sku_counters"),
+        UniqueConstraint("tenant_id", "code", name=conv("uq_sku_counters_tenant_id_code")),
+        tenant_fk("sku_counters"),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    code: Mapped[str] = mapped_column(Text)
+    last_value: Mapped[int] = mapped_column(BigInteger)
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()

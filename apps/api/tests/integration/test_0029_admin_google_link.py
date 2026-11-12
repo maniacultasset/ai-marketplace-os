@@ -56,7 +56,7 @@ def _definer(libpq: str) -> tuple[Any, ...]:
     return tuple(row)
 
 
-def test_single_head_on_0028() -> None:
+def test_chained_on_0028() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
@@ -76,6 +76,7 @@ def test_upgrade_downgrade_upgrade_links_an_admin_only_at_0029(
     command.upgrade(cfg, REVISION)
     assert _admin_links(scratch_db.libpq, "sub-a2") is True
     assert _definer(scratch_db.libpq) == before  # owner, search_path and grants kept
+    # the models match the head only (0031 adds columns), so `check` runs at head below
     command.downgrade(cfg, PREVIOUS)
     assert _admin_links(scratch_db.libpq, "sub-a3") is False
     assert _definer(scratch_db.libpq) == before

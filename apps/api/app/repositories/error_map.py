@@ -50,3 +50,18 @@ class ErrorMapRepository:
             )
             for row in (await self.db.execute(stmt)).scalars()
         ]
+
+    async def outside_texts(self, marketplace: str) -> frozenset[tuple[str, str]]:
+        """The (plain text, seller action) of each enabled row whose `policy_ref` marks it
+        `handled_outside` (feedback item 20: a marketplace setting Kuinn does not send, such as
+        Flipkart's tax or delivery charges). A doc row's plain text has no placeholder, so it is
+        the stored issue's cause word for word."""
+        m = MarketplaceErrorMap
+        stmt = select(m.plain_text, m.seller_action).where(
+            m.marketplace == marketplace,
+            m.enabled.is_(True),
+            m.policy_ref["handled_outside"].as_boolean().is_(True),
+        )
+        return frozenset(
+            (str(text), str(action or "")) for text, action in (await self.db.execute(stmt)).all()
+        )

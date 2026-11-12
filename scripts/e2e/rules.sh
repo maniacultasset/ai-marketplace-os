@@ -109,15 +109,16 @@ call GET "/rules?limit=200" "$owner"
 expect 200
 json 'any(r["scope"] == "platform" for r in b["data"])' >/dev/null
 
+# Recommended attributes (feedback item 10) come back as warning rows; only error rows count.
 step dry_run_221_fails
 call POST /rules/dry-run "$owner" "$(draft "$long_title")"
 expect 200
-json 'b["passed"] is False and [(e["error_code"], e["field"]) for e in b["report"]["errors"]] == [("FIELD_TOO_LONG", "content.title")]' >/dev/null
+json 'b["passed"] is False and [(e["error_code"], e["field"]) for e in b["report"]["errors"] if e["severity"] == "error"] == [("FIELD_TOO_LONG", "content.title")]' >/dev/null
 
 step dry_run_200_passes
 call POST /rules/dry-run "$owner" "$(draft "$short_title")"
 expect 200
-json 'b["passed"] is True and b["report"]["errors"] == []' >/dev/null
+json 'b["passed"] is True and [e for e in b["report"]["errors"] if e["severity"] == "error"] == []' >/dev/null
 
 step no_token_401
 call POST /rules/dry-run "" "$(draft "$short_title")"

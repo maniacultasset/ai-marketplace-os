@@ -138,8 +138,11 @@ put_signed() {
 image() { uv run --frozen python scripts/e2e/make_image.py "$@"; }
 image 800 800 255,255,255 JPEG "$work/white_800.jpg"
 size_800="$(wc -c <"$work/white_800.jpg" | tr -d ' ')"
-public_base="${IMAGE_PUBLIC_BASE_URL:-http://localhost:9000/marketplace-images-public}"
-python3 scripts/ci/local_url.py "$public_base" || exit 2
+# The stack's own MinIO (this checkout's or a fresh stack's port); local_url.py takes an origin
+# only, so the bucket path is checked apart.
+public_base="${IMAGE_PUBLIC_BASE_URL:-http://localhost:${MINIO_API_HOST_PORT:-9000}/marketplace-images-public}"
+python3 scripts/ci/local_url.py "${public_base%/marketplace-images-public}" || exit 2
+case "$public_base" in */marketplace-images-public) ;; *) echo "refused: IMAGE_PUBLIC_BASE_URL must end in /marketplace-images-public" >&2; exit 2 ;; esac
 headers_file="$work/headers.txt"
 
 # call_if METHOD PATH TOKEN IF_MATCH JSON: like `call`, with If-Match, keeping the response headers.

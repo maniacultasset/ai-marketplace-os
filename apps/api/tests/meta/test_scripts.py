@@ -2474,6 +2474,7 @@ REVIEW_APPROVE_STEPS = (
     "login_acme_owner",
     "create_product_201",
     "worker_start",
+    "photo_views_ready",
     "owner_generate_202",
     "poll_validated",
     "owner_approve_maker_checker_403",
@@ -2494,6 +2495,7 @@ REVIEW_EDIT_REJECT_STEPS = (
     "login_acme_operator",
     "create_product_201",
     "worker_start",
+    "photo_views_ready",
     "operator_generate_202",
     "poll_validated",
     "get_etag",
@@ -2577,7 +2579,7 @@ def test_prove_gates_s19a_legs(repo_root: Path) -> None:
     edit = (repo_root / "apps/api/app/services/listing_edit.py").read_text(encoding="utf-8")
     # every seed's <old> text is still in the source, so the seed applies
     assert "    if block is not None:" in review
-    assert "    _image_gate(ctx, listing, version)" in review
+    assert "    await _image_gate(ctx, listing, version)" in review
     assert "    if if_match != listing.current_version_id:" in edit
 
 
@@ -2589,6 +2591,7 @@ ISSUES_STEPS = (
     "login_acme_operator",
     "create_products_201",
     "worker_start",
+    "photo_views_ready",
     "generate_stub_warnings_202",
     "poll_needs_review",
     "issues_one_open_warning",
@@ -2844,6 +2847,7 @@ FLIPKART_PUBLISH_STEPS = (
     "fake_reset_calls",
     "worker_start",
     "create_product",
+    "photo_views_ready",
     "off_generate_flipkart_202",
     "off_wait_generated",
     "off_publish_item_501",
@@ -3096,6 +3100,7 @@ ANALYTICS_E2E_STEPS = (
     "alias_equals_summary",
     "create_3_products",
     "worker_start",
+    "photo_views_ready",
     "generate_3",
     "reviewer_approve_2",
     "reviewer_reject_1",

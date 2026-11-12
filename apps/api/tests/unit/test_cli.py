@@ -242,6 +242,20 @@ def test_errors_load_file_wins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     assert seen == [other]
 
 
+def test_errors_load_flipkart_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Feedback item 20: the migrate job's second error-map load takes the Flipkart file."""
+    seen: list[Path] = []
+
+    async def fake(path: Path) -> int:
+        seen.append(path)
+        return 0
+
+    monkeypatch.setattr(cli, "run_errors_load", fake)
+    assert cli.main(["errors", "load", "--marketplace", "flipkart"]) == 0
+    assert seen == [cli.ERROR_MAP_FLIPKART_PATH]
+    assert cli.ERROR_MAP_FLIPKART_PATH.is_file()
+
+
 def test_errors_load_missing_default_exit_2(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -5,7 +5,10 @@
 in the job's read transaction, from rows only (the AI package fetches nothing):
 
 - `product` = `for_prompt(facts)`: parties reduced to `legal_name`, no GSTIN or contact (D5);
-- `brand_profile` = `uow.brand_profile.for_prompt()` (D6, with `brand_description`);
+- `brand_profile` = `uow.brand_profile.for_prompt()` (D6, with `brand_description`); its
+  `brand_voice` (client feedback item 19) is re-read through `voice_for_prompt`, so a stored
+  voice that no longer parses is sent as None, never half-read. The voice shapes tone and
+  emphasis only: `product` facts always win;
 - `marketplace_rules` = the loaded RuleSet; `category_template` = the current template's
   `for_generation()` (no adapter fields); no template → `CATEGORY_NOT_MAPPED` (D2);
 - `previous_version` = the current version's `CanonicalListing`, or None;
@@ -34,6 +37,7 @@ from app.core.resolved_facts import ProductFacts, for_prompt
 from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.repositories.uow import TenantUnitOfWork
+from app.services.brand_voice import voice_for_prompt
 from app.services.rules_loader import LoadedRules
 
 log = get_logger(__name__)
@@ -99,6 +103,7 @@ async def build_context(
     if rules.template is None:
         raise GenerationContextError(ErrorCode.CATEGORY_NOT_MAPPED, "category")
     brand = await uow.brand_profile.for_prompt()
+    brand["brand_voice"] = voice_for_prompt(brand.get("brand_voice"))
     previous = previous_listing(listing, await uow.listing_versions.current(listing))
     instructions: str | None
     if await uow.review_decisions.has_regenerate_for_job(job.id):

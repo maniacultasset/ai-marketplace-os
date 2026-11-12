@@ -4,7 +4,9 @@
 # `/issues?listing_id=` lists one open warning; the reviewer dismisses it (200, replay identical);
 # an operator may not dismiss (403). A `stub:blocked` listing opens an error issue, which the
 # reviewer cannot dismiss (409: the Rules Engine stays the arbiter). `/tasks` answers 200, and
-# bharat's inbox lacks acme's issues.
+# bharat's inbox lacks acme's issues. Each product carries a saved size chart and a front, back
+# and close-up photo before it generates, so the photo view checklist (`PHOTO_VIEWS_ENABLED`)
+# opens no issue of its own and the counts stay the Rules Engine's.
 #
 # Usage: WORKER_START=<cmd> WORKER_STOP=<cmd> scripts/e2e/issues.sh [base_url]
 # No other worker may run against the stack (`make dev` starts none). Local only: the base URL must
@@ -12,6 +14,9 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> $0 [base_url]" >&2
@@ -123,7 +128,7 @@ wait_job() {
 }
 
 new_product() {
-  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Issues Kurta Set\", \"category\": \"$category\"}"
+  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Issues Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   json 'b["id"]'
 }
@@ -150,6 +155,10 @@ blocked_product="$(new_product "$operator" "E2E-GEN-$(date +%s)-$RANDOM")"
 step worker_start
 bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
+
+step photo_views_ready
+photo_views_upload "$api" "$operator" "$warn_product" "e2e-issues-img-warn-$run" "$work" || fail "the photo checklist is not met"
+photo_views_upload "$api" "$operator" "$blocked_product" "e2e-issues-img-blocked-$run" "$work" || fail "the photo checklist is not met"
 
 step generate_stub_warnings_202
 generate "$warn_product" warnings "e2e-issues-warn-$run"

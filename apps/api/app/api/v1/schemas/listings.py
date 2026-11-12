@@ -17,6 +17,9 @@ from app.api.v1.schemas.batches import Instructions
 from app.api.v1.schemas.resolution import RemoteCheckOut
 from app.core.text import CONTROL_CHAR_MESSAGE, has_control_char
 from app.services.listing_display import DisplayState
+from app.services.sections import LOCK_PATTERN, MAX_LOCKS, Section
+
+LockPath = Annotated[str, Field(pattern=LOCK_PATTERN, max_length=80)]
 
 
 class ListingOut(WireModel):
@@ -111,6 +114,25 @@ class ListingDetail(ListingOut):
             "self-approval. Null when `can_approve` is null."
         ),
     )
+    locked_paths: list[str] = Field(
+        default_factory=list,
+        description=(
+            "The paths the seller edited (`content.title`, `content.bullets`, "
+            "`content.description`, `keywords.search_terms`, `keywords.hidden_terms`, "
+            "`attributes.<key>`). No regenerate changes them; `unlock` on the content PATCH "
+            "releases one. Sorted."
+        ),
+    )
+    affected_sections: list[Section] = Field(
+        default_factory=list,
+        description=(
+            "The sections that use a fact the seller answered after the last AI run that "
+            "wrote that section (a generation, a whole regenerate, or a section regenerate or "
+            "AI fix that covered it), in card order. A seller's edit or a fact-only version "
+            "is not an AI run, so it never hides them; a fully locked section is left out. "
+            "Regenerate with these `sections` and `for_answers: true` to use the answers."
+        ),
+    )
 
 
 class ListingPage(Page[ListingOut]):
@@ -184,6 +206,14 @@ class ListingContentPatch(StrictModel):
     content: ListingContent
     keywords: ListingKeywords | None = None
     attributes: Annotated[dict[AttrKey, AttributeValue] | None, Field(max_length=200)] = None
+    unlock: Annotated[list[LockPath], Field(max_length=MAX_LOCKS)] = Field(
+        default_factory=list,
+        description=(
+            "Locked paths to release, so a regenerate may rewrite them again. Every path this "
+            "edit changes is locked (an edited path stays locked). Content sent unchanged with "
+            "only `unlock` makes no new version."
+        ),
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -209,6 +239,29 @@ class ListingContentPatch(StrictModel):
 
 class RegenerateRequest(StrictModel):
     instructions: Instructions | None = None
+    sections: Annotated[list[Section] | None, Field(min_length=1, max_length=5)] = Field(
+        default=None,
+        description=(
+            "Rewrite only these sections; every other part of the listing stays as it is. "
+            "Locked paths are never rewritten (422 VALIDATION_FAILED on `sections` when every "
+            "path asked for is locked). Omitted: the whole listing, locked paths kept."
+        ),
+    )
+    for_answers: bool = Field(
+        default=False,
+        description=(
+            "The seller's answers asked for it (`affected_sections`); recorded as the run's "
+            "reason. Needs `sections`."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _sections(self) -> RegenerateRequest:
+        if self.sections is not None and len(set(self.sections)) != len(self.sections):
+            raise PydanticCustomError("mkos_invalid", "A section appears more than once.")
+        if self.for_answers and not self.sections:
+            raise PydanticCustomError("mkos_invalid", "for_answers needs sections.")
+        return self
 
 
 class DryRunRequest(StrictModel):

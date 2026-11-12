@@ -109,6 +109,8 @@ LISTING_ITEM: Final = "0b1c2d3e-0000-4000-8000-000000001401"
 SIGNUP: Final = "0b1c2d3e-0000-4000-8000-000000001501"
 APPLICANT: Final = "0b1c2d3e-0000-4000-8000-000000001502"
 INVITE: Final = "0b1c2d3e-0000-4000-8000-000000001601"
+REPAIR: Final = "0b1c2d3e-0000-4000-8000-000000001701"
+ISSUE_2: Final = "0b1c2d3e-0000-4000-8000-000000001002"
 T_INVITE_END: Final = "2026-10-12T09:30:00Z"
 
 _MEMBERSHIPS: Final = [{"tenant_id": TENANT, "tenant_name": "Fabrica", "role": "owner"}]
@@ -167,6 +169,17 @@ _BRAND_PROFILE: Final = {
         "inherited": False,
     },
     "website_url": "https://fabindia.example",
+    "brand_description": "Hand-block printed cotton wear from Jaipur.",
+    "brand_voice": {
+        "audience": "Women 25 to 40 who buy for daily office wear",
+        "price_segment": "mid",
+        "positioning": "Everyday handloom, made to last",
+        "differentiators": ["Hand-block printed", "Pre-washed cotton"],
+        "words_to_use": ["breathable", "easy care"],
+        "words_to_avoid": ["cheap", "best ever"],
+        "claim_limits": ["No organic claims"],
+        "example_copy": "Soft cotton that keeps its shape wash after wash.",
+    },
     "updated_at": T0,
 }
 
@@ -533,6 +546,22 @@ _GOOGLE_SIGNUP_STATUS: Final = {
 }
 
 # SI10: the platform admin's AI credit card
+# feedback item 10: the tshirts templates' requirement levels (`GET /catalog/requirements`)
+_TSHIRT_LEVELS_FLIPKART: Final = {
+    "color": "required",
+    "country_of_origin": "optional",
+    "fabric_type": "required",
+    "fiber_composition": "optional",
+    "fit": "recommended",
+    "manufacturer": "optional",
+    "neckline": "recommended",
+    "number_of_pieces": "optional",
+    "pattern": "recommended",
+    "size": "optional",
+    "sleeve_length": "recommended",
+}
+_TSHIRT_LEVELS_AMAZON: Final = {**_TSHIRT_LEVELS_FLIPKART, "product_weight": "optional"}
+
 _AI_CREDIT: Final[dict[str, Any]] = {
     "state": "paused",
     "paused_reason": "credit_exhausted",
@@ -944,6 +973,79 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "text": "Answer the open question so Kuinn can fix the listing.",
             },
         },
+        "listings_issue_history": {
+            "marketplace": "amazon",
+            "counts": {"fixed": 1, "fixing": 0, "needs_you": 1, "marketplace": 0, "staff": 0},
+            "issues": [
+                {
+                    "id": ISSUE_2,
+                    "field": "attributes.fabric_type",
+                    "error_code": "PATTERN_MISMATCH",
+                    "group": "content_data",
+                    "handler": "you",
+                    "lane": "seller",
+                    "status": "open",
+                    "marketplace_code": "18280",
+                    "marketplace_message": "fabric_type must include a percentage.",
+                    "cause": "Amazon needs a percentage for each fabric in the material detail.",
+                    "action": "Write the fabric detail the way Amazon's message shows (for example "
+                    "60% cotton, 40% polyester), then send the listing again.",
+                    "value_submitted": "cotton",
+                    "occurrences": 1,
+                    "first_seen_at": T1,
+                    "last_seen_at": T1,
+                    "resolved_at": None,
+                },
+                {
+                    "id": ISSUE,
+                    "field": "attributes.color",
+                    "error_code": "VALUE_NOT_ALLOWED",
+                    "group": "content_data",
+                    "handler": "kuinn",
+                    "lane": "auto_repair",
+                    "status": "resolved",
+                    "marketplace_code": "90244",
+                    "marketplace_message": "The value for 'color' is not one of the allowed "
+                    "values.",
+                    "cause": "Amazon accepts only values from its own list for this detail, and "
+                    "the value sent is not on it.",
+                    "action": "Pick a value from Amazon's list for that detail, then send the "
+                    "listing again.",
+                    "value_submitted": "navy blue",
+                    "occurrences": 1,
+                    "first_seen_at": T1,
+                    "last_seen_at": T1,
+                    "resolved_at": T1,
+                },
+            ],
+            "fixes": [
+                {
+                    "id": REPAIR,
+                    "issue_id": ISSUE,
+                    "kind": "repair",
+                    "field": "attributes.color",
+                    "rule": "enum_fold",
+                    "before": "navy blue",
+                    "after": "Navy Blue",
+                    "reason": "The marketplace accepts only values from its own list, so Kuinn "
+                    "sent the matching value from that list.",
+                    "outcome": "accepted",
+                    "at": T1,
+                }
+            ],
+            "attempts": [
+                {
+                    "kind": "submission",
+                    "number": 1,
+                    "version": 1,
+                    "at": T1,
+                    "actor": "user",
+                    "outcome": "rejected",
+                    "issue_ids": [ISSUE, ISSUE_2],
+                    "fix_ids": [REPAIR],
+                }
+            ],
+        },
         "listings_refresh_status": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "marketplaces_connect": {
             "authorize_url": "https://sellercentral.amazon.in/apps/authorize/consent?state=st_ex"
@@ -965,6 +1067,22 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "product_id": PRODUCT_1,
         },
         "images_delete": None,
+        "images_photo_match_keep": {  # V1.1 (client feedback item 9)
+            "image_id": IMAGE,
+            "photo_match": {
+                "status": "mismatch",
+                "colour": "Green",
+                "product_match": 0.93,
+                "colour_match": 0.08,
+                "seen_colour": "red",
+                "reason": "Same kurta design, but the photo shows a red kurta.",
+                "question": "Is this photo the Green Cotton Kurta?",
+                "checked_at": T1,
+                "kept": True,
+                "kept_at": T1,
+                "kept_by_user_id": USER,
+            },
+        },
         "image_candidates_create": {
             "candidate_id": CANDIDATE,
             "status": "queued",
@@ -1085,6 +1203,14 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "tenant_id": TENANT,
             "decided_at": T1,
         },
+        "tenants_create": {
+            "id": "0b1c2d3e-0000-4000-8000-000000000002",
+            "name": "Kalakar Home",
+            "slug": "kalakar-home",
+            "status": "trial",
+            "trial_ends_at": "2026-11-04T09:31:00Z",
+            "role": "owner",
+        },
         "admin_tenants_list": _page([_TENANT_ADMIN]),
         "admin_tenants_activate": {**_TENANT_ADMIN, "status": "active"},
         "admin_tenants_extend_trial": {
@@ -1140,6 +1266,59 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "job_id": JOB,
             "poll_url": f"/api/v1/jobs/{JOB}",
         },
+        "catalog_categories_list": {
+            "items": [
+                {
+                    "category": "ethnic_wear_kurta_sets",
+                    "label": "Kurta sets",
+                    "enabled": True,
+                    "marketplaces": [
+                        {
+                            "marketplace": "amazon",
+                            "product_type": "KURTA",
+                            "product_type_name": "Kurta",
+                            "external_category_id": None,
+                            "template_version": 3,
+                        },
+                        {
+                            "marketplace": "flipkart",
+                            "product_type": "kurta",
+                            "product_type_name": "Kurta",
+                            "external_category_id": None,
+                            "template_version": 3,
+                        },
+                    ],
+                }
+            ],
+            "suggest_enabled": True,
+        },
+        "catalog_category_suggest": {
+            "suggestion_id": JOB,
+            "status": "queued",
+            "candidates": [],
+        },
+        "catalog_category_suggestion_get": {
+            "suggestion_id": JOB,
+            "status": "suggested",
+            "candidates": [
+                {
+                    "category": "ethnic_wear_kurta_sets",
+                    "label": "Kurta sets",
+                    "confidence": 0.92,
+                    "rationale": "The name says kurta with palazzo and dupatta.",
+                    "unsure": False,
+                }
+            ],
+        },
+        "skus_availability": {
+            "sku": "ACME-KUR-0007",
+            "available": False,
+            "product_id": PRODUCT_1,
+            "title": "Cotton kurta set",
+            "is_variant": False,
+            "deleted": False,
+        },
+        "skus_suggest": {"sku": "ACME-KUR-0008"},
         "catalog_requirements_get": {
             "category": "tshirts",
             "amazon": [
@@ -1164,6 +1343,110 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "package_weight",
                 "selling_price",
             ],
+            "levels": {"amazon": _TSHIRT_LEVELS_AMAZON, "flipkart": _TSHIRT_LEVELS_FLIPKART},
+        },
+        "home_summary": {
+            "as_of": T1,
+            "listings": {
+                "total": 9,
+                "live": 3,
+                "partly_live": 0,
+                "live_products": 2,
+                "in_progress": 1,
+                "problem": 2,
+                "ready_to_approve": 1,
+                "ready_to_publish": 1,
+                "draft": 1,
+                "inactive": 0,
+            },
+            "by_marketplace": [
+                {
+                    "marketplace": "amazon",
+                    "listings": 6,
+                    "live": 2,
+                    "partly_live": 0,
+                    "in_progress": 1,
+                    "problem": 1,
+                    "ready_to_approve": 1,
+                    "ready_to_publish": 1,
+                },
+                {
+                    "marketplace": "flipkart",
+                    "listings": 3,
+                    "live": 1,
+                    "partly_live": 0,
+                    "in_progress": 0,
+                    "problem": 1,
+                    "ready_to_approve": 0,
+                    "ready_to_publish": 0,
+                },
+            ],
+            "needs_you": {
+                "total": 3,
+                "blocked": 1,
+                "blocked_without_issue": 0,
+                "questions": 1,
+                "ready_to_approve": 1,
+                "own_work": 0,
+                "ready_to_publish": 0,
+                "publishing_paused": 1,
+                "waiting_on_account": 0,
+                "improve": 2,
+            },
+            "needs_you_items": [
+                {
+                    "kind": "blocked",
+                    "action": "fix",
+                    "product_id": PRODUCT_1,
+                    "product_sku": "KURTA-001",
+                    "product_title": "Hand Block Print Kurta Set",
+                    "marketplace": "amazon",
+                    "listing_id": LISTING,
+                    "issue_id": ISSUE,
+                    "issue": "The title is longer than Amazon allows.",
+                    "issue_count": 1,
+                    "at": T1,
+                },
+                {
+                    "kind": "question",
+                    "action": "answer",
+                    "product_id": PRODUCT_1,
+                    "product_sku": "KURTA-001",
+                    "product_title": "Hand Block Print Kurta Set",
+                    "task_id": TASK,
+                    "issue": "What is the fabric?",
+                    "at": T1,
+                },
+            ],
+            "activity": [
+                {
+                    "kind": "write",
+                    "state": "completed",
+                    "text": "Wrote the Amazon listing for Hand Block Print Kurta Set",
+                    "product_id": PRODUCT_1,
+                    "product_title": "Hand Block Print Kurta Set",
+                    "listing_id": LISTING,
+                    "marketplace": "amazon",
+                    "at": T1,
+                },
+            ],
+            "marketplaces": [
+                {
+                    "marketplace": "amazon",
+                    "enabled": True,
+                    "account": "connected",
+                    "publishing_enabled": False,
+                    "next_step": "fix",
+                },
+                {
+                    "marketplace": "flipkart",
+                    "enabled": False,
+                    "account": "not_connected",
+                    "publishing_enabled": True,
+                    "next_step": "connect",
+                },
+            ],
+            "products": 7,
         },
         "admin_ai_credit_resume": {
             **_AI_CREDIT,

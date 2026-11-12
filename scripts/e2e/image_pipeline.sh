@@ -2,8 +2,8 @@
 # The S17b image pipeline, HTTP only (CODE-PLAN S17b T18; AC14): an acme operator creates a
 # product, mints a signed upload URL, PUTs a generated 800x800 white JPEG to the object store with
 # the returned headers (a second PUT of the URL is 412, another length 403), registers the key,
-# and the worker's `image_compliance` job writes the reports (Amazon RESOLUTION_LOW and failed,
-# Flipkart passed with a warning). A replay of the key returns the same image, the key with
+# and the worker's `image_compliance` job writes the reports (Amazon and Flipkart both pass with a
+# RESOLUTION_LOW warning). A replay of the key returns the same image, the key with
 # another body is 409. A multipart 1000x1000 PNG main then replaces the first main (its report is
 # 404) and the product lists its live key. A reviewer may not mint a URL (403), no token is 401,
 # and bharat gets 404 on acme's report and on a key under acme's prefix.
@@ -194,7 +194,8 @@ if [ "$signed_leg" = "1" ]; then
   step report_amazon_resolution_low
   call GET "/images/$image_id/report" "$operator"
   expect 200
-  json 'b["compliance_status"] == "failed" and b["reports"]["amazon"]["pass"] is False and [i["code"] for i in b["reports"]["amazon"]["issues"]] == ["RESOLUTION_LOW"]' >/dev/null
+  # since #130 each check keeps its marketplace severity: under 1000 px is an Amazon warning
+  json 'b["compliance_status"] == "passed" and b["reports"]["amazon"]["pass"] is True and [(i["code"], i["severity"]) for i in b["reports"]["amazon"]["issues"] if i["code"] == "RESOLUTION_LOW"] == [("RESOLUTION_LOW", "warning")]' >/dev/null
 
   step report_flipkart_pass_with_warning
   json 'b["reports"]["flipkart"]["pass"] is True and [i["code"] for i in b["reports"]["flipkart"]["issues"]] == ["RESOLUTION_LOW"]' >/dev/null

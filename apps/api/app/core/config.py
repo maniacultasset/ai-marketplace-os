@@ -228,6 +228,10 @@ class Settings(BaseSettings):
     google_issuer: str = GOOGLE_ENDPOINTS["google_issuer"][1]
     auth_google_rate_limit_per_min: int = Field(default=10, ge=1)
 
+    # ---- another brand (ADR-0032): an owner adds a brand without a new sign-up review ----
+    tenant_create_enabled: bool = False
+    tenant_create_max_owned: int = Field(default=10, ge=1, le=100)
+
     # ---- models: per-provider keys ----
     llm_gateway: LlmGateway = "direct"
     llm_provider: Literal["openai", "deepseek"] = "openai"
@@ -266,6 +270,20 @@ class Settings(BaseSettings):
     # only at the next generation. Off: no read is queued on upload, a read already queued ends
     # `skipped` with no call, and photos are read at generation as before.
     photo_read_on_upload_enabled: bool = False
+    # Client feedback 7 and 8: the photo view checklist per category and marketplace
+    # (`services/photo_views.py`) and the size chart check. Off: the product read and
+    # `GET /catalog/requirements` list no views (the dashboard shows its four fixed tiles), and no
+    # missing view or size chart finding is raised at generation, validate or approval.
+    photo_views_enabled: bool = False
+    # V1.1 (client feedback item 9): after a product photo passes its upload checks, one vision
+    # call checks that it shows this product in its colour (`photo_match`); a mismatch or an
+    # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
+    # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
+    photo_match_enabled: bool = False
+    # Client feedback 11 and 19: copy v5 (keywords first, prompt v5, brand voice, copy checks).
+    # Read by mkos-pipeline itself (>= 0.8.0, its `content_v5` setting) from the worker's process
+    # env; the backend never reads it, the field only registers the name. Off: v4 copy as before.
+    mkos_content_v5: bool = False
     # SI14 (D13): per-purpose gateways; unset means `llm_gateway` (`effective_gateway`).
     llm_gateway_generation: LlmGateway | None = None
     llm_gateway_vision: LlmGateway | None = None

@@ -9,7 +9,10 @@
 #   Seller Central link.
 # - unknown_code: an unmapped code reads lane `staff`, and no AI proposal text reaches the seller.
 # The child-axis repair (`child_missing_axis`) is not here: a family needs the import flow; it is
-# proved by the unit suite (`tests/unit/resolution/test_repairs.py`).
+# proved by the unit suite (`tests/unit/resolution/test_repairs.py`). Each product carries a saved
+# size chart and a front, back and close-up photo before it generates, so the photo view
+# checklist (`PHOTO_VIEWS_ENABLED`) is met: the approve after the recategorise passes it (T-shirts
+# require the chart too), and the other-brand barcode's refusal stays the catalog check's.
 #
 # Usage: FAKE_URL=<fake> WORKER_START=<cmd> WORKER_STOP=<cmd> ERRORS_LOAD=<cmd> \
 #   scripts/e2e/brief_gaps.sh [base_url]
@@ -19,6 +22,7 @@
 # status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: FAKE_URL=<fake> WORKER_START=<cmd> WORKER_STOP=<cmd> ERRORS_LOAD=<cmd> $0 [base_url]" >&2
@@ -169,19 +173,21 @@ wait_listing() {
   while :; do
     call GET "$api/listings/$2" "$1"
     expect 200
-    if json "$3" >/dev/null 2>&1; then return 0; fi
+    # a subshell: a false predicate makes `json` call `fail`, which must not end the poll
+    if (json "$3") >/dev/null 2>&1; then return 0; fi
     if [ "$(date +%s)" -ge "$deadline" ]; then fail "the listing did not reach the state within ${bound} s"; fi
     sleep 1
   done
 }
 
-# generated SKU [IDENTIFIER_JSON]: a product and a stub generation; sets $product, $listing_id and
-# $version once the generation and its dry run settled.
+# generated SKU [IDENTIFIER_JSON]: a product (with its size chart and photos) and a stub
+# generation; sets $product, $listing_id and $version once the generation and its dry run settled.
 generated() {
   local ident="${2:-\"identifier_exemption\": true}" job
-  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Gaps Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"selling_price\": \"999.00\", \"gender\": \"women\", $ident}"
+  call POST "$api/products" "$operator" "" "{\"sku\": \"$1\", \"title\": \"E2E Gaps Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"selling_price\": \"999.00\", \"gender\": \"women\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}, \"size_chart\": $PHOTO_VIEWS_CHART, $ident}"
   expect 201
   product="$(json 'b["id"]')"
+  photo_views_upload "$api" "$operator" "$product" "e2e-gap-img-$1" "$work" || fail "the photo checklist is not met"
   call POST "$api/listings/generate" "$operator" "e2e-gap-gen-$1" "{\"product_id\": \"$product\", \"marketplace\": \"amazon\"}"
   expect 202
   job="$(json 'b["job_id"]')"

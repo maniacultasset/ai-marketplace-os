@@ -66,6 +66,29 @@ payload go back to the marketplace without a second approval?
 - **Value maps and the export** are read-only staff reports (`errors value-maps`, `errors export`); an alias change
   stays a reviewed PR to `aliases.py`.
 
+## Client feedback item 20 additions (2026-11-11)
+
+- **Coverage.** `error_map.amazon.json` adds the codes on Amazon's Listings Items troubleshooting and Manage
+  Listings Issues pages (missing values, enums, patterns and fabric, lengths, counts, numbers, cross-field rules,
+  identifiers and the catalogue, luxury and generic-brand eligibility, price limits, currency, Amazon's internal
+  error), each with plain text and a seller action; `policy_ref.kuinn_repair` names the safe repair kinds that can
+  cover a row. No row sets its own fix (`auto_fixable` false, no `fix_action`), but the planner routes on the
+  code, so a row's code is its lane and is chosen on purpose (`test_error_map_coverage`): a fact value (fabric
+  make-up, price, a count, a number) is `VALUE_NOT_ALLOWED`, `CROSS_FIELD_MISMATCH` or `MISSING_ATTRIBUTE` and goes
+  to the seller or Kuinn's team, never to the AI; only a text rule on Kuinn's own text (HTML, web links, a length)
+  takes the deterministic content fix (`FIELD_TOO_LONG`) or the one-field AI rewrite (`PATTERN_MISMATCH`,
+  `FIELD_TOO_SHORT`, credit-gated, one try per key); Amazon's internal error 4000000 (`MARKETPLACE_UNAVAILABLE`;
+  the row stays `user_action`, as every documented row) is resent by its code's policy; brand and generic-product eligibility goes to the marketplace lane; the luxury-category
+  codes 4005018/4005019 are `CATEGORY_MISMATCH` (the seller recategorises). `error_map.flipkart.json` is new: Flipkart documents the error shape but no code list, so its rows match
+  the documented payload node an issue's path names (`path:price`, `path:tax`, ...); settings Kuinn does not send
+  in v1 (tax, delivery charges, stock, packages, fulfilment) carry `policy_ref.handled_outside`. The migrate job
+  loads both files.
+- **Issue history read.** `GET /listings/{id}/issue-history`: each marketplace ERROR with its plain cause, the
+  marketplace's code and words, the field, the client's error group and who handles it (Kuinn, the seller, the
+  marketplace side, or Kuinn's team; a resend is Kuinn's), and each fix with its before and after values (a content
+  fix's or AI rewrite's after value is read from the fix version that closed the issue), reason and outcome. It reuses
+  this read's lanes, never runs the engine and never writes.
+
 ## Amendment: the one-off dry run (owner decision, 2026-11-12)
 
 - **Decision.** The owner asked for Amazon's `VALIDATION_PREVIEW` (which saves nothing) on 2 or 3 test listings
@@ -81,8 +104,8 @@ payload go back to the marketplace without a second approval?
   anything else before it is sent, and an adapter wrapper with no create, update or publish method. A GET of each
   SKU runs before (a SKU already on Amazon stops the run before any preview) and after (a SKU found, or a reply
   other than VALID or INVALID, prints STOP and fails the job; any STOP after the preview also opens the CP-D24
-  breaker task). Every seller SKU must carry the test prefix `KTEST-`: the job checks the listing's SKUs before
-  any call and the built item's SKUs again right before the preview, and refuses a live SKU unsent.
+  breaker task). Every seller SKU must carry the test prefix `KTEST-`: the job checks the product's SKU and every
+  variant's before any call and the built item's SKUs again right before the preview, and refuses a live SKU unsent.
 - **What it never does.** No job of any kind is enqueued (`no_enqueue` around the whole run: no publish, no
   automatic resend, no fix job); the kind's terminal hook and the resolution engine never run; the verdict is
   printed, not written (no issue rows, no `remote_check_*`, no status move), so a test listing is never left

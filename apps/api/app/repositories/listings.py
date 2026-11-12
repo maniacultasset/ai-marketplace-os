@@ -275,6 +275,23 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if (await self.db.execute(stmt)).scalar_one_or_none() is None:
             raise RowCountError(1, 0)
 
+    async def set_locks(self, listing_id: uuid.UUID, paths: Sequence[str]) -> Listing:
+        """Client feedback 14: the listing's locked paths (the seller's edits no regenerate
+        changes), the whole set. Returns the updated row (the caller holds its lock)."""
+        self._own_session()
+        criterion = self._tenant_criterion(include_platform=False)
+        stmt = self._scoped_write(
+            update(Listing)
+            .where(Listing.id == listing_id, criterion)
+            .values(locked_paths=list(paths))
+        ).returning(Listing)
+        row = (
+            await self.db.execute(stmt, execution_options={"populate_existing": True})
+        ).scalar_one_or_none()
+        if row is None:
+            raise RowCountError(1, 0)
+        return row
+
     async def archive_for_deleted_product(
         self, listing_ids: Sequence[uuid.UUID], user_id: uuid.UUID
     ) -> list[uuid.UUID]:
@@ -866,6 +883,21 @@ class ListingVersionRepository(TenantScopedRepository[ListingVersion]):
                 raise mapped from exc
             raise
         return row
+
+    async def ai_written(
+        self, listing_id: uuid.UUID
+    ) -> builtins.list[tuple[uuid.UUID, str, datetime]]:
+        """Client feedback 14: `(id, origin, created_at)` of the listing's `generation` and
+        `regeneration` versions (an edit or a fact-only version is the seller's)."""
+        stmt = (
+            self._select()
+            .where(
+                ListingVersion.listing_id == listing_id,
+                ListingVersion.origin.in_(("generation", "regeneration")),
+            )
+            .with_only_columns(ListingVersion.id, ListingVersion.origin, ListingVersion.created_at)
+        )
+        return [(vid, str(origin), at) for vid, origin, at in (await self.db.execute(stmt)).all()]
 
     async def get(self, listing_id: uuid.UUID, version_id: uuid.UUID) -> ListingVersion | None:
         stmt = self._select().where(

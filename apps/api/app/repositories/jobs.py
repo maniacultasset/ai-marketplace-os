@@ -21,7 +21,7 @@ from __future__ import annotations
 import hashlib
 import json
 import uuid
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -88,6 +88,7 @@ ENTITY_TYPES: Final = frozenset(
         "category_suggestion",
         "column_map",
         "photo_facts_read",
+        "photo_match",
     }
 )
 
@@ -393,6 +394,19 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             .limit(1)
         )
         return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def live_among(self, job_ids: Sequence[uuid.UUID]) -> set[uuid.UUID]:
+        """The ids among `job_ids` of this tenant's jobs still `queued` or `running`, in one
+        SELECT (V1.1: a photo match still `checking` reads as running while its job is live)."""
+        ids = [i for i in job_ids if isinstance(i, uuid.UUID)]
+        if not ids:
+            return set()
+        stmt = (
+            self._select()
+            .where(JobRun.id.in_(ids), JobRun.status.in_(LIVE))
+            .with_only_columns(JobRun.id)
+        )
+        return set((await self.db.execute(stmt)).scalars().all())
 
     async def _newest_photo_record(
         self, product_id: uuid.UUID, key: str

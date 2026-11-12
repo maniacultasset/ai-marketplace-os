@@ -86,10 +86,16 @@ SIZE_CHART_READ_ENTITY: Final = "size_chart_read"
 # SI14 (PLAN D5): a classification and a column map are `image_compliance` jobs about a
 # `category_suggestion` and a `column_map`; they take the same per-tenant AI lock.
 CATEGORY_SUGGESTION_ENTITY: Final = "category_suggestion"
+# Client feedback 11 Nov: a draft classification (before the product is saved) is a
+# `category_suggestion` job on a fresh entity id whose payload names this key.
+CATEGORY_DRAFT_PAYLOAD: Final = "category_draft"
 COLUMN_MAP_ENTITY: Final = "column_map"
 # V1.1: a photo read on upload is an `image_compliance` job about a `photo_facts_read` (entity =
 # the product); it takes the same per-tenant AI lock, so one AI image call runs per brand.
 PHOTO_FACTS_READ_ENTITY: Final = "photo_facts_read"
+# V1.1 (client feedback item 9): a photo match is an `image_compliance` job about a `photo_match`
+# (entity = the image); it takes the same per-tenant AI lock.
+PHOTO_MATCH_ENTITY: Final = "photo_match"
 TENANT_LOCKED_ENTITIES: Final = frozenset(
     {
         CANDIDATE_ENTITY,
@@ -97,6 +103,7 @@ TENANT_LOCKED_ENTITIES: Final = frozenset(
         CATEGORY_SUGGESTION_ENTITY,
         COLUMN_MAP_ENTITY,
         PHOTO_FACTS_READ_ENTITY,
+        PHOTO_MATCH_ENTITY,
     }
 )
 

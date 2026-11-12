@@ -4,6 +4,9 @@ record (same id) never writes a second row; `app_rw` has no UPDATE or DELETE on 
 
 from __future__ import annotations
 
+import builtins
+import uuid
+from collections.abc import Sequence
 from datetime import timedelta
 from typing import Any
 
@@ -16,7 +19,9 @@ from app.db.models.runs import AgentRun
 from app.repositories.base import TenantScopedRepository
 
 
-def _row(record: AgentRunRecord) -> dict[str, Any]:
+def _row(
+    record: AgentRunRecord, reason: str | None = None, scope: Sequence[str] | None = None
+) -> dict[str, Any]:
     finished = None
     if record.status != "running":
         finished = record.started_at + timedelta(milliseconds=record.duration_ms)
@@ -45,20 +50,46 @@ def _row(record: AgentRunRecord) -> dict[str, Any]:
         "started_at": record.started_at,
         "finished_at": finished,
         "input_digest": record.input_digest,
+        # 0033 (client feedback 14): a generation job's reason and scope; NULL elsewhere
+        "run_reason": reason,
+        "run_scope": None if not scope else list(scope),
     }
 
 
 class AgentRunRepository(TenantScopedRepository[AgentRun]):
     model = AgentRun
 
-    async def insert(self, record: AgentRunRecord) -> None:
+    async def insert(
+        self,
+        record: AgentRunRecord,
+        *,
+        reason: str | None = None,
+        scope: Sequence[str] | None = None,
+    ) -> None:
+        """`reason` and `scope` (0033): why a generation job's call ran (`generate`, `regenerate`,
+        `section_regenerate`, `answers_applied`, `resolution`) and the paths it could change
+        (None for the whole listing)."""
         if record.tenant_id != self.tenant_id:
             raise CrossTenantQueryError("agent_runs record for another tenant")
         if self.db.info.get(TENANT_INFO_KEY) != self.tenant_id:
             raise CrossTenantQueryError("agent_runs write for another tenant's unit of work")
         stmt = (
             pg_insert(AgentRun)
-            .values(**_row(record))
+            .values(**_row(record, reason, scope))
             .on_conflict_do_nothing(index_elements=[AgentRun.id])
         )
         await self.db.execute(stmt)
+
+    async def version_scopes(
+        self, listing_id: uuid.UUID
+    ) -> builtins.list[tuple[uuid.UUID, builtins.list[str] | None]]:
+        """Client feedback 14: each distinct `(listing_version_id, run_scope)` of the listing's
+        model runs that wrote a version (`run_scope` None: the whole listing)."""
+        stmt = (
+            self._select()
+            .where(AgentRun.listing_id == listing_id, AgentRun.listing_version_id.is_not(None))
+            .with_only_columns(AgentRun.listing_version_id, AgentRun.run_scope)
+            .distinct()
+        )
+        rows = (await self.db.execute(stmt)).all()
+        return [(vid, None if scope is None else list(scope)) for vid, scope in rows]

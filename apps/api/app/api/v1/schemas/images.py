@@ -53,3 +53,31 @@ class ImageReportOut(WireModel):
     image_id: UUID
     compliance_status: Literal["pending", "passed", "failed"]
     reports: ImageReports = Field(default_factory=ImageReports)
+
+
+class PhotoMatchOut(WireModel):
+    """V1.1 (client feedback item 9): does the photo show this product in its colour. `checking`
+    while the check runs; `match`; `mismatch` or `unsure` with a `question` for the seller (keep
+    the photo with `POST /images/{image_id}/photo-match/keep`, or delete it); `failed` when it
+    could not be checked. At approval an unkept `mismatch` blocks and an unkept `unsure` warns."""
+
+    status: Literal["checking", "match", "mismatch", "unsure", "failed"]
+    colour: str | None = Field(
+        default=None, description="The colour checked; null for a photo every colour shares."
+    )
+    product_match: float | None = Field(default=None, ge=0, le=1)
+    colour_match: float | None = Field(default=None, ge=0, le=1)
+    seen_colour: str | None = Field(default=None, description="The colour the check saw.")
+    reason: str | None = None
+    question: str | None = Field(
+        default=None, description="The seller's question on a `mismatch` or `unsure` photo."
+    )
+    checked_at: AwareDatetime | None = None
+    kept: bool = Field(default=False, description="The seller kept this photo after the question.")
+    kept_at: AwareDatetime | None = None
+    kept_by_user_id: UUID | None = None
+
+
+class PhotoMatchKeptOut(WireModel):
+    image_id: UUID
+    photo_match: PhotoMatchOut

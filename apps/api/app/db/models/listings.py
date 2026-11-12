@@ -192,6 +192,10 @@ class Listing(TenantScoped, Base):
     paused_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     archived_by_user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # 0033 (client feedback 14): the paths the seller edited; no regenerate changes them
+    locked_paths: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), server_default=text("'{}'::text[]")
+    )
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

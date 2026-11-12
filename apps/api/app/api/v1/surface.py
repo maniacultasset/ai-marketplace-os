@@ -8,8 +8,8 @@ and the platform admin's list, approve and reject, 65 with DPP-1's MFA, step-up 
 routes (ADR-0021), 72 with Google sign-in's config, start, callback, complete, link, unlink and
 sign-up (ADR-0020), 75 with the trusted browsers' list, remove and sign-out-all (ADR-0023), 80
 with SI1's and SI3's product and task routes, 91 with SI5's invites, reset links and the platform
-admin's tenant list, activate and extend-trial (ADR-0029); no dead-letter path,
-which is staff tooling per T82). It
+admin's tenant list, activate and extend-trial (ADR-0029), 112 with ADR-0032's brand create; no
+dead-letter path, which is staff tooling per T82). It
 drives the routers (`route()`), the declared OpenAPI responses (`declared_responses()`), the
 parametrized surface tests and the case-matrix guard (`cases()`), so a route, its contract and its
 required tests cannot drift apart.
@@ -71,16 +71,26 @@ from app.api.v1.schemas.auth import (
 from app.api.v1.schemas.batches import BatchAccepted, BatchResult
 from app.api.v1.schemas.brand import BrandDocumentPage
 from app.api.v1.schemas.brand_profile import BrandProfileOut
-from app.api.v1.schemas.catalog import RequirementsOut
+from app.api.v1.schemas.catalog import (
+    CategoryCatalogOut,
+    CategoryDraftSuggestionOut,
+    RequirementsOut,
+)
 from app.api.v1.schemas.category_suggestion import CategorySuggestionAccepted
 from app.api.v1.schemas.column_maps import ColumnMapOut
 from app.api.v1.schemas.google import GoogleCompleteOut, GoogleConfigOut
+from app.api.v1.schemas.home import HomeSummaryOut
 from app.api.v1.schemas.image_candidates import (
     ImageCandidateAccepted,
     ImageCandidateOut,
     ImageCandidatePage,
 )
-from app.api.v1.schemas.images import ImageAccepted, ImageReportOut, UploadUrlOut
+from app.api.v1.schemas.images import (
+    ImageAccepted,
+    ImageReportOut,
+    PhotoMatchKeptOut,
+    UploadUrlOut,
+)
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
 from app.api.v1.schemas.invites import (
     InviteAccepted,
@@ -91,6 +101,7 @@ from app.api.v1.schemas.invites import (
     InvitePreview,
     ResetLinkOut,
 )
+from app.api.v1.schemas.issue_history import IssueHistoryOut
 from app.api.v1.schemas.issues import IssueOut, IssuePage
 from app.api.v1.schemas.listings import (
     ListingDetail,
@@ -116,8 +127,10 @@ from app.api.v1.schemas.signup import (
 )
 from app.api.v1.schemas.size_chart_read import SizeChartReadOut
 from app.api.v1.schemas.size_run import SizeRunOut
+from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
+from app.api.v1.schemas.tenant_create import TenantCreated
 from app.api.v1.schemas.tenants import TenantAdminOut, TenantAdminPage, TenantOut
 from app.core.rbac import PLATFORM_ADMIN, PUBLIC, Action, roles_for
 
@@ -635,6 +648,12 @@ _ROWS: Final[tuple[Operation, ...]] = (
               "Update the brand profile (If-Match: the ETag from GET)", "S16", has_body=True,
               if_match=True, conflict_code=E.STALE_VERSION, etag=True,
               action=A.SETTINGS_MANAGE, extra_codes={403: STEP_UP_CODES}),
+    # ADR-0032: an owner adds another brand without a new sign-up review (403 for an admin, a
+    # brand owner with a suspended brand, or the owned-brand cap; 501 while the switch is off)
+    Operation("tenants_create", "POST", "/tenants", 201, TenantCreated, "tenants",
+              "Add another brand: a new trial brand the caller owns (no sign-up review)",
+              "ADR-0032", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE,
+              step_up="any", extra_codes=_501),
     Operation("brand_documents_upload", "POST", "/brand/documents", 202, JobAccepted, "brand",
               "Upload a brand document for chunking", "S16", has_body=True, idempotency=True, action=A.SETTINGS_MANAGE),
     Operation("brand_documents_list", "GET", "/brand/documents", 200, BrandDocumentPage,
@@ -645,7 +664,7 @@ _ROWS: Final[tuple[Operation, ...]] = (
               path_id="document_id", action=A.SETTINGS_MANAGE),
     # ---- brand (SI1) ----
     Operation("brand_profile_get", "GET", "/brand-profile", 200, BrandProfileOut, "brand",
-              "The brand profile: the default manufacturer and the website", "SI1",
+              "The brand profile: the default manufacturer, website, description and voice", "SI1",
               etag=True, action=A.TENANT_READ),
     Operation("brand_profile_update", "PATCH", "/brand-profile", 200, BrandProfileOut, "brand",
               "Update the brand profile (If-Match: the ETag from GET)", "SI1", has_body=True,
@@ -748,6 +767,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("listings_resolution", "GET", "/listings/{listing_id}/resolution", 200,
               ResolutionOut, "listings", "What Kuinn tried, changed and needs for this listing",
               "SI11", path_id="listing_id", action=A.TENANT_READ),
+    Operation("listings_issue_history", "GET", "/listings/{listing_id}/issue-history", 200,
+              IssueHistoryOut, "listings", "Every marketplace issue of this listing, who handles "
+              "it, and each fix Kuinn made (before, after, reason, outcome)", "SI11",
+              path_id="listing_id", action=A.TENANT_READ),
     Operation("listings_refresh_status", "POST", "/listings/{listing_id}/refresh-status", 202,
               JobAccepted, "listings", "Check the marketplace status now (at most once per 5 "
               "minutes per listing)", "S21", path_id="listing_id", idempotency=True,
@@ -903,6 +926,25 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("catalog_requirements_get", "GET", "/catalog/requirements", 200, RequirementsOut,
               "catalog", "What each marketplace needs for a category", "SI12",
               query=("category",), action=A.TENANT_READ),
+    # ---- client feedback 11 Nov: the category picker, the suggestion before save, the SKU ----
+    Operation("catalog_categories_list", "GET", "/catalog/categories", 200, CategoryCatalogOut,
+              "catalog", "The categories you can pick, and what each marketplace is sent",
+              "SI14", action=A.TENANT_READ),
+    Operation("catalog_category_suggest", "POST", "/catalog/category-suggestions", 202,
+              CategoryDraftSuggestionOut, "catalog",
+              "Suggest a category for a product before it is saved", "SI14", has_body=True,
+              idempotency=True, action=A.PRODUCT_IMPORT, extra_codes=_AI_ADMISSION,
+              also_status=200),
+    Operation("catalog_category_suggestion_get", "GET",
+              "/catalog/category-suggestions/{suggestion_id}", 200, CategoryDraftSuggestionOut,
+              "catalog", "Read a category suggestion", "SI14", path_id="suggestion_id",
+              action=A.TENANT_READ),
+    Operation("skus_availability", "GET", "/skus/availability", 200, SkuAvailabilityOut,
+              "products", "Whether a SKU is free in this brand", "SI14", query=("sku",),
+              action=A.TENANT_READ),
+    Operation("skus_suggest", "POST", "/skus/suggestion", 200, SkuSuggestionOut, "products",
+              "Make a new SKU for this brand", "SI14", has_body=True, idempotency=True,
+              action=A.PRODUCT_IMPORT),
     # ---- SI14: the V1.1 assist (category suggestion) ----
     Operation("products_category_suggest", "POST", "/products/{product_id}/category-suggestion",
               202, CategorySuggestionAccepted, "products",
@@ -930,12 +972,21 @@ _ROWS: Final[tuple[Operation, ...]] = (
               conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT,
               extra_codes=MappingProxyType({422: (E.IMPORT_FAILED,)})),
     # ---- SI14: the quality dashboard ----
+    # ---- V1.1 (client feedback item 9): the variant photo match ----
+    Operation("images_photo_match_keep", "POST", "/images/{image_id}/photo-match/keep", 200,
+              PhotoMatchKeptOut, "images", "Keep a photo the photo match questioned", "SI14",
+              path_id="image_id", idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT),
     Operation("analytics_quality", "GET", "/analytics/quality", 200, QualitySummary, "analytics",
               "First-pass, blocked and edit rates and cost per listing", "SI14",
               query=("from", "to"), action=A.ANALYTICS_READ),
     Operation("admin_quality", "GET", "/admin/quality", 200, QualitySummary, "admin",
               "The quality dashboard across tenants", "SI14",
               query=("from", "to", "target_tenant_id"), platform_admin=True),
+    # ---- client feedback 11 Nov 2026, item 6: the Home summary ----
+    Operation("home_summary", "GET", "/home/summary", 200, HomeSummaryOut, "home",
+              "Exact listing counts, what needs you, recent agent work and marketplace status",
+              "FB6", action=A.TENANT_READ),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

@@ -1426,7 +1426,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
         "false",
     )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "2d8bb2efe6898a8284ee5bb76d4cc45414a3d01c"
+    assert prod["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
     assert staging["WORKER_ENABLED"] == "true"
 
 
@@ -1456,6 +1456,23 @@ def test_size_chart_read_switch_reaches_both_roles(toolkit: Path, tmp_path: Path
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0
     assert "SIZE_CHART_READ_ENABLED must be true or false" in result.stderr
+
+
+def test_photo_views_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """Feedback 7 and 8: the read (api) and the generation gate (worker) read one switch; off
+    unless the env file says so."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "false"
+    assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "false"
+    env = toolkit / "staging.env"  # the env files name no value yet: deploy.sh reads it as off
+    env.write_text(env.read_text(encoding="utf-8") + "PHOTO_VIEWS_ENABLED=true\n", encoding="utf-8")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_VIEWS_ENABLED"] == "true"
+    assert _worker_container(out)[0]["PHOTO_VIEWS_ENABLED"] == "true"
+    _set_env(toolkit, "staging", PHOTO_VIEWS_ENABLED="yes")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "PHOTO_VIEWS_ENABLED must be true or false" in result.stderr
 
 
 def test_prod_pins_amazon_publishing_off(repo_root: Path) -> None:
@@ -2824,6 +2841,78 @@ def test_si14_switches_reach_both_roles(toolkit: Path, tmp_path: Path) -> None:
     result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
     assert result.returncode != 0
     assert "PHOTO_QA_ENABLED must be true or false" in result.stderr
+
+
+def test_photo_match_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) -> None:
+    """V1.1 (client feedback item 9): PHOTO_MATCH_ENABLED is off unless the env file sets it, one
+    value reaches the api (product read, approve gate) and the worker (the check), and a bad
+    value stops the deploy."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_MATCH_ENABLED"] == "false"
+    assert _worker_container(out)[0]["PHOTO_MATCH_ENABLED"] == "false"
+    env_file = toolkit / "staging.env"  # the committed env files do not name the switch yet
+    env_file.write_text(env_file.read_text(encoding="utf-8") + "PHOTO_MATCH_ENABLED=true\n")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _api_env(out)["PHOTO_MATCH_ENABLED"] == "true"
+    assert _worker_container(out)[0]["PHOTO_MATCH_ENABLED"] == "true"
+    _set_env(toolkit, "staging", PHOTO_MATCH_ENABLED="on")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "PHOTO_MATCH_ENABLED must be true or false" in result.stderr
+
+
+def test_copy_v5_switch_reaches_the_worker_only(toolkit: Path, tmp_path: Path) -> None:
+    """Client feedback 11 and 19: MKOS_CONTENT_V5 is the pipeline's own env name (mkos-pipeline
+    settings `content_v5`). Off unless the env file sets it, it reaches the worker (the one role
+    that generates) and never the api, and a bad value stops the deploy."""
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _worker_container(out)[0]["MKOS_CONTENT_V5"] == "false"
+    assert "MKOS_CONTENT_V5" not in _api_env(out)
+    env_file = toolkit / "staging.env"  # staging.env does not name the switch: off
+    env_file.write_text(env_file.read_text(encoding="utf-8") + "MKOS_CONTENT_V5=true\n")
+    out = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA).stdout
+    assert _worker_container(out)[0]["MKOS_CONTENT_V5"] == "true"
+    assert "MKOS_CONTENT_V5" not in _api_env(out)
+    _set_env(toolkit, "staging", MKOS_CONTENT_V5="1")
+    result = _run(toolkit, tmp_path, "staging", "deploy", "--dry-run", "--sha", SHA)
+    assert result.returncode != 0
+    assert "MKOS_CONTENT_V5 must be true or false" in result.stderr
+
+
+# The B/C release (client feedback 7, 8, 9, 11, 18, 19), on together with mkos-pipeline v0.8.1.
+PROD_BC_ON = {
+    "PHOTO_VIEWS_ENABLED": ("api", "worker"),
+    "PHOTO_MATCH_ENABLED": ("api", "worker"),
+    "MKOS_CONTENT_V5": ("worker",),
+    "TENANT_CREATE_ENABLED": ("api",),
+}
+
+
+def test_prod_bc_release_switches_as_committed(repo_root: Path) -> None:
+    """prod.env turns every B/C switch on with the v0.8.1 pin, keeps the classifier on and Amazon
+    publishing off."""
+    text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
+    values = dict(re.findall(r"^([A-Z0-9_]+)=(.*)$", text, re.MULTILINE))
+    for name in PROD_BC_ON:
+        assert values[name] == "true", name
+    assert values["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
+    assert values["CATEGORY_SUGGEST_ENABLED"] == "true"
+    assert values["AMAZON_PUBLISH_ENABLED"] == "false"
+
+
+def test_prod_bc_release_switches_reach_their_roles(toolkit: Path, tmp_path: Path) -> None:
+    """A prod dry run sends each B/C switch, on, to its roles and to no other."""
+    _set_env(toolkit, "prod", WORKER_ENABLED="true", PIPELINE_REF=PIPELINE_SHA)
+    out = _run(toolkit, tmp_path, "prod", "deploy", "--dry-run", "--sha", SHA).stdout
+    by_role = {"api": _api_env(out), "worker": _worker_container(out)[0]}
+    for name, roles in PROD_BC_ON.items():
+        for role, env in by_role.items():
+            if role in roles:
+                assert env[name] == "true", (name, role)
+            else:
+                assert name not in env, (name, role)
+    assert by_role["api"]["AMAZON_PUBLISH_ENABLED"] == "false"
+    assert by_role["worker"]["AMAZON_PUBLISH_ENABLED"] == "false"
 
 
 # ---- V1 hardening #9: the worker's size and its parallel image check children ----

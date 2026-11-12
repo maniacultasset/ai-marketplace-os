@@ -24,7 +24,7 @@ CANON.md:113: the backend is the only writer of listing versions, `validation_ru
    the open error rows only the seller can fix open or reuse one task each (the move becomes
    `blocked/human_task_open`);
 5. one `agent_runs` row per record (`ON CONFLICT (id) DO NOTHING`), linked to the version when
-   one was saved;
+   one was saved, with the job's `run_reason` and `run_scope` (0033, client feedback 14);
 6. the move, with the job as actor.
 
 SI3: when the plan carries a photo decision, `apply_photo_decision` runs first, right after the
@@ -67,8 +67,10 @@ from app.services.issue_questions import QUESTION_MOVE, open_questions, reconcil
 from app.services.issues import record_auto_fixes, sync_issues
 from app.services.photo_facts import PhotoDecision, PhotoSet
 from app.services.photo_facts_store import apply_photo_decision
+from app.services.photo_views import listing_findings
 from app.services.pipeline_deps import RulesCall
 from app.services.remote_preview import request_preview
+from app.services.rules_engine import warning_count
 
 log = get_logger(__name__)
 GENERATING: Final = "generating"
@@ -121,6 +123,9 @@ class PersistPlan:
     changed_paths: tuple[str, ...] | None = None
     closes: tuple[tuple[uuid.UUID, str], ...] = ()
     close_resolution: Literal["deterministic_fix", "ai_correction"] = "deterministic_fix"
+    # client feedback 14 (0033): why the job ran and the paths it could change (None: whole)
+    run_reason: str | None = None
+    run_scope: tuple[str, ...] | None = None
 
 
 def _run(
@@ -162,6 +167,7 @@ async def _insert_runs(
             template_version=pins.template_version,
             facts_digest=pins.facts_digest,
             request_id=plan.request_id,
+            warnings=warning_count(call.report),
         )
     if version_id is None or plan.recheck is None:
         return None
@@ -171,6 +177,7 @@ async def _insert_runs(
         template_version=pins.template_version,
         facts_digest=pins.facts_digest if recheck_pin is None else recheck_pin,
         request_id=plan.request_id,
+        warnings=warning_count(plan.recheck),
     )
 
 
@@ -178,7 +185,11 @@ async def _insert_records(
     uow: TenantUnitOfWork, plan: PersistPlan, version_id: uuid.UUID | None
 ) -> None:
     for record in plan.records:
-        await uow.agent_runs.insert(record.model_copy(update={"listing_version_id": version_id}))
+        await uow.agent_runs.insert(
+            record.model_copy(update={"listing_version_id": version_id}),
+            reason=plan.run_reason,
+            scope=plan.run_scope,
+        )
 
 
 async def _owned(uow: TenantUnitOfWork, plan: PersistPlan) -> Any:
@@ -356,7 +367,9 @@ def make_persist(plan: PersistPlan) -> Any:
                 uow,
                 listing,
                 "vision_model",
-                image_issue_report(content, stored, plan.image_reports),
+                image_issue_report(
+                    content, stored, plan.image_reports, await listing_findings(uow, content)
+                ),
                 run_id=None,
                 cause="regenerate" if regeneration else "generate",
                 version_id=version.id,

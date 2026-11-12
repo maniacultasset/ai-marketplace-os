@@ -314,11 +314,12 @@ def test_approval_in_flight_holds_the_toggle(
 # ---- the chain and the round trip ----
 
 
-def test_single_head_on_0031() -> None:
+def test_chained_on_0031() -> None:
     from app.db.migrations import alembic_config
 
     script = ScriptDirectory.from_config(alembic_config())
-    assert script.get_heads() == [REVISION]
+    # 0033_brand_voice sits on top (`test_0033_brand_voice.py`)
+    assert REVISION in {r.revision for r in script.walk_revisions()}
     rev = script.get_revision(REVISION)
     assert rev is not None and rev.down_revision == PREVIOUS
 

@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any, Final
 
@@ -130,9 +130,11 @@ def labels(
     critical_keys: frozenset[str] = frozenset(),
     fixing: Mapping[uuid.UUID, Lane] | None = None,
     recategorizable: Iterable[uuid.UUID] = (),
+    locked: Mapping[uuid.UUID, frozenset[str]] | None = None,
 ) -> dict[uuid.UUID, tuple[Lane, Cause]]:
     """issue id -> (lane, cause); WARNING rows are left out. `fixing` is `fix_lanes(jobs)`;
-    `recategorizable` the listings the seller may still recategorise (SI13, CP-D7)."""
+    `recategorizable` the listings the seller may still recategorise (SI13, CP-D7); `locked`
+    each listing's locked paths (client feedback 14: a refusal on one is the seller's edit)."""
     repaired_ids = set(repaired)
     kinds = task_kinds or {}
     covered = fixing or {}
@@ -156,7 +158,12 @@ def labels(
         if lane is not None:
             out[row.id] = (lane, cause_of(view, lane, {}))
             continue
-        found = label(view, ctx_movable if getattr(row, "listing_id", None) in movable else ctx)
+        owner = getattr(row, "listing_id", None)
+        use = ctx_movable if owner in movable else ctx
+        held = (locked or {}).get(owner) if owner is not None else None
+        if held:
+            use = replace(use, locked_paths=held)
+        found = label(view, use)
         if found is not None:
             out[row.id] = found
     return out
@@ -560,6 +567,7 @@ async def build(uow: TenantUnitOfWork, listing: Any) -> dict[str, Any]:
         critical_keys=await uow.product_facts.critical_keys(),
         fixing=fix_lanes(jobs),
         recategorizable=await recategorizable_listings(uow, issues),
+        locked={listing.id: frozenset(getattr(listing, "locked_paths", None) or ())},
     )
     live_tasks = {t.task_id: t.kind for t in tasks if t.status in LIVE_TASK}
     open_errors = [i for i in issues if i.status == "open" and i.severity == "error"]

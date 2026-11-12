@@ -538,7 +538,7 @@ seed_no_read_before_retry() {
 }
 seed_no_image_gate() {
   cp "$root/.env" .env
-  replace apps/api/app/services/review.py '    _image_gate(ctx, listing, version)' '    pass'
+  replace apps/api/app/services/review.py '    await _image_gate(ctx, listing, version)' '    pass'
 }
 # S19 T24: an error is refused before the dismissal's UPDATE, and the issue inbox keeps its tenant
 # filter (an unscoped select is the guard's CrossTenantQueryError).

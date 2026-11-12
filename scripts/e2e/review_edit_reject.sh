@@ -4,7 +4,9 @@
 # old ETag is 409 STALE_VERSION. The owner edits it too and is then refused as an editor (item
 # 403 MAKER_CHECKER_VIOLATION). The reviewer's reject without feedback is 422; a reject with
 # `regenerate=true` regenerates it (the reviewer is now its maker, so the reviewer's approve is
-# an item 403), and the owner, outside the new chain, approves it.
+# an item 403), and the owner, outside the new chain, approves it. The product carries a saved
+# size chart and a front, back and close-up photo before it generates, so the photo view
+# checklist (`PHOTO_VIEWS_ENABLED`) is met.
 #
 # Usage: WORKER_START=<cmd> WORKER_STOP=<cmd> scripts/e2e/review_edit_reject.sh [base_url]
 # No other worker may run against the stack (`make dev` starts none). Local only: the base URL must
@@ -12,6 +14,9 @@
 # failure it prints the step name and the HTTP status, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/product_facts.sh
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: WORKER_START=<cmd> WORKER_STOP=<cmd> $0 [base_url]" >&2
@@ -123,7 +128,7 @@ wait_job() {
 }
 
 new_product() {
-  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\"}"
+  call POST /products "$1" "" "{\"sku\": \"$2\", \"title\": \"E2E Review Kurta Set\", \"category\": \"$category\", $PRODUCT_FACTS, \"size_chart\": $PHOTO_VIEWS_CHART}"
   expect 201
   json 'b["id"]'
 }
@@ -149,6 +154,9 @@ product="$(new_product "$operator" "E2E-GEN-$(date +%s)-$RANDOM")"
 step worker_start
 bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
+
+step photo_views_ready
+photo_views_upload "$api" "$operator" "$product" "e2e-edit-img-$run" "$work" || fail "the photo checklist is not met"
 
 step operator_generate_202
 call POST /listings/generate "$operator" "e2e-edit-gen-$run" "{\"product_id\": \"$product\", \"marketplace\": \"amazon\"}"
@@ -197,6 +205,12 @@ call POST /listings/approve "$reviewer" "e2e-edit-rej0-$run" "{\"items\": [{\"li
 expect 422
 
 step reject_regenerate_200
+# Client feedback 14: every edited path is locked, and a regenerate that keeps a lock keeps its
+# editor in the maker-checker chain. The owner hands the edited text back first (an unlock alone
+# makes no new version), so the reviewer's regenerate is a whole one and starts a new chain.
+call PATCH "/listings/$listing_id/content" "$owner" "" "{\"content\": {\"title\": \"Owner Edited Kurta Set\", \"bullets\": [\"Soft cotton fabric\"], \"description\": \"A cotton kurta set with a straight fit.\"}, \"unlock\": [\"content.title\", \"content.bullets\", \"content.description\"]}" "$owner_version"
+expect 200
+json 'b["locked_paths"] == [] and b["current_version_id"] == "'"$owner_version"'"' >/dev/null
 call POST /listings/approve "$reviewer" "e2e-edit-rej-$run" "{\"items\": [{\"listing_id\": \"$listing_id\", \"listing_version_id\": \"$owner_version\", \"decision\": \"reject\", \"reason_code\": \"poor_quality\", \"feedback\": \"Shorter title, please.\", \"regenerate\": true}]}"
 expect 200
 json 'b["items"][0]["http_status"] == 200 and b["items"][0]["listing_status"] == "generating"' >/dev/null

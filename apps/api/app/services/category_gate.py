@@ -64,6 +64,13 @@ async def category_offers(uow: _HasTemplates, settings: Settings) -> list[Catego
     return offers[:MAX_OFFERED]
 
 
+async def pickable(uow: _HasTemplates, category: str, settings: Settings) -> bool:
+    """`category` has a current template and is switched on (not capped at `MAX_OFFERED`)."""
+    if category == UNCATEGORIZED or not category_enabled(category, settings):
+        return False
+    return any(row.category == category for row in await uow.templates.current_categories())
+
+
 async def allowed_categories(uow: _HasTemplates, settings: Settings) -> list[str]:
     """The slugs of `category_offers`."""
     return [offer.category for offer in await category_offers(uow, settings)]

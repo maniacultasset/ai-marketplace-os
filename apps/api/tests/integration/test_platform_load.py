@@ -69,8 +69,9 @@ def test_platform_load_idempotent_no_tenants(
         "SELECT category, version, product_type FROM category_templates "
         "WHERE marketplace = 'amazon' AND is_current ORDER BY category"
     ).fetchall()
-    assert ("tshirts", 2, "SHIRT") in current and ("ethnic_wear_kurta_sets", 3, "KURTA") in current
-    assert ("home_decor_lamps", 2, "LAMP") in current
+    # feedback item 10: kurta v4, tshirts v3, lamps v3 (recommended attributes)
+    assert ("tshirts", 3, "SHIRT") in current and ("ethnic_wear_kurta_sets", 4, "KURTA") in current
+    assert ("home_decor_lamps", 3, "LAMP") in current
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])
@@ -133,4 +134,4 @@ async def test_platform_load_then_seed_ok(cli_env: Path, superuser_conn: Conn) -
     pinned = superuser_conn.execute(
         "SELECT template_version FROM validation_runs WHERE id = %s", [run_id]
     ).fetchone()
-    assert pinned == (3,)  # SI2: kurta version 3
+    assert pinned == (4,)  # feedback item 10: kurta version 4

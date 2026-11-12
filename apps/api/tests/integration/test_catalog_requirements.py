@@ -19,7 +19,11 @@ URL = "/api/v1/catalog/requirements"
 
 @pytest.mark.endpoint("catalog_requirements_get", case="success")
 async def test_tshirts(images_db: JobWorld, api: httpx.AsyncClient) -> None:
-    attributes = {"required_attributes": ["color", "fabric_type"], "optional_attributes": []}
+    attributes = {
+        "required_attributes": ["color", "fabric_type"],
+        "optional_attributes": ["fit", "size"],
+        "recommended_attributes": ["fit"],  # feedback item 10
+    }
     for marketplace in ("amazon", "flipkart"):
         category_template(
             images_db.conn,
@@ -58,6 +62,13 @@ async def test_tshirts(images_db: JobWorld, api: httpx.AsyncClient) -> None:
         "package_weight",
         "selling_price",
     ]
+    levels = {
+        "color": "required",
+        "fabric_type": "required",
+        "fit": "recommended",
+        "size": "optional",
+    }
+    assert body["levels"] == {"amazon": levels, "flipkart": levels}
 
 
 async def test_unknown_category_facts_and_extras_only(
@@ -81,6 +92,7 @@ async def test_unknown_category_facts_and_extras_only(
         "selling_price",
     ]
     assert "color" not in body["flipkart"] and "hsn_code" in body["flipkart"]
+    assert body["levels"] == {"amazon": {}, "flipkart": {}}
 
 
 @pytest.mark.endpoint("catalog_requirements_get", case="validation")

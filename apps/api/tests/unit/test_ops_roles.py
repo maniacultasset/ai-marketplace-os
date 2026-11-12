@@ -79,6 +79,7 @@ Q7: dict[str, str] = {
     "listings_retry_fields": "listing:publish",
     "listings_submissions": "tenant:read",  # S21 CP7
     "listings_resolution": "tenant:read",  # SI11 T20
+    "listings_issue_history": "tenant:read",  # feedback item 20
     "listings_refresh_status": "listing:publish",  # S21 CP7
     "marketplaces_connect": "marketplace:connect",
     "marketplaces_callback": PUBLIC,
@@ -93,10 +94,18 @@ Q7: dict[str, str] = {
     "size_chart_read_create": "product:import",  # SI12
     "products_category_suggest": "product:import",  # SI14
     "products_size_run_create": "product:import",  # V1.1
+    "images_photo_match_keep": "product:import",  # V1.1
+    "tenants_create": "settings:manage",  # ADR-0032 (the service also needs owner)
     "imports_column_map_create": "product:import",  # SI14
     "imports_column_map_get": "tenant:read",  # SI14
     "imports_column_map_confirm": "product:import",  # SI14
     "catalog_requirements_get": "tenant:read",  # SI12
+    # client feedback 11 Nov
+    "catalog_categories_list": "tenant:read",
+    "catalog_category_suggest": "product:import",
+    "catalog_category_suggestion_get": "tenant:read",
+    "skus_availability": "tenant:read",
+    "skus_suggest": "product:import",
     "image_candidates_list": "tenant:read",
     "image_candidates_accept": "product:import",
     "image_candidates_reject": "product:import",
@@ -107,6 +116,7 @@ Q7: dict[str, str] = {
     "analytics_get": "analytics:read",
     "analytics_summary": "analytics:read",
     "analytics_quality": "analytics:read",  # SI14
+    "home_summary": "tenant:read",  # FB6
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)

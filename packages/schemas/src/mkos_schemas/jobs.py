@@ -103,6 +103,10 @@ class CategoryTemplate(WireModel):
     optional_attributes: list[AttrKey] = Field(default_factory=list)
     conditional_attributes: list[AttrKey] = Field(default_factory=list)
     unsupported_attributes: list[AttrKey] = Field(default_factory=list)
+    # 2.1.0: optional keys worth adding (search, filters). Each is also an optional key, so a
+    # reader that drops this field fills and sends them exactly as before. A missing one is a
+    # non-blocking Rules Engine warning; never filled without a fact.
+    recommended_attributes: list[AttrKey] = Field(default_factory=list)
     specs: dict[AttrKey, AttributeSpec] = Field(default_factory=dict)
     variation_themes: list[list[AttrKey]] = Field(default_factory=list)
 
