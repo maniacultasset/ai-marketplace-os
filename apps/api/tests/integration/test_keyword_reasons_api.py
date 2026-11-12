@@ -41,7 +41,9 @@ def _with_reasons(world: GenWorld, version: uuid.UUID) -> None:
     with world.conn.transaction():
         world.conn.execute("SET LOCAL session_replication_role = replica")
         world.conn.execute(
-            "UPDATE listing_versions SET content_json = content_json "
+            # the demo v1 stores bare ListingContent: wrap it as a full listing first
+            "UPDATE listing_versions SET content_json = (CASE WHEN content_json ? 'content' "
+            "THEN content_json ELSE jsonb_build_object('content', content_json) END) "
             "|| jsonb_build_object('keywords', %s::jsonb, 'keyword_reasons', %s::jsonb) "
             "WHERE id = %s",
             [Jsonb(keywords), Jsonb(REASONS), version],
