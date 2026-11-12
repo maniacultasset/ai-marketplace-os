@@ -3,6 +3,9 @@
 - `check_sku(principal, sku)`: whether `sku` is free in this tenant (styles and variants share
   the one `(tenant_id, sku)` unique, soft-deleted rows included), and which product holds it.
   Another tenant's SKU reads as free: the unique is per tenant.
+- `check_skus(principal, skus)`: `check_sku` for up to `MAX_BATCH_SKUS` SKUs in one select (the
+  variants grid and the bulk upload check before they submit). Repeats are checked once; only the
+  taken SKUs come back, in the order first sent.
 - `suggest_sku(principal, key, path, body)`: a new SKU `<BRAND>-<CATEGORY>-<NNNN>`, idempotent on
   the Idempotency-Key (a replay answers the same SKU). The number comes from the tenant's
   `sku_counters` row for `<BRAND>-<CATEGORY>` (one atomic upsert, so concurrent requests get
@@ -23,7 +26,7 @@ from __future__ import annotations
 import json
 import re
 import unicodedata
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -33,7 +36,7 @@ from app.core.config import get_settings
 from app.core.errors import InputError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
-from app.repositories.products import ProductRepository
+from app.repositories.products import ProductRepository, SkuHolder
 from app.repositories.sku_counters import SkuCounterRepository
 from app.repositories.tenants import TenantProfileRepository
 from app.repositories.uow import tenant_uow
@@ -42,10 +45,12 @@ from app.services.idempotency import idempotent
 
 __all__ = [
     "CATEGORY_CODES",
+    "MAX_BATCH_SKUS",
     "SkuCheck",
     "brand_prefix",
     "category_code",
     "check_sku",
+    "check_skus",
     "format_sku",
     "suggest_sku",
 ]
@@ -62,6 +67,8 @@ NO_BRAND: Final = "SKU"
 PREFIX_CHARS: Final = 4
 CODE_CHARS: Final = 3
 DIGITS: Final = 4
+# the batch check: a bulk upload's 10,000 rows take 10 calls, inside the tenant limiter
+MAX_BATCH_SKUS: Final = 1000
 # a number whose SKU is taken is skipped; this many in a row means something is wrong
 MAX_SKIPS: Final = 50
 _WORD: Final = re.compile(r"[A-Za-z0-9]+")
@@ -111,11 +118,7 @@ def format_sku(prefix: str, code: str, number: int) -> str:
     return f"{prefix}-{code}-{number:0{DIGITS}d}"
 
 
-async def check_sku(principal: Principal, sku: str) -> SkuCheck:
-    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        holder = await uow.products.holder_of_sku(sku)
-    if holder is None:
-        return SkuCheck(sku=sku, available=True)
+def _taken(sku: str, holder: SkuHolder) -> SkuCheck:
     if holder.deleted:  # the unique still holds a deleted product's SKU; there is nothing to open
         return SkuCheck(sku=sku, available=False, deleted=True)
     return SkuCheck(
@@ -125,6 +128,22 @@ async def check_sku(principal: Principal, sku: str) -> SkuCheck:
         title=holder.title,
         is_variant=holder.parent_product_id is not None,
     )
+
+
+async def check_sku(principal: Principal, sku: str) -> SkuCheck:
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        holder = await uow.products.holder_of_sku(sku)
+    return SkuCheck(sku=sku, available=True) if holder is None else _taken(sku, holder)
+
+
+async def check_skus(principal: Principal, skus: Sequence[str]) -> list[SkuCheck]:
+    """The taken SKUs among `skus`, each once, in the order first sent (free ones are left out)."""
+    unique = list(dict.fromkeys(skus))
+    if len(unique) > MAX_BATCH_SKUS:
+        raise ValueError(f"at most {MAX_BATCH_SKUS} SKUs")
+    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+        held = await uow.products.holders_of_skus(unique)
+    return [_taken(sku, held[sku]) for sku in unique if sku in held]
 
 
 async def suggest_sku(

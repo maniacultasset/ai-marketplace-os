@@ -322,6 +322,29 @@ class ProductRepository(TenantScopedRepository[Product]):
             deleted=found[3] is not None,
         )
 
+    async def holders_of_skus(self, skus: Sequence[str]) -> dict[str, SkuHolder]:
+        """`holder_of_sku` for many SKUs in one select (client feedback 11 Nov, item 3: the
+        batch check before a variants save or a bulk upload): only the held SKUs are keys."""
+        if not skus:
+            return {}
+        stmt = (
+            self._select()
+            .where(Product.sku.in_(list(skus)))
+            .with_only_columns(
+                Product.sku,
+                Product.id,
+                Product.title,
+                Product.parent_product_id,
+                Product.deleted_at,
+            )
+        )
+        return {
+            row[0]: SkuHolder(
+                id=row[1], title=row[2], parent_product_id=row[3], deleted=row[4] is not None
+            )
+            for row in (await self.db.execute(stmt)).all()
+        }
+
     async def id_of_sku(self, sku: str) -> uuid.UUID | None:
         stmt = self._select().where(Product.sku == sku).with_only_columns(Product.id)
         found: uuid.UUID | None = (await self.db.execute(stmt)).scalar_one_or_none()

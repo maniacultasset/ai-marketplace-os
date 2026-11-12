@@ -128,7 +128,7 @@ from app.api.v1.schemas.signup import (
 )
 from app.api.v1.schemas.size_chart_read import SizeChartReadOut
 from app.api.v1.schemas.size_run import SizeRunOut
-from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuSuggestionOut
+from app.api.v1.schemas.skus import SkuAvailabilityOut, SkuBatchCheckOut, SkuSuggestionOut
 from app.api.v1.schemas.submissions import SubmissionPage
 from app.api.v1.schemas.tasks import TaskOut, TaskPage
 from app.api.v1.schemas.tenant_create import TenantCreated
@@ -956,6 +956,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
               action=A.TENANT_READ),
     Operation("skus_availability", "GET", "/skus/availability", 200, SkuAvailabilityOut,
               "products", "Whether a SKU is free in this brand", "SI14", query=("sku",),
+              action=A.TENANT_READ),
+    Operation("skus_availability_check", "POST", "/skus/availability-check", 200,
+              SkuBatchCheckOut, "products",
+              "Which of many SKUs are already used in this brand", "SI14", has_body=True,
               action=A.TENANT_READ),
     Operation("skus_suggest", "POST", "/skus/suggestion", 200, SkuSuggestionOut, "products",
               "Make a new SKU for this brand", "SI14", has_body=True, idempotency=True,

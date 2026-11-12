@@ -1,4 +1,5 @@
-"""Client feedback 11 Nov (item 3): the live SKU check (`GET /skus/availability`) and "Make one
+"""Client feedback 11 Nov (item 3): the live SKU check (`GET /skus/availability`), the batch
+check before a variants save or a bulk upload (`POST /skus/availability-check`) and "Make one
 for me" (`POST /skus/suggestion`)."""
 
 from __future__ import annotations
@@ -23,6 +24,26 @@ class SkuAvailabilityOut(WireModel):
     title: Annotated[str, Field(max_length=500)] | None = None
     is_variant: bool = False
     deleted: bool = False
+
+
+# a NUL can never be stored (PostgreSQL text), so it is refused here rather than at the query
+CheckedSku = Annotated[str, Field(pattern=r"^[^\]\s\x00]{1,64}$", examples=["ACME-KUR-0007"])]
+
+
+class SkuBatchCheckIn(StrictModel):
+    """The SKUs about to be sent: a variants grid's SKUs or a bulk upload's `seller_sku` cells.
+    Repeats are allowed and checked once."""
+
+    skus: Annotated[list[CheckedSku], Field(min_length=1, max_length=1000)]
+
+
+class SkuBatchCheckOut(WireModel):
+    """The SKUs already used in this brand, each once, in the order first sent (free SKUs are
+    left out). Each says which product holds it, as `GET /skus/availability` does. Repeats
+    within the request are not reported: the caller sees those itself."""
+
+    checked: Annotated[int, Field(ge=0, le=1000)]
+    taken: list[SkuAvailabilityOut]
 
 
 class SkuSuggestionIn(StrictModel):

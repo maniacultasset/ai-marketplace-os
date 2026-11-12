@@ -96,6 +96,7 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "catalog_category_suggest",
         "catalog_category_suggestion_get",
         "skus_availability",
+        "skus_availability_check",
         "skus_suggest",
         "products_category_suggest",  # SI14
         "products_size_run_create",  # V1.1

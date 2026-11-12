@@ -1361,6 +1361,19 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "is_variant": False,
             "deleted": False,
         },
+        "skus_availability_check": {
+            "checked": 6,
+            "taken": [
+                {
+                    "sku": "ACME-KUR-0007-RED-M",
+                    "available": False,
+                    "product_id": PRODUCT_1,
+                    "title": "Cotton kurta set",
+                    "is_variant": True,
+                    "deleted": False,
+                }
+            ],
+        },
         "skus_suggest": {"sku": "ACME-KUR-0008"},
         "catalog_requirements_get": {
             "category": "tshirts",
