@@ -87,7 +87,7 @@ RecoveryCode = Annotated[
     Field(
         min_length=1,
         max_length=64,
-        description="A recovery code; case, spaces and dashes " "are ignored.",
+        description="A recovery code; case, spaces and dashes are ignored.",
     ),
 ]
 ChallengeToken = Annotated[

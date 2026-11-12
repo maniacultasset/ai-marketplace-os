@@ -10,6 +10,7 @@
   size-chart read result stored on the image (`metadata.size_chart_read`, fenced on the clean hash).
 - V1.1 (client feedback item 9): the photo match stored on the image (`metadata.photo_match`,
   fenced on the clean hash and the match key), the seller's keep, and the gate's read.
+- V1.1 (client feedback item 7): `view_holder` and `set_view`, a photo moved to another view.
 
 "Live" is `deleted_at IS NULL`. A replaced image is soft-deleted and its object kept (spec L10193
 "versions are kept"), so `get_by_key` and `registered_keys` count deleted rows too. Nothing here
@@ -28,7 +29,7 @@ from uuid import UUID
 
 from mkos_schemas.enums import ImageSlot, Marketplace
 from mkos_schemas.images import ImageReport
-from sqlalchemy import and_, case, cast, func, literal, select, text, update
+from sqlalchemy import and_, case, cast, func, literal, null, select, text, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
@@ -308,6 +309,76 @@ class ImageRepository(TenantScopedRepository[Image]):
             .returning(Image.id)
         )
         return sorted((await self.db.execute(stmt)).scalars())
+
+    async def view_holder(
+        self,
+        product_id: UUID,
+        colourway_id: UUID | None,
+        slot: ImageSlot,
+        role: str | None,
+        *,
+        other_than: UUID,
+    ) -> Image | None:
+        """V1.1 (feedback 7): the live photo of this product and colourway holding a one-photo
+        view (the `main` slot, or a `secondary` with `role`), other than `other_than`; None when
+        the view is free or holds many photos (lifestyle, size chart, a plain secondary)."""
+        if slot is ImageSlot.MAIN:
+            held = Image.slot == ImageSlot.MAIN.value
+        elif slot is ImageSlot.SECONDARY and role is not None:
+            held = Image.role == role
+        else:
+            return None
+        stmt = self._select().where(
+            Image.product_id == _uuid("product_id", product_id),
+            Image.colourway_id.is_not_distinct_from(colourway_id),
+            held,
+            Image.id != _uuid("other_than", other_than),
+            Image.deleted_at.is_(None),
+        )
+        return (await self.db.execute(stmt)).scalar_one_or_none()
+
+    async def set_view(
+        self,
+        image_id: UUID,
+        *,
+        slot: ImageSlot,
+        role: str | None,
+        position: int,
+        recheck: bool = False,
+        drop_match: bool = False,
+    ) -> bool:
+        """V1.1 (feedback 7): a live photo moves to another view (slot, role, position).
+        `recheck`: its slot changed, so its stored checks no longer apply (another slot has
+        other rules): the report is cleared and the status is `pending` until the new job writes
+        one. `drop_match`: the new slot is never matched, so its photo match is dropped (an
+        unkept mismatch would block approval for a photo the match no longer judges). False when
+        the row is not live."""
+        self._own_session()
+        values: dict[Any, Any] = {
+            "slot": ImageSlot(slot).value,
+            "role": role,
+            "position": position,
+        }
+        if recheck:
+            values["compliance_status"] = "pending"
+            values["image_report_json"] = null()  # SQL NULL, never a JSON null
+        if drop_match:
+            values[Image.metadata_] = Image.metadata_.op("-")("photo_match")
+        stmt = self._scoped_write(
+            update(Image)
+            .where(
+                Image.id == _uuid("image_id", image_id),
+                Image.deleted_at.is_(None),
+                self._tenant_criterion(include_platform=False),
+            )
+            .values(values)
+            .returning(Image.id)
+        )
+        try:
+            written = (await self.db.execute(stmt)).scalar_one_or_none()
+        except IntegrityError as exc:  # unreachable under the product lock (CP-D5)
+            raise to_conflict(exc) from exc
+        return written is not None
 
     async def soft_delete(self, image_id: UUID) -> bool:
         """Mark a live row deleted (its object stays); False when it is not live."""

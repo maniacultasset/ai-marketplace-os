@@ -88,6 +88,7 @@ from app.api.v1.schemas.image_candidates import (
 from app.api.v1.schemas.images import (
     ImageAccepted,
     ImageReportOut,
+    ImageViewOut,
     PhotoMatchKeptOut,
     UploadUrlOut,
 )
@@ -820,6 +821,10 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("images_delete", "DELETE", "/images/{image_id}", 204, None, "images",
               "Delete an image (and its prepared and public copies)", "SI1",
               path_id="image_id", action=A.PRODUCT_IMPORT),
+    # V1.1 (client feedback item 7): move a saved photo to another view, no new upload
+    Operation("images_update", "PATCH", "/images/{image_id}", 200, ImageViewOut, "images",
+              "Move a photo to another view (a taken Front, Back or Close-up swaps)", "SI12",
+              path_id="image_id", has_body=True, action=A.PRODUCT_IMPORT),
     # ---- image candidates (SI7) ----
     Operation("image_candidates_create", "POST", "/products/{product_id}/image-candidates", 202,
               ImageCandidateAccepted, "images",
