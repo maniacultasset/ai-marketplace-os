@@ -513,6 +513,15 @@ class ProductImageOut(WireModel):
     origin: Literal["seller", "generated", "rendered"] = "seller"
     parent_image_id: UUID | None = None
     fixes: list[Literal["fix", "white_background"]] = Field(default_factory=list)
+    fix_unavailable: Literal["ai_off", "not_fixable"] | None = Field(
+        default=None,
+        description=(
+            "Why a main photo whose checks failed offers no fix: `ai_off` (the white background "
+            "needs the AI edit, switched off on this server), `not_fixable` (a failed check no "
+            "candidate can fix: re-export or upload the photo again). Null when `fixes` is not "
+            "empty, nothing failed or the photo is not the main one."
+        ),
+    )
     role: ImageRole | None = Field(default=None, description="SI12: Back or Close-up.")
     view_url: str | None = Field(
         default=None,

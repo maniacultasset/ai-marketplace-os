@@ -83,6 +83,8 @@ class ImageDetail:
     origin: str = "seller"
     parent_image_id: UUID | None = None
     fixes: tuple[str, ...] = ()
+    # B2: why a failed main photo offers no fix (`image_fixes.fix_unavailable_for`)
+    fix_unavailable: str | None = None
     report: Mapping[str, Any] | None = None
     border: Mapping[str, Any] | None = None
     # SI12: the photo role, and what the size-chart suggestion needs (the read stored on the

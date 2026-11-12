@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.image_fixes import fixes_for
+from app.services.image_fixes import fix_unavailable_for, fixes_for
 
 NEAR_WHITE = {"uniform": True, "near_white": True, "colour": [245, 245, 245]}
 GREY = {"uniform": True, "near_white": False, "colour": [200, 200, 200]}
@@ -58,3 +58,37 @@ def test_pre_si7_row_without_a_border_profile() -> None:
 def test_flipkart_failures_count_too() -> None:
     reports = {"amazon": _report(), "flipkart": _report("aspect_ratio")}
     assert fixes_for("main", reports, GREY, edit_enabled=True) == ["fix"]
+
+
+def _with_qa(reports: dict[str, Any], *qa_failed: str) -> dict[str, Any]:
+    """The SI14 photo QA checks (warnings only) as the prod report stores them: deterministic."""
+    for report in reports.values():
+        report["checks"].extend(
+            {"check": n, "method": "deterministic", "passed": n not in qa_failed}
+            for n in ("fill_ratio", "text_overlay", "watermark")
+        )
+    return reports
+
+
+def test_photo_qa_warnings_do_not_hide_the_white_background() -> None:
+    # B2 (chrome pass 1): a grey-background Front with "Text on image" and "Low fill" warnings
+    reports = _with_qa(_reports("background"), "fill_ratio", "text_overlay")
+    assert fixes_for("main", reports, GREY, edit_enabled=True) == ["white_background"]
+    assert fixes_for("main", reports, NEAR_WHITE, edit_enabled=True) == ["fix"]
+    qa_only = _with_qa(_reports(), "fill_ratio", "watermark")
+    assert fixes_for("main", qa_only, GREY, edit_enabled=True) == []
+    framing = _with_qa(_reports("aspect_ratio"), "fill_ratio")
+    assert fixes_for("main", framing, GREY, edit_enabled=True) == ["fix"]
+
+
+def test_why_no_fix_is_named() -> None:
+    grey = _reports("background")
+    assert fix_unavailable_for("main", grey, GREY, edit_enabled=False) == "ai_off"
+    assert fix_unavailable_for("main", grey, GREY, edit_enabled=True) is None
+    broken = _reports("format", "background")
+    assert fix_unavailable_for("main", broken, GREY, edit_enabled=True) == "not_fixable"
+    assert fix_unavailable_for("main", _reports(), GREY, edit_enabled=False) is None
+    assert fix_unavailable_for("secondary", grey, GREY, edit_enabled=False) is None
+    assert fix_unavailable_for("main", None, None, edit_enabled=False) is None
+    qa = _with_qa(_reports("background"), "text_overlay")
+    assert fix_unavailable_for("main", qa, GREY, edit_enabled=True) is None
