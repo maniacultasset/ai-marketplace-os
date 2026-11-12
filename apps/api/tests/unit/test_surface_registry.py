@@ -517,7 +517,7 @@ def test_operation_count() -> None:
     # FB18 (client feedback item 18) adds the cross-brand overview
     # item 16 adds the listing field requirements read
     # client item 20 adds the seller's apply of Kuinn's suggested fixes
-    assert len(OPS) == 125
+    assert len(OPS) == 129
 
 
 def test_error_codes_per_d2() -> None:
