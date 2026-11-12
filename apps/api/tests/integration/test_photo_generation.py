@@ -163,6 +163,41 @@ async def test_photo_run_listing_is_approvable(
     assert (await approve(pw, accepted.listing_id)).http_status == 200
 
 
+async def test_a_photo_colour_reaches_the_version_and_its_recheck(
+    photo_world: PhotoWorld,
+) -> None:
+    """Client Chrome pass B14 (listing 372afc4b): with no seller colour and no confident AI
+    colour, the photo read writes colour in the persist; the version and its re-check carry it,
+    so no "colour missing" finding, issue or question sits beside a preview that sends it."""
+    pw = photo_world
+    pw.conn.execute(
+        "UPDATE products SET attributes = attributes - 'color' WHERE id = %s", [pw.product_id]
+    )
+    accepted = await generate(pw, "photo_ok")
+    colour = pw.attributes()["color"]
+    assert colour["source"] == "ai"
+    row = pw.world.listing(accepted.listing_id)
+    content = pw.world.scalar(
+        "SELECT content_json FROM listing_versions WHERE id = %s", [row["current_version_id"]]
+    )
+    assert content["attributes"]["color"] == colour["value"]
+    runs = pw.conn.execute(
+        "SELECT error_report_json FROM validation_runs WHERE listing_id = %s "
+        "AND listing_version_id IS NOT NULL",
+        [accepted.listing_id],
+    ).fetchall()
+    assert runs
+    fields = {e["field"] for (report,) in runs for e in report["errors"]}
+    assert "attributes.color" not in fields
+    issues = pw.conn.execute(
+        "SELECT count(*) FROM listing_issues WHERE listing_id = %s AND field_path = %s "
+        "AND status = 'open'",
+        [accepted.listing_id, "attributes.color"],
+    ).fetchone()
+    assert issues is not None and issues[0] == 0
+    assert all(t["target_path"] != "facts.attributes.color" for t in pw.tasks())
+
+
 # ---- AC6: hostile observations write nothing ----
 
 
