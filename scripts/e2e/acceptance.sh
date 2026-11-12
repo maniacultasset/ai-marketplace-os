@@ -11,6 +11,9 @@
 #   import_csv             FSH-TEE-001 tshirts style row + "Jet Black" S/M/L/XL (5 rows imported)
 #   brand_document_md      a .md brand guide -> its job succeeded, document ready
 #   images_upload          a front (main) image per child -> each report passed
+#   style_photo_views      the style's size chart (a row per child size) under If-Match and its
+#                          front, back and close-up photos, so the photo view checklist
+#                          (PHOTO_VIEWS_ENABLED, on here as in production) is met at approval
 #   generate_stub          the owner generates (stub pipeline) -> succeeded; its version kept
 #   validate_passed        POST /listings/validate -> the Rules Engine passes it
 #   owner_self_approve_item_403         200 BatchResult, item 403 MAKER_CHECKER_VIOLATION
@@ -42,6 +45,7 @@
 # failure it names the leg and the HTTP status seen, never a body.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: FAKE_URL=<fake> MKOS_CLI=<cmd prefix> [STACK_LOGS=<dir>] $0 base_url" >&2
@@ -416,6 +420,28 @@ while read -r sku product; do
   expect 200
   json 'b["compliance_status"] == "passed"' >/dev/null || fail "the $sku front image did not pass"
 done <"$work/children"
+
+leg style_photo_views
+# the listing is the style's: approval judges the style's own photos and its saved size chart,
+# which needs a row for every child size
+status="$(curl -s -o "$body" -D "$work/headers" -w '%{http_code}' --max-time "$bound" \
+  -H 'Accept: application/json' -H "Authorization: Bearer $operator" "$api/products/$style_id")" || status="000"
+expect 200
+etag="$(tr -d '\r' <"$work/headers" | sed -n 's/^[Ee][Tt][Aa][Gg]: //p' | head -n 1)"
+[ -n "$etag" ] || fail "no product ETag"
+# shellcheck disable=SC2086 # the sizes are one word each
+chart="$(photo_views_chart $sizes)"
+status="$(curl -s -o "$body" -w '%{http_code}' --max-time "$bound" -X PATCH \
+  -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $operator" -H "If-Match: $etag" \
+  --data-binary "{\"size_chart\": $chart}" "$api/products/$style_id")" || status="000"
+expect 200
+photo_views_upload "$api" "$operator" "$style_id" "acc-img-$run-style" "$work" \
+  || fail "the style's photo checklist is not met"
+call GET "$api/products/$style_id" "$operator"
+expect 200
+json 'b["size_chart_check"] is None or (b["size_chart_check"]["saved"] and b["size_chart_check"]["missing_sizes"] == [])' >/dev/null \
+  || fail "the style's size chart lacks a child size"
 
 leg generate_stub
 call POST "$api/listings/generate" "$owner" "acc-gen-$run" "{\"product_id\": \"$style_id\", \"marketplace\": \"amazon\"}"

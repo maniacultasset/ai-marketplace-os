@@ -8,7 +8,9 @@
 # reviewer approves the same listing, the fake refuses two of its attributes with a retryable
 # code (the fake error map), the publish is partial, retry-fields resends exactly those two
 # attributes, a refresh-status syncs the listing to live, a replay of the publish key answers the
-# same body, and the account is revoked.
+# same body, and the account is revoked. The product carries a saved size chart and a front, back
+# and close-up photo before it generates, so the photo view checklist (`PHOTO_VIEWS_ENABLED`) is
+# met at the approve.
 #
 # Usage: FAKE_URL=<fake> FLAG_OFF_URL=<flag-off API> WORKER_START=<cmd> WORKER_STOP=<cmd> \
 #        ERRORS_LOAD=<cmd> scripts/e2e/flipkart_publish.sh [base_url]
@@ -19,6 +21,7 @@
 # Post-condition: no live acme Flipkart account is left (the last step revokes it).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
+. scripts/e2e/lib/photo_views.sh
 
 usage() {
   echo "usage: FAKE_URL=<fake> FLAG_OFF_URL=<flag-off API> WORKER_START=<cmd> WORKER_STOP=<cmd> ERRORS_LOAD=<cmd> $0 [base_url] (make e2e sets them)" >&2
@@ -193,9 +196,12 @@ bash -c "$WORKER_START" || fail "the WORKER_START hook failed"
 worker_running=1
 
 step create_product
-call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}}"
+call POST "$api/products" "$owner" "" "{\"sku\": \"$sku\", \"title\": \"E2E Flipkart Kurta Set\", \"category\": \"$category\", \"mrp\": \"1499.00\", \"attributes\": {\"color\": \"blue\", \"fabric_type\": \"cotton\"}, \"size_chart\": $PHOTO_VIEWS_CHART}"
 expect 201
 product="$(json 'b["id"]')"
+
+step photo_views_ready
+photo_views_upload "$api" "$owner" "$product" "e2e-fk-img-$run" "$work" || fail "the photo checklist is not met"
 
 step off_generate_flipkart_202
 call POST "$off_api/listings/generate" "$owner" "e2e-fk-gen-$run" "{\"product_id\": \"$product\", \"marketplace\": \"flipkart\"}"

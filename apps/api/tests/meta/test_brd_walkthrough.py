@@ -21,6 +21,7 @@ PART1 = (
     "import_csv",
     "brand_document_md",
     "images_upload",
+    "style_photo_views",
 )
 PART2 = (
     "generate_stub",
@@ -81,6 +82,9 @@ def test_brd_walkthrough(repo_root: Path) -> None:
     )
     assert order("generate_flipkart_stub") < order("flipkart_publish_refused")
     assert order("images_upload") < order("generate_stub")  # the S17b image gate at approve
+    # feedback 7 and 8: the style's own photos and its saved size chart, before it generates
+    assert order("style_photo_views") < order("generate_stub")
+    assert "photo_views_upload" in _leg_bodies(text)["style_photo_views"]
     bodies = _leg_bodies(text)
     for leg in ("owner_self_approve_item_403", "operator_approve_permission_denied"):
         assert '"items\\": [$decision]}' in bodies[leg] or "[$decision]" in bodies[leg], leg
