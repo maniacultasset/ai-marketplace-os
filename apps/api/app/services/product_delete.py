@@ -307,4 +307,17 @@ async def bulk_delete(
     ]
 
 
-__all__ = ["Deleted", "ItemResult", "bulk_delete", "delete_one", "delete_product"]
+check_unseen = _check
+"""The delete's refusals, shared with archive (`app.services.product_archive`)."""
+cancel_product_jobs = _cancel_jobs
+"""The delete's job cancel (and its running-job refusals), shared with archive."""
+
+__all__ = [
+    "Deleted",
+    "ItemResult",
+    "bulk_delete",
+    "cancel_product_jobs",
+    "check_unseen",
+    "delete_one",
+    "delete_product",
+]
