@@ -20,6 +20,7 @@ from app.api.v1.schemas.ai_credit import AiCreditOut
 from app.api.v1.schemas.analytics import QualitySummary
 from app.api.v1.schemas.signup import (
     SignupApprove,
+    SignupAsk,
     SignupReject,
     SignupRequestOut,
     SignupRequestPage,
@@ -56,6 +57,10 @@ def _out(row: signup.SignupRow) -> SignupRequestOut:
             "created_at": row.created_at,
             "decided_at": row.decided_at,
             "verified_via": row.verified_via,
+            "question": row.info_question,
+            "asked_at": row.info_asked_at,
+            "reply": row.info_reply,
+            "replied_at": row.info_replied_at,
         }
     )
 
@@ -114,6 +119,24 @@ async def admin_signup_requests_reject(
     unknown id is 404."""
     try:
         row = await signup.reject(principal, request_id, reason=body.reason)
+    except (NotFoundError, ConflictError) as exc:
+        if isinstance(exc, ConflictError) and exc.code is not ErrorCode.INVALID_STATUS_TRANSITION:
+            raise
+        raise _decision_error(exc) from None
+    return _out(row)
+
+
+@route(router, OPS["admin_signup_requests_ask"])
+async def admin_signup_requests_ask(
+    request_id: UUID, body: SignupAsk, principal: CurrentPrincipal
+) -> SignupRequestOut:
+    """Ask the applicant one question instead of deciding (client item 2). The request stays
+    `pending`; the applicant reads the question on the waiting page (the status poll) and sends
+    one reply, shown here as `reply`. Asking the same question again answers it again; a
+    different second question, or any question on a decided request, is 409
+    `INVALID_STATUS_TRANSITION`; an unknown id is 404. Approve and reject stay open throughout."""
+    try:
+        row = await signup.ask(principal, request_id, question=body.question)
     except (NotFoundError, ConflictError) as exc:
         if isinstance(exc, ConflictError) and exc.code is not ErrorCode.INVALID_STATUS_TRANSITION:
             raise

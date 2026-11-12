@@ -133,10 +133,12 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("signup_create", "POST", "/signup"),
     ("signup_status", "POST", "/signup/status"),
     ("signup_status_poll", "POST", "/signup/status/poll"),  # ADR-0019 amendment (+ 1)
+    ("signup_status_reply", "POST", "/signup/status/reply"),  # client item 2 (+ 1)
     ("signup_google", "POST", "/signup/google"),
     ("admin_signup_requests_list", "GET", "/admin/signup-requests"),
     ("admin_signup_requests_approve", "POST", "/admin/signup-requests/{request_id}/approve"),
     ("admin_signup_requests_reject", "POST", "/admin/signup-requests/{request_id}/reject"),
+    ("admin_signup_requests_ask", "POST", "/admin/signup-requests/{request_id}/ask"),  # (+ 1)
     # SI5: trial recovery (+ 3)
     ("admin_tenants_list", "GET", "/admin/tenants"),
     ("admin_tenants_activate", "POST", "/admin/tenants/{target_tenant_id}/activate"),
@@ -354,6 +356,7 @@ def test_public_ops() -> None:
         "signup_create",
         "signup_status",
         "signup_status_poll",  # ADR-0019 amendment: the status handle is checked in the service
+        "signup_status_reply",  # client item 2: the same handle, checked in the database
         # DPP-1: the challenge steps (the challenge is checked in the service)
         "auth_login_mfa",
         "auth_login_mfa_enroll",
@@ -395,7 +398,11 @@ STEP_UP = {
 }
 # ADR-0023: the step-up guards exactly the user's high-risk list; the admin's sign-up decisions
 # dropped it (still platform-admin only) and the window is 30 minutes
-NO_STEP_UP = {"admin_signup_requests_approve", "admin_signup_requests_reject"}
+NO_STEP_UP = {
+    "admin_signup_requests_approve",
+    "admin_signup_requests_reject",
+    "admin_signup_requests_ask",  # client item 2: like reject, it creates nothing
+}
 # ADR-0031: the step-up for one field only (`owner_self_approval`), checked in the route, so the op
 # carries no `step_up` and declares the two codes through `extra_codes`
 FIELD_STEP_UP = {"tenants_me_update"}
@@ -497,7 +504,8 @@ def test_operation_count() -> None:
     # V1.1 adds the photo match keep
     # ADR-0032 adds the brand create
     # item 17 adds the listing versions read
-    assert len(OPS) == 122
+    # client item 2 adds the admin's one question and the applicant's one reply
+    assert len(OPS) == 124
 
 
 def test_error_codes_per_d2() -> None:
@@ -558,6 +566,9 @@ def test_error_codes_per_d2() -> None:
         # ADR-0019: approving a rejected request, or rejecting an approved one
         "admin_signup_requests_approve": (E.INVALID_STATUS_TRANSITION,),
         "admin_signup_requests_reject": (E.INVALID_STATUS_TRANSITION,),
+        # client item 2: a second, different question or reply, or either once decided
+        "admin_signup_requests_ask": (E.INVALID_STATUS_TRANSITION,),
+        "signup_status_reply": (E.INVALID_STATUS_TRANSITION,),
         # SI5: an accepted invite, an existing account or membership, an offboarded tenant
         "invites_revoke": (E.INVALID_STATUS_TRANSITION,),
         "invites_accept": (E.INVALID_STATUS_TRANSITION,),
@@ -612,6 +623,7 @@ def test_error_codes_per_d2() -> None:
         platform_404 = op.op_id in {
             "admin_signup_requests_approve",
             "admin_signup_requests_reject",
+            "admin_signup_requests_ask",
             "auth_devices_remove",
             # SI5: a platform admin's unknown tenant, and the copied links' one generic refusal
             "admin_tenants_activate",
@@ -622,6 +634,7 @@ def test_error_codes_per_d2() -> None:
             "auth_password_reset",
             # ADR-0019 amendment: an unknown, replaced or expired status handle
             "signup_status_poll",
+            "signup_status_reply",
         }
         if "not_found" in c or platform_404:
             assert codes[404] == (E.NOT_FOUND,), op.op_id

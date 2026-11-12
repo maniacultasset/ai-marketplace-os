@@ -63,6 +63,17 @@ NewPassword = Annotated[SecretStr, Field(min_length=PASSWORD_MIN, max_length=PAS
 Phone = Annotated[str, Field(max_length=32, pattern=PHONE_PATTERN)]
 Website = Annotated[str, Field(max_length=2048, pattern=WEBSITE_PATTERN), AfterValidator(_no_nul)]
 Reason = Annotated[NonBlankStr, Field(max_length=REASON_MAX), AfterValidator(_no_nul)]
+# client item 2 (ADR-0019 amendment): `ck_signup_requests_info` caps both at REASON_MAX
+Question = Annotated[
+    NonBlankStr,
+    Field(max_length=REASON_MAX, description="One question the applicant reads and answers once."),
+    AfterValidator(_no_nul),
+]
+Reply = Annotated[
+    NonBlankStr,
+    Field(max_length=REASON_MAX, description="Plain text, up to 1000 characters; sent once."),
+    AfterValidator(_no_nul),
+]
 
 
 class SignupCreate(StrictModel):
@@ -118,6 +129,25 @@ class SignupPollOut(WireModel):
     requested_at: datetime
     decided_at: datetime | None = None
     reason: str | None = Field(default=None, description="The admin's reason, when `rejected`.")
+    question: str | None = Field(
+        default=None,
+        description="Client item 2: the one question a platform admin asked, while the request "
+        "is `pending` (the status does not change). Answer it once with "
+        "`POST /signup/status/reply`. Null when none was asked or once decided.",
+    )
+    asked_at: datetime | None = Field(default=None, description="When `question` was asked.")
+    reply: str | None = Field(
+        default=None,
+        description="The applicant's own reply to `question`, once sent (null once decided).",
+    )
+    replied_at: datetime | None = Field(default=None, description="When `reply` was sent.")
+
+
+class SignupReplyRequest(StrictModel):
+    """Client item 2: the applicant's one reply, authorised by the status handle alone."""
+
+    status_handle: StatusHandle
+    reply: Reply
 
 
 class SignupRequestOut(WireModel):
@@ -140,6 +170,17 @@ class SignupRequestOut(WireModel):
         description="`google` when Google verified the applicant's email (ADR-0020): show a "
         '"Verified by Google" badge. Null for a password sign-up.',
     )
+    question: str | None = Field(
+        default=None,
+        description="Client item 2: the one question asked with `.../ask` (the request stays "
+        "`pending`). With no `reply` yet, the request waits for the applicant.",
+    )
+    asked_at: datetime | None = None
+    reply: str | None = Field(
+        default=None,
+        description="The applicant's one reply to `question`: the request is back with the admin.",
+    )
+    replied_at: datetime | None = None
 
 
 class SignupRequestPage(Page[SignupRequestOut]):
@@ -154,3 +195,7 @@ class SignupApprove(StrictModel):
 
 class SignupReject(StrictModel):
     reason: Reason
+
+
+class SignupAsk(StrictModel):
+    question: Question

@@ -197,11 +197,12 @@ def test_decision_outcome(status: str, decision: Any, outcome: str) -> None:
 
 # ---- the registry ----
 
-SIGNUP_OPS = ("signup_create", "signup_status", "signup_status_poll")
+SIGNUP_OPS = ("signup_create", "signup_status", "signup_status_poll", "signup_status_reply")
 ADMIN_OPS = (
     "admin_signup_requests_list",
     "admin_signup_requests_approve",
     "admin_signup_requests_reject",
+    "admin_signup_requests_ask",
 )
 
 
@@ -209,7 +210,9 @@ ADMIN_OPS = (
 def test_signup_ops_public(op_id: str) -> None:
     op = OPS[op_id]
     assert op.public and op.action is None and op.policy == "public"
-    assert cases(op) == {"success", "validation"}
+    # client item 2: only the one reply can cross a state (409 for a second, different one)
+    extra = {"conflict"} if op_id == "signup_status_reply" else set()
+    assert cases(op) == {"success", "validation", *extra}
 
 
 def test_signup_status_declares_401() -> None:
@@ -455,9 +458,34 @@ def _install(monkeypatch: pytest.MonkeyPatch, world: World) -> None:
                 if stored == digest:
                     r = world.requests[request_id]
                     return SignupPollRow(
-                        r.status, r.brand_name, r.created_at, r.decided_at, r.reason
-                    )
+                        r.status, r.brand_name, r.created_at, r.decided_at, r.reason,
+                        r.info_question, r.info_asked_at, r.info_reply, r.info_replied_at,
+                    )  # fmt: skip
             return None
+
+        async def handle_user_id(self, digest: bytes) -> uuid.UUID | None:
+            for request_id, stored in world.handles.items():
+                if stored == digest:
+                    return world.requests[request_id].user_id
+            return None
+
+        async def ask(self, request_id: uuid.UUID, *, question: str) -> None:
+            row = world.requests[request_id]
+            assert row.status == "pending" and row.info_question is None
+            world.requests[request_id] = replace(row, info_question=question, info_asked_at=NOW)
+
+        async def reply_info(self, digest: bytes, text: str) -> str:
+            # the 0033 definer's rule, over the fake rows
+            request_id = next((k for k, v in world.handles.items() if v == digest), None)
+            if request_id is None:
+                return "not_found"
+            row = world.requests[request_id]
+            if row.status != "pending" or row.info_question is None:
+                return "conflict"
+            if row.info_reply is not None:
+                return "same" if row.info_reply == text else "conflict"
+            world.requests[request_id] = replace(row, info_reply=text, info_replied_at=NOW)
+            return "replied"
 
         async def create_tenant(self, **kw: Any) -> None:
             if kw["slug"] in world.taken:
@@ -831,8 +859,9 @@ def test_0021_is_the_single_head() -> None:
     # V1.1 assist tables (SI14) on top of them, the photo read on upload (V1.1) on top, and the
     # sign-up status handle (0031) and the owner self-approval setting (ADR-0031) on top of that,
     # then the wave B/C train: the brand voice (0033), the SKU counters (0034), the variant photo
-    # match (0035) and the section locks (0036)
-    assert revisions - parents == {"0036_section_locks"}
+    # match (0035) and the section locks (0036), then the wave A2 train: the sign-up's one
+    # question and reply (0037, client item 2)
+    assert revisions - parents == {"0037_signup_info_request"}
 
 
 @pytest.mark.parametrize(
@@ -915,6 +944,7 @@ def test_poll_out_names_only_the_allowed_fields() -> None:
 
     assert set(SignupPollOut.model_fields) == {
         "status", "brand_name", "requested_at", "decided_at", "reason",
+        "question", "asked_at", "reply", "replied_at",  # client item 2
     }  # fmt: skip
 
 
@@ -998,7 +1028,10 @@ def test_poll_route_limits_then_answers_only_allowed_fields(
     response = client.post("/api/v1/signup/status/poll", json={"status_handle": "h" * 43})
     assert response.status_code == 200, response.text
     body = response.json()
-    assert set(body) == {"status", "brand_name", "requested_at", "decided_at", "reason"}
+    assert set(body) == {
+        "status", "brand_name", "requested_at", "decided_at", "reason",
+        "question", "asked_at", "reply", "replied_at",
+    }  # fmt: skip
     assert body["status"] == "approved" and body["reason"] is None  # a reason only when rejected
     assert limited == ["h" * 43]
 
@@ -1033,3 +1066,213 @@ def test_redaction_hides_the_handle() -> None:
 
     out = redact({"status_handle": "s" * 43, "path": "/x?status_handle=" + "s" * 43})
     assert "s" * 43 not in str(out)
+
+
+# ---- one question and one reply (client item 2, ADR-0019 amendment) ----
+
+QUESTION = "Which marketplaces do you sell on today?"
+
+
+@pytest.mark.parametrize(
+    ("status", "current", "outcome"),
+    [
+        ("pending", None, "apply"),
+        ("pending", QUESTION, "same"),
+        ("pending", "Another question?", "conflict"),
+        ("approved", None, "conflict"),
+        ("rejected", None, "conflict"),
+        ("rejected", QUESTION, "conflict"),
+    ],
+)
+def test_ask_outcome(status: str, current: str | None, outcome: str) -> None:
+    assert svc.ask_outcome(status, current, QUESTION) == outcome
+
+
+def test_ask_and_reply_bodies_are_strict_and_capped() -> None:
+    from app.api.v1.schemas.signup import SignupAsk, SignupReplyRequest
+
+    assert SignupAsk.model_validate({"question": QUESTION}).question == QUESTION
+    for bad in ({}, {"question": ""}, {"question": "   "}, {"question": "x" * 1001},
+                {"question": "a\x00b"}, {"question": QUESTION, "status": "approved"}):  # fmt: skip
+        with pytest.raises(ValidationError):
+            SignupAsk.model_validate(bad)
+    ok = SignupReplyRequest.model_validate({"status_handle": "a" * 43, "reply": "x" * 1000})
+    assert len(ok.reply) == 1000
+    for bad in (
+        {"status_handle": "a" * 43},
+        {"status_handle": "a" * 43, "reply": ""},
+        {"status_handle": "a" * 43, "reply": "x" * 1001},
+        {"status_handle": "a" * 42, "reply": "fine"},
+        {"status_handle": "a" * 43, "reply": "fine", "email": "a@b.test"},
+    ):
+        with pytest.raises(ValidationError):
+            SignupReplyRequest.model_validate(bad)
+
+
+async def test_ask_stores_one_question_and_audits(monkeypatch: pytest.MonkeyPatch) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    row = _row()
+    world.requests[row.id] = row
+    admin = _admin()
+    out = await svc.ask(admin, row.id, question=QUESTION)
+    assert out.status == "pending" and out.info_question == QUESTION and out.decided_at is None
+    [audit] = world.audits
+    assert audit["action"] == "signup.info_requested" and audit["actor_type"] == "staff"
+    assert audit["entity_id"] == row.user_id and audit["reason"] == QUESTION
+    assert audit["tenant_id"] is None and audit["actor_email"] == admin.email
+    # the same question again answers the stored row; a different one is a conflict
+    assert await svc.ask(admin, row.id, question=QUESTION) == out
+    with pytest.raises(ConflictError) as info:
+        await svc.ask(admin, row.id, question="Something else?")
+    assert info.value.code is ErrorCode.INVALID_STATUS_TRANSITION
+    assert len(world.audits) == 1
+
+
+async def test_ask_a_decided_request_conflict(monkeypatch: pytest.MonkeyPatch) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    row = _row(status="rejected", reason="no", decided_at=NOW)
+    world.requests[row.id] = row
+    with pytest.raises(ConflictError):
+        await svc.ask(_admin(), row.id, question=QUESTION)
+    with pytest.raises(NotFoundError):
+        await svc.ask(_admin(), uuid.uuid4(), question=QUESTION)
+    assert not world.audits
+
+
+async def test_the_question_does_not_block_a_decision(monkeypatch: pytest.MonkeyPatch) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    row = _row()
+    world.requests[row.id] = row
+    await svc.ask(_admin(), row.id, question=QUESTION)
+    out = await svc.reject(_admin(), row.id, reason="Could not verify the brand.")
+    assert out.status == "rejected"
+
+
+async def _asked_with_handle(world: World) -> tuple[SignupRow, str]:
+    row = _row(info_question=QUESTION, info_asked_at=NOW)
+    world.requests[row.id] = row
+    handle = svc.new_status_handle()
+    world.handles[row.id] = svc.status_handle_hash(handle)
+    return row, handle
+
+
+async def test_reply_stores_once_and_audits_without_the_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    row, handle = await _asked_with_handle(world)
+    text = "Amazon India as Kalakar Weaves."
+    out = await svc.reply(handle, text, ip="203.0.113.7")
+    assert out is not None and out.status == "pending" and out.info_reply == text
+    assert world.requests[row.id].info_reply == text
+    [audit] = world.audits
+    assert audit["action"] == "signup.info_replied" and audit["actor_type"] == "system"
+    assert audit["entity_id"] == row.user_id and audit["tenant_id"] is None
+    assert text not in str(audit)
+    # the same reply again answers it; a different one is a conflict and writes nothing
+    again = await svc.reply(handle, text)
+    assert again is not None and again.info_reply == text
+    with pytest.raises(ConflictError):
+        await svc.reply(handle, "Something else.")
+    assert len(world.audits) == 1 and world.requests[row.id].info_reply == text
+
+
+async def test_reply_needs_an_open_question_and_a_live_handle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    world = World()
+    _install(monkeypatch, world)
+    assert await svc.reply(svc.new_status_handle(), "hello") is None
+    row = _row()
+    world.requests[row.id] = row
+    handle = svc.new_status_handle()
+    world.handles[row.id] = svc.status_handle_hash(handle)
+    with pytest.raises(ConflictError):
+        await svc.reply(handle, "No question was asked.")
+    world.requests[row.id] = replace(
+        row, status="approved", decided_at=NOW, info_question=QUESTION, info_asked_at=NOW
+    )
+    with pytest.raises(ConflictError):
+        await svc.reply(handle, "Too late.")
+    assert not world.audits
+
+
+def _reply_app(monkeypatch: pytest.MonkeyPatch, outcome: Any) -> tuple[TestClient, list[str]]:
+    from app.api.v1.routers import signup as router_module
+
+    limited: list[str] = []
+
+    async def fake_limit(_: Any, handle: str) -> None:
+        limited.append(handle)
+
+    async def fake_reply(_: str, __: str, *, ip: str | None = None) -> Any:
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    async def no_hit(_: str, __: int) -> int:
+        return 0
+
+    monkeypatch.setattr("app.services.rate_limit.hit", no_hit)
+    monkeypatch.setattr(router_module, "enforce_signup_reply_limit", fake_limit)
+    monkeypatch.setattr(svc, "reply", fake_reply)
+    app = FastAPI()
+    install_error_handlers(app)
+    app.include_router(router_module.router, prefix="/api/v1")
+    return TestClient(app, raise_server_exceptions=False), limited
+
+
+def test_reply_route_answers_the_poll_shape(monkeypatch: pytest.MonkeyPatch) -> None:
+    found = SignupPollRow(
+        "pending", "Kalakar Weaves", NOW, None, None, QUESTION, NOW, "Amazon India.", NOW
+    )
+    client, limited = _reply_app(monkeypatch, found)
+    body = {"status_handle": "h" * 43, "reply": "Amazon India."}
+    response = client.post("/api/v1/signup/status/reply", json=body)
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert out["question"] == QUESTION and out["reply"] == "Amazon India."
+    assert out["status"] == "pending" and limited == ["h" * 43]
+
+
+def test_reply_route_refusals(monkeypatch: pytest.MonkeyPatch) -> None:
+    body = {"status_handle": "h" * 43, "reply": "Amazon India."}
+    client, _ = _reply_app(monkeypatch, None)
+    gone = client.post("/api/v1/signup/status/reply", json=body)
+    assert gone.status_code == 404 and gone.json()["error"]["type"] == "NOT_FOUND"
+    client, _ = _reply_app(monkeypatch, svc._conflict())
+    crossed = client.post("/api/v1/signup/status/reply", json=body)
+    assert crossed.status_code == 409
+    assert crossed.json()["error"]["type"] == "INVALID_STATUS_TRANSITION"
+    assert "h" * 43 not in gone.text + crossed.text
+
+
+def test_poll_route_shows_the_question_only_while_pending(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pending = SignupPollRow("pending", "Kalakar Weaves", NOW, None, None, QUESTION, NOW, None, None)
+    client, _ = _poll_app(monkeypatch, pending)
+    out = client.post("/api/v1/signup/status/poll", json={"status_handle": "h" * 43}).json()
+    assert out["question"] == QUESTION and out["reply"] is None
+    decided = replace(
+        pending, status="approved", decided_at=NOW, info_reply="x", info_replied_at=NOW
+    )
+    client, _ = _poll_app(monkeypatch, decided)
+    out = client.post("/api/v1/signup/status/poll", json={"status_handle": "h" * 43}).json()
+    assert out["question"] is None and out["reply"] is None and out["asked_at"] is None
+
+
+def test_reply_limit_keys_never_hold_the_handle() -> None:
+    from app.api import rate_limit
+
+    handle = "z" * 43
+    for key in (rate_limit.signup_reply_bucket("203.0.113.7", handle),
+                rate_limit.signup_reply_ip_bucket("203.0.113.7")):  # fmt: skip
+        assert handle not in key and "203.0.113.7" not in key
+    assert rate_limit.signup_reply_bucket("203.0.113.7", handle) != rate_limit.signup_poll_bucket(
+        "203.0.113.7", handle
+    )

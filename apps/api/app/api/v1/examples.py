@@ -534,7 +534,14 @@ _SIGNUP_REQUEST: Final = {
     "created_at": T0,
     "decided_at": None,
     "verified_via": None,
+    "question": None,
+    "asked_at": None,
+    "reply": None,
+    "replied_at": None,
 }
+# client item 2: the admin's one question and the applicant's one reply
+_SIGNUP_QUESTION: Final = "Which marketplaces do you sell on today, and under which store name?"
+_SIGNUP_REPLY: Final = "Amazon India as Kalakar Weaves, and our own website."
 _MFA_REQUIRED: Final = {
     "status": "mfa_required",
     "access_token": None,
@@ -1210,6 +1217,21 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "requested_at": T0,
             "decided_at": None,
             "reason": None,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
+            "reply": None,
+            "replied_at": None,
+        },
+        "signup_status_reply": {
+            "status": "pending",
+            "brand_name": "Kalakar Weaves",
+            "requested_at": T0,
+            "decided_at": None,
+            "reason": None,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
+            "reply": _SIGNUP_REPLY,
+            "replied_at": T1,
         },
         "signup_google": _GOOGLE_SIGNUP_STATUS,
         "admin_signup_requests_list": _page([_SIGNUP_REQUEST]),
@@ -1239,6 +1261,11 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "status": "rejected",
             "reason": "We could not verify the brand; write to support with your GSTIN.",
             "decided_at": T1,
+        },
+        "admin_signup_requests_ask": {
+            **_SIGNUP_REQUEST,
+            "question": _SIGNUP_QUESTION,
+            "asked_at": T1,
         },
         "admin_ai_credit_get": _AI_CREDIT,
         "products_category_suggest": {"product_id": PRODUCT_1, "status": "queued", "job_id": JOB},

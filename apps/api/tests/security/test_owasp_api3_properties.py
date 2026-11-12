@@ -40,6 +40,7 @@ PERSONAL_OPS = frozenset(
         "admin_signup_requests_list",
         "admin_signup_requests_approve",
         "admin_signup_requests_reject",
+        "admin_signup_requests_ask",
         # ADR-0020: the person's own Google email, shown back to them (top level and in the
         # sign-up or link payload)
         "auth_google_complete",
