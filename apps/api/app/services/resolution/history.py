@@ -36,6 +36,7 @@ from typing import Any, Final
 from app.adapters.error_map import MARKETPLACE_PREFIX
 from app.core.errors import NotFoundError
 from app.core.rbac import Principal
+from app.core.seller_text import seller_text, without_api_text
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.resolution.plan import ADAPTER_SOURCES, AUTOMATIC, Lane
 from app.services.resolution.read import (
@@ -250,7 +251,14 @@ def issue_rows(
     rows = [i for i in issues if i.severity == "error" and i.source in ADAPTER_SOURCES]
     rows.sort(key=lambda r: (r.last_seen_at, r.id), reverse=True)
     for row in rows[:MAX_ISSUES]:
-        cause, said = split_message(row.message or "")
+        if getattr(row, "marketplace_code", None) is None and MARKETPLACE_PREFIX not in (
+            row.message or ""
+        ):
+            # B13 review: Kuinn's own preflight check (the adapter's `error()`), not the
+            # marketplace's words; older rows named an API path
+            cause, said = without_api_text(row.message or "") or UNMAPPED_CAUSE, None
+        else:
+            cause, said = split_message(row.message or "")
         lane = lanes.get(row.id, (None, None))[0]
         moved = (cause, (row.suggestion or "").strip()) in outside
         out.append(
@@ -265,7 +273,7 @@ def issue_rows(
                 "marketplace_code": _cut(row.marketplace_code, 64),
                 "marketplace_message": _cut(said, 1000),
                 "cause": cause[:1000],
-                "action": _cut(row.suggestion, 1000),
+                "action": _cut(seller_text(row.suggestion), 1000),
                 "value_submitted": _cut(row.value_submitted, VALUE_MAX),
                 "occurrences": max(1, int(row.occurrences or 1)),
                 "first_seen_at": row.first_seen_at,

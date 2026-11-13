@@ -74,6 +74,7 @@ from sqlalchemy.exc import DBAPIError
 from app.core.config import get_settings
 from app.core.flags import marketplace_enabled, publish_enabled
 from app.core.rbac import Action, Principal, allows
+from app.core.seller_text import without_api_text
 from app.repositories.analytics import _budget_error
 from app.repositories.home import (
     NEEDS_YOU_STATUSES,
@@ -278,7 +279,8 @@ def blocked_issue_text(row: ListingRow, issue: IssueRow | None) -> str:
     """What is wrong with a blocked listing, in the seller's words: its newest open blocking
     issue (the seller-facing text first), else why its status says it stopped."""
     if issue is not None:
-        return _clip(issue.plain_message or issue.message, ISSUE_TEXT_MAX)
+        text = without_api_text(issue.plain_message or issue.message)  # B13: older rows
+        return _clip(text or issue.message, ISSUE_TEXT_MAX)
     if row.marketplace_state == "rejected":
         return "The marketplace rejected this listing."
     if row.status_reason in REASON_TEXT:

@@ -39,6 +39,7 @@ from mkos_schemas.codes import ErrorCode
 
 from app.core.errors import NotFoundError
 from app.core.rbac import Principal
+from app.core.seller_text import without_api_text
 from app.repositories.resolution import FIX_JOB_STATUSES, LinkedTask, VersionRow
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.resolution.plan import (
@@ -556,7 +557,7 @@ def attempts(
             failed.append(
                 {
                     "field": _text(row.field_path, 192),
-                    "message": _text(row.plain_message or row.message, 1000),
+                    "message": _text(without_api_text(row.plain_message or row.message), 1000),
                     "lane": lane,
                     "cause": cause,
                     "marketplace_code": (row.marketplace_code or None)

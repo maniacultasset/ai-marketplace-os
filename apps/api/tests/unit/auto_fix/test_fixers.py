@@ -559,3 +559,56 @@ def test_remap_output_is_always_allowed(choice: str, noise: str, upper: bool) ->
         assert raw in allowed or fold_spelling(raw) != fold_spelling(choice)
         return
     assert got[0].attributes["fit"] in allowed
+
+
+def _seller_facts(**attrs: str) -> Any:
+    from uuid import uuid4
+
+    from app.core.resolved_facts import ProductFacts, ResolvedFact
+
+    return ProductFacts(
+        product_id=uuid4(),
+        sku="SKU-1",
+        level="standalone",
+        attributes={
+            k: ResolvedFact(key=k, value=v, normalized=None, source="seller")
+            for k, v in attrs.items()
+        },
+    )
+
+
+def test_a_mapped_seller_value_stays_mapped_through_the_recheck_and_publish_overlay() -> None:
+    """B17 review: the overlay (rules_check, adapter input) wrote the seller's raw spelling back,
+    so the remap never stuck. Map, overlay again, check again: still the marketplace's value."""
+    from app.services.rules_engine import evaluate
+    from app.services.seller_facts import seller_overlay
+
+    tmpl = _fit_template("Navy", "Red", value_map={"navy blue": "Navy"})
+    seller = _seller_facts(color="navy-blue")
+    first = seller_overlay(listing(attributes={"color": "Navy Blue"}), seller, tmpl)
+    assert first.attributes["color"] == "navy-blue"
+    got = _remap(dict(first.attributes), tmpl, key="color",
+                 attribute_sources=dict(first.attribute_sources))  # fmt: skip
+    assert got is not None
+    fixed, record = got
+    assert fixed.attributes["color"] == "Navy"
+    assert record.fix_action is FixAction.REMAP_VALUE  # the audit row
+    again = seller_overlay(fixed, seller, tmpl)  # rules_check and publish run this
+    assert again.attributes["color"] == "Navy"
+    assert again.attribute_sources["color"] == "color"
+    codes = [e.error_code for e in evaluate(again, ruleset(), template=tmpl).errors]
+    assert ErrorCode.VALUE_NOT_ALLOWED not in codes
+
+
+def test_the_overlay_writes_a_changed_or_unmapped_seller_value() -> None:
+    from app.services.seller_facts import seller_overlay
+
+    tmpl = _fit_template("Navy", "Red")
+    mapped = listing(attributes={"color": "Navy"})
+    # the seller changed the colour: the new raw value goes back (and is remapped again)
+    assert seller_overlay(mapped, _seller_facts(color="red "), tmpl).attributes["color"] == "red "
+    # a listing value that is not the seller value's one canonical spelling is never kept
+    off = listing(attributes={"color": "Red"})
+    assert seller_overlay(off, _seller_facts(color="navy"), tmpl).attributes["color"] == "navy"
+    # no template, or not an enum: the seller value as before
+    assert seller_overlay(mapped, _seller_facts(color="navy"), None).attributes["color"] == "navy"
