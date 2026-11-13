@@ -60,6 +60,10 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   `brand_embed` job (`entity_type 'error_proposal'`, one attempt, key
   `diagnose:<id>:<tries>:<pass time>`; a key that names an old job rolls the claim back).
   One code's failure is logged and the pass goes on.
+- `schedule_photo_matches` (every 5 min, F4; off unless `PHOTO_MATCH_ENABLED`): tenant by tenant,
+  `app.services.photo_match.queue_never_matched` queues the photo match of each recent product
+  photo that passed its checks and was never matched (uploaded while the switch was off). One
+  tenant's failure is logged and the pass goes on.
 - `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
   `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
   auto-clear against the stored previous check (`app_ai_credit_auto_clear`), then records the
@@ -483,6 +487,30 @@ async def schedule_error_diagnosis(now: datetime | None = None) -> int:
             log.exception("diagnosis.schedule_failed", code=code, error_class=type(exc).__name__)
     log.info("periodic.error_diagnosis_scheduled", codes=len(codes), enqueued=enqueued)
     return enqueued
+
+
+async def schedule_photo_matches(now: datetime | None = None) -> int:
+    """One never-checked photo match pass (module docstring); the count of checks queued."""
+    from app.repositories.uow import tenant_uow
+    from app.services.photo_match import queue_never_matched
+
+    if not get_settings().photo_match_enabled:
+        return 0
+    async with platform_scope() as session:
+        tenants = await retention.tenant_ids(session)
+    queued = 0
+    for tenant_id in tenants:
+        try:
+            async with tenant_uow(tenant_id) as uow:
+                queued += await queue_never_matched(uow, now=now)
+        except Exception as exc:  # one tenant's failure never blocks another's checks
+            log.exception(
+                "photo_match.schedule_failed",
+                tenant_id=str(tenant_id),
+                error_class=type(exc).__name__,
+            )
+    log.info("periodic.photo_matches_scheduled", queued=queued)
+    return queued
 
 
 QUEUE_SUCCEEDED_HOURS: Final = 7 * 24
@@ -935,6 +963,7 @@ PERIODIC: Final[dict[str, tuple[str, Any, bool]]] = {
     "check_alerts": ("*/5 * * * *", _plain(check_alerts), False),
     "refresh_ai_credit": ("*/5 * * * *", _plain(refresh_ai_credit), False),  # SI10
     "schedule_error_diagnosis": ("*/10 * * * *", _plain(schedule_error_diagnosis), False),  # SI13
+    "schedule_photo_matches": ("*/5 * * * *", _plain(schedule_photo_matches), False),  # F4
 }
 
 

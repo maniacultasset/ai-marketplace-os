@@ -216,6 +216,8 @@ async def _generate_one(
         raise NotFoundError("product_id")
     if product.parent_product_id is not None:
         raise InputError(ErrorCode.VALIDATION_FAILED, "product_id")
+    if product.archived_at is not None:  # 0039: unarchive it first
+        raise ConflictError(ErrorCode.LISTING_ARCHIVED, "archived")
     category = item.category or product.category
     if category is None:  # no category yet (0027, D3): the seller chooses one first
         raise InputError(ErrorCode.VALIDATION_FAILED, "category")

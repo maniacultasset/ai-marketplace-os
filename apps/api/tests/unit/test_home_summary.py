@@ -529,3 +529,78 @@ def test_inbox_filters_keep_their_table_when_the_caller_joins_it() -> None:
     )
     issues = select(ListingIssue.id).join(Listing, joined).where(issue_in_inbox())
     assert "FROM listings" in str(issues.compile(dialect=pg))
+
+
+def _import_job(status: str, imported: int | None, failed: int | None, total: int | None) -> JobRow:
+    return JobRow(
+        "bulk_import",
+        "import",
+        status,
+        T0,
+        T0,
+        T0 + timedelta(seconds=9),
+        None,
+        None,
+        None,
+        None,
+        IMPORT_ID,
+        imported,
+        failed,
+        total,
+    )
+
+
+IMPORT_ID = uuid.UUID(int=77)
+
+
+def test_import_that_imported_nothing_is_failed_not_done() -> None:
+    """Prod Chrome pass 12 Nov (B3): both variant imports failed every row; the runner closes
+    such a job `partial`, and the feed said "Imported your spreadsheet" with a done mark."""
+    item = job_activity(_import_job("partial", 0, 7, 7))
+    assert item is not None
+    assert item["state"] == "failed"
+    assert item["text"] == "Could not import your spreadsheet: none of its 7 rows imported"
+    assert item["import_id"] == IMPORT_ID and item["needs_fix"] == 7
+
+
+@pytest.mark.parametrize(
+    ("counts", "state", "text", "needs_fix"),
+    [
+        (
+            (3, 4, 7),
+            "completed",
+            "Imported 3 of 7 rows from your spreadsheet. 4 rows need a fix",
+            4,
+        ),
+        (
+            (6, 1, 7),
+            "completed",
+            "Imported 6 of 7 rows from your spreadsheet. 1 row needs a fix",
+            1,
+        ),
+        ((5, 0, 5), "completed", "Imported 5 rows from your spreadsheet", 0),
+        ((1, 0, 1), "completed", "Imported 1 row from your spreadsheet", 0),
+        ((None, None, None), "completed", "Imported your spreadsheet", 0),
+    ],
+)
+def test_import_words_by_row_counts(
+    counts: tuple[int | None, int | None, int | None], state: str, text: str, needs_fix: int
+) -> None:
+    imported, failed, total = counts
+    item = job_activity(_import_job("partial" if failed else "succeeded", imported, failed, total))
+    assert item is not None
+    assert (item["state"], item["text"], item["needs_fix"]) == (state, text, needs_fix)
+    assert item["import_id"] == IMPORT_ID
+
+
+def test_running_or_failed_import_keeps_its_job_words() -> None:
+    running = job_activity(_import_job("running", None, None, None))
+    dead = job_activity(_import_job("dead_letter", None, None, None))
+    assert running is not None and running["text"] == "Importing your spreadsheet"
+    assert dead is not None and dead["state"] == "failed"
+    assert dead["text"] == "Could not import your spreadsheet"
+
+
+def test_only_import_items_carry_an_import_id() -> None:
+    item = job_activity(_job("listing_generate", "succeeded"))
+    assert item is not None and item["import_id"] is None and item["needs_fix"] == 0

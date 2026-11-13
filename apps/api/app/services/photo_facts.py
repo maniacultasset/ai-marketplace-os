@@ -57,6 +57,7 @@ __all__ = [
     "same_as_rejected",
     "screen",
     "template_spelling",
+    "with_photo_writes",
 ]
 
 V1_KEYS: Final = (
@@ -582,6 +583,34 @@ class PhotoDecision:
     dropped: tuple[tuple[str, str], ...] = ()
 
 
+def with_photo_writes(facts: ProductFacts, decision: PhotoDecision) -> ProductFacts:
+    """`facts` as `apply_photo_decision` leaves them when every write lands: each write an
+    unconfirmed `ai` fact (value and normalized the template's spelling). The generation worker
+    builds the version and its re-check from these, because the persist stamps the re-read
+    digest on that re-check (`recheck_digest`) and the preview overlays the re-read facts: a
+    colour read from the photo must not be "missing" in the one and sent in the other (client
+    Chrome pass B14). A key a seller, document or PIM value holds is never a write (`screen`)."""
+    if decision.run_id is None or not decision.writes:
+        return facts
+    attributes = dict(facts.attributes)
+    for write in decision.writes:
+        stored = attributes.get(write.key)
+        if stored is not None and not is_unconfirmed_ai(stored):
+            continue  # the store's compare-and-set keeps a seller value too
+        attributes[write.key] = ResolvedFact(
+            key=write.key,
+            value=write.value,
+            normalized=write.value,
+            source="ai",
+            captured_via="agent",
+            agent_run_id=str(decision.run_id),
+            confidence=write.confidence,
+            evidence_ref=f"image:{write.image_id}",
+            is_critical=False if stored is None else stored.is_critical,
+        )
+    return facts.model_copy(update={"attributes": attributes})
+
+
 def _photo_run(records: Sequence[AgentRunRecord]) -> UUID | None:
     for rec in reversed(records):
         if (
@@ -681,6 +710,11 @@ def _conflict(
     )
 
 
+def _pieces_words(value: str) -> str:
+    """ "1 piece", "3 pieces" (client feedback 11 Nov, B7: "show 1 pieces")."""
+    return f"{value} piece" if value.strip() == "1" else f"{value} pieces"
+
+
 def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> PhotoTask | None:
     """A piece count is critical: never written, never an `ai` suggestion (C:46-47)."""
     if stored is None:
@@ -690,7 +724,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
             kind="missing_fact",
             key="number_of_pieces",
             question="How many pieces are in this set?",
-            reason=f"The photos seem to show {value} pieces. Please give the number of pieces.",
+            reason=f"The photos seem to show {_pieces_words(value)}. Please give the number of pieces.",
             suggestions=(),
             evidence=_evidence(value, obs.image_id),
             expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},
@@ -703,7 +737,7 @@ def _pieces(value: str, stored: ResolvedFact | None, obs: PhotoObservation) -> P
         kind="conflicting_facts",
         key="number_of_pieces",
         question="How many pieces are in this set?",
-        reason=f"The photos seem to show {value} pieces, but the product says {said}.",
+        reason=f"The photos seem to show {_pieces_words(value)}, but the product says {said}.",
         suggestions=(_stored_suggestion(stored),),
         evidence=_evidence(value, obs.image_id),
         expected_answer={"kind": "number", "min": 1, "max": ANSWER_MAX_PIECES},

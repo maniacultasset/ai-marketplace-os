@@ -51,7 +51,7 @@ from app.services import category_suggest, image_views, photo_views, product_ide
 from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
-from app.services.image_fixes import fixes_for
+from app.services.image_fixes import fix_unavailable_for, fixes_for
 from app.services.images import CreateUpload, check_create_uploads, register_on_create
 from app.services.intake_values import PartyInput, check_price_le_mrp
 from app.services.package_sense import package_errors, package_warnings
@@ -205,6 +205,7 @@ class ProductView:
     parent_product_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
+    archived_at: datetime | None = None  # 0039: "Archive product"
     style_number: str | None = None
     brand_name: str | None = None
     brand_name_inherited: bool = False
@@ -568,6 +569,7 @@ def _view(
         parent_product_id=row.parent_product_id,
         created_at=row.created_at,
         updated_at=row.updated_at,
+        archived_at=getattr(row, "archived_at", None),
         style_number=row.style_number,
         brand_name=row.brand_name if brand is None else brand[0],
         brand_name_inherited=False if brand is None else brand[1],
@@ -642,6 +644,9 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
             detail,
             fixes=tuple(
                 fixes_for(detail.slot, detail.report, detail.border, edit_enabled=edit_enabled)
+            ),
+            fix_unavailable=fix_unavailable_for(
+                detail.slot, detail.report, detail.border, edit_enabled=edit_enabled
             ),
         )
         for detail in await uow.images.details_for_product(row.id)
@@ -1045,12 +1050,14 @@ async def list_products(
     after: tuple[datetime, uuid.UUID] | None,
     listing: str | None = None,
     marketplace: str | None = None,
+    archived: bool = False,
 ) -> tuple[list[ProductView], bool]:
     """A page of products, newest first; `listing` and `marketplace` keep the products owning
-    a listing in that Home bucket and on that marketplace (`ProductRepository.list_page`)."""
+    a listing in that Home bucket and on that marketplace (`ProductRepository.list_page`);
+    `archived` lists only the archived products instead of the others."""
     async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
         rows, has_more = await uow.products.list_page(
-            limit=limit, after=after, listing=listing, marketplace=marketplace
+            limit=limit, after=after, listing=listing, marketplace=marketplace, archived=archived
         )
         keys = await uow.images.live_keys_for_products([r.id for r in rows])  # one query a page
         exempt = await uow.products.style_exemptions([r.id for r in rows if _is_style(r)])

@@ -238,7 +238,8 @@ _ACCOUNT: Final = {
     "id": ACCOUNT,
     "marketplace": "amazon",
     "seller_id": "A1EXAMPLESELLER",
-    "region": "eu",
+    "region": "India",
+    "marketplace_id": "A21TJRUUN4KGV",
     "status": "active",
     "needs_reconnect_since": None,
     "expires_at": None,
@@ -826,6 +827,11 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "category": "ethnic_wear_kurta_sets",
         },
         "products_delete": None,
+        "products_archive": {
+            **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
+            "archived_at": T1,
+        },
+        "products_unarchive": _product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
         "products_bulk_delete": {
             "items": [
                 {"product_id": PRODUCT_1, "http_status": 204, "error": None},

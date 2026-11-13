@@ -96,6 +96,7 @@ async def test_product_read_offers_fixes_and_shows_provenance(
     )
     off = await _details(api, images_db, grey)
     assert off[str(main)]["fixes"] == []  # the switch is off: no white_background
+    assert off[str(main)]["fix_unavailable"] == "ai_off"  # B2: the page says why
     assert off[str(main)]["origin"] == "seller" and off[str(main)]["parent_image_id"] is None
     assert off[str(made)]["origin"] == "rendered" and off[str(made)]["parent_image_id"] == str(main)
     monkeypatch.setenv("IMAGE_EDIT_ENABLED", "true")
@@ -105,6 +106,7 @@ async def test_product_read_offers_fixes_and_shows_provenance(
     finally:
         get_settings.cache_clear()
     assert on[str(main)]["fixes"] == ["white_background"]
+    assert on[str(main)]["fix_unavailable"] is None
     assert on[str(made)]["fixes"] == []
     framing = product(images_db.conn, tenant)
     aspect = _image(
@@ -130,3 +132,38 @@ async def test_pre_si7_row_falls_back(
     finally:
         get_settings.cache_clear()
     assert details[str(main)]["fixes"] == ["white_background"]
+
+
+async def test_photo_qa_warnings_keep_the_white_background(
+    images_db: JobWorld, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B2 (chrome pass 1): a grey Front also warned "Text on image" and "Low fill" (SI14, stored
+    as deterministic checks) still offers the AI white background."""
+    from app.core.config import get_settings
+
+    tenant = images_db.tenant("acme")
+    p = product(images_db.conn, tenant)
+    warned = {
+        "checks": [
+            *FAILED_BACKGROUND["checks"],
+            {"check": "fill_ratio", "method": "deterministic", "passed": False},
+            {"check": "text_overlay", "method": "deterministic", "passed": False},
+            {"check": "watermark", "method": "deterministic", "passed": True},
+        ]
+    }
+    main = _image(
+        images_db,
+        tenant,
+        p,
+        slot="main",
+        image_report_json={"amazon": warned, "flipkart": warned},
+        metadata={"border": {"uniform": True, "near_white": False, "colour": [200, 200, 200]}},
+    )
+    monkeypatch.setenv("IMAGE_EDIT_ENABLED", "true")
+    get_settings.cache_clear()
+    try:
+        details = await _details(api, images_db, p)
+    finally:
+        get_settings.cache_clear()
+    assert details[str(main)]["fixes"] == ["white_background"]
+    assert details[str(main)]["fix_unavailable"] is None

@@ -32,7 +32,7 @@ from app.api.v1.schemas.marketplaces import (
 from app.api.v1.surface import OPS, route
 from app.core.config import get_settings
 from app.core.errors import ConflictError
-from app.core.flags import publish_enabled
+from app.core.flags import account_marketplace, publish_enabled
 from app.core.rbac import Principal
 from app.services import marketplaces as service
 
@@ -45,17 +45,21 @@ SellerParam = Annotated[str | None, Query(pattern=SELLER_ID_PATTERN)]
 
 
 def account_out(view: service.AccountView) -> MarketplaceAccountOut:
-    """A DB-sourced row is built, not validated (the DB CHECKs are the read-side truth)."""
+    """A DB-sourced row is built, not validated (the DB CHECKs are the read-side truth). The
+    region is the stored one, else the deployment's marketplace's (Chrome pass 2: "—")."""
+    settings = get_settings()
+    marketplace_id, region = account_marketplace(view.marketplace, settings)
     return MarketplaceAccountOut.model_construct(
         id=view.id,
         marketplace=Marketplace(view.marketplace),
         seller_id=view.seller_id,
-        region=view.region,
+        region=view.region or region,
+        marketplace_id=marketplace_id,
         status=view.status,
         needs_reconnect_since=view.needs_reconnect_since,
         expires_at=view.expires_at,
         created_at=view.created_at,
-        publishing_enabled=publish_enabled(view.marketplace, get_settings()),
+        publishing_enabled=publish_enabled(view.marketplace, settings),
     )
 
 

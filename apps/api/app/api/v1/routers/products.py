@@ -175,6 +175,7 @@ def _out(view: products.ProductView) -> ProductOut:
         parent_product_id=view.parent_product_id,
         created_at=view.created_at,
         updated_at=view.updated_at,
+        archived_at=view.archived_at,
         photo_facts=[PhotoFactOut.model_construct(**asdict(p)) for p in view.photo_facts],
         photo_read=(
             None
@@ -325,15 +326,25 @@ async def products_list(
         Marketplace | None,
         Query(description="Only products owning a listing on this marketplace."),
     ] = None,
+    archived: Annotated[
+        bool,
+        Query(
+            description=(
+                "true: only the archived products (`POST /products/{product_id}/archive`). "
+                "Default false: archived products are left out."
+            )
+        ),
+    ] = False,
 ) -> ProductPage:
     """List the brand's products, newest first, optionally only those owning a listing in a
-    Home bucket or on a marketplace."""
+    Home bucket or on a marketplace. Archived products are left out unless `archived=true`."""
     views, has_more = await products.list_products(
         principal,
         limit=page.limit,
         after=page.after,
         listing=listing,
         marketplace=None if marketplace is None else Marketplace(marketplace).value,
+        archived=archived,
     )
     last = views[-1] if views else None
     next_cursor = encode_cursor(last.created_at, last.id) if has_more and last else None

@@ -335,3 +335,75 @@ async def test_a_replaced_photo_drops_the_stale_result(pw: PhotoWorld) -> None:
     assert pw.job(job)["result_json"]["status"] == "superseded"
     assert _records(job, pw) == []  # no call for pixels the key does not name
     assert await _read(pw, image) is None  # nothing made for the old pixels shows
+
+
+# F4 (client feedback item 9, Chrome pass 2): a product with no colour variants whose Back photo
+# shows another garment. The photos were uploaded while the switch was off and the seller never
+# generated or changed the colour, so no trigger ever queued a check: the Back read "Passed" with
+# no question. The periodic pass now checks every such photo.
+
+
+async def test_a_photo_uploaded_while_the_switch_was_off_is_checked_by_the_pass(
+    pw: PhotoWorld,
+) -> None:
+    from app.workers.periodic import schedule_photo_matches
+
+    _title(pw, "Cotton Kurta [photo-mismatch]")
+    back = pw.images["secondary"]
+    pw.conn.execute("UPDATE images SET role = 'back' WHERE id = %s", [back])
+    assert all(_stored(pw, pw.images[s]) is None for s in ("main", "secondary", "lifestyle"))
+    assert await schedule_photo_matches() >= 3
+    for slot in ("main", "secondary", "lifestyle"):
+        await _run(_queued(pw, pw.images[slot]))
+    state = await _read(pw, back)
+    assert state.status == "mismatch" and state.question.startswith("Is this photo the ")
+    assert _stored(pw, pw.images["packaging_label"]) is None  # not a product photo
+    kept = await _keep(pw, back)  # the seller's override is recorded and audited
+    assert kept["photo_match"]["kept"] is True and kept["photo_match"]["kept_by_user_id"]
+    audits = pw.conn.execute(
+        "SELECT count(*) FROM audit_log WHERE action = 'image.photo_match_kept' AND entity_id = %s",
+        [back],
+    ).fetchone()
+    assert audits is not None and audits[0] == 1
+
+
+async def _sweep(pw: PhotoWorld, **kwargs: Any) -> int:
+    from app.repositories.uow import tenant_uow
+    from app.services.photo_match import queue_never_matched
+
+    async with tenant_uow(pw.tenant) as uow:
+        return await queue_never_matched(uow, **kwargs)
+
+
+async def test_the_pass_queues_each_never_checked_photo_once(pw: PhotoWorld) -> None:
+    assert await _sweep(pw) == 3  # main, secondary and lifestyle; not the label
+    assert await _sweep(pw) == 0  # each is now `checking`: nothing to queue twice
+    for slot in ("main", "secondary", "lifestyle"):
+        await _run(_queued(pw, pw.images[slot]))
+        assert (await _read(pw, pw.images[slot])).status == "match"
+    assert await _sweep(pw) == 0  # checked: the pass never checks one content twice
+
+
+async def test_the_pass_skips_what_it_must_not_check(
+    pw: PhotoWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app.services.photo_match import SWEEP_DAYS
+
+    failed = pw.add_image("secondary")
+    pw.conn.execute("UPDATE images SET compliance_status = 'failed' WHERE id = %s", [failed])
+    _switch(monkeypatch, on=False)
+    assert await _sweep(pw) == 0  # switch off: nothing
+    _switch(monkeypatch, on=True)
+    later = datetime.now(UTC) + timedelta(days=SWEEP_DAYS + 1)
+    assert await _sweep(pw, now=later) == 0  # older than the window: left to the other triggers
+    # a check that ended with no call is stored (`retry`): the pass does not loop on it
+    job = await _queue(pw, pw.images["secondary"])
+    assert job is not None
+    _switch(monkeypatch, on=False)
+    await _run(job)
+    _switch(monkeypatch, on=True)
+    assert (_stored(pw, pw.images["secondary"]) or {}).get("retry") is True
+    assert await _sweep(pw) == 2  # main and lifestyle only; never the failed photo
+    assert _stored(pw, failed) is None
