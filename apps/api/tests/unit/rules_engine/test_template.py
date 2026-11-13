@@ -89,6 +89,39 @@ def test_template_checks_enum_outside_fails() -> None:
     assert _errors(listing(attributes={"fabric_type": "nylon"}), _enum()) == []
 
 
+def test_template_checks_enum_lists_each_value_once() -> None:
+    """Client pass 2, B17: "Long Sleeve, ..., long, short, sleeveless": the list a seller reads
+    has each allowed value once, in the marketplace's casing, and never a value_map alias."""
+    tpl = template(
+        specs={
+            "sleeve_length": {
+                "requirement": "optional",
+                "value_type": "enum",
+                "allowed_values": ["Long Sleeve", "Sleeveless", "sleeveless", "LONG SLEEVE"],
+                "value_map": {"long": "Long Sleeve", "sleeveless": "Sleeveless"},
+            }
+        }
+    )
+    (err,) = _errors(listing(attributes={"sleeve_length": "cap"}), tpl)
+    assert err.message == (
+        "Value cap is not allowed for sleeve_length; allowed: Long Sleeve, Sleeveless"
+    )
+
+
+def test_template_shown_and_spellings() -> None:
+    from app.services.rules_engine.template import template_shown, template_spellings
+
+    tpl = _enum(allowed_values=["Navy", "navy", "Red"], value_map={"navy blue": "NAVY"})
+    assert template_shown(tpl, "fabric_type") == ["Navy", "Red"]
+    assert template_spellings(tpl, "fabric_type") == [
+        ("Navy", "Navy"),
+        ("navy", "Navy"),
+        ("Red", "Red"),
+        ("navy blue", "Navy"),
+    ]
+    assert template_shown(tpl, "missing") is None
+
+
 def test_template_checks_rule_id_none() -> None:
     errs = _errors(listing(attributes={}), template(required_attributes=["color"]))
     assert [e.rule_id for e in errs] == [None]

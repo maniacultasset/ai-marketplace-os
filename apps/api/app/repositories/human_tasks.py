@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Final
 
-from sqlalchemy import exists, literal, select, text, tuple_, update
+from sqlalchemy import ColumnElement, exists, literal, select, text, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.db.models.catalog import Product
@@ -70,6 +70,19 @@ _LIVE_REVIEW: Final = text("kind = 'category_review' AND status IN ('open', 'ans
 
 def _rowcount(result: Any) -> int:
     return int(getattr(result, "rowcount", 0) or 0)
+
+
+def task_in_inbox() -> ColumnElement[bool]:
+    """A task the Inbox lists: not one of a deleted product (whatever its status). The one
+    definition of the Questions list, its count and the Home summary's (client pass 2, B16)."""
+    gone = exists(
+        select(Product.id).where(
+            Product.tenant_id == HumanTask.tenant_id,
+            Product.id == HumanTask.product_id,
+            Product.deleted_at.is_not(None),
+        )
+    )
+    return ~gone
 
 
 class HumanTaskRepository(TenantScopedRepository[HumanTask]):
@@ -548,15 +561,7 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         `(tenant_id, status, created_at DESC, id DESC)`), and whether more rows follow."""
         if isinstance(limit, bool) or not 1 <= limit <= TASK_PAGE_MAX:
             raise ValueError(f"limit must be in 1..{TASK_PAGE_MAX}")
-        # a task of a deleted product leaves the inbox, whatever its status
-        gone = exists(
-            select(Product.id).where(
-                Product.tenant_id == HumanTask.tenant_id,
-                Product.id == HumanTask.product_id,
-                Product.deleted_at.is_not(None),
-            )
-        )
-        stmt = self._select().where(HumanTask.status == status, ~gone)
+        stmt = self._select().where(HumanTask.status == status, task_in_inbox())
         if after is not None:
             at, row_id = after
             bound = tuple_(

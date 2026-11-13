@@ -491,3 +491,19 @@ def test_brand_row_marks_the_current_brand() -> None:
 
     m = _member("Acme")
     assert brand_row(m, m.tenant_id, _counted())["current"] is True  # type: ignore[arg-type]
+
+
+def test_inbox_counts_add_up() -> None:
+    """Client pass 2, B16: Home 18 (2 blocked, 16 questions), Inbox 21, Questions 19 and Issues
+    24 are four different things, each with its own name and one definition."""
+    from app.services.home import inbox_counts
+
+    got = inbox_counts(blocking=16, improve=3, issues=24, alone=2)
+    assert got == {
+        "open_items": 21,
+        "questions": 19,
+        "blocking_questions": 16,
+        "issues": 24,
+        "issues_without_question": 2,
+    }
+    assert inbox_counts(0, 0, 0, 0)["open_items"] == 0

@@ -27,7 +27,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Final, Literal
 
-from sqlalchemy import exists, func, literal, literal_column, not_, select, text, tuple_, update
+from sqlalchemy import (
+    ColumnElement,
+    exists,
+    func,
+    literal,
+    literal_column,
+    not_,
+    select,
+    text,
+    tuple_,
+    update,
+)
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
@@ -80,6 +91,19 @@ def closed_status(resolution: str) -> str:
     """The closed status a resolution takes: `auto_fixed` only for `deterministic_fix`
     (ck_listing_issues_auto_fixed); every other one, `ai_correction` included, is `resolved`."""
     return "auto_fixed" if resolution == "deterministic_fix" else "resolved"
+
+
+def issue_in_inbox() -> ColumnElement[bool]:
+    """An issue the Inbox lists: not one of an archived listing (its product was deleted). The
+    one definition of the Issues list, its count and the Home summary's (client pass 2, B16)."""
+    archived = exists(
+        select(Listing.id).where(
+            Listing.tenant_id == ListingIssue.tenant_id,
+            Listing.id == ListingIssue.listing_id,
+            Listing.archived_at.is_not(None),
+        )
+    )
+    return ~archived
 
 
 class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
@@ -532,16 +556,8 @@ class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
     ) -> tuple[builtins.list[ListingIssue], bool]:
         if isinstance(limit, bool) or not 1 <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in 1..{PAGE_LIMIT_MAX}")
-        # an issue of an archived listing (its product was deleted) leaves the inbox
-        archived = exists(
-            select(Listing.id).where(
-                Listing.tenant_id == ListingIssue.tenant_id,
-                Listing.id == ListingIssue.listing_id,
-                Listing.archived_at.is_not(None),
-            )
-        )
         stmt = self._select().where(ListingIssue.status == filters.status)
-        stmt = stmt.where(~archived)
+        stmt = stmt.where(issue_in_inbox())
         if filters.listing_id is not None:
             stmt = stmt.where(ListingIssue.listing_id == filters.listing_id)
         if filters.source is not None:

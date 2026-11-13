@@ -26,7 +26,7 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from mkos_schemas.jobs import CategoryTemplate
 
 from .report import Draft
-from .text import condition_holds, fold, is_present
+from .text import condition_holds, distinct_spellings, fold, is_present, spelling_key
 
 if TYPE_CHECKING:
     from .evaluators import Ctx
@@ -122,6 +122,37 @@ def template_allowed(template: CategoryTemplate | None, attribute: str) -> list[
     return [*(spec.allowed_values or []), *sorted(spec.value_map)]
 
 
+def template_shown(template: CategoryTemplate | None, attribute: str) -> list[str] | None:
+    """B17: the accepted values a seller reads, each once in the marketplace's own spelling: the
+    ``allowed_values`` without case or spacing repeats (a ``value_map`` key is an alias of one of
+    them, never a value of its own); with no ``allowed_values``, the ``value_map`` keys. None when
+    `template_allowed` is None."""
+    accepted = template_allowed(template, attribute)
+    if accepted is None or template is None:
+        return None
+    spec = template.specs[attribute]
+    return distinct_spellings(spec.allowed_values or sorted(spec.value_map))
+
+
+def template_spellings(
+    template: CategoryTemplate | None, attribute: str
+) -> list[tuple[str, str]] | None:
+    """B17: each spelling the check accepts paired with the value it stands for, in the
+    marketplace's spelling: an allowed value with its first spelling (case repeats are one value),
+    a ``value_map`` key with its target (in the allowed value's casing when it is one). With no
+    ``allowed_values`` each key stands for itself (the check accepts only the keys)."""
+    if template_allowed(template, attribute) is None or template is None:
+        return None
+    spec = template.specs[attribute]
+    allowed = spec.allowed_values or []
+    if not allowed:  # the keys alone are the vocabulary: each is its own value
+        return [(k, k) for k in sorted(spec.value_map)]
+    own = {spelling_key(v): v for v in reversed(allowed)}  # the first spelling wins
+    pairs = [(v, own[spelling_key(v)]) for v in allowed]
+    pairs += [(k, own.get(spelling_key(t), t)) for k, t in sorted(spec.value_map.items())]
+    return pairs
+
+
 def template_checks(ctx: Ctx) -> list[Draft]:
     template = ctx.template
     if template is None:
@@ -162,7 +193,11 @@ def template_checks(ctx: Ctx) -> list[Draft]:
                 f"attributes.{key}",
                 ErrorCode.VALUE_NOT_ALLOWED,
                 shown,
-                {"value": shown, "attribute": key, "allowed_values": ", ".join(allowed)},
+                {
+                    "value": shown,
+                    "attribute": key,
+                    "allowed_values": ", ".join(template_shown(template, key) or allowed),
+                },
                 None,
             )
         )

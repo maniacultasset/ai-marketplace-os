@@ -42,6 +42,12 @@ questions + ready_to_approve + ready_to_publish`):
 The tiles (`listings`, `by_marketplace`) stay tenant-wide whatever the role. The web's Products
 list filters by these same listing buckets (`?listing=`), so each tile opens the listings it counts.
 
+`inbox` (client pass 2, B16): the Inbox's own numbers, for every role: `questions` (the
+Questions list: `needs_you.questions` + `improve` for a role that answers), `issues` (the Issues
+list), `issues_without_question` and `open_items` (the All view and the sidebar badge). Each
+count reads the same rows as its list (`task_in_inbox`, `issue_in_inbox`), so no two screens
+show two numbers for one thing.
+
 `needs_you_items`: at most 5 things to do, in this order: blocked listings (with the newest open
 blocking issue in the seller's words), blocking questions, listings to approve, listings to
 publish; newest first within each. `activity`: at most 8 recent agent actions, newest first:
@@ -229,6 +235,21 @@ def needs_you_counts(
         "publishing_paused": approved("paused") if sends else 0,
         "waiting_on_account": approved("account") if sends else 0,
         "improve": improve if can.answer else 0,
+    }
+
+
+def inbox_counts(blocking: int, improve: int, issues: int, alone: int) -> dict[str, int]:
+    """Client pass 2, B16: the Inbox's numbers, the same for every role (its lists are).
+    `questions` is the Questions list (`blocking + improve`, the two Home splits), `issues` the
+    Issues list, `issues_without_question` the issues the All view shows on their own, and
+    `open_items = questions + issues_without_question`, the All view and the sidebar badge."""
+    questions = blocking + improve
+    return {
+        "open_items": questions + alone,
+        "questions": questions,
+        "blocking_questions": blocking,
+        "issues": issues,
+        "issues_without_question": alone,
     }
 
 
@@ -511,6 +532,8 @@ class Counted:
     questions: int
     improve: int
     products: int
+    issues: int = 0
+    issues_without_question: int = 0
 
     def listings(self) -> dict[str, int]:
         return {**_counts(self.whole), "live_products": self.live_products}
@@ -519,6 +542,9 @@ class Counted:
         return needs_you_counts(
             self.per, self.questions, self.improve, can, self.sending, self.own_work
         )
+
+    def inbox(self) -> dict[str, int]:
+        return inbox_counts(self.questions, self.improve, self.issues, self.issues_without_question)
 
 
 async def _count(reads: Any, can: Permissions, user: Any, settings: Any) -> Counted:
@@ -532,10 +558,21 @@ async def _count(reads: Any, can: Permissions, user: Any, settings: Any) -> Coun
     whole, per = tally(await reads.listings.bucket_groups())
     live_products = await reads.listings.live_products()
     own_work = await reads.listings.own_work(user) if can.approve else 0
-    questions, improve = await reads.tasks.open_counts() if can.answer else (0, 0)
+    questions, improve = await reads.tasks.open_counts()  # needs_you keeps them to answerers
+    issues, alone = await reads.issues.inbox_counts()
     products = await reads.products.count()
     return Counted(
-        accounts, sending, whole, per, live_products, own_work, questions, improve, products
+        accounts,
+        sending,
+        whole,
+        per,
+        live_products,
+        own_work,
+        questions,
+        improve,
+        products,
+        issues,
+        alone,
     )
 
 
@@ -581,6 +618,7 @@ async def _read_summary(principal: Principal) -> dict[str, Any]:
             for m in Marketplace
         ],
         "needs_you": c.needs_you(can),
+        "inbox": c.inbox(),
         "needs_you_items": needs_you_items(blocked, issues, tasks, approve, publish),
         "activity": activity(jobs, fixes),
         "marketplaces": marketplace_rows(c.accounts, per, settings),

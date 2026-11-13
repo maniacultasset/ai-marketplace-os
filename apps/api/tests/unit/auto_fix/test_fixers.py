@@ -426,10 +426,60 @@ def test_remap_to_the_allowed_spelling(value: str) -> None:
     assert value.strip() not in record.action_taken
 
 
-def test_remap_to_a_value_map_key() -> None:
-    got = _remap({"fit": "regular-fit"}, _fit_template("Slim Fit", value_map={"regular_fit": "R"}))
+def test_remap_a_value_map_alias_to_its_target() -> None:
+    """B17: an alias is written as the marketplace's value, not as the alias."""
+    tmpl = _fit_template("Slim Fit", "Regular", value_map={"regular_fit": "regular"})
+    got = _remap({"fit": "regular-fit"}, tmpl)
+    assert got is not None
+    assert got[0].attributes["fit"] == "Regular"
+
+
+def test_remap_to_a_value_map_key_when_the_keys_are_the_vocabulary() -> None:
+    tmpl = template(specs={"fit": {"requirement": "optional", "value_type": "enum",
+                                   "value_map": {"regular_fit": "R"}}})  # fmt: skip
+    got = _remap({"fit": "regular-fit"}, tmpl)
     assert got is not None
     assert got[0].attributes["fit"] == "regular_fit"
+
+
+SLEEVE = ("Long Sleeve", "Short Sleeve", "Sleeveless", "Three-Quarter Sleeve")
+SLEEVE_MAP = {"long": "Long Sleeve", "full": "Long Sleeve", "short": "Short Sleeve",
+              "half": "Short Sleeve", "sleeveless": "Sleeveless",
+              "three_quarter": "Three-Quarter Sleeve", "3/4": "Three-Quarter Sleeve"}  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("value", "want"),
+    [
+        ("sleeveless", "Sleeveless"),  # a case repeat of an allowed value is one value
+        ("SLEEVELESS ", "Sleeveless"),
+        ("long sleeves", "Long Sleeve"),
+        ("full sleeve", "Long Sleeve"),  # a value_map alias once the attribute word goes
+        ("Half Sleeves", "Short Sleeve"),
+        ("3/4 sleeve", "Three-Quarter Sleeve"),
+        ("three fourth sleeves", "Three-Quarter Sleeve"),  # ENUM_SYNONYMS
+        ("sleeve less", "Sleeveless"),
+    ],
+)
+def test_remap_sleeve_variants_and_synonyms(value: str, want: str) -> None:
+    """B17: obvious case, spacing and synonym variants map to the canonical spelling."""
+    tmpl = _fit_template(*SLEEVE, "sleeveless", value_map=SLEEVE_MAP)
+    got = _remap({"fit": value}, tmpl)
+    assert got is not None
+    assert got[0].attributes["fit"] == want
+    assert want in SLEEVE
+
+
+@pytest.mark.parametrize("value", ["elbow sleeve", "cap sleeve", "puff"])
+def test_an_unlisted_sleeve_is_never_invented(value: str) -> None:
+    tmpl = _fit_template(*SLEEVE, value_map=SLEEVE_MAP)
+    assert _remap({"fit": value}, tmpl) is None
+
+
+def test_regular_fit_maps_to_regular() -> None:
+    got = _remap({"fit": "regular fit"}, _fit_template("Regular", "Relaxed", "Slim"))
+    assert got is not None
+    assert got[0].attributes["fit"] == "Regular"
 
 
 def test_ambiguous_spellings_are_refused() -> None:
@@ -445,10 +495,17 @@ def test_a_critical_key_is_never_remapped() -> None:
     assert _remap({"fiber_composition": "cotton-100%"}, tmpl, key="fiber_composition") is None
 
 
-def test_a_fact_sourced_value_is_never_remapped() -> None:
+def test_a_fact_sourced_value_is_mapped_to_the_marketplace_spelling() -> None:
+    """B17: the seller's "straight-fit" is sent as the marketplace's "Straight Fit"."""
     tmpl = _fit_template("Straight Fit")
     got = _remap({"fit": "straight-fit"}, tmpl, attribute_sources={"fit": "attributes.fit"})
-    assert got is None
+    assert got is not None
+    assert got[0].attributes["fit"] == "Straight Fit"
+
+
+def test_a_fact_sourced_value_with_no_match_is_left_to_the_seller() -> None:
+    tmpl = _fit_template("Straight Fit")
+    assert _remap({"fit": "zigzag"}, tmpl, attribute_sources={"fit": "attributes.fit"}) is None
 
 
 def test_an_overlay_key_is_never_remapped() -> None:

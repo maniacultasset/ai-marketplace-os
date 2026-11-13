@@ -37,12 +37,13 @@ from mkos_schemas.rules import (
 )
 
 from .report import Draft, RuleSetMismatchError, build_report, submitted_text
-from .template import template_allowed, template_checks
+from .template import template_allowed, template_checks, template_shown
 from .text import (
     SlotValue,
     TextMemo,
     compiled_rule_regex,
     condition_holds,
+    distinct_spellings,
     find_terms,
     fold,
     is_present,
@@ -239,7 +240,7 @@ def _not_allowed(rule: Rule, attribute: str, value: object, allowed: Sequence[st
         ErrorCode.VALUE_NOT_ALLOWED,
         value=_text(value),
         attribute=attribute,
-        allowed_values=", ".join(allowed),
+        allowed_values=", ".join(distinct_spellings(allowed)),
     )
 
 
@@ -262,8 +263,10 @@ def _allowed_values(rule: Rule, ctx: Ctx) -> list[Draft]:
         return []
     if rule_def.source == "inline":
         allowed = rule_def.values
+        shown = distinct_spellings(allowed or [])
     else:
         allowed = template_allowed(ctx.template, rule_def.attribute)
+        shown = template_shown(ctx.template, rule_def.attribute) or []
     if allowed is None or _value_in(value, allowed):
         return []
     return [
@@ -273,7 +276,7 @@ def _allowed_values(rule: Rule, ctx: Ctx) -> list[Draft]:
             value,
             value=_text(value),
             attribute=rule_def.attribute,
-            allowed_values=", ".join(allowed),
+            allowed_values=", ".join(shown),
         )
     ]
 

@@ -583,8 +583,8 @@ def _identity_attributes(
                 error(
                     "facts.gender",
                     ErrorCode.MISSING_ATTRIBUTE,
-                    "gender is required to list apparel on Amazon; set the product's gender "
-                    "(PATCH /api/v1/products/{product_id}).",
+                    "gender is required to list apparel on Amazon.",
+                    suggestion="Add the gender on the product page, then check again.",
                 )
             )
         elif audience is None:
