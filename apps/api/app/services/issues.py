@@ -41,6 +41,7 @@ from mkos_schemas.errors import ErrorItem, ErrorReport
 from app.core.errors import ConflictError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
+from app.core.seller_text import seller_text, without_api_text
 from app.repositories.listing_issues import IssueFilter, NewIssue
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.auto_fix.fixers import FixRecord
@@ -382,6 +383,10 @@ def issue_fields(
     )  # fmt: skip
     lane, cause = labelled if labelled is not None else (None, None)
     fields = {name: getattr(row, name) for name in names}
+    # B13: rows stored before the plain-copy fix still name an API path; the seller never reads it
+    fields["message"] = without_api_text(fields["message"]) or fields["message"]
+    fields["plain_message"] = seller_text(fields["plain_message"])
+    fields["suggestion"] = seller_text(fields["suggestion"])
     return {**fields, "lane": lane, "cause": cause, "product_id": product_id}
 
 

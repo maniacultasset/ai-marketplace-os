@@ -47,6 +47,8 @@ from app.db.models.issues import HumanTask, ListingIssue
 from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.repositories.base import TenantScopedRepository
+from app.repositories.human_tasks import task_in_inbox
+from app.repositories.listing_issues import issue_in_inbox
 
 LIVE_STATES: Final = ("live", "partially_live")
 NEEDS_YOU_STATUSES: Final = ("validated", "needs_review", "blocked")
@@ -454,6 +456,29 @@ class HomeIssueReads(TenantScopedRepository[ListingIssue]):
             for k, v in out.items()
         }
 
+    async def inbox_counts(self) -> tuple[int, int]:
+        """Client pass 2, B16: (open issues the Issues list shows, those of them that wait on no
+        open question the Questions list shows). The Inbox's All view lists a question once
+        and an issue on its own only when no open question stands for it."""
+        question = (
+            select(literal(1))
+            .where(
+                HumanTask.tenant_id == ListingIssue.tenant_id,
+                HumanTask.id == ListingIssue.human_task_id,
+                HumanTask.status == "open",
+                task_in_inbox(),
+            )
+            .exists()
+        )
+        alone = case((question, 0), else_=1)
+        stmt = (
+            self._select()
+            .where(ListingIssue.status == "open", issue_in_inbox())
+            .with_only_columns(func.count(), func.coalesce(func.sum(alone), 0))
+        )
+        issues, without_question = (await self.db.execute(stmt)).one()
+        return int(issues), int(without_question)
+
     async def recent_fixes(self, limit: int) -> builtins.list[FixRow]:
         """Rows Kuinn closed itself (a code fix, or an AI rewrite of the field), newest first,
         on listings that are not archived."""
@@ -505,11 +530,12 @@ class HomeTaskReads(TenantScopedRepository[HumanTask]):
     model = HumanTask
 
     async def open_counts(self) -> tuple[int, int]:
-        """(open tasks that block a listing, open tasks that do not)."""
+        """(open tasks that block a listing, open tasks that do not), over the Questions list's
+        rows (`task_in_inbox`): the two add up to the Inbox's question count."""
         blocking = _blocking().label("blocking")
         stmt = (
             self._select()
-            .where(HumanTask.status == "open")
+            .where(HumanTask.status == "open", task_in_inbox())
             .with_only_columns(blocking, func.count())
             .group_by(literal_column("blocking"))
         )
@@ -523,7 +549,7 @@ class HomeTaskReads(TenantScopedRepository[HumanTask]):
                 Product,
                 and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id),
             )
-            .where(HumanTask.status == "open", _blocking())
+            .where(HumanTask.status == "open", task_in_inbox(), _blocking())
             .with_only_columns(
                 HumanTask.id,
                 HumanTask.kind,

@@ -194,7 +194,7 @@ def test_an_ai_fit_phrase_is_remapped_to_the_kurta_enum() -> None:
     """Prod QA 2026-11-09 item 24: an AI "regular fit" against Amazon's Regular / Relaxed / Slim."""
     from app.services.auto_fix.fixers import _one_spelling
 
-    fit = ["Regular", "Relaxed", "Slim"]
+    fit = [(v, v) for v in ("Regular", "Relaxed", "Slim")]
     assert _one_spelling("regular fit", fit) == "Regular"
     assert _one_spelling("Slim Fit", fit) == "Slim"
     assert _one_spelling("loose fit", fit) is None

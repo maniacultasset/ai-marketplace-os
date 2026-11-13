@@ -113,6 +113,45 @@ async def test_counts_reconcile_with_listing_rows(
     assert amazon["publishing_enabled"] is False and amazon["enabled"] is True
 
 
+async def _all(api: httpx.AsyncClient, world: GenWorld, path: str) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    cursor: str | None = None
+    while True:
+        params = {"limit": "100", **({"cursor": cursor} if cursor else {})}
+        response = await api.get(path, params=params, headers=_hdrs(world, "owner@bharat.test"))
+        assert response.status_code == 200, response.text
+        body = response.json()
+        rows += body["data"]
+        cursor = body["page"].get("next_cursor")
+        if not body["page"]["has_more"] or not cursor:
+            return rows
+
+
+@pytest.mark.parametrize("email", ["owner@bharat.test", "reviewer@bharat.test"])
+async def test_inbox_counts_match_the_inbox_lists(
+    api: httpx.AsyncClient, gen_world: GenWorld, email: str
+) -> None:
+    """Client pass 2, B16: the summary's Inbox numbers are the Inbox lists' rows, for any role,
+    and the questions Home splits (blocking + improve) add up to the Questions list."""
+    connected(gen_world, "bharat")
+    scenario(gen_world, "bharat")
+    body = await _get(api, gen_world, email)
+    tasks = await _all(api, gen_world, "/api/v1/tasks")
+    issues = await _all(api, gen_world, "/api/v1/issues")
+    open_tasks = {t["id"] for t in tasks}
+    alone = [i for i in issues if i.get("human_task_id") not in open_tasks]
+    assert body["inbox"] == {
+        "open_items": len(tasks) + len(alone),
+        "questions": len(tasks),
+        "blocking_questions": sum(1 for t in tasks if t["blocking"]),
+        "issues": len(issues),
+        "issues_without_question": len(alone),
+    }
+    if email.startswith("owner"):
+        needs = body["needs_you"]
+        assert needs["questions"] + needs["improve"] == len(tasks)
+
+
 @pytest.mark.parametrize(
     ("email", "fix", "answer", "approve", "publish", "paused"),
     [

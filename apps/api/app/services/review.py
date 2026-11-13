@@ -58,6 +58,7 @@ from app.core.errors import ConflictError, DomainError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.request_context import current_request_id
+from app.core.seller_text import without_api_text
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.services.adapter_check import adapter_check
@@ -292,7 +293,7 @@ async def _preview_gate(ctx: _Ctx, listing: Any) -> None:
             field=row.field_path,
             error_code=ErrorCode(row.error_code),
             severity=Severity.ERROR,
-            message=row.plain_message or row.message,
+            message=without_api_text(row.plain_message or row.message) or row.message,
             source=ErrorSource.AMAZON_ADAPTER,
             retryable=False,
             raw_code=row.marketplace_code,

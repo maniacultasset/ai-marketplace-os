@@ -35,6 +35,8 @@ from mkos_schemas.listing import AttributeValue, CanonicalListing
 
 from app.adapters.base import SellerFacts, money, parse_item_dimensions
 from app.core.resolved_facts import ProductFacts, ResolvedFact
+from app.services.rules_engine.template import template_spellings
+from app.services.rules_engine.text import canonical_match
 
 __all__ = [
     "COLUMN_ATTRIBUTES",
@@ -232,6 +234,31 @@ def _ai_colour_kept(listing: CanonicalListing) -> bool:
     return Decimal(str(score)) >= Decimal(str(floor))
 
 
+def _kept_mapping(
+    current: object, seller: object, key: str, template: CategoryTemplate | None
+) -> bool:
+    """Client pass 2, B17: the listing already holds the marketplace's spelling of the seller's
+    value (the value remap fix wrote it, with its audit record), so the overlay keeps it instead
+    of writing the seller's raw spelling back on each recheck and at publish. Only for an enum
+    of the template and only when `canonical_match` names that exact value: never a value the
+    template does not list, and a changed seller value is written again (and remapped again)."""
+    if template is None or key not in template.specs or template.specs[key].value_type != "enum":
+        return False
+    spellings = template_spellings(template, key)
+    if not spellings:
+        return False
+    if isinstance(seller, str) and isinstance(current, str):
+        return current != seller and canonical_match(seller, spellings) == current
+    if isinstance(seller, list) and isinstance(current, list) and len(seller) == len(current):
+        if current == seller or not all(isinstance(v, str) for v in seller):
+            return False
+        return all(
+            isinstance(c, str) and canonical_match(v, spellings) == c
+            for v, c in zip(seller, current, strict=True)
+        )
+    return False
+
+
 def seller_overlay(
     listing: CanonicalListing, facts: ProductFacts, template: CategoryTemplate | None
 ) -> CanonicalListing:
@@ -250,7 +277,8 @@ def seller_overlay(
         else:
             seller = _seller_value(facts.attributes.get(key))
         if seller is not None:
-            attributes[key] = seller
+            if not _kept_mapping(listing.attributes.get(key), seller, key, template):
+                attributes[key] = seller
             sources[key] = COLUMN_ATTRIBUTES.get(key, key)
         elif key == "color" and key in attributes and _ai_colour_kept(listing):
             continue

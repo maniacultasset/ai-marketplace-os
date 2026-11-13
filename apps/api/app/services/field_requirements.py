@@ -51,6 +51,7 @@ from app.core.errors import NotFoundError
 from app.core.rbac import Principal
 from app.repositories.uow import tenant_uow
 from app.services.rules_engine import requirement_levels
+from app.services.rules_engine.text import distinct_spellings
 from app.services.rules_loader import load_rules
 
 __all__ = [
@@ -209,6 +210,7 @@ def _attribute_rows(
             values = list(spec.allowed_values or sorted(spec.value_map))
         if key in inline:
             values = inline[key]
+        values = distinct_spellings(values)  # B17: "Sleeveless" and "sleeveless" are one value
         row = AttributeRequirement(
             key=key,
             level=level,

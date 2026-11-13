@@ -12,7 +12,7 @@ import importlib
 import re
 import unicodedata
 from bisect import bisect_left, bisect_right
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache, partial
 from typing import Any, Final, Literal
@@ -885,6 +885,68 @@ def _enum_words(value: str) -> str:
 def _without_trailing(words: str) -> str:
     head, _, last = words.rpartition(" ")
     return head if head and last in ENUM_TRAILING_WORDS else words
+
+
+# B17 (client pass 2): the few synonyms no spelling rule finds, each a phrase a seller or the AI
+# writes for one value every marketplace template has under its own spelling. The right side is a
+# spelling the templates accept (an allowed value or a `value_map` key, compared by
+# `_enum_words`). Never a guess: a phrase that could mean two values ("elbow sleeve" is short on
+# one chart and three-quarter on another) is left out, so the seller is asked.
+ENUM_SYNONYMS: Final[Mapping[str, str]] = {
+    "sleeve less": "sleeveless",
+    "no sleeve": "sleeveless",
+    "no sleeves": "sleeveless",
+    "three fourth": "three quarter",
+    "three fourth sleeve": "three quarter",
+    "three fourth sleeves": "three quarter",
+    "3 4th": "three quarter",
+    "3 4th sleeve": "three quarter",
+    "full length sleeve": "full",
+    "full length sleeves": "full",
+}
+
+
+def spelling_key(value: str) -> str:
+    """B17: two spellings are one value when they differ only in case or spacing (NFKC, casefold,
+    runs of whitespace as one space). Hyphens stay: "A-B" and "A B" are two values of a list."""
+    return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+
+def distinct_spellings(values: Iterable[str]) -> list[str]:
+    """B17: each value once by `spelling_key`, the first spelling kept, in order ("Sleeveless" and
+    "sleeveless" are one value)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        key = spelling_key(value)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(value)
+    return out
+
+
+def canonical_match(value: str, spellings: Sequence[tuple[str, str]]) -> str | None:
+    """B17: the one canonical value `value` stands for. `spellings` pairs each accepted spelling
+    with the marketplace's own spelling of it (an allowed value with itself, a `value_map` key with
+    its target). In order: equal by case, spacing and hyphens; a synonym of `ENUM_SYNONYMS`; equal
+    once a trailing attribute word is dropped from either side ("regular fit" = "Regular"). Each
+    step answers only when every spelling it hits names the same canonical value; else None."""
+    words = _enum_words(value)
+    wanted = [words]
+    synonym = ENUM_SYNONYMS.get(words) or ENUM_SYNONYMS.get(_without_trailing(words))
+    if synonym is not None:
+        wanted.append(_enum_words(synonym))
+    for step in (lambda w: w, _without_trailing):
+        for want in wanted:
+            hits = {
+                canon for spelling, canon in spellings if step(_enum_words(spelling)) == step(want)
+            }
+            if len(hits) == 1:
+                return hits.pop()
+            if hits:
+                return None  # two values: never pick one
+    return None
 
 
 def enum_match(value: str, allowed: Sequence[str]) -> str | None:

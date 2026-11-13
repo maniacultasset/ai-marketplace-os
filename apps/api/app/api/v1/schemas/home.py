@@ -154,6 +154,32 @@ class NeedsYouCounts(WireModel):
     )
 
 
+class InboxCounts(WireModel):
+    """Client pass 2, B16: the Inbox's numbers, for every role (the Inbox lists are the same for
+    every member). Each reads the same rows as its list, so the sidebar, the Inbox and Home agree.
+    """
+
+    open_items: Count = Field(
+        description=(
+            "The Inbox's All view and the sidebar badge: `questions + issues_without_question` "
+            "(an issue an open question stands for is listed once, as its question)."
+        )
+    )
+    questions: Count = Field(
+        description=(
+            "Open questions (the Questions list): `blocking_questions` plus the ones that only "
+            "improve a listing. For a role that answers, `needs_you.questions + needs_you.improve`."
+        )
+    )
+    blocking_questions: Count = Field(
+        description="Of `questions`, those an open blocking issue waits on (`TaskOut.blocking`)."
+    )
+    issues: Count = Field(description="Open issues (the Issues list), with or without a question.")
+    issues_without_question: Count = Field(
+        description="Of `issues`, those no open question stands for: listed on their own in All."
+    )
+
+
 class NeedsYouItem(WireModel):
     """One thing to do: the product, the issue in plain words and the action."""
 
@@ -216,6 +242,7 @@ class HomeSummaryOut(WireModel):
     listings: ListingCounts
     by_marketplace: Annotated[list[MarketplaceCounts], Field(max_length=2)]
     needs_you: NeedsYouCounts
+    inbox: InboxCounts
     needs_you_items: Annotated[list[NeedsYouItem], Field(max_length=5)]
     activity: Annotated[list[ActivityItem], Field(max_length=8)]
     marketplaces: Annotated[list[MarketplaceStatus], Field(max_length=2)]

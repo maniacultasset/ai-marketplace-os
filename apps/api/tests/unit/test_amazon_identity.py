@@ -103,7 +103,8 @@ def test_no_gender_on_kurta_is_missing() -> None:
     errors = mapping.check(sent)
     assert _codes(errors).count(("facts.gender", "MISSING_ATTRIBUTE")) == 1
     (problem,) = [e for e in errors if e.field == "facts.gender"]
-    assert "PATCH /api/v1/products/{product_id}" in problem.message
+    assert "/api/" not in problem.message and "PATCH" not in problem.message  # B13
+    assert problem.suggestion == "Add the gender on the product page, then check again."
     for item in _items(sent):
         assert not set(c.AUDIENCE_ATTRIBUTES) & set(item.payload["attributes"])
 

@@ -493,6 +493,44 @@ def test_brand_row_marks_the_current_brand() -> None:
     assert brand_row(m, m.tenant_id, _counted())["current"] is True  # type: ignore[arg-type]
 
 
+def test_inbox_counts_add_up() -> None:
+    """Client pass 2, B16: Home 18 (2 blocked, 16 questions), Inbox 21, Questions 19 and Issues
+    24 are four different things, each with its own name and one definition."""
+    from app.services.home import inbox_counts
+
+    got = inbox_counts(blocking=16, improve=3, issues=24, alone=2)
+    assert got == {
+        "open_items": 21,
+        "questions": 19,
+        "blocking_questions": 16,
+        "issues": 24,
+        "issues_without_question": 2,
+    }
+    assert inbox_counts(0, 0, 0, 0)["open_items"] == 0
+
+
+def test_inbox_filters_keep_their_table_when_the_caller_joins_it() -> None:
+    """Home's blocking rows join products: task_in_inbox's subquery must still read products."""
+    from app.db.models.catalog import Product
+    from app.db.models.issues import HumanTask, ListingIssue
+    from app.db.models.listings import Listing
+    from app.repositories.human_tasks import task_in_inbox
+    from app.repositories.listing_issues import issue_in_inbox
+    from sqlalchemy import and_, select
+    from sqlalchemy.dialects import postgresql
+
+    pg = postgresql.dialect()  # type: ignore[no-untyped-call]
+    on = and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id)
+    tasks = select(HumanTask.id, Product.sku).outerjoin(Product, on).where(task_in_inbox())
+    sql = str(tasks.compile(dialect=pg))
+    assert sql.count("FROM products") == 1 and "JOIN products" in sql
+    joined = and_(
+        Listing.tenant_id == ListingIssue.tenant_id, Listing.id == ListingIssue.listing_id
+    )
+    issues = select(ListingIssue.id).join(Listing, joined).where(issue_in_inbox())
+    assert "FROM listings" in str(issues.compile(dialect=pg))
+
+
 def _import_job(status: str, imported: int | None, failed: int | None, total: int | None) -> JobRow:
     return JobRow(
         "bulk_import",

@@ -4355,6 +4355,7 @@ export interface components {
             as_of: string;
             /** By Marketplace */
             by_marketplace: components["schemas"]["MarketplaceCounts"][];
+            inbox: components["schemas"]["InboxCounts"];
             listings: components["schemas"]["ListingCounts"];
             /** Marketplaces */
             marketplaces: components["schemas"]["MarketplaceStatus"][];
@@ -4716,6 +4717,38 @@ export interface components {
              * @enum {string}
              */
             status: "imported" | "failed";
+        };
+        /**
+         * InboxCounts
+         * @description Client pass 2, B16: the Inbox's numbers, for every role (the Inbox lists are the same for
+         *     every member). Each reads the same rows as its list, so the sidebar, the Inbox and Home agree.
+         */
+        InboxCounts: {
+            /**
+             * Blocking Questions
+             * @description Of `questions`, those an open blocking issue waits on (`TaskOut.blocking`).
+             */
+            blocking_questions: number;
+            /**
+             * Issues
+             * @description Open issues (the Issues list), with or without a question.
+             */
+            issues: number;
+            /**
+             * Issues Without Question
+             * @description Of `issues`, those no open question stands for: listed on their own in All.
+             */
+            issues_without_question: number;
+            /**
+             * Open Items
+             * @description The Inbox's All view and the sidebar badge: `questions + issues_without_question` (an issue an open question stands for is listed once, as its question).
+             */
+            open_items: number;
+            /**
+             * Questions
+             * @description Open questions (the Questions list): `blocking_questions` plus the ones that only improve a listing. For a role that answers, `needs_you.questions + needs_you.improve`.
+             */
+            questions: number;
         };
         /**
          * InviteAccept
@@ -23224,6 +23257,13 @@ export interface operations {
                      *           "ready_to_publish": 0
                      *         }
                      *       ],
+                     *       "inbox": {
+                     *         "blocking_questions": 1,
+                     *         "issues": 2,
+                     *         "issues_without_question": 1,
+                     *         "open_items": 4,
+                     *         "questions": 3
+                     *       },
                      *       "listings": {
                      *         "draft": 1,
                      *         "in_progress": 1,

@@ -1555,6 +1555,13 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "waiting_on_account": 0,
                 "improve": 2,
             },
+            "inbox": {
+                "open_items": 4,
+                "questions": 3,
+                "blocking_questions": 1,
+                "issues": 2,
+                "issues_without_question": 1,
+            },
             "needs_you_items": [
                 {
                     "kind": "blocked",

@@ -29,8 +29,8 @@ from mkos_schemas.rules import MaxLength, Rule, RuleSet
 
 from app.services.auto_fix.policy import TRIM_MAX_SHARE, fact_key
 from app.services.auto_fix.text import action_taken
-from app.services.rules_engine.template import template_allowed
-from app.services.rules_engine.text import enum_match, iter_slots, measure
+from app.services.rules_engine.template import template_spellings
+from app.services.rules_engine.text import canonical_match, iter_slots, measure
 
 Unit = Literal["chars", "bytes", "words"]
 SlotValue = str | list[str]
@@ -376,33 +376,34 @@ def fold_spelling(value: str) -> str:
     return " ".join(folded.split())
 
 
-def _one_spelling(value: str, candidates: list[str]) -> str | None:
-    matches = {c for c in candidates if fold_spelling(c) == fold_spelling(value)}
-    if matches:
-        return matches.pop() if len(matches) == 1 else None
-    # prod QA 2026-11-09 item 24: an AI "regular fit" is the enum's "Regular" (one clear match)
-    return enum_match(value, candidates)
+def _one_spelling(value: str, spellings: list[tuple[str, str]]) -> str | None:
+    """B17: the marketplace's own spelling of the one value `value` stands for (an obvious case or
+    spacing variant, a `value_map` alias, a listed synonym, or "regular fit" for "Regular"), or
+    None when nothing or more than one value matches. Never a value outside the template."""
+    return canonical_match(value, spellings)
 
 
 def fix_remap_value(
     listing: CanonicalListing, item: ErrorItem, ctx: FixContext
 ) -> tuple[CanonicalListing, FixRecord] | None:
-    """`VALUE_NOT_ALLOWED` on an AI-sourced, non-critical enum attribute: write the one allowed
-    spelling each value folds to. No match, or two candidates folding equal, gives None."""
+    """`VALUE_NOT_ALLOWED` on a non-critical enum attribute: write the marketplace's spelling of
+    the one value each value stands for (`_one_spelling`). No match, or two values, gives None.
+    B17: a value copied from the product is mapped too: the listing then sends the marketplace's
+    spelling of what the seller wrote ("regular fit" -> "Regular"), and the product keeps its own
+    text. The fix pass audits each fix (`listing.auto_fixed`)."""
     key = fact_key(item.field)
     if (
         item.error_code is not ErrorCode.VALUE_NOT_ALLOWED
         or key is None
         or item.field != f"attributes.{key}"
         or key in ctx.critical_keys
-        or key in listing.attribute_sources
         or key in ctx.overlay_keys
         or ctx.template is None
         or key not in ctx.template.specs
         or ctx.template.specs[key].value_type != "enum"
     ):
         return None
-    candidates = template_allowed(ctx.template, key)
+    candidates = template_spellings(ctx.template, key)
     value = listing.attributes.get(key)
     if not candidates or not isinstance(value, str | list):
         return None
