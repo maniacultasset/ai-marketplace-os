@@ -1426,7 +1426,7 @@ def test_env_files_carry_the_pipeline_and_the_gateway(repo_root: Path) -> None:
         "false",
     )
     assert (prod["LLM_MODEL_VISION"], staging["LLM_MODEL_VISION"]) == ("gpt-4o", "")
-    assert prod["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
+    assert prod["PIPELINE_REF"] == "76315fe1d33054c0ce6388a6508727c408cabdc2"
     assert staging["WORKER_ENABLED"] == "true"
 
 
@@ -2889,13 +2889,13 @@ PROD_BC_ON = {
 
 
 def test_prod_bc_release_switches_as_committed(repo_root: Path) -> None:
-    """prod.env turns every B/C switch on with the v0.8.1 pin, keeps the classifier on and Amazon
+    """prod.env turns every B/C switch on with the v0.8.2 pin, keeps the classifier on and Amazon
     publishing off."""
     text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
     values = dict(re.findall(r"^([A-Z0-9_]+)=(.*)$", text, re.MULTILINE))
     for name in PROD_BC_ON:
         assert values[name] == "true", name
-    assert values["PIPELINE_REF"] == "c8df64c312b007cff93565e44b63a181cc0002eb"
+    assert values["PIPELINE_REF"] == "76315fe1d33054c0ce6388a6508727c408cabdc2"
     assert values["CATEGORY_SUGGEST_ENABLED"] == "true"
     assert values["AMAZON_PUBLISH_ENABLED"] == "false"
 
