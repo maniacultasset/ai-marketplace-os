@@ -123,6 +123,7 @@ def _typed_columns(conn: Conn, table: str) -> set[str]:
         "photo_rejections",  # SI9 B5 (0020): rejected photo reads, never a fact
         "category_suggestion",  # SI14 (0027): the classifier's suggestion, never a fact
         "brand_voice",  # item 19 (0030): the seller's voice answers, tone only, never a fact
+        "archived_at",  # 0039: "Archive product", a lifecycle stamp, never a fact
     }  # fmt: skip
     return names - not_facts
 

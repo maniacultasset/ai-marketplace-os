@@ -53,10 +53,10 @@ from app.db.models.catalog import Product
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on
 from app.repositories.variants import MatrixCellRepository
+from app.services import family_conversion as conversion
 from app.services.idempotency import idempotent
 from app.services.imports.row_model import SIZE_KEY_PATTERN
 from app.services.product_facts import SIZE_CHART_KEY, fact_stamp
-from app.services.product_recategorize import SEEN, SUPERSEDED
 
 __all__ = ["MAX_SIZES", "SKU_MAX", "create_size_run", "size_key", "size_sku"]
 
@@ -141,27 +141,9 @@ def _check_level(row: Product) -> None:
     if row.variation_theme in SPLIT_BY_COLOUR:
         raise InputError(ErrorCode.VARIATION_INVALID, "product_id")
     if row.variation_theme is None:  # a standalone becomes a size style (step 3)
-        attrs = row.attributes if isinstance(row.attributes, Mapping) else {}
-        if row.identifier_value is not None:
-            raise InputError(ErrorCode.VARIATION_INVALID, "product_identifier")
-        if row.stock_ref is not None:
-            raise InputError(ErrorCode.VARIATION_INVALID, "stock_ref")
-        if "size" in attrs:
-            raise InputError(ErrorCode.VARIATION_INVALID, "attributes.size")
-
-
-async def _listings(uow: TenantUnitOfWork, row: Product) -> list[Any]:
-    listings = await uow.listings.for_product_for_update(row.id)
-    for listing in listings:
-        if (
-            listing.status in SEEN
-            or listing.first_published_at is not None
-            or await uow.submissions.latest(listing.id) is not None
-        ):
-            raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listing_published")
-        if listing.status == "generating":
-            raise ConflictError(ErrorCode.LISTING_BUSY, "listings")
-    return listings
+        held = conversion.blocker(row)
+        if held is not None:
+            raise InputError(ErrorCode.VARIATION_INVALID, held)
 
 
 def _seller(stamp: str) -> dict[str, object]:
@@ -221,40 +203,23 @@ async def _apply(
                 if " ".join(s.split()).casefold() == size.label.casefold()
             )
             raise ConflictError(ErrorCode.SKU_CONFLICT, f"sizes[{index}]")
-    listings = await _listings(uow, row)
+    listings = await conversion.listings(uow, row)
     stamp = fact_stamp(datetime.now(UTC))
     converted = row.variation_theme is None
-    if converted:
-        exempt = row.identifier_status == "exempt"
+    if converted:  # the update expires `row`: only `style` and `stored` are read after it
+        exempt = await conversion.drop_identity(uow, row)
     else:  # a later size joins an exempt family exempt, or the style would read as not exempt
         exempt = (await uow.products.style_exemptions([row.id]))[row.id]
     size_run = [*stored, *(s.key for s in new)]
     if len(size_run) > MAX_SIZES:  # ck_products_size_run: refuse here, never a 500 from the DB
         raise InputError(ErrorCode.VALIDATION_FAILED, "sizes")
     if converted:
-        provenance = {k: v for k, v in (row.provenance or {}).items() if k != "identifier"}
-        await uow.products.update_one(
-            row.id,
-            variation_theme="size",
-            size_run=size_run,
-            identifier_status=None,
-            provenance=provenance,
-        )
+        await uow.products.update_one(style.id, variation_theme="size", size_run=size_run)
     else:
-        await uow.products.update_one(row.id, size_run=size_run)
+        await uow.products.update_one(style.id, size_run=size_run)
     created = await _make_children(uow, principal, style, new, exempt=exempt, stamp=stamp)
     await MatrixCellRepository(uow.session, principal.tenant_id).check_now()
-    actor = UserActor(principal.user_id)
-    for listing in listings:
-        if listing.status in SUPERSEDED and listing.paused_at is None:
-            await uow.listings.move(
-                listing,
-                to="blocked",
-                event="revalidate",
-                reason="validation_errors",
-                actor=actor,
-                clear_approval=listing.status == "approved",
-            )
+    await conversion.supersede(uow, listings, UserActor(principal.user_id))
     await uow.audit.write(
         tenant_id=principal.tenant_id,
         actor_type="user",

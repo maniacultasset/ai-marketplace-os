@@ -428,10 +428,11 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         return sorted(str(path) for path in (await self.db.execute(stmt)).scalars())
 
     async def cancel_for_products(
-        self, product_ids: builtins.list[uuid.UUID]
+        self, product_ids: builtins.list[uuid.UUID], reason: str = "product_deleted"
     ) -> builtins.list[uuid.UUID]:
-        """Product delete: every live (`open`/`answered`) task of these products becomes
-        `cancelled` with reason `product_deleted`. The ids, in id order."""
+        """Product delete (and archive, reason `listing_archived`): every live (`open`/
+        `answered`) task of these products becomes `cancelled` with `reason`. The ids, in id
+        order."""
         if not product_ids:
             return []
         stmt = self._scoped_write(
@@ -441,7 +442,7 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
                 HumanTask.product_id.in_(product_ids),
                 HumanTask.status.in_(LIVE),
             )
-            .values(status="cancelled", cancelled_reason="product_deleted")
+            .values(status="cancelled", cancelled_reason=reason)
         ).returning(HumanTask.id)
         return sorted((await self.db.execute(stmt)).scalars())
 
