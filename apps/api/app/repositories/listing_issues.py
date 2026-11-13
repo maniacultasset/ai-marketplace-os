@@ -97,11 +97,13 @@ def issue_in_inbox() -> ColumnElement[bool]:
     """An issue the Inbox lists: not one of an archived listing (its product was deleted). The
     one definition of the Issues list, its count and the Home summary's (client pass 2, B16)."""
     archived = exists(
-        select(Listing.id).where(
+        select(Listing.id)
+        .where(
             Listing.tenant_id == ListingIssue.tenant_id,
             Listing.id == ListingIssue.listing_id,
             Listing.archived_at.is_not(None),
         )
+        .correlate_except(Listing)  # a caller may join listings itself
     )
     return ~archived
 

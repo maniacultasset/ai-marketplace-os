@@ -76,11 +76,13 @@ def task_in_inbox() -> ColumnElement[bool]:
     """A task the Inbox lists: not one of a deleted product (whatever its status). The one
     definition of the Questions list, its count and the Home summary's (client pass 2, B16)."""
     gone = exists(
-        select(Product.id).where(
+        select(Product.id)
+        .where(
             Product.tenant_id == HumanTask.tenant_id,
             Product.id == HumanTask.product_id,
             Product.deleted_at.is_not(None),
         )
+        .correlate_except(Product)  # a caller may join products itself (Home's blocking rows)
     )
     return ~gone
 

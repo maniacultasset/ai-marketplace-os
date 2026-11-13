@@ -507,3 +507,25 @@ def test_inbox_counts_add_up() -> None:
         "issues_without_question": 2,
     }
     assert inbox_counts(0, 0, 0, 0)["open_items"] == 0
+
+
+def test_inbox_filters_keep_their_table_when_the_caller_joins_it() -> None:
+    """Home's blocking rows join products: task_in_inbox's subquery must still read products."""
+    from app.db.models.catalog import Product
+    from app.db.models.issues import HumanTask, ListingIssue
+    from app.db.models.listings import Listing
+    from app.repositories.human_tasks import task_in_inbox
+    from app.repositories.listing_issues import issue_in_inbox
+    from sqlalchemy import and_, select
+    from sqlalchemy.dialects import postgresql
+
+    pg = postgresql.dialect()  # type: ignore[no-untyped-call]
+    on = and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id)
+    tasks = select(HumanTask.id, Product.sku).outerjoin(Product, on).where(task_in_inbox())
+    sql = str(tasks.compile(dialect=pg))
+    assert sql.count("FROM products") == 1 and "JOIN products" in sql
+    joined = and_(
+        Listing.tenant_id == ListingIssue.tenant_id, Listing.id == ListingIssue.listing_id
+    )
+    issues = select(ListingIssue.id).join(Listing, joined).where(issue_in_inbox())
+    assert "FROM listings" in str(issues.compile(dialect=pg))
