@@ -676,6 +676,15 @@ class ProductOut(WireModel):
     parent_product_id: UUID | None = None
     created_at: AwareDatetime
     updated_at: AwareDatetime
+    archived_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "When the product was archived (`POST /products/{product_id}/archive`), else null. "
+            "An archived product is out of `GET /products` (`?archived=true` lists them), its "
+            "listings are archived and generate answers 409 LISTING_ARCHIVED until it is "
+            "unarchived."
+        ),
+    )
     style_number: str | None = None
     brand_name: str | None = Field(
         default=None,

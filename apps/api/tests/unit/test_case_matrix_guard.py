@@ -120,6 +120,8 @@ IMPLEMENTED: frozenset[str] = frozenset(
         # PD1
         "products_delete",
         "products_bulk_delete",
+        "products_archive",  # Chrome pass 2
+        "products_unarchive",
         # S21
         "listings_publish",
         "listings_retry_fields",

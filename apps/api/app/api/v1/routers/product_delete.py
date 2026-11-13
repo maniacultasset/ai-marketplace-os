@@ -1,5 +1,6 @@
 """Product delete (owner step PD1): `DELETE /products/{product_id}` and `POST
-/products/bulk-delete`. `settings:manage` (owner, admin). Another tenant's product, an unknown id
+/products/bulk-delete`; product archive (0039): `POST /products/{product_id}/archive` and
+`/unarchive`. `settings:manage` (owner, admin). Another tenant's product, an unknown id
 and an already deleted one are the same 404. Routes import no `sqlalchemy` or `app.db`; domain
 errors render through the shared handlers; the service is `app.services.product_delete`."""
 
@@ -12,14 +13,16 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi import Path as PathParam
 
 from app.api.v1.deps import IdempotencyKey, get_current_principal
+from app.api.v1.routers.products import _out as product_out
 from app.api.v1.schemas.product_delete import (
     ProductBulkDeleteRequest,
     ProductBulkDeleteResult,
     ProductDeleteItemResult,
 )
+from app.api.v1.schemas.products import ProductOut
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
-from app.services import product_delete
+from app.services import product_archive, product_delete
 
 router = APIRouter()
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -38,6 +41,29 @@ async def products_delete(
     second delete is 404, as for another tenant's product."""
     await product_delete.delete_product(principal, product_id)
     return Response(status_code=204)
+
+
+@route(router, OPS["products_archive"])
+async def products_archive(
+    product_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> ProductOut:
+    """Archive a product, and a style's sizes with it, without deleting it: it leaves the
+    product list (`GET /products?archived=true` lists it), its listings are archived, its
+    queued jobs are cancelled and its open questions close; its photos, facts and history stay.
+    The same 409s as delete (a listing sent to a marketplace, one being sent, one generating),
+    with nothing changed. A size is 422 (archive its style). Archiving an archived product
+    answers it unchanged."""
+    return product_out(await product_archive.archive_product(principal, product_id))
+
+
+@route(router, OPS["products_unarchive"])
+async def products_unarchive(
+    product_id: Annotated[UUID, PathParam()], principal: CurrentPrincipal
+) -> ProductOut:
+    """Bring an archived product back: it is in the product list again and its listings can be
+    drafted, edited and approved again. Its closed questions stay closed. A product that is not
+    archived answers unchanged; a size is 422."""
+    return product_out(await product_archive.unarchive_product(principal, product_id))
 
 
 @route(router, OPS["products_bulk_delete"])

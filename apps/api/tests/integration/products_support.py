@@ -115,6 +115,8 @@ PRODUCT_FIELDS = frozenset(
         "parent_product_id",
         "created_at",
         "updated_at",
+        # Chrome pass 2 (0039): "Archive product"
+        "archived_at",
         # SI1 D1c
         "style_number",
         "mrp",

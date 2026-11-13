@@ -124,6 +124,25 @@ class ProductRepository(TenantScopedRepository[Product]):
                 out.append(found)
         return out
 
+    async def set_archived(
+        self, ids: Sequence[uuid.UUID], archived: bool
+    ) -> builtins.list[uuid.UUID]:
+        """Archive (0039) or unarchive these live rows: stamp or clear `archived_at` where it
+        changes. The ids written."""
+        if not ids:
+            return []
+        stmt = self._scoped_write(
+            update(Product)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                Product.id.in_(ids),
+                Product.deleted_at.is_(None),
+                Product.archived_at.is_(None) if archived else Product.archived_at.is_not(None),
+            )
+            .values(archived_at=func.now() if archived else None)
+        ).returning(Product.id)
+        return sorted((await self.db.execute(stmt)).scalars())
+
     async def photo_rejections(self, product_id: uuid.UUID) -> dict[str, str]:
         """SI9 B5: `{key: rejected value}`, read on its own (never part of `ProductFacts`, so the
         facts digest is unchanged, CP-D12); `{}` for an unknown product."""
@@ -400,15 +419,20 @@ class ProductRepository(TenantScopedRepository[Product]):
         after: tuple[datetime, uuid.UUID] | None,
         listing: str | None = None,
         marketplace: str | None = None,
+        archived: bool = False,
     ) -> tuple[builtins.list[Product], bool]:
         """One keyset page, newest first. With `listing` (a Home bucket filter,
         `app.repositories.home.BUCKET_FILTERS`) or `marketplace`, only the products that own a
-        listing that is not archived in that bucket and on that marketplace."""
+        listing that is not archived in that bucket and on that marketplace. `archived`: only
+        the archived products (0039) instead of the others."""
         if isinstance(limit, bool) or not isinstance(limit, int):
             raise ValueError("limit must be an int")
         if not PAGE_LIMIT_MIN <= limit <= PAGE_LIMIT_MAX:
             raise ValueError(f"limit must be in {PAGE_LIMIT_MIN}..{PAGE_LIMIT_MAX}")
-        stmt = self._select().where(Product.deleted_at.is_(None))
+        stmt = self._select().where(
+            Product.deleted_at.is_(None),
+            Product.archived_at.is_not(None) if archived else Product.archived_at.is_(None),
+        )
         if listing is not None or marketplace is not None:
             owned = [
                 Listing.tenant_id == Product.tenant_id,

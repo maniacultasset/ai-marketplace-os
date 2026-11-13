@@ -68,6 +68,9 @@ BUSINESS_OPS = frozenset(
         "products_update",
         # SI9: recategorize answers the same `ProductOut`
         "products_recategorize",
+        # Chrome pass 2: archive and unarchive answer the same `ProductOut`
+        "products_archive",
+        "products_unarchive",
     }
 )
 TOKEN_KEYS = frozenset({"access_token", "refresh_token"})
@@ -151,7 +154,14 @@ SECRET_KEYS_BY_OP: dict[str, dict[str, bool]] = {
     # or logged), the main photo's at the top of a product and each image's under `image_details`
     **{
         op: {"thumbnail_url": True, "view_url": False}
-        for op in ("products_get", "products_create", "products_update", "products_recategorize")
+        for op in (
+            "products_get",
+            "products_create",
+            "products_update",
+            "products_recategorize",
+            "products_archive",
+            "products_unarchive",
+        )
     },
     "products_list": {"thumbnail_url": False, "view_url": False},
 }

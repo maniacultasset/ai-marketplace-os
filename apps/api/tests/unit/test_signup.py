@@ -860,8 +860,9 @@ def test_0021_is_the_single_head() -> None:
     # sign-up status handle (0031) and the owner self-approval setting (ADR-0031) on top of that,
     # then the wave B/C train: the brand voice (0033), the SKU counters (0034), the variant photo
     # match (0035) and the section locks (0036), then the wave A2 train: the sign-up's one
-    # question and reply (0037, client item 2), then the auto-fix setting (0038, client item 20)
-    assert revisions - parents == {"0038_d5"}
+    # question and reply (0037, client item 2), then the auto-fix setting (0038, client item 20),
+    # then the product archive (0039, Chrome pass 2)
+    assert revisions - parents == {"0039_product_archive"}
 
 
 @pytest.mark.parametrize(

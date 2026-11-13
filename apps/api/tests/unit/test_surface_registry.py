@@ -79,6 +79,8 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("products_recategorize", "POST", "/products/{product_id}/recategorize"),  # SI9
     ("products_bulk", "POST", "/products/bulk"),
     ("products_delete", "DELETE", "/products/{product_id}"),  # PD1
+    ("products_archive", "POST", "/products/{product_id}/archive"),  # Chrome pass 2
+    ("products_unarchive", "POST", "/products/{product_id}/unarchive"),  # Chrome pass 2
     ("products_bulk_delete", "POST", "/products/bulk-delete"),  # PD1
     ("imports_get", "GET", "/imports/{import_id}"),
     ("imports_rows", "GET", "/imports/{import_id}/rows"),
@@ -517,7 +519,8 @@ def test_operation_count() -> None:
     # FB18 (client feedback item 18) adds the cross-brand overview
     # item 16 adds the listing field requirements read
     # client item 20 adds the seller's apply of Kuinn's suggested fixes
-    assert len(OPS) == 129
+    # Chrome pass 2 adds the product archive and unarchive
+    assert len(OPS) == 131
 
 
 def test_error_codes_per_d2() -> None:
@@ -550,6 +553,12 @@ def test_error_codes_per_d2() -> None:
         "products_recategorize": (E.INVALID_STATUS_TRANSITION, E.LISTING_BUSY),  # SI9
         # PD1: a listing sent to a marketplace, one generating, one being sent
         "products_delete": (
+            E.INVALID_STATUS_TRANSITION,
+            E.LISTING_BUSY,
+            E.SUBMISSION_IN_FLIGHT,
+        ),
+        # Chrome pass 2: archive refuses as delete does
+        "products_archive": (
             E.INVALID_STATUS_TRANSITION,
             E.LISTING_BUSY,
             E.SUBMISSION_IN_FLIGHT,

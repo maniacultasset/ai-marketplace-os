@@ -151,6 +151,8 @@ class Product(TenantScoped, Base):
     photo_rejections: Mapped[dict[str, str]] = mapped_column(JSONB, server_default=EMPTY_OBJECT)
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # 0039: "Archive product" (Chrome pass 2): out of the list, listings archived, reversible
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

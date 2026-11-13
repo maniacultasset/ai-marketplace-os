@@ -57,6 +57,8 @@ Q7: dict[str, str] = {
     "products_bulk": "product:import",
     "products_delete": "settings:manage",  # PD1
     "products_bulk_delete": "settings:manage",  # PD1
+    "products_archive": "settings:manage",  # Chrome pass 2
+    "products_unarchive": "settings:manage",  # Chrome pass 2
     "imports_get": "tenant:read",
     "imports_rows": "tenant:read",
     "imports_rows_retry": "product:import",
