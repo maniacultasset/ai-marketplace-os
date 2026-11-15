@@ -299,18 +299,29 @@ def order(groups: Sequence[Group]) -> list[Group]:
     return sorted(groups, key=rank)
 
 
-RedraftBlock = Literal["busy", "paused", "other_questions_open"]
+RedraftBlock = Literal[
+    "busy", "paused", "other_questions_open", "nothing_to_redraft", "not_written"
+]
+BUSY_STATUSES: Final = frozenset({"generating", "publishing"})
 
 
-def redraft_block(status: str, paused: bool, questions_open: bool) -> RedraftBlock | None:
-    """Why a listing should not be written again now, or None when it can be: `busy` (never
-    written, or being written: `POST /listings/{id}/regenerate` answers 409), `paused` (409
-    too), `other_questions_open` (a seller question still stands on it: one redraft once every
-    answer is in, as `services.tasks.fact_edits` waits)."""
-    if status in ("created", "generating"):
+def redraft_block(
+    status: str, paused: bool, questions_open: int, has_sections: bool = True
+) -> RedraftBlock | None:
+    """Why a listing should not be written again now, or None when it can be: `not_written`
+    (never generated: generate it, not redraft), `nothing_to_redraft` (the answered fact feeds no
+    unlocked section), `busy` (being written or published now: `POST /listings/{id}/regenerate`
+    answers 409), `paused` (409 too), `other_questions_open` (`questions_open` other seller
+    questions still stand on it: one redraft once every answer is in, as
+    `services.tasks.fact_edits` waits)."""
+    if status == "created":
+        return "not_written"
+    if not has_sections:
+        return "nothing_to_redraft"
+    if status in BUSY_STATUSES:
         return "busy"
     if paused:
         return "paused"
-    if questions_open:
+    if questions_open > 0:
         return "other_questions_open"
     return None

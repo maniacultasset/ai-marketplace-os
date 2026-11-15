@@ -121,13 +121,26 @@
           "marketplace": {
             "$ref": "#/components/schemas/Marketplace"
           },
+          "open_questions": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`other_questions_open` only: how many other live seller questions stand on the listing; null otherwise.",
+            "title": "Open Questions"
+          },
           "product_id": {
             "format": "uuid",
             "title": "Product Id",
             "type": "string"
           },
           "redraft": {
-            "description": "It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true` (`redraft_blocked` says why not).",
+            "description": "It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true`: only when nothing blocks it and `sections` is not empty (`redraft_blocked` says why not).",
             "title": "Redraft",
             "type": "boolean"
           },
@@ -137,7 +150,9 @@
                 "enum": [
                   "busy",
                   "paused",
-                  "other_questions_open"
+                  "other_questions_open",
+                  "nothing_to_redraft",
+                  "not_written"
                 ],
                 "type": "string"
               },
@@ -145,7 +160,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why not now: `busy` (never written, or being written), `paused`, or `other_questions_open` (another seller question still stands on the listing: redraft once every answer is in). Null when `redraft` is true.",
+            "description": "Why not now: `not_written` (never generated: generate it instead), `nothing_to_redraft` (the answered fact feeds no unlocked section), `busy` (being written or published now), `paused`, or `other_questions_open` (other seller questions, `open_questions` of them, still stand on the listing: redraft once every answer is in). Null when `redraft` is true.",
             "title": "Redraft Blocked"
           },
           "sections": {
@@ -1370,6 +1385,21 @@
       },
       "BrandProfileOut": {
         "properties": {
+          "affected_listings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AffectedListingOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PATCH only, with the grouped Inbox on, when a party default (manufacturer, marketer, packer, importer) was set or cleared: the listings with an open question on that party, checked again first, each with its redraft verdict (as `POST /inbox/groups/answer` lists them). Redraft only those with `redraft: true`. Absent otherwise.",
+            "title": "Affected Listings"
+          },
           "brand_description": {
             "anyOf": [
               {
@@ -27728,7 +27758,7 @@
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Set or clear the default manufacturer, marketer, packer or importer, the website, the brand\ndescription or the brand voice (owner, admin). Setting a party checks again the listings\nwith an open question on it, so a question it answers closes (grouped Inbox switch on).\n`If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is\nunchanged, `null` clears. The voice shapes tone and emphasis only: product facts always\nwin.",
+        "description": "Set or clear the default manufacturer, marketer, packer or importer, the website, the brand\ndescription or the brand voice (owner, admin). With the grouped Inbox on, setting a party\nchecks again the listings with an open question on it, so a question it answers closes, and\na changed party default returns `affected_listings` with each listing's redraft verdict.\n`If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is\nunchanged, `null` clears. The voice shapes tone and emphasis only: product facts always\nwin.",
         "operationId": "brand_profile_update",
         "parameters": [
           {
@@ -27759,6 +27789,29 @@
             "content": {
               "application/json": {
                 "example": {
+                  "affected_listings": [
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "redraft": true,
+                      "sections": [
+                        "attributes"
+                      ],
+                      "status": "blocked"
+                    },
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000001202",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000103",
+                      "redraft": false,
+                      "redraft_blocked": "not_written",
+                      "sections": [
+                        "attributes"
+                      ],
+                      "status": "created"
+                    }
+                  ],
                   "brand_description": "Hand-block printed cotton wear from Jaipur.",
                   "brand_voice": {
                     "audience": "Women 25 to 40 who buy for daily office wear",
@@ -37744,6 +37797,21 @@
                         "attributes"
                       ],
                       "status": "blocked"
+                    },
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000001201",
+                      "marketplace": "flipkart",
+                      "open_questions": 2,
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "redraft": false,
+                      "redraft_blocked": "other_questions_open",
+                      "sections": [
+                        "bullets",
+                        "description",
+                        "keywords",
+                        "attributes"
+                      ],
+                      "status": "needs_review"
                     }
                   ],
                   "skipped": [

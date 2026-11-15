@@ -19,6 +19,7 @@ from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
 from pydantic import AfterValidator, AwareDatetime, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.api.v1.schemas.affected_listings import AffectedListingOut
 from app.core.india import STATE_CODES
 from app.core.website import WEBSITE_MAX, WEBSITE_PATTERN
 from app.services.brand_voice import BrandVoice, DescriptionText, PriceSegment
@@ -164,3 +165,11 @@ class BrandProfileOut(WireModel):
         default=None, description='Null until the seller answers "Tell Kuinn about your brand".'
     )
     updated_at: AwareDatetime | None = None
+    affected_listings: list[AffectedListingOut] | None = Field(
+        default=None,
+        description="PATCH only, with the grouped Inbox on, when a party default (manufacturer, "
+        "marketer, packer, importer) was set or cleared: the listings with an open question on "
+        "that party, checked again first, each with its redraft verdict (as `POST "
+        "/inbox/groups/answer` lists them). Redraft only those with `redraft: true`. Absent "
+        "otherwise.",
+    )

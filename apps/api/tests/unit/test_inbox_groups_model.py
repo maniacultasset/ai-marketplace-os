@@ -201,19 +201,25 @@ def test_order_blocking_then_size_then_newest() -> None:
 
 
 @pytest.mark.parametrize(
-    ("status", "paused", "questions", "block"),
+    ("status", "paused", "questions", "sections", "block"),
     [
-        ("created", False, False, "busy"),
-        ("generating", True, True, "busy"),
-        ("blocked", True, True, "paused"),
-        ("blocked", False, True, "other_questions_open"),
-        ("blocked", False, False, None),
-        ("approved", False, False, None),
-        ("failed", False, False, None),
+        ("created", False, 0, True, "not_written"),
+        ("created", True, 2, False, "not_written"),
+        ("generating", True, 1, True, "busy"),
+        ("publishing", False, 0, True, "busy"),
+        ("approved", False, 0, False, "nothing_to_redraft"),
+        ("generating", False, 0, False, "nothing_to_redraft"),
+        ("blocked", True, 1, True, "paused"),
+        ("blocked", False, 1, True, "other_questions_open"),
+        ("blocked", False, 0, True, None),
+        ("approved", False, 0, True, None),
+        ("failed", False, 0, True, None),
     ],
 )
-def test_redraft_block(status: str, paused: bool, questions: bool, block: str | None) -> None:
-    assert m.redraft_block(status, paused, questions) == block
+def test_redraft_block(
+    status: str, paused: bool, questions: int, sections: bool, block: str | None
+) -> None:
+    assert m.redraft_block(status, paused, questions, sections) == block
 
 
 @pytest.mark.parametrize(
@@ -250,3 +256,27 @@ def test_the_manufacturer_question_names_the_brand_setting() -> None:
     )
     confirm, _ = question_for(ErrorCode.FACT_NEEDS_CONFIRMATION, "manufacturer", "manufacturer")
     assert confirm == "Confirm the manufacturer on the product."
+
+
+async def test_a_fact_that_feeds_no_section_is_nothing_to_redraft() -> None:
+    """`redraft` is true only with sections to write: a listing the answer reaches no section of
+    is `nothing_to_redraft`, whatever else holds it."""
+    import types
+
+    from app.repositories.inbox_groups import ListingRef
+    from app.services.inbox_groups import listing_verdicts
+
+    async def counts(*_: object, **__: object) -> dict[uuid.UUID, int]:
+        return {}
+
+    listings = types.SimpleNamespace(open_question_counts=counts)
+    uow = types.SimpleNamespace(inbox_groups=types.SimpleNamespace(listings=listings))
+    ref = ListingRef(uuid.uuid4(), uuid.uuid4(), "amazon", "approved", False)
+    (nothing,) = await listing_verdicts(uow, [ref], [])  # type: ignore[arg-type]
+    (colour,) = await listing_verdicts(uow, [ref], ["facts.attributes.color"])  # type: ignore[arg-type]
+    assert (nothing["redraft"], nothing["redraft_blocked"], nothing["sections"]) == (
+        False, "nothing_to_redraft", [],
+    )  # fmt: skip
+    assert (colour["redraft"], colour["redraft_blocked"], colour["open_questions"]) == (
+        True, None, None,
+    )  # fmt: skip

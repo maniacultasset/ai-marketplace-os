@@ -78,6 +78,7 @@ async def test_get_without_row_is_empty(api: httpx.AsyncClient, fresh: World) ->
         "brand_description": None,
         "brand_voice": None,
         "updated_at": None,
+        "affected_listings": None,
     }
     assert response.headers["ETag"]
 

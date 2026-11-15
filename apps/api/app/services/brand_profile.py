@@ -29,12 +29,16 @@ written the same way, under the same `If-Match`.
 G1 (prod bulk test, 15 Nov 2026): `default_marketer`, `default_packer` and `default_importer` are
 set as the manufacturer is (a party, `provenance.<role>`), so the grouped Inbox's `brand` questions
 are answered once for the brand. With `INBOX_GROUPS_ENABLED` on, setting one checks again the
-listings with an open question on it (`recheck_brand_questions`), after the save commits. Neither is chunked or embedded: the generation
-context sends both whole (`BrandPromptRepository.for_prompt`), so no `brand_embed` job is queued.
+listings with an open question on it (`recheck_brand_questions`), after the save commits, and
+closes the product-level questions on it no refusal links; a changed party default then returns
+`affected_listings`, each listing's redraft verdict (`brand_party_listings`). Neither is chunked
+or embedded: the generation context sends both whole (`BrandPromptRepository.for_prompt`), so no
+`brand_embed` job is queued.
 """
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import uuid
 from collections.abc import Mapping
@@ -43,6 +47,7 @@ from datetime import UTC, datetime
 from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
+from structlog import get_logger
 
 from app.core.config import get_settings
 from app.core.errors import ConflictError, DomainError
@@ -59,6 +64,8 @@ __all__ = [
     "get_brand_profile",
     "update_brand_profile",
 ]
+
+logger = get_logger(__name__)
 
 BRAND_ETAG_NS: Final = uuid.UUID("579f7b2f-e7d6-4ba6-a109-dc17762550d2")
 MANUFACTURER: Final = "default_manufacturer"
@@ -87,6 +94,7 @@ class BrandProfileView:
     default_marketer: PartyView | None = None
     default_packer: PartyView | None = None
     default_importer: PartyView | None = None
+    affected_listings: list[dict[str, Any]] | None = None
 
 
 async def _view(uow: TenantUnitOfWork, tenant_id: uuid.UUID) -> BrandProfileView:
@@ -139,6 +147,7 @@ async def update_brand_profile(
                 wrote = True
                 audited[WEBSITE] = None if url is None else fact
         roles_set: list[str] = []
+        party_changed = False
         for role in PARTY_ROLES:
             if f"default_{role}" not in fields:
                 continue
@@ -155,6 +164,7 @@ async def update_brand_profile(
                 await uow.brand_profiles.touch()
             if party_wrote or linked:
                 wrote = True
+                party_changed = True
                 audited[role] = None if party is None else fact
                 if party is not None:
                     roles_set.append(role)
@@ -189,9 +199,39 @@ async def update_brand_profile(
         )
         await uow.session.refresh(row)
         view = await _view(uow, principal.tenant_id)
-    if roles_set and get_settings().inbox_groups_enabled:
-        await recheck_brand_questions(principal, roles_set)
+    if party_changed and get_settings().inbox_groups_enabled:
+        affected = await brand_party_listings(principal, roles_set)
+        view = dataclasses.replace(view, affected_listings=affected)
     return view
+
+
+async def brand_party_listings(principal: Principal, roles: list[str]) -> list[dict[str, Any]]:
+    """G1: the listings with an open question on one of the party `roles` just set, each with
+    its redraft verdict (`inbox_groups.listing_verdicts`), read after `recheck_brand_questions`
+    so a question the brand value closed no longer holds a listing back. The web redrafts only
+    on this verdict. Best effort after the save committed: a failed read is logged and returns
+    an empty list, never a 500."""
+    from app.services.inbox_groups import listing_verdicts
+
+    if not roles:
+        return []
+    targets = [f"facts.{role}" for role in roles]
+    try:
+        async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+            listing_ids = await uow.inbox_groups.listings.with_open_targets(
+                targets, RECHECK_MAX, written_only=False
+            )
+    except Exception:
+        logger.warning("brand.party_listings_failed", exc_info=True)
+        return []
+    await recheck_brand_questions(principal, roles)
+    try:
+        async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+            refs = await uow.inbox_groups.listings.by_ids(listing_ids)
+            return await listing_verdicts(uow, refs, targets)
+    except Exception:
+        logger.warning("brand.party_listings_failed", exc_info=True)
+        return []
 
 
 RECHECK_MAX: Final = 100
@@ -201,21 +241,35 @@ RECHECK_MAX: Final = 100
 async def recheck_brand_questions(principal: Principal, roles: list[str]) -> int:
     """G1: after a brand default is set, check again (`listing_validate.validate_listing`, the
     dashboard's "Check again") every listing of a product with an open question on that party,
-    so a question the brand value now answers closes without a click. Each listing in its own
-    transaction, after the save committed: a listing that cannot be checked (no version yet,
-    being written, deleted) is left as it is and never undoes the save. Returns how many were
-    checked."""
+    so a question the brand value now answers closes without a click; and close (`superseded`)
+    the product-level questions on that party that no listing refusal links (no check would
+    ever close them) on products without their own party. Each step in its own transaction,
+    after the save committed: a listing that cannot be checked (no version yet, being written,
+    deleted) or any other failure is logged and left as it is, never undoing the save nor
+    turning it into a 500. Returns how many listings were checked."""
     from app.services.listing_validate import validate_listing
 
     targets = [f"facts.{role}" for role in roles]
-    async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
-        listing_ids = await uow.inbox_groups.listings.with_open_targets(targets, RECHECK_MAX)
+    try:
+        async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
+            closed = await uow.human_tasks.cancel_brand_party_tasks(roles)
+            listing_ids = await uow.inbox_groups.listings.with_open_targets(targets, RECHECK_MAX)
+    except Exception:
+        logger.warning("brand.recheck_failed", exc_info=True)
+        return 0
+    if closed:
+        logger.info("brand.party_questions_closed", count=closed)
     checked = 0
     for listing_id in listing_ids:
         try:
             async with tenant_uow(principal.tenant_id, user_id=principal.user_id) as uow:
                 await validate_listing(uow, principal, listing_id, None)
         except DomainError:
+            continue
+        except Exception:
+            logger.warning(
+                "brand.recheck_listing_failed", listing_id=str(listing_id), exc_info=True
+            )
             continue
         checked += 1
     return checked

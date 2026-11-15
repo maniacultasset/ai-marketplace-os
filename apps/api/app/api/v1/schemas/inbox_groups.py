@@ -12,15 +12,13 @@ from mkos_schemas.enums import Marketplace
 from pydantic import AwareDatetime, Field, StringConstraints, field_validator
 from pydantic_core import PydanticCustomError
 
+from app.api.v1.schemas.affected_listings import AffectedListingOut
 from app.api.v1.schemas.issues import IssueOut
 from app.api.v1.schemas.products import AnswerScalar
 from app.api.v1.schemas.tasks import TaskKind, TaskOut
-from app.services.sections import Section
 
 GroupScope = Literal["brand", "product_fact", "exemption", "per_item"]
 SkipReason = Literal["has_value", "closed", "not_allowed", "wrong_level", "gone"]
-ListingStatus = Annotated[str, StringConstraints(max_length=40)]
-RedraftBlock = Literal["busy", "paused", "other_questions_open"]
 
 
 class InboxGroupMemberOut(WireModel):
@@ -138,29 +136,6 @@ class SkippedOut(WireModel):
         "question is no longer open; `not_allowed`: the value is not one this product's "
         "category accepts; `wrong_level`: the fact belongs on another level of the product "
         "(its style or its sizes); `gone`: no such question in this brand."
-    )
-
-
-class AffectedListingOut(WireModel):
-    listing_id: UUID
-    product_id: UUID
-    marketplace: Marketplace
-    status: ListingStatus
-    redraft: bool = Field(
-        description="It can be written again now with `POST /listings/{listing_id}/regenerate` "
-        "and these `sections` with `for_answers: true` (`redraft_blocked` says why not)."
-    )
-    redraft_blocked: RedraftBlock | None = Field(
-        default=None,
-        description="Why not now: `busy` (never written, or being written), `paused`, or "
-        "`other_questions_open` (another seller question still stands on the listing: redraft "
-        "once every answer is in). Null when `redraft` is true.",
-    )
-    sections: list[Section] = Field(
-        default_factory=list,
-        max_length=5,
-        description="The sections the answered fact feeds, in card order, less the ones every "
-        "path of which the seller locked; empty when the fact reaches no section.",
     )
 
 

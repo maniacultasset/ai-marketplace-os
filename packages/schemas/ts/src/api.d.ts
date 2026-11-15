@@ -862,8 +862,9 @@ export interface paths {
         /**
          * Update the brand profile (If-Match: the ETag from GET)
          * @description Set or clear the default manufacturer, marketer, packer or importer, the website, the brand
-         *     description or the brand voice (owner, admin). Setting a party checks again the listings
-         *     with an open question on it, so a question it answers closes (grouped Inbox switch on).
+         *     description or the brand voice (owner, admin). With the grouped Inbox on, setting a party
+         *     checks again the listings with an open question on it, so a question it answers closes, and
+         *     a changed party default returns `affected_listings` with each listing's redraft verdict.
          *     `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
          *     unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always
          *     win.
@@ -3006,20 +3007,25 @@ export interface components {
             listing_id: string;
             marketplace: components["schemas"]["Marketplace"];
             /**
+             * Open Questions
+             * @description `other_questions_open` only: how many other live seller questions stand on the listing; null otherwise.
+             */
+            open_questions?: number | null;
+            /**
              * Product Id
              * Format: uuid
              */
             product_id: string;
             /**
              * Redraft
-             * @description It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true` (`redraft_blocked` says why not).
+             * @description It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true`: only when nothing blocks it and `sections` is not empty (`redraft_blocked` says why not).
              */
             redraft: boolean;
             /**
              * Redraft Blocked
-             * @description Why not now: `busy` (never written, or being written), `paused`, or `other_questions_open` (another seller question still stands on the listing: redraft once every answer is in). Null when `redraft` is true.
+             * @description Why not now: `not_written` (never generated: generate it instead), `nothing_to_redraft` (the answered fact feeds no unlocked section), `busy` (being written or published now), `paused`, or `other_questions_open` (other seller questions, `open_questions` of them, still stand on the listing: redraft once every answer is in). Null when `redraft` is true.
              */
-            redraft_blocked?: ("busy" | "paused" | "other_questions_open") | null;
+            redraft_blocked?: ("busy" | "paused" | "other_questions_open" | "nothing_to_redraft" | "not_written") | null;
             /**
              * Sections
              * @description The sections the answered fact feeds, in card order, less the ones every path of which the seller locked; empty when the fact reaches no section.
@@ -3472,6 +3478,11 @@ export interface components {
         };
         /** BrandProfileOut */
         BrandProfileOut: {
+            /**
+             * Affected Listings
+             * @description PATCH only, with the grouped Inbox on, when a party default (manufacturer, marketer, packer, importer) was set or cleared: the listings with an open question on that party, checked again first, each with its redraft verdict (as `POST /inbox/groups/answer` lists them). Redraft only those with `redraft: true`. Absent otherwise.
+             */
+            affected_listings?: components["schemas"]["AffectedListingOut"][] | null;
             /** Brand Description */
             brand_description?: string | null;
             /** @description Null until the seller answers "Tell Kuinn about your brand". */
@@ -20735,6 +20746,29 @@ export interface operations {
                 content: {
                     /**
                      * @example {
+                     *       "affected_listings": [
+                     *         {
+                     *           "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                     *           "marketplace": "amazon",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                     *           "redraft": true,
+                     *           "sections": [
+                     *             "attributes"
+                     *           ],
+                     *           "status": "blocked"
+                     *         },
+                     *         {
+                     *           "listing_id": "0b1c2d3e-0000-4000-8000-000000001202",
+                     *           "marketplace": "amazon",
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000103",
+                     *           "redraft": false,
+                     *           "redraft_blocked": "not_written",
+                     *           "sections": [
+                     *             "attributes"
+                     *           ],
+                     *           "status": "created"
+                     *         }
+                     *       ],
                      *       "brand_description": "Hand-block printed cotton wear from Jaipur.",
                      *       "brand_voice": {
                      *         "audience": "Women 25 to 40 who buy for daily office wear",
@@ -30230,6 +30264,21 @@ export interface operations {
                      *             "attributes"
                      *           ],
                      *           "status": "blocked"
+                     *         },
+                     *         {
+                     *           "listing_id": "0b1c2d3e-0000-4000-8000-000000001201",
+                     *           "marketplace": "flipkart",
+                     *           "open_questions": 2,
+                     *           "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                     *           "redraft": false,
+                     *           "redraft_blocked": "other_questions_open",
+                     *           "sections": [
+                     *             "bullets",
+                     *             "description",
+                     *             "keywords",
+                     *             "attributes"
+                     *           ],
+                     *           "status": "needs_review"
                      *         }
                      *       ],
                      *       "skipped": [

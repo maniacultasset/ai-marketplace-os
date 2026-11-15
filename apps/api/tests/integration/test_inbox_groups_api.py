@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 import httpx
 import pytest
@@ -334,13 +334,16 @@ async def test_answer_for_all_writes_each_product_without_a_value(
     # the archived listing is left out
     assert set(listings) == {str(created), str(approved), str(waiting)}
     never = listings[str(created)]  # never written: generate, not redraft
-    assert (never["redraft"], never["redraft_blocked"]) == (False, "busy")
+    assert (never["redraft"], never["redraft_blocked"]) == (False, "not_written")
     ready = listings[str(approved)]
-    assert (ready["redraft"], ready["redraft_blocked"]) == (True, None)
+    assert (ready["redraft"], ready["redraft_blocked"], ready["open_questions"]) == (
+        True, None, None,
+    )  # fmt: skip
     # the colour is a title fact: every section uses it (regenerate them `for_answers`)
     assert ready["sections"] == ["title", "bullets", "description", "keywords", "attributes"]
     held = listings[str(waiting)]
     assert (held["redraft"], held["redraft_blocked"]) == (False, "other_questions_open")
+    assert held["open_questions"] == 1  # the fabric question; the answered colour never counts
 
 
 @pytest.mark.endpoint("inbox_groups_answer", case="validation")
@@ -583,14 +586,19 @@ async def test_a_brand_party_question_is_a_brand_group(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
     """The marketer (as the packer and the importer) is set once for the brand: a `brand` group
-    that says when the brand value is set."""
+    that says when the brand value is set; setting it closes the questions no refusal links."""
     auth_db.execute(
         "DELETE FROM brand_profiles WHERE tenant_id = %s", [products_world.tenant("acme")]
     )
     target = "facts.marketer"
     products = _products(products_world, auth_db, 2)
-    for p in products:
-        await _ask(products_world, auth_db, p, target=target, spec=TEXT_SPEC)
+    asked = [await _ask(products_world, auth_db, p, target=target, spec=TEXT_SPEC)
+             for p in products]  # fmt: skip
+    # the first is linked to a refusal of a listing not written yet: no check closes it now
+    acme = products_world.tenant("acme")
+    with _guards_off(auth_db):
+        listing = f.listing(auth_db, acme, products[0])
+        f.listing_issue(auth_db, acme, listing, human_task_id=asked[0])
     key = task_key("missing_fact", target, TEXT_SPEC)
     group = _group(await _groups(api, products_world), key)
     assert (group["scope"], group["field"], group["brand_value_set"]) == (
@@ -611,5 +619,86 @@ async def test_a_brand_party_question_is_a_brand_group(
         headers={**owner, "If-Match": tag},
     )
     assert saved.status_code == 200, saved.text
+    # a product-level question (no refusal links it) closes once the brand value is set; the
+    # linked one stays until its listing is checked again
+    assert [_status(auth_db, t) for t in asked] == ["open", "cancelled"]
     group = _group(await _groups(api, products_world), key)
-    assert group["brand_value_set"] is True
+    assert (group["count"], group["brand_value_set"]) == (1, True)
+
+
+_MARKETER: Final[dict[str, str]] = {
+    "legal_name": "Brand Marketer Pvt Ltd",
+    "address_line1": "1 Residency Road",
+    "city": "Bengaluru",
+    "state_code": "KA",
+    "postal_code": "560025",
+}
+
+
+async def _set_marketer(api: httpx.AsyncClient, world: World) -> httpx.Response:
+    owner = bearer_for(world, "owner@acme.test")
+    tag = (await api.get("/api/v1/brand-profile", headers=owner)).headers["ETag"]
+    return await api.patch(
+        "/api/v1/brand-profile",
+        json={"default_marketer": _MARKETER},
+        headers={**owner, "If-Match": tag},
+    )
+
+
+async def test_brand_party_save_returns_each_listings_redraft_verdict(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """Setting the brand marketer closes the product-level marketer questions (no refusal links
+    them) and returns the listings that asked, each with the backend's redraft verdict: another
+    open question holds one back (`open_questions`), a never written one is `not_written`."""
+    acme = products_world.tenant("acme")
+    auth_db.execute("DELETE FROM brand_profiles WHERE tenant_id = %s", [acme])
+    target = "facts.marketer"
+    ready, waiting, never = _products(products_world, auth_db, 3)
+    asked = [await _ask(products_world, auth_db, p, target=target, spec=TEXT_SPEC)
+             for p in (ready, waiting, never)]  # fmt: skip
+    await _ask(products_world, auth_db, waiting, target=FABRIC, spec=TEXT_SPEC)
+    with _guards_off(auth_db):
+        l_ready = f.listing(auth_db, acme, ready, status="approved")
+        l_waiting = f.listing(auth_db, acme, waiting, status="approved")
+        l_never = f.listing(auth_db, acme, never)
+    saved = await _set_marketer(api, products_world)
+    assert saved.status_code == 200, saved.text
+    assert [_status(auth_db, t) for t in asked] == ["cancelled"] * 3
+    listings = {x["listing_id"]: x for x in saved.json()["affected_listings"]}
+    assert set(listings) == {str(l_ready), str(l_waiting), str(l_never)}
+    one = listings[str(l_ready)]
+    assert (one["redraft"], one["redraft_blocked"], one["sections"]) == (
+        True, None, ["attributes"],
+    )  # fmt: skip
+    held = listings[str(l_waiting)]
+    assert (held["redraft"], held["redraft_blocked"], held["open_questions"]) == (
+        False, "other_questions_open", 1,
+    )  # fmt: skip
+    assert listings[str(l_never)]["redraft_blocked"] == "not_written"
+
+
+async def test_a_failed_recheck_never_fails_the_brand_save(
+    api: httpx.AsyncClient,
+    products_world: World,
+    auth_db: Conn,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A listing check that fails for any reason is logged and skipped: the committed save is
+    still a 200."""
+    from app.services import listing_validate
+
+    async def broken(*_: Any) -> None:
+        raise RuntimeError("check failed")
+
+    monkeypatch.setattr(listing_validate, "validate_listing", broken)
+    acme = products_world.tenant("acme")
+    auth_db.execute("DELETE FROM brand_profiles WHERE tenant_id = %s", [acme])
+    (product,) = _products(products_world, auth_db, 1)
+    await _ask(products_world, auth_db, product, target="facts.marketer", spec=TEXT_SPEC)
+    with _guards_off(auth_db):
+        listing = f.listing(auth_db, acme, product, status="approved")
+    saved = await _set_marketer(api, products_world)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["default_marketer"]["legal_name"] == _MARKETER["legal_name"]
+    assert [x["listing_id"] for x in saved.json()["affected_listings"]] == [str(listing)]

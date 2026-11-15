@@ -17,6 +17,7 @@ from app.api.errors import ApiError, domain_api_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.routers.products import party_out
+from app.api.v1.schemas.affected_listings import AffectedListingOut
 from app.api.v1.schemas.brand import BrandDocumentOut, BrandDocumentPage, UploadChunkType
 from app.api.v1.schemas.brand_profile import BrandProfileIn, BrandProfileOut, BrandVoiceOut
 from app.api.v1.surface import OPS, route
@@ -111,6 +112,11 @@ def _profile_out(view: brand_profile.BrandProfileView) -> BrandProfileOut:
         brand_description=view.brand_description,
         brand_voice=voice,
         updated_at=view.updated_at,
+        affected_listings=(
+            None
+            if view.affected_listings is None
+            else [AffectedListingOut.model_validate(x) for x in view.affected_listings]
+        ),
     )
 
 
@@ -129,8 +135,9 @@ async def brand_profile_update(
     body: BrandProfileIn, if_match: IfMatch, principal: CurrentPrincipal, response: Response
 ) -> BrandProfileOut:
     """Set or clear the default manufacturer, marketer, packer or importer, the website, the brand
-    description or the brand voice (owner, admin). Setting a party checks again the listings
-    with an open question on it, so a question it answers closes (grouped Inbox switch on).
+    description or the brand voice (owner, admin). With the grouped Inbox on, setting a party
+    checks again the listings with an open question on it, so a question it answers closes, and
+    a changed party default returns `affected_listings` with each listing's redraft verdict.
     `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
     unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always
     win."""
