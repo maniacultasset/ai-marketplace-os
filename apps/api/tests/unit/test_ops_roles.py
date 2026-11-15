@@ -127,6 +127,10 @@ Q7: dict[str, str] = {
     "home_brands": "tenant:read",  # FB18
     "inbox_groups_list": "tenant:read",  # G1
     "inbox_groups_answer": "product:import",  # G1: who answers one question answers many
+    # G2: the sheet photo retries and dismiss, as image uploads
+    "products_photo_links_retry": "product:import",
+    "imports_photo_links_retry": "product:import",
+    "photo_links_dismiss": "product:import",
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)

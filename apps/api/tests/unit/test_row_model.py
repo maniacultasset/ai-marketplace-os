@@ -549,3 +549,27 @@ def test_row_model_country_must_be_an_assigned_iso_code() -> None:
     assert ok(country_of_origin="bd").country_of_origin == "BD"
     for unassigned in ("XX", "UK", "EU"):
         assert codes(run(country_of_origin=unassigned)) == [ErrorCode.PATTERN_MISMATCH]
+
+
+# ---- G2: photos from spreadsheet links ----
+
+
+@pytest.mark.parametrize("separator", ["|", ",", ";", " ", " | ", "\t"])
+def test_row_model_photo_link_separators(separator: str) -> None:
+    a, b, c = (f"https://cdn.example.com/{n}.jpg" for n in "abc")
+    row = ok(main_image=a, additional_images=separator.join([b, c]))
+    assert row.image_urls == (a, b, c)
+    assert row.main_image_count == 1 and row.has_main_image
+
+
+def test_row_model_main_image_count_counts_the_main_cell() -> None:
+    a, b, c = (f"https://cdn.example.com/{n}.jpg" for n in "abc")
+    row = ok(main_image=f"{a}|{b}", additional_images=c)
+    assert row.image_urls == (a, b, c) and row.main_image_count == 2
+
+
+def test_row_model_no_main_image_means_no_front() -> None:
+    b = "https://cdn.example.com/b.jpg"
+    row = ok(main_image="", additional_images=b)
+    assert row.image_urls == (b,)
+    assert row.main_image_count == 0 and not row.has_main_image

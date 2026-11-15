@@ -27,6 +27,7 @@ from app.api.v1.routers import (
     listings,
     marketplaces,
     members,
+    photo_links,
     product_delete,
     products,
     rules,
@@ -68,5 +69,6 @@ for module in (
     home,
     skus,
     inbox_groups,
+    photo_links,
 ):
     router.include_router(module.router)

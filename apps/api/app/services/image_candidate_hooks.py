@@ -24,6 +24,9 @@
   check names its job, so a copy would end `superseded`; the photo is checked again on its next
   upload, colour edit or generate (`app.services.photo_match`). A match job that ended without a
   verdict reads as not checked by its job's status.
+- G2: a sheet photo download (`entity_type='photo_links'`, entity = the product) that ended other
+  than `succeeded` puts this job's `fetching` links back to `queued` (fenced on `job_id`), so the
+  sweeper or a retry downloads them. Its staff requeue is allowed: a claim is idempotent.
 """
 
 from __future__ import annotations
@@ -37,12 +40,14 @@ from app.repositories.column_maps import ImportColumnMapRepository
 from app.repositories.image_candidates import ImageCandidateRepository
 from app.repositories.images import ImageRepository
 from app.repositories.jobs import NotEligibleError
+from app.repositories.photo_links import PhotoLinkRepository
 from app.repositories.products import ProductRepository
 from app.workers.policy import (
     CANDIDATE_ENTITY,
     CATEGORY_DRAFT_PAYLOAD,
     CATEGORY_SUGGESTION_ENTITY,
     COLUMN_MAP_ENTITY,
+    PHOTO_LINKS_ENTITY,
     PHOTO_MATCH_ENTITY,
     SIZE_CHART_READ_ENTITY,
 )
@@ -123,6 +128,11 @@ async def on_image_terminal(session: Any, job: JobRun, outcome: Outcome | None) 
         return
     if job.entity_type == SIZE_CHART_READ_ENTITY:
         await _size_chart_read_failed(session, job)
+        return
+    if job.entity_type == PHOTO_LINKS_ENTITY:
+        released = await PhotoLinkRepository(session, job.tenant_id).release(job.id)
+        if released:
+            log.info("photo_links.released", job_run_id=str(job.id), links=len(released))
         return
     if job.entity_type != CANDIDATE_ENTITY:
         return

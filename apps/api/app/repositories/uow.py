@@ -40,6 +40,7 @@ from app.repositories.marketplace_accounts import MarketplaceAccountRepository
 from app.repositories.members import MembersRepository
 from app.repositories.oauth_states import OAuthStateRepository
 from app.repositories.parties import BrandProfileRepository, BusinessPartyRepository
+from app.repositories.photo_links import PhotoLinkRepository
 from app.repositories.product_facts import ProductFactsRepository
 from app.repositories.product_type_definitions import ProductTypeDefinitionRepository
 from app.repositories.products import ProductRepository
@@ -116,6 +117,8 @@ class TenantUnitOfWork:
     column_maps: ImportColumnMapRepository
     # G1: the grouped Inbox reads
     inbox_groups: InboxGroupReads
+    # G2: the photo links from spreadsheet imports
+    photo_links: PhotoLinkRepository
 
 
 def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
@@ -163,6 +166,7 @@ def repositories_on(session: AsyncSession, tenant_id: UUID) -> TenantUnitOfWork:
         resolution=ResolutionRepository(session, tenant_id),
         column_maps=ImportColumnMapRepository(session, tenant_id),
         inbox_groups=inbox_group_reads(session, tenant_id),
+        photo_links=PhotoLinkRepository(session, tenant_id),
     )
 
 

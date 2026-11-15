@@ -118,6 +118,7 @@ from app.api.v1.schemas.marketplaces import (
     MarketplaceAccountOut,
     MarketplaceAccountPage,
 )
+from app.api.v1.schemas.photo_links import PhotoLinksRetryOut
 from app.api.v1.schemas.product_delete import ProductBulkDeleteResult
 from app.api.v1.schemas.products import ProductOut, ProductPage
 from app.api.v1.schemas.resolution import FixesAppliedOut, ResolutionOut
@@ -495,6 +496,8 @@ _AI_ADMISSION: Final = MappingProxyType(
 )
 # SI10 D4: an AI image edit while AI is paused (a daily cap is a `failed/budget` candidate)
 _AI_PAUSED: Final = MappingProxyType({503: (E.AI_CREDIT_EXHAUSTED, E.AI_PROVIDER_KEY_INVALID)})
+# G2: the sheet photo retries while SHEET_PHOTOS_ENABLED is off
+_SHEET_PHOTOS_OFF: Final = MappingProxyType({501: (E.NOT_IMPLEMENTED,)})
 # SI12: the size-chart read: a variant (FACT_LEVEL_INVALID), and the SI10 admission
 _SIZE_CHART_READ: Final = MappingProxyType(
     {
@@ -1046,6 +1049,20 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("inbox_groups_answer", "POST", "/inbox/groups/answer", 200, InboxGroupAnswerOut,
               "inbox", "Answer one question for many products (never overwrites a value)", "G1",
               has_body=True, idempotency=True, extra_codes=_501, action=A.PRODUCT_IMPORT),
+    # G2: photos from spreadsheet links (501 while SHEET_PHOTOS_ENABLED is off)
+    Operation("products_photo_links_retry", "POST", "/products/{product_id}/photo-links/retry",
+              202, JobAccepted, "images",
+              "Download again the product's spreadsheet photo links that failed", "G2",
+              path_id="product_id", idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT, extra_codes=_SHEET_PHOTOS_OFF),
+    Operation("imports_photo_links_retry", "POST", "/imports/{import_id}/photo-links/retry",
+              202, PhotoLinksRetryOut, "imports",
+              "Download again every spreadsheet photo link of the import that failed", "G2",
+              path_id="import_id", idempotency=True, conflict_code=E.INVALID_STATUS_TRANSITION,
+              action=A.PRODUCT_IMPORT, extra_codes=_SHEET_PHOTOS_OFF),
+    Operation("photo_links_dismiss", "DELETE", "/photo-links/{link_id}", 204, None, "images",
+              "Hide a failed or skipped spreadsheet photo link", "G2", path_id="link_id",
+              conflict_code=E.INVALID_STATUS_TRANSITION, action=A.PRODUCT_IMPORT),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})
