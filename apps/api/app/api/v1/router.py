@@ -20,6 +20,7 @@ from app.api.v1.routers import (
     image_candidates,
     images,
     imports,
+    inbox_groups,
     invites,
     issues,
     jobs,
@@ -66,5 +67,6 @@ for module in (
     size_run,
     home,
     skus,
+    inbox_groups,
 ):
     router.include_router(module.router)

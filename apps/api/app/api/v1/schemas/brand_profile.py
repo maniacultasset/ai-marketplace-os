@@ -110,6 +110,21 @@ class BrandProfileIn(StrictModel):
     default_manufacturer: PartyIn | None = Field(
         default=None, description="Absent leaves it unchanged; null clears it."
     )
+    default_marketer: PartyIn | None = Field(
+        default=None,
+        description="The brand's marketer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
+    default_packer: PartyIn | None = Field(
+        default=None,
+        description="The brand's packer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
+    default_importer: PartyIn | None = Field(
+        default=None,
+        description="The brand's importer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
     website_url: Website | None = Field(
         default=None,
         description="Optional. Absent leaves it unchanged; null clears it. Never sent to a model.",
@@ -140,6 +155,9 @@ class BrandVoiceOut(WireModel):
 
 class BrandProfileOut(WireModel):
     default_manufacturer: PartyOut | None = None
+    default_marketer: PartyOut | None = None
+    default_packer: PartyOut | None = None
+    default_importer: PartyOut | None = None
     website_url: str | None = None
     brand_description: str | None = None
     brand_voice: BrandVoiceOut | None = Field(

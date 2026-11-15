@@ -125,6 +125,8 @@ Q7: dict[str, str] = {
     "analytics_quality": "analytics:read",  # SI14
     "home_summary": "tenant:read",  # FB6
     "home_brands": "tenant:read",  # FB18
+    "inbox_groups_list": "tenant:read",  # G1
+    "inbox_groups_answer": "product:import",  # G1: who answers one question answers many
     "members_list": "team:manage",
     "members_patch": "team:manage",
     # ADR-0019: the public sign-up and the platform admin's queue (no role in the matrix)

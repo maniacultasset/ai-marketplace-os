@@ -168,6 +168,9 @@ _BRAND_PROFILE: Final = {
         "gstin": "29ABCDE1234F1Z5",
         "inherited": False,
     },
+    "default_marketer": None,
+    "default_packer": None,
+    "default_importer": None,
     "website_url": "https://fabindia.example",
     "brand_description": "Hand-block printed cotton wear from Jaipur.",
     "brand_voice": {
@@ -623,6 +626,139 @@ _CANDIDATE: Final = {
     "source_preview_url": "https://storage.example/clean.jpg?X-Goog-Signature=example",
     "accepted_image_id": None,
     "created_at": T0,
+}
+
+# G1: 34 products drafted at once asked for the manufacturer 34 times, and 12 for the gender.
+_MANUFACTURER_TASK: Final[dict[str, Any]] = {
+    **_FACT_TASK,
+    "product_id": PRODUCT_1,
+    "target_path": "facts.manufacturer",
+    "image_id": None,
+    "question": "Add the manufacturer. Set it once for the brand in Settings > Compliance, "
+    "or on this product.",
+    "reason": "Amazon needs the manufacturer's name and address for this product.",
+    "expected_answer": {"kind": "text", "max_length": 256},
+    "suggestions": [],
+    "status": "open",
+    "answered_by_user_id": None,
+    "answered_at": None,
+    "applied_at": None,
+    "updated_at": T0,
+    "blocking": True,
+}
+_GENDER_SPEC: Final = {"kind": "enum", "allowed_values": ["women", "men", "unisex"]}
+_GENDER_TASK: Final[dict[str, Any]] = {
+    **_MANUFACTURER_TASK,
+    "id": "0b1c2d3e-0000-4000-8000-000000001102",
+    "product_id": PRODUCT_2,
+    "target_path": "facts.gender",
+    "question": "Add the gender on the product.",
+    "reason": "Amazon needs the gender for this category.",
+    "expected_answer": _GENDER_SPEC,
+}
+_INBOX_GROUPS: Final[dict[str, Any]] = {
+    "enabled": True,
+    "as_of": T1,
+    "view": "all",
+    "total_items": 46,
+    "groups": [
+        {
+            "key": "t|missing_fact|facts.manufacturer|cae91fb30742",
+            "item_kind": "task",
+            "scope": "brand",
+            "count": 34,
+            "products": 34,
+            "listings": 68,
+            "blocking": True,
+            "at": T0,
+            "field": "manufacturer",
+            "task_kind": "missing_fact",
+            "error_code": None,
+            "marketplace": None,
+            "answer": {"kind": "text", "max_length": 256},
+            "categories": ["kurta_sets"],
+            "brand_value_set": False,
+            "sample_task": _MANUFACTURER_TASK,
+            "sample_issue": None,
+            "members": [
+                {
+                    "task_id": TASK,
+                    "issue_id": None,
+                    "product_id": PRODUCT_1,
+                    "sku": "KTEST-001",
+                    "title": "Hand Block Print Kurta Set",
+                    "listing_ids": [LISTING],
+                    "has_value": False,
+                    "at": T0,
+                }
+            ],
+            "members_more": False,
+        },
+        {
+            "key": "t|missing_fact|facts.gender|503f4d45ede0",
+            "item_kind": "task",
+            "scope": "product_fact",
+            "count": 12,
+            "products": 12,
+            "listings": 24,
+            "blocking": True,
+            "at": T0,
+            "field": "gender",
+            "task_kind": "missing_fact",
+            "error_code": None,
+            "marketplace": None,
+            "answer": _GENDER_SPEC,
+            "categories": ["kurta_sets"],
+            "brand_value_set": False,
+            "sample_task": _GENDER_TASK,
+            "sample_issue": None,
+            "members": [
+                {
+                    "task_id": "0b1c2d3e-0000-4000-8000-000000001102",
+                    "issue_id": None,
+                    "product_id": PRODUCT_2,
+                    "sku": "KTEST-002",
+                    "title": "Cotton Straight Kurta",
+                    "listing_ids": [LISTING],
+                    "has_value": False,
+                    "at": T0,
+                },
+                {
+                    "task_id": "0b1c2d3e-0000-4000-8000-000000001103",
+                    "issue_id": None,
+                    "product_id": PRODUCT_3,
+                    "sku": "KTEST-003",
+                    "title": "Printed A-Line Kurta",
+                    "listing_ids": [],
+                    "has_value": True,
+                    "at": T0,
+                },
+            ],
+            "members_more": False,
+        },
+    ],
+    "more": False,
+}
+_INBOX_ANSWER: Final[dict[str, Any]] = {
+    "applied": [{"task_id": "0b1c2d3e-0000-4000-8000-000000001102", "product_id": PRODUCT_2}],
+    "skipped": [
+        {
+            "task_id": "0b1c2d3e-0000-4000-8000-000000001103",
+            "product_id": PRODUCT_3,
+            "reason": "has_value",
+        }
+    ],
+    "listings": [
+        {
+            "listing_id": LISTING,
+            "product_id": PRODUCT_2,
+            "marketplace": "amazon",
+            "status": "blocked",
+            "redraft": True,
+            "redraft_blocked": None,
+            "sections": ["bullets", "description", "keywords", "attributes"],
+        }
+    ],
 }
 
 SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
@@ -1619,6 +1755,8 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             ],
             "products": 7,
         },
+        "inbox_groups_list": _INBOX_GROUPS,
+        "inbox_groups_answer": _INBOX_ANSWER,
         "admin_ai_credit_resume": {
             **_AI_CREDIT,
             "state": "ok",

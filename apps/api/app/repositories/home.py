@@ -48,7 +48,7 @@ from app.db.models.listings import Listing, ListingVersion
 from app.db.models.ops import JobRun
 from app.repositories.base import TenantScopedRepository
 from app.repositories.human_tasks import task_in_inbox
-from app.repositories.listing_issues import issue_in_inbox
+from app.repositories.listing_issues import issue_in_inbox, waits_on_open_question
 
 LIVE_STATES: Final = ("live", "partially_live")
 NEEDS_YOU_STATUSES: Final = ("validated", "needs_review", "blocked")
@@ -460,17 +460,7 @@ class HomeIssueReads(TenantScopedRepository[ListingIssue]):
         """Client pass 2, B16: (open issues the Issues list shows, those of them that wait on no
         open question the Questions list shows). The Inbox's All view lists a question once
         and an issue on its own only when no open question stands for it."""
-        question = (
-            select(literal(1))
-            .where(
-                HumanTask.tenant_id == ListingIssue.tenant_id,
-                HumanTask.id == ListingIssue.human_task_id,
-                HumanTask.status == "open",
-                task_in_inbox(),
-            )
-            .exists()
-        )
-        alone = case((question, 0), else_=1)
+        alone = case((waits_on_open_question(), 0), else_=1)
         stmt = (
             self._select()
             .where(ListingIssue.status == "open", issue_in_inbox())

@@ -37,8 +37,11 @@ from app.services.photo_facts import ANSWER_MAX_PIECES, VOCAB, canonical, fold
 from app.services.product_facts import STANDALONE, build_attributes, fact_stamp
 
 FACT_KINDS: Final = frozenset({"missing_fact", "conflicting_facts"})
-FACT_TARGET: Final = re.compile(r"^facts\.(?:attributes\.([a-z0-9_]{1,64})|(gender|brand_name))$")
-# SI11 T17 (CP-D25): the answerable `products` columns (the identity facts Amazon needs)
+FACT_TARGET: Final = re.compile(
+    r"^facts\.(?:attributes\.([a-z0-9_]{1,64})|(gender|brand_name|hsn_code|country_of_origin))$"
+)
+# SI11 T17 (CP-D25): the answerable `products` columns (the identity facts Amazon needs); G1 adds
+# the HSN code and the country of origin, checked as the product PATCH and the CSV import check them
 GENDERS: Final = frozenset({"women", "men", "unisex", "girls", "boys", "baby"})
 ADAPTER_SOURCES: Final = ("amazon_adapter", "flipkart_adapter")
 SELLER_KINDS: Final = frozenset({"missing_fact", "conflicting_facts", "image_replacement"})
@@ -198,9 +201,13 @@ def _member(key: str, value: Any, allowed: list[Any]) -> Any:
     return hits[0]
 
 
-async def _answer(
+async def answer_in_uow(
     uow: Any, principal: Principal, task_id: uuid.UUID, answer: dict[str, Any]
 ) -> Any:
+    """One fact answer inside the caller's transaction (`tasks_answer`, and each task of G1's
+    `inbox_groups_answer` in its own savepoint): the product, then the task, locked; the value
+    checked against the task's AnswerSpec; the fact written; the task applied; the two audit
+    rows; the fact-only versions behind a marketplace refusal."""
     peek = await uow.human_tasks.get_by_id(task_id)
     if peek is None:
         raise NotFoundError("task_id")
@@ -224,7 +231,7 @@ async def _answer(
     written: dict[str, Any] = {}
     if column is not None:
         if "value" in answer:
-            value = await _column_value(uow, column, answer["value"])
+            value = await _column_value(uow, column, answer["value"], task.expected_answer)
             column_fact: dict[str, Any] = {
                 "source": "seller",
                 "captured_via": "human_task",
@@ -277,13 +284,31 @@ async def _answer(
             reason=task.target_path,
         )
     if written and task.target_path:
-        await _fact_edits(uow, principal, task.id, task.target_path)
+        await fact_edits(uow, principal, task.id, task.target_path)
     return await uow.human_tasks.get_for_update(task.id)
 
 
-async def _column_value(uow: Any, column: str, raw: Any) -> str:
+def _country_text(raw: str, expected: Any) -> str:
+    """A country answer as a code: an allowed value of the spec that names a country in English
+    (Flipkart's enum lists `India`) becomes its ISO alpha-2 code; any other text is unchanged."""
+    from app.services.iso_countries import code_for_name
+
+    allowed = expected.get("allowed_values") if isinstance(expected, dict) else None
+    if not isinstance(allowed, list):
+        return raw
+    folded = fold(raw)
+    named = [e for e in allowed if isinstance(e, str) and fold(e) == folded]
+    code = code_for_name(named[0]) if len(named) == 1 else None
+    return raw if code is None else code
+
+
+async def _column_value(uow: Any, column: str, raw: Any, expected: Any = None) -> str:
     """SI11 T17: a `facts.gender` or `facts.brand_name` answer, checked as the product PATCH
-    checks it (the gender vocabulary; a brand only from the tenant's own brand names)."""
+    checks it (the gender vocabulary; a brand only from the tenant's own brand names). G1: a
+    `facts.hsn_code` answer is 4, 6 or 8 digits and a `facts.country_of_origin` answer an
+    assigned ISO 3166-1 alpha-2 code, stored upper-case (`intake_values`, the PATCH's and the
+    CSV import's own checks); a country the spec's allowed values name (`India`) is its code."""
+    from app.services.intake_values import check_hsn, normalize_country
     from app.services.products import checked_brand
 
     if not isinstance(raw, str) or not raw.strip() or len(raw) > 200:
@@ -293,6 +318,15 @@ async def _column_value(uow: Any, column: str, raw: Any) -> str:
         if value not in GENDERS:
             raise InputError(ErrorCode.VALUE_NOT_ALLOWED, "value")
         return value
+    if column in ("hsn_code", "country_of_origin"):
+        check = check_hsn if column == "hsn_code" else normalize_country
+        text = raw.strip()
+        if column == "country_of_origin":
+            text = _country_text(text, expected)
+        try:
+            return check(text)
+        except ValueError:
+            raise InputError(ErrorCode.VALIDATION_FAILED, "value") from None
     try:
         brand = await checked_brand(uow, raw.strip())
     except InputError as exc:
@@ -301,7 +335,7 @@ async def _column_value(uow: Any, column: str, raw: Any) -> str:
     return brand
 
 
-async def _fact_edits(uow: Any, principal: Principal, task_id: uuid.UUID, path: str) -> None:
+async def fact_edits(uow: Any, principal: Principal, task_id: uuid.UUID, path: str) -> None:
     """SI11 T17 (P:B6, T51): an answer behind a marketplace refusal makes a fact-only version of
     each listing whose refusal the task answers, once no other live question stands on it; the
     answerer is its editor, so the answerer never approves it (`lv_guard`)."""
@@ -329,7 +363,7 @@ async def answer_task(
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
-        row = await _answer(uow, principal, task_id, answer)
+        row = await answer_in_uow(uow, principal, task_id, answer)
         return 200, _json(task_fields(row))
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
