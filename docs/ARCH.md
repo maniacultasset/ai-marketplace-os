@@ -140,9 +140,13 @@ async def run_listing_pipeline(ctx: GenerationContext, deps: PipelineDeps) -> Ge
   attempt the fence has moved past reserves nothing and makes no call (`INTERNAL_ERROR`, the
   write dropped), as in generation.
 - One brand cannot flood the shared `default` queue (4 slots, FIFO, also running imports, image
-  checks and brand embeds): generate and regenerate refuse with 429 `RATE_LIMITED` once the
-  tenant holds `GENERATION_LIVE_JOBS_PER_TENANT` (default 10) `listing_generate` jobs `queued`
-  or `running`, counted under a per-tenant advisory lock (`enforce_live_generate_cap`). Claiming
+  checks and brand embeds): a tenant holds at most `GENERATION_LIVE_JOBS_PER_TENANT` (default
+  10) `listing_generate` jobs on the queue or running, counted under a per-tenant advisory lock.
+  B19: past it, generate and regenerate are still accepted (202 `waiting_for_slot: true`); the job
+  is written `queued` with no queue entry and waits in the tenant's backlog. When one of the
+  tenant's generations ends (any end), its terminal hook gives the oldest waiting one the freed
+  slot, and the reaper's minute pass fills any slot a hook missed (`services/generation_backlog.py`).
+  Every reader of `queued` still treats a waiting job as live, so no job state was added. Claiming
   itself stays FIFO: a per-tenant procrastinate queueing lock would cap each brand at one running
   generation, which needs the lock threaded through every defer path (`policy.lock_for`); it is
   left for a product decision.

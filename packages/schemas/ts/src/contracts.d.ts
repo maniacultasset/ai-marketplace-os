@@ -2369,6 +2369,10 @@ export interface JobAccepted {
   listing_id?: string | null;
   poll_url: string;
   status?: JobState;
+  /**
+   * True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.
+   */
+  waiting_for_slot?: boolean;
   [k: string]: unknown;
 }
 /**
@@ -2391,6 +2395,10 @@ export interface JobEnvelope {
   stage?: PipelineStage | null;
   started_at?: string | null;
   status: JobState;
+  /**
+   * True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.
+   */
+  waiting_for_slot?: boolean;
   [k: string]: unknown;
 }
 /**
