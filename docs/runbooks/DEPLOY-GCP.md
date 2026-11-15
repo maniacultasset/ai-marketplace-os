@@ -153,6 +153,25 @@ split: redeploy the previous image with `deploy.sh staging deploy --sha <previou
 immutable, so that image is still there). Migrations are forward-only. Roll the code back only when
 the older revision still works on the current schema, which is the expand-then-contract rule.
 
+**Rolling back past the generation backlog (B19, Nov 2026).** From B19 on, a draft sent past the
+per-brand cap waits as a `listing_generate` job with `status='queued'` and no `queue_job_id`. Code
+from before B19 never starts such a row, counts it as live (so the brand gets 429 on every
+generate), and leaves its listing in `generating`. Before redeploying a pre-B19 sha, while B19 is
+still serving:
+
+1. Count the waiting rows:
+   `SELECT tenant_id, count(*) FROM job_runs WHERE kind='listing_generate' AND status='queued' AND queue_job_id IS NULL GROUP BY 1;`
+2. If any, either wait for them to drain (the reaper promotes them each minute as slots free), or
+   cancel each one through the API (`POST /api/v1/jobs/{job_id}/cancel`), which runs the terminal
+   hook and moves its listing to `failed`. Do not update the rows by hand: the listing status
+   would stay `generating`.
+3. Roll back only when step 1 returns no rows.
+
+The API deploys before the worker, so for the few minutes between the two, waiting rows have no
+promoter except new accepts. The new worker's reaper promotes them within a minute of starting. If
+`deploy_worker` fails after `deploy_api`, fix the worker deploy first; roll back the API only after
+the steps above.
+
 ## Alerts and Slack (V1 hardening #1, #2)
 
 Every app alert is sent by the worker, so a dead worker alerts nobody by itself. Cloud Monitoring

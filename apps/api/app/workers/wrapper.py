@@ -12,6 +12,8 @@
    Every write is fenced on `status = 'running' AND attempt = <claimed>`; 0 rows (the lease was
    reaped and a newer attempt owns the row) logs `job.stale_write_dropped` and writes nothing else.
    The outcome's `zero_reservation` zeroes the budget reservation in the same UPDATE (K2).
+   After a `listing_generate` commit (here or in step 6), one more short transaction gives the
+   freed slot to the tenant's oldest waiting generation (B19, `generation_backlog.promote_tenant`).
 6. If that transaction raises (a persist or hook error), it rolls back whole, the wrapper logs the
    exception class, and a second fenced terminal transaction writes `failed` + `INTERNAL_ERROR`
    (a fixed message, the reservation kept) plus the hook. If that raises too, the row stays
@@ -65,6 +67,7 @@ from app.db.job_context import JobHead, resolve_job
 from app.db.session import unit_of_work
 from app.repositories.jobs import Claimed, JobRunRepository
 from app.repositories.uow import repositories_on
+from app.services.generation_backlog import promote_tenant
 from app.services.job_hooks import run_terminal_hook
 from app.workers import registry
 from app.workers.alerting import alert
@@ -388,6 +391,8 @@ async def _finish(
     # a shutdown arriving during the terminal write never leaves it half done
     try:
         written = await asyncio.shield(write())
+        if written:
+            await _free_slot(head)
         # after the commit only (S23 T23). V1 hardening #13: a publish that ends `failed` on a
         # timeout or a crash alerts like a dead letter, since at launch volume the error-rate
         # check (20 jobs minimum) never sees it
@@ -453,6 +458,7 @@ async def _fallback_finish(head: JobHead, job_id: UUID, attempt: int) -> None:
                 return
             await run_terminal_hook(session, job, None)
         log.info("job.finished", job_run_id=str(job_id), status="failed", attempt=attempt)
+        await _free_slot(head)
     except Exception as exc:  # recorded; the reaper recovers the running row
         log.error(
             "job.fallback_failed",
@@ -460,6 +466,13 @@ async def _fallback_finish(head: JobHead, job_id: UUID, attempt: int) -> None:
             tenant_id=str(tenant),
             error_class=type(exc).__name__,
         )
+
+
+async def _free_slot(head: JobHead) -> None:
+    """B19: after a generation's terminal commit, its tenant's oldest waiting generation takes the
+    freed slot, in a transaction of its own (`generation_backlog.promote_tenant`; never raises)."""
+    if head.kind == JobKind.LISTING_GENERATE.value:
+        await asyncio.shield(promote_tenant(head.tenant_id))
 
 
 async def _retry_or_dead_letter(

@@ -10,6 +10,11 @@ the job spine. Every write names the tenant and, for a running job, fences on th
   releases, all fenced on `status = 'running' AND attempt = :claimed`.
 - `cancel_queued`, `cancel_non_running`, `reap`, `requeue`: the API cancel, the non-running
   tenant cancel, the reaper and the staff requeue.
+- B19 `defer=False` (a generation past its tenant's live cap): the row is written `queued` with no
+  queue entry (`queue_job_id` NULL), so no worker can claim it; `promote_waiting_generations`
+  gives the oldest ones their entries as slots free up and restarts their `queued_at`. Every
+  reader of `queued` keeps treating it as live (one per listing, cancellable, kept by retention);
+  the orphan sweep skips it (it reads rows with an entry only).
 - `no_enqueue(reason)`: while it is open, `enqueue` refuses every job of every kind with
   `EnqueueRefused` before anything is written. The one-off Amazon dry run
   (`app.workers.amazon_preview`) runs inside it, so that process can never queue a publish, a
@@ -126,6 +131,8 @@ class EnqueueSpec:
     # SI11: a system job's own key (64 hex), for a job no HTTP key names (the dry run, an
     # automatic resend); a second enqueue with the same key returns the first job
     job_key: str | None = None
+    # B19: False writes a waiting generation (module docstring): `queued`, no queue entry yet
+    defer: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -355,6 +362,31 @@ def _tenant_running() -> ColumnElement[bool]:
     )
 
 
+def _waiting() -> ColumnElement[bool]:
+    """B19: a waiting job: `queued` with no queue entry yet (module docstring)."""
+    return and_(JobRun.status == "queued", JobRun.queue_job_id.is_(None))
+
+
+def _holds_slot() -> ColumnElement[bool]:
+    """A live job that holds a slot: `running`, or `queued` with its queue entry."""
+    return or_(
+        JobRun.status == "running",
+        and_(JobRun.status == "queued", JobRun.queue_job_id.is_not(None)),
+    )
+
+
+async def tenants_with_waiting_generations(session: Any, *, limit: int = 500) -> list[uuid.UUID]:
+    """B19: every tenant holding a waiting `listing_generate` job, for the reaper's promotion
+    sweep. Cross-tenant: only in `platform_scope()` (the reaper)."""
+    stmt = (
+        select(JobRun.tenant_id)
+        .where(JobRun.kind == JobKind.LISTING_GENERATE.value, _waiting())
+        .distinct()
+        .limit(limit)
+    )
+    return [row.tenant_id for row in (await session.execute(stmt)).all()]
+
+
 def _payload_bytes(payload: dict[str, Any]) -> int:
     return len(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8"))
 
@@ -552,21 +584,31 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
         if job is None:
             existing = await self.db.execute(self._select().where(JobRun.idempotency_key == key))
             return Enqueued(existing.scalar_one(), created=False)
+        if spec.defer:
+            await self._defer(job, spec.lock)
+        return Enqueued(job, created=True)
+
+    async def _defer(self, job: JobRun, lock: str | None = None, *, promoted: bool = False) -> None:
+        """The job's queue entry, in the caller's transaction, and its `queue_job_id`. A promoted
+        job (B19) also restarts its `queued_at`: it counts the time on the queue, so the queue-age
+        alert and the admin's oldest-queued age never read the backlog wait as a stalled queue."""
         queue_job_id = await defer_on_session(
             self.db,
-            kind=kind.value,
+            kind=job.kind,
             queue=job.queue,
             job_run_id=job.id,
-            lock=spec.lock or lock_for(kind, spec.entity_type, self.tenant_id),
-            priority=priority_for(kind),
+            lock=lock or lock_for(job.kind, job.entity_type, self.tenant_id),
+            priority=priority_for(job.kind),
         )
-        await self.db.execute(
-            self._scoped_write(
-                update(JobRun).where(*self._where(job.id)).values(queue_job_id=queue_job_id)
-            )
+        values: dict[str, Any] = {"queue_job_id": queue_job_id}
+        if promoted:
+            values["queued_at"] = func.now()
+        stmt = (
+            update(JobRun).where(*self._where(job.id)).values(**values).returning(JobRun.queued_at)
         )
+        queued_at = (await self.db.execute(self._scoped_write(stmt))).scalar_one()
         set_committed_value(job, "queue_job_id", queue_job_id)
-        return Enqueued(job, created=True)
+        set_committed_value(job, "queued_at", queued_at)
 
     # ---- S21 status-sync helpers (CP4) ----
 
@@ -656,24 +698,54 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
 
     async def lock_generate_enqueue(self) -> None:
         """The tenant's generate-enqueue advisory lock (transaction scope), so two concurrent
-        generate requests count the live jobs one after the other."""
+        generate requests, and the promotion of waiting ones, count the live jobs one after the
+        other."""
         self._own_session()
-        await self.db.execute(
-            select(
-                func.pg_advisory_xact_lock(
-                    func.hashtextextended(f"listing_generate:{self.tenant_id}", 0)
-                )
-            )
+        await self.db.execute(select(func.pg_advisory_xact_lock(self._generate_lock_key())))
+
+    async def try_lock_generate_enqueue(self) -> bool:
+        """The same lock without waiting (B19: a terminal transaction already holds the job's and
+        its listing's rows, so waiting there could deadlock against a generate request that holds
+        the lock and waits for that listing); False when another transaction holds it."""
+        self._own_session()
+        got = await self.db.execute(
+            select(func.pg_try_advisory_xact_lock(self._generate_lock_key()))
         )
+        return bool(got.scalar_one())
+
+    def _generate_lock_key(self) -> ColumnElement[int]:
+        return func.hashtextextended(f"listing_generate:{self.tenant_id}", 0)
 
     async def count_live_generations(self) -> int:
-        """The tenant's `listing_generate` jobs that are `queued` or `running`."""
+        """The tenant's `listing_generate` jobs that are `running`, or `queued` on the queue (a
+        waiting one, with no queue entry yet, holds no slot)."""
         stmt = (
             self._select()
-            .where(JobRun.kind == JobKind.LISTING_GENERATE.value, JobRun.status.in_(LIVE))
+            .where(JobRun.kind == JobKind.LISTING_GENERATE.value, _holds_slot())
             .with_only_columns(func.count())
         )
         return int((await self.db.execute(stmt)).scalar_one())
+
+    async def promote_waiting_generations(self, limit: int) -> list[JobRun]:
+        """B19: up to `limit` of the tenant's waiting generations, oldest first (`queued_at`,
+        then id), get their queue entries; the ones promoted. The caller holds the generate
+        lock and computes `limit` from `count_live_generations` under it. A row another
+        transaction holds (a cancel in flight) is skipped, never waited on."""
+        if limit <= 0:
+            return []
+        self._own_session()
+        stmt = (
+            self._select()
+            .where(JobRun.kind == JobKind.LISTING_GENERATE.value, _waiting())
+            .order_by(JobRun.queued_at, JobRun.id)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True)
+        )
+        promoted = list((await self.db.execute(stmt)).scalars().all())
+        for job in promoted:
+            await self._defer(job, promoted=True)
+        return promoted
 
     async def lock_brand_upload(self) -> None:
         """The tenant's brand-upload advisory lock (transaction scope; like S13 Q10)."""

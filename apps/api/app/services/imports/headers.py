@@ -10,8 +10,10 @@ lower-casing is accepted). `check_header` returns every problem as `(ErrorCode, 
 - two headers that name the same column, after normalisation or through an alias →
   `HEADER_DUPLICATE_COLUMN`.
 
-Messages name our own column names only. An unknown header is echoed only when it matches
-`^[a-z0-9_ ]{1,64}$`; anything else is named by its position (`column <n>`), so a crafted header
+Messages name our own column names only. An unknown header is echoed only when it is plain
+printable text (`_ECHO_SAFE`: it starts with a letter or digit, then letters, digits, spaces and
+`_ ( ) . / % & -`, 1..64 characters, so a seller's `weight (g)` shows as itself); anything else is
+named by its position (`column <n>`), so a crafted header (markup, a formula, a control character)
 never reaches a report. `header_report` folds the problems into the one file-level
 `ErrorReport` (`IMPORT_FAILED`, field `file.header`, source `schema`).
 
@@ -33,7 +35,8 @@ from mkos_schemas.errors import MAX_ERROR_ITEMS, ErrorItem, ErrorReport
 
 HEADER_FIELD: Final = "file.header"
 _BOM: Final = "﻿"
-_ECHO_SAFE: Final = re.compile(r"[a-z0-9_ ]{1,64}")
+# The first character is a letter or digit, so an echoed header never opens a spreadsheet formula.
+_ECHO_SAFE: Final = re.compile(r"[a-z0-9][a-z0-9_ ()./%&-]{0,63}")
 _BULLET: Final = re.compile(r"bullet_[1-9][0-9]?")
 
 A6_COLUMNS: Final[tuple[str, ...]] = (

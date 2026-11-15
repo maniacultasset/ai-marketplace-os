@@ -6021,6 +6021,12 @@
           "status": {
             "$ref": "#/components/schemas/JobState",
             "default": "queued"
+          },
+          "waiting_for_slot": {
+            "default": false,
+            "description": "True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.",
+            "title": "Waiting For Slot",
+            "type": "boolean"
           }
         },
         "required": [
@@ -6146,6 +6152,12 @@
           },
           "status": {
             "$ref": "#/components/schemas/JobState"
+          },
+          "waiting_for_slot": {
+            "default": false,
+            "description": "True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.",
+            "title": "Waiting For Slot",
+            "type": "boolean"
           }
         },
         "required": [
@@ -27653,7 +27665,8 @@
                   "estimated_duration_seconds": 30,
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"
@@ -35542,7 +35555,8 @@
                   "estimated_duration_seconds": 30,
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"
@@ -38999,7 +39013,8 @@
                   "schema_version": "2.0.0",
                   "stage": "content_agent",
                   "started_at": "2026-10-05T09:31:00Z",
-                  "status": "running"
+                  "status": "running",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobEnvelope"
@@ -39350,7 +39365,8 @@
                   "request_id": "req-example-0001",
                   "schema_version": "2.0.0",
                   "started_at": "2026-10-05T09:31:00Z",
-                  "status": "cancelled"
+                  "status": "cancelled",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobEnvelope"
@@ -40617,7 +40633,8 @@
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"
@@ -44462,7 +44479,8 @@
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"
@@ -44920,7 +44938,8 @@
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"
@@ -45357,7 +45376,8 @@
                   "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                   "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                   "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                  "status": "queued"
+                  "status": "queued",
+                  "waiting_for_slot": false
                 },
                 "schema": {
                   "$ref": "#/components/schemas/JobAccepted"

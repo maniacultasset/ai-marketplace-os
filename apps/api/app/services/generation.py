@@ -20,10 +20,13 @@ batch of one), each in its own SAVEPOINT, in order:
 V1.1: beside each generate and regenerate job, `queue_product_photo_matches` queues the product's
 due photo matches (a no-op while `PHOTO_MATCH_ENABLED` is off; each photo in its own savepoint).
 
-`accept_generate` and `accept_regenerate` run, after the budget pre-check, the per-tenant live
-cap: at most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate` jobs `queued|running`, counted
-under the tenant's enqueue lock, else 429 `RATE_LIMITED` (`enforce_live_generate_cap`). Claiming
-stays FIFO on the shared `default` queue; the cap bounds what one brand can put ahead of others.
+`accept_generate` and `accept_regenerate` run, after the budget pre-check, under the tenant's
+generate lock, the per-tenant live cap: at most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate`
+jobs on the queue or running. B19: past it the request is still accepted. Its job is written
+waiting (`queued`, no queue entry yet), then `generation_backlog.promote` fills the free slots with
+the tenant's oldest waiting jobs, this one included; the 202 says `waiting_for_slot` when it was
+not promoted. A finished generation promotes the next one (`generation_backlog`). Claiming stays
+FIFO on the shared `default` queue; the cap bounds what one brand can put ahead of others.
 
 `request_regeneration(...)` (T10): under the listing lock, `generating` → 409 `LISTING_BUSY`,
 paused/archived → 409, `created` → 409 `INVALID_STATUS_TRANSITION`; otherwise the job, then the
@@ -46,7 +49,7 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any, Final
 
@@ -56,7 +59,7 @@ from mkos_schemas.enums import JobKind, JobState, Marketplace
 from mkos_schemas.jobs import GenerateListingRequest
 
 from app.core.config import get_settings
-from app.core.errors import ConflictError, DomainError, InputError, LimitError, NotFoundError
+from app.core.errors import ConflictError, DomainError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.core.text import has_control_char
@@ -64,6 +67,7 @@ from app.repositories.jobs import EnqueueSpec
 from app.repositories.listings import UserActor
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.category_gate import category_enabled
+from app.services.generation_backlog import promote
 from app.services.photo_match import queue_product_photo_matches
 from app.services.sections import Section, section_targets
 
@@ -89,6 +93,7 @@ class ItemAccepted:
     job_id: uuid.UUID
     listing_id: uuid.UUID
     status: JobState = JobState.QUEUED
+    waiting: bool = False  # B19: past the tenant's live cap, not on the queue yet
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,8 +127,11 @@ async def enqueue_generate(
     listing_id: uuid.UUID,
     instructions: str | None,
     payload: dict[str, Any] | None = None,
+    *,
+    wait: bool = False,
 ) -> uuid.UUID:
-    """`payload` replaces the plain `{"user_instructions"}` one (a section regenerate's)."""
+    """`payload` replaces the plain `{"user_instructions"}` one (a section regenerate's). `wait`
+    writes the job waiting, for the caller to `promote` under the generate lock (B19)."""
     enqueued = await uow.job_runs.enqueue(
         EnqueueSpec(
             kind=JobKind.LISTING_GENERATE,
@@ -133,6 +141,7 @@ async def enqueue_generate(
             created_by=principal.user_id,
             http_key=http_key,
             payload={PAYLOAD_KEY: instructions} if payload is None else payload,
+            defer=not wait,
         )
     )
     if not enqueued.created:  # the derived key already names a job: a live one is busy
@@ -168,12 +177,15 @@ async def _regenerate_locked(
     sections: Sequence[Section] = (),
     *,
     for_answers: bool = False,
+    wait: bool = False,
 ) -> ItemAccepted:
     _status_gate(listing)
     if listing.status == CREATED:
         raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
     payload = section_payload(listing, sections, for_answers=for_answers) if sections else None
-    job_id = await enqueue_generate(uow, principal, http_key, listing.id, instructions, payload)
+    job_id = await enqueue_generate(
+        uow, principal, http_key, listing.id, instructions, payload, wait=wait
+    )
     await queue_product_photo_matches(uow, listing.product_id)  # V1.1: the due photo checks
     await uow.review_decisions.insert_regenerate_requested(
         listing.id, listing.current_version_id, instructions, job_id
@@ -208,7 +220,7 @@ async def _regenerate_locked(
 
 
 async def _generate_one(
-    uow: TenantUnitOfWork, principal: Principal, http_key: str, item: GenerateItem
+    uow: TenantUnitOfWork, principal: Principal, http_key: str, item: GenerateItem, wait: bool
 ) -> ItemAccepted:
     marketplace = Marketplace(item.marketplace).value
     product = await uow.products.get_by_id(item.product_id)
@@ -236,8 +248,12 @@ async def _generate_one(
     if listing.status != CREATED:
         if not item.force_regenerate:
             raise ConflictError(ErrorCode.INVALID_STATUS_TRANSITION, "listings")
-        return await _regenerate_locked(uow, principal, http_key, listing, item.user_instructions)
-    job_id = await enqueue_generate(uow, principal, http_key, listing.id, item.user_instructions)
+        return await _regenerate_locked(
+            uow, principal, http_key, listing, item.user_instructions, wait=wait
+        )
+    job_id = await enqueue_generate(
+        uow, principal, http_key, listing.id, item.user_instructions, wait=wait
+    )
     await queue_product_photo_matches(uow, product.id)  # V1.1: the due photo checks
     await uow.listings.move(
         listing, to=GENERATING, event="generate", actor=UserActor(principal.user_id)
@@ -256,9 +272,11 @@ async def request_generation(
     principal: Principal,
     http_key: str,
     items: Sequence[GenerateItem],
+    *,
+    wait: bool = False,
 ) -> list[ItemResult]:
     """Each item in its own SAVEPOINT (module docstring). A refused item is an `ItemRefused`;
-    the caller of a single item raises its error."""
+    the caller of a single item raises its error. `wait` writes each job waiting (B19)."""
     if not 1 <= len(items) <= MAX_ITEMS:
         raise InputError(ErrorCode.VALIDATION_FAILED, "items")
     for item in items:
@@ -267,7 +285,7 @@ async def request_generation(
     for item in items:
         try:
             async with uow.session.begin_nested():
-                results.append(await _generate_one(uow, principal, http_key, item))
+                results.append(await _generate_one(uow, principal, http_key, item, wait))
         except DomainError as exc:
             results.append(ItemRefused(exc))
     return results
@@ -282,26 +300,34 @@ async def request_regeneration(
     sections: Sequence[Section] = (),
     *,
     for_answers: bool = False,
+    wait: bool = False,
 ) -> ItemAccepted:
     check_instructions(instructions, "instructions")
     listing = await uow.listings.get_for_update(listing_id)
     if listing is None:
         raise NotFoundError("listing_id")
     return await _regenerate_locked(
-        uow, principal, http_key, listing, instructions, sections, for_answers=for_answers
+        uow,
+        principal,
+        http_key,
+        listing,
+        instructions,
+        sections,
+        for_answers=for_answers,
+        wait=wait,
     )
 
 
-async def enforce_live_generate_cap(uow: TenantUnitOfWork) -> None:
-    """At most `GENERATION_LIVE_JOBS_PER_TENANT` `listing_generate` jobs `queued|running` per
-    tenant, counted under the tenant's enqueue lock: past it, 429 `RATE_LIMITED`. One brand
-    cannot fill the shared `default` queue (4 slots, FIFO) and starve every other brand."""
-    await uow.job_runs.lock_generate_enqueue()
-    if (
-        await uow.job_runs.count_live_generations()
-        >= get_settings().generation_live_jobs_per_tenant
-    ):
-        raise LimitError("live generations per tenant")
+async def take_slot(uow: TenantUnitOfWork, accepted: ItemAccepted) -> ItemAccepted:
+    """B19: after the request wrote its job waiting under the generate lock, the tenant's free
+    slots go to its oldest waiting jobs (`generation_backlog.promote`); `waiting` when this job
+    was not among them. One brand still never holds more than its cap on the shared `default`
+    queue (4 slots, FIFO), so it cannot starve every other brand."""
+    promoted = await promote(uow.job_runs)
+    waiting = accepted.job_id not in promoted
+    if waiting:
+        log.info("generation.waiting", job_id=str(accepted.job_id))
+    return replace(accepted, waiting=waiting)
 
 
 async def accept_generate(
@@ -319,7 +345,7 @@ async def accept_generate(
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
         refuse(refusal, now)
-        await enforce_live_generate_cap(uow)
+        await uow.job_runs.lock_generate_enqueue()
         [result] = await request_generation(
             uow,
             principal,
@@ -333,10 +359,11 @@ async def accept_generate(
                     force_regenerate=body.force_regenerate,
                 )
             ],
+            wait=True,
         )
         if isinstance(result, ItemRefused):
             raise result.error
-        return 202, accepted_body(result)
+        return 202, accepted_body(await take_slot(uow, result))
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
     return stored
@@ -365,11 +392,18 @@ async def accept_regenerate(
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, principal.tenant_id)
         refuse(refusal, now)
-        await enforce_live_generate_cap(uow)
+        await uow.job_runs.lock_generate_enqueue()
         accepted = await request_regeneration(
-            uow, principal, key, listing_id, instructions, sections, for_answers=for_answers
+            uow,
+            principal,
+            key,
+            listing_id,
+            instructions,
+            sections,
+            for_answers=for_answers,
+            wait=True,
         )
-        return 202, accepted_body(accepted)
+        return 202, accepted_body(await take_slot(uow, accepted))
 
     _status, stored = await idempotent(principal, key, "POST", path, payload, handler)
     return stored
@@ -392,4 +426,5 @@ def accepted_body(accepted: ItemAccepted) -> dict[str, Any]:
         listing_id=accepted.listing_id,
         status=accepted.status,
         poll_url=f"/api/v1/jobs/{accepted.job_id}",
+        waiting_for_slot=accepted.waiting,
     ).model_dump(mode="json")

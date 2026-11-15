@@ -13,5 +13,6 @@
   "request_id": "req-golden-1",
   "queued_at": "2026-09-22T10:30:00Z",
   "started_at": null,
-  "finished_at": null
+  "finished_at": null,
+  "waiting_for_slot": false
 }
