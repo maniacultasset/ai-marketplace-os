@@ -396,3 +396,72 @@ async def test_tasks_answer_value_stays_out_of_the_task_and_audit_reason(
     # the envelope holds the answered value, as product.fact_updated does for seller values
     answered: Any = rows[0][2]
     assert answered["attributes"]["color"]["value"] == "maroon" and rows[1][2] is None
+
+
+# ---- G1: the HSN code and the country of origin are answerable too ----
+
+
+async def _open_column(world: World, conn: Conn, column: str) -> tuple[uuid.UUID, uuid.UUID]:
+    tenant = world.tenant("acme")
+    (product_id,) = insert_products(conn, tenant, 1, prefix=f"TC-{uuid.uuid4().hex[:6]}")
+    async with unit_of_work(tenant) as session:
+        assert await HumanTaskRepository(session, tenant).open_photo_fact_task(
+            product_id=product_id,
+            kind="missing_fact",
+            target_path=f"facts.{column}",
+            question="Add the value on the product.",
+            reason="Amazon needs it for this category.",
+            expected_answer=TEXT_SPEC,
+            suggestions=[],
+            evidence=[],
+        )
+    row = conn.execute("SELECT id FROM human_tasks WHERE product_id = %s", [product_id]).fetchone()
+    assert row is not None and isinstance(row[0], uuid.UUID)
+    return row[0], product_id
+
+
+def _column(conn: Conn, product_id: uuid.UUID, column: str) -> tuple[Any, Any]:
+    row = conn.execute(
+        f"SELECT {column}, provenance -> %s FROM products WHERE id = %s",  # noqa: S608
+        [column, product_id],
+    ).fetchone()
+    assert row is not None
+    return row[0], row[1]
+
+
+@pytest.mark.parametrize(
+    ("column", "sent", "stored"),
+    [("hsn_code", "620442", "620442"), ("country_of_origin", "in", "IN")],
+)
+async def test_tasks_answer_writes_the_hsn_code_and_the_country(
+    api: httpx.AsyncClient,
+    products_world: World,
+    auth_db: Conn,
+    column: str,
+    sent: str,
+    stored: str,
+) -> None:
+    task_id, product_id = await _open_column(products_world, auth_db, column)
+    response = await _answer(api, products_world, task_id, {"value": sent})
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "applied"
+    value, provenance = _column(auth_db, product_id, column)
+    assert value == stored
+    assert (provenance["source"], provenance["captured_via"]) == ("seller", "human_task")
+    assert provenance["evidence_ref"] == f"human_task:{task_id}"
+
+
+@pytest.mark.parametrize(
+    ("column", "sent"),
+    [("hsn_code", "620"), ("hsn_code", "62044A"), ("country_of_origin", "India"),
+     ("country_of_origin", "XX")],
+)  # fmt: skip
+async def test_tasks_answer_refuses_a_bad_hsn_code_or_country(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn, column: str, sent: str
+) -> None:
+    task_id, product_id = await _open_column(products_world, auth_db, column)
+    response = await _answer(api, products_world, task_id, {"value": sent})
+    assert response.status_code == 422, response.text
+    assert response.json()["error"]["details"][0]["loc"][-1] == "value"
+    assert _column(auth_db, product_id, column)[0] is None
+    assert _task(auth_db, task_id)["status"] == "open"

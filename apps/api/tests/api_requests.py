@@ -111,6 +111,12 @@ _JSON_BODIES: dict[str, dict[str, Any]] = {
     "admin_tenants_extend_trial": {"days": 30, "reason": "Pilot runs longer."},
     # ADR-0032
     "tenants_create": {"name": "Kalakar Home", "website": "https://kalakar.example"},
+    # G1
+    "inbox_groups_answer": {
+        "group": "t|missing_fact|facts.gender|503f4d45ede0",
+        "task_ids": [ID],
+        "value": "women",
+    },
 }
 # Ops whose every body field is optional: `{}` is valid, so break a field instead.
 _INVALID_JSON: dict[str, dict[str, Any]] = {
@@ -201,6 +207,8 @@ def invalid_request(op: Operation) -> Call:
         call.params = {"category": "Bad-Slug"}
     elif op.op_id == "skus_availability":
         call.params = {"sku": "has space"}
+    elif op.op_id == "inbox_groups_list":
+        call.params = {"view": "everything"}  # G1
     elif op.op_id in _QUERY:
         call.params = {**call.params, "from": "not-a-date"}
     elif op.op_id in _INVALID_JSON:

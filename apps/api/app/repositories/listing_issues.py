@@ -47,6 +47,7 @@ from app.db.integrity import map_db_error, to_conflict
 from app.db.models.issues import HumanTask, ListingIssue
 from app.db.models.listings import Listing
 from app.repositories.base import TenantScopedRepository
+from app.repositories.human_tasks import task_in_inbox
 
 PAGE_LIMIT_MAX: Final = 200
 OPEN: Final = "open"
@@ -106,6 +107,22 @@ def issue_in_inbox() -> ColumnElement[bool]:
         .correlate_except(Listing)  # a caller may join listings itself
     )
     return ~archived
+
+
+def waits_on_open_question() -> ColumnElement[bool]:
+    """The issue row's `human_task_id` names an open task the Inbox lists (`task_in_inbox`): the
+    All view shows such an issue only as its question. The one definition of
+    `issues_without_question` (Home's Inbox counts) and of the grouped Inbox's All view (G1)."""
+    return (
+        select(literal(1))
+        .where(
+            HumanTask.tenant_id == ListingIssue.tenant_id,
+            HumanTask.id == ListingIssue.human_task_id,
+            HumanTask.status == "open",
+            task_in_inbox(),
+        )
+        .exists()
+    )
 
 
 class ListingIssueRepository(TenantScopedRepository[ListingIssue]):
