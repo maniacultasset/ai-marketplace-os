@@ -15,10 +15,12 @@ from pydantic_core import PydanticCustomError
 from app.api.v1.schemas.issues import IssueOut
 from app.api.v1.schemas.products import AnswerScalar
 from app.api.v1.schemas.tasks import TaskKind, TaskOut
+from app.services.sections import Section
 
 GroupScope = Literal["brand", "product_fact", "exemption", "per_item"]
 SkipReason = Literal["has_value", "closed", "not_allowed", "wrong_level", "gone"]
 ListingStatus = Annotated[str, StringConstraints(max_length=40)]
+RedraftBlock = Literal["busy", "paused", "other_questions_open"]
 
 
 class InboxGroupMemberOut(WireModel):
@@ -50,8 +52,9 @@ class InboxGroupOut(WireModel):
     )
     item_kind: Literal["task", "issue"]
     scope: GroupScope = Field(
-        description="What one answer may do: `brand` (set the brand manufacturer once with "
-        "`PATCH /brand-profile`), `product_fact` (one value for every product without one), "
+        description="What one answer may do: `brand` (set the brand manufacturer, marketer, "
+        "packer or importer once with `PATCH /brand-profile`), `product_fact` (one value for "
+        "every product without one), "
         "`exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each "
         "item needs its own fix)."
     )
@@ -76,8 +79,9 @@ class InboxGroupOut(WireModel):
     categories: list[str] = Field(default_factory=list, max_length=20)
     brand_value_set: bool = Field(
         default=False,
-        description="`brand` only: the brand manufacturer is set already, so the items were "
-        "written before it was; redraft them to use it.",
+        description="`brand` only: the brand's default for this party (manufacturer, marketer, "
+        "packer or importer) is set already, so the items were written before it was; check "
+        "or redraft them to use it.",
     )
     sample_task: TaskOut | None = Field(
         default=None, description="The newest question, as `GET /tasks` lists it."
@@ -144,7 +148,19 @@ class AffectedListingOut(WireModel):
     status: ListingStatus
     redraft: bool = Field(
         description="It can be written again now with `POST /listings/{listing_id}/regenerate` "
-        "(not a listing never written, one being written, or a paused one)."
+        "and these `sections` with `for_answers: true` (`redraft_blocked` says why not)."
+    )
+    redraft_blocked: RedraftBlock | None = Field(
+        default=None,
+        description="Why not now: `busy` (never written, or being written), `paused`, or "
+        "`other_questions_open` (another seller question still stands on the listing: redraft "
+        "once every answer is in). Null when `redraft` is true.",
+    )
+    sections: list[Section] = Field(
+        default_factory=list,
+        max_length=5,
+        description="The sections the answered fact feeds, in card order, less the ones every "
+        "path of which the seller locked; empty when the fact reaches no section.",
     )
 
 

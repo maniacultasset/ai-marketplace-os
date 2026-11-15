@@ -209,6 +209,18 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
         ).scalar_one_or_none()
         return found
 
+    async def default_parties(self) -> dict[str, uuid.UUID | None]:
+        """G1: the brand default party id of each role a brand sets once (`manufacturer`,
+        `marketer`, `packer`, `importer`), None for one not set (or no row)."""
+        columns = {
+            "manufacturer": BrandProfile.default_manufacturer_party_id,
+            "marketer": BrandProfile.default_marketer_party_id,
+            "packer": BrandProfile.default_packer_party_id,
+            "importer": BrandProfile.default_importer_party_id,
+        }
+        row = (await self.db.execute(self._select().with_only_columns(*columns.values()))).first()
+        return {role: None if row is None else row[i] for i, role in enumerate(columns)}
+
     async def default_country(self) -> str | None:
         """SI12: the brand default country of origin, or None (no row or none set)."""
         found: str | None = (
@@ -237,19 +249,24 @@ class BrandProfileRepository(TenantScopedRepository[BrandProfile]):
     ) -> bool:
         """Write `default_manufacturer_party_id` and `provenance.manufacturer` (the value-less
         seller Fact; CP4), or clear both with `party_id=None`. True when a row was written."""
-        column = BrandProfile.default_manufacturer_party_id
+        return await self.set_default_party(MANUFACTURER_KEY, party_id, fact)
+
+    async def set_default_party(
+        self, role: str, party_id: uuid.UUID | None, fact: Mapping[str, Any]
+    ) -> bool:
+        """`set_default_manufacturer` for any brand default role (`manufacturer`, `marketer`,
+        `packer`, `importer`): `default_<role>_party_id` and `provenance.<role>`."""
+        column = getattr(BrandProfile, f"default_{role}_party_id")
         if party_id is None:
-            changed = or_(column.is_not(None), BrandProfile.provenance.has_key(MANUFACTURER_KEY))
-            provenance = BrandProfile.provenance.op("-")(MANUFACTURER_KEY)
+            changed = or_(column.is_not(None), BrandProfile.provenance.has_key(role))
+            provenance = BrandProfile.provenance.op("-")(role)
         else:
             new = cast(literal(json.dumps(dict(fact))), JSONB)
             changed = or_(
                 column.is_distinct_from(party_id),
-                BrandProfile.provenance[MANUFACTURER_KEY]["source"].is_distinct_from(new["source"]),
+                BrandProfile.provenance[role]["source"].is_distinct_from(new["source"]),
             )
-            provenance = BrandProfile.provenance.op("||")(
-                func.jsonb_build_object(MANUFACTURER_KEY, new)
-            )
+            provenance = BrandProfile.provenance.op("||")(func.jsonb_build_object(role, new))
         stmt = self._scoped_write(
             update(BrandProfile)
             .where(self._tenant_criterion(include_platform=False), changed)

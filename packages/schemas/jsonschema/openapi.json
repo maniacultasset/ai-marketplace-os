@@ -127,9 +127,42 @@
             "type": "string"
           },
           "redraft": {
-            "description": "It can be written again now with `POST /listings/{listing_id}/regenerate` (not a listing never written, one being written, or a paused one).",
+            "description": "It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true` (`redraft_blocked` says why not).",
             "title": "Redraft",
             "type": "boolean"
+          },
+          "redraft_blocked": {
+            "anyOf": [
+              {
+                "enum": [
+                  "busy",
+                  "paused",
+                  "other_questions_open"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why not now: `busy` (never written, or being written), `paused`, or `other_questions_open` (another seller question still stands on the listing: redraft once every answer is in). Null when `redraft` is true.",
+            "title": "Redraft Blocked"
+          },
+          "sections": {
+            "description": "The sections the answered fact feeds, in card order, less the ones every path of which the seller locked; empty when the fact reaches no section.",
+            "items": {
+              "enum": [
+                "title",
+                "bullets",
+                "description",
+                "keywords",
+                "attributes"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Sections",
+            "type": "array"
           },
           "status": {
             "maxLength": 40,
@@ -1272,6 +1305,17 @@
             ],
             "description": "The whole brand voice (it replaces the stored one). Absent leaves it unchanged; null, or every answer empty, clears it."
           },
+          "default_importer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's importer for every product without its own. Absent leaves it unchanged; null clears it."
+          },
           "default_manufacturer": {
             "anyOf": [
               {
@@ -1282,6 +1326,28 @@
               }
             ],
             "description": "Absent leaves it unchanged; null clears it."
+          },
+          "default_marketer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's marketer for every product without its own. Absent leaves it unchanged; null clears it."
+          },
+          "default_packer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's packer for every product without its own. Absent leaves it unchanged; null clears it."
           },
           "website_url": {
             "anyOf": [
@@ -1326,7 +1392,37 @@
             ],
             "description": "Null until the seller answers \"Tell Kuinn about your brand\"."
           },
+          "default_importer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "default_manufacturer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_marketer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_packer": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/PartyOut"
@@ -5360,7 +5456,7 @@
           },
           "brand_value_set": {
             "default": false,
-            "description": "`brand` only: the brand manufacturer is set already, so the items were written before it was; redraft them to use it.",
+            "description": "`brand` only: the brand's default for this party (manufacturer, marketer, packer or importer) is set already, so the items were written before it was; check or redraft them to use it.",
             "title": "Brand Value Set",
             "type": "boolean"
           },
@@ -5472,7 +5568,7 @@
             "description": "The newest question, as `GET /tasks` lists it."
           },
           "scope": {
-            "description": "What one answer may do: `brand` (set the brand manufacturer once with `PATCH /brand-profile`), `product_fact` (one value for every product without one), `exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each item needs its own fix).",
+            "description": "What one answer may do: `brand` (set the brand manufacturer, marketer, packer or importer once with `PATCH /brand-profile`), `product_fact` (one value for every product without one), `exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each item needs its own fix).",
             "enum": [
               "brand",
               "product_fact",
@@ -27387,7 +27483,7 @@
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Set or clear the default manufacturer, the website, the brand description or the brand\nvoice (owner, admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an\nabsent field is unchanged, `null` clears. The voice shapes tone and emphasis only: product\nfacts always win.",
+        "description": "Set or clear the default manufacturer, marketer, packer or importer, the website, the brand\ndescription or the brand voice (owner, admin). Setting a party checks again the listings\nwith an open question on it, so a question it answers closes (grouped Inbox switch on).\n`If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is\nunchanged, `null` clears. The voice shapes tone and emphasis only: product facts always\nwin.",
         "operationId": "brand_profile_update",
         "parameters": [
           {
@@ -36510,7 +36606,7 @@
                         "id": "0b1c2d3e-0000-4000-8000-000000001101",
                         "kind": "missing_fact",
                         "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-                        "question": "Add the manufacturer on the product.",
+                        "question": "Add the manufacturer. Set it once for the brand in Settings > Compliance, or on this product.",
                         "reason": "Amazon needs the manufacturer's name and address for this product.",
                         "resume_from": "generate",
                         "status": "open",
@@ -36907,6 +37003,12 @@
                       "marketplace": "amazon",
                       "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
                       "redraft": true,
+                      "sections": [
+                        "bullets",
+                        "description",
+                        "keywords",
+                        "attributes"
+                      ],
                       "status": "blocked"
                     }
                   ],

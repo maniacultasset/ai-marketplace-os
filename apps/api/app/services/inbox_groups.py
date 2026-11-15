@@ -25,8 +25,11 @@ so every task locks its product, then itself, as a single answer does:
   is never touched), the task applied, the same two audit rows.
 
 When nothing is applied and every skip is `not_allowed`, the whole answer is 422 at `value`. The
-answer lists the affected listings that are not archived, each flagged `redraft` when it can be
-written again now. Nothing is queued here: the dashboard redrafts each through
+answer lists the affected listings that are not archived, each with the `sections` the answered
+fact feeds and flagged `redraft` when it can be written again now, else `redraft_blocked`: `busy`,
+`paused`, or `other_questions_open` while another seller question still stands on it (one
+redraft once every answer is in, as `tasks.fact_edits` waits). Nothing is queued here: the
+dashboard regenerates those sections (`for_answers: true`) through
 `POST /listings/{listing_id}/regenerate`.
 """
 
@@ -71,6 +74,9 @@ def _fact_row(row: Any, variants_without_status: Mapping[uuid.UUID, int]) -> mod
             "hsn_code": row.hsn_code,
             "country_of_origin": row.country_of_origin,
             "manufacturer_party_id": row.manufacturer_party_id,
+            "marketer_party_id": row.marketer_party_id,
+            "packer_party_id": row.packer_party_id,
+            "importer_party_id": row.importer_party_id,
             "identifier_status": row.identifier_status,
         },
         variants_without_status=variants_without_status.get(row.id, 0) if is_style else 0,
@@ -108,9 +114,10 @@ async def _read(principal: Principal, view: View) -> dict[str, Any]:
         ]
         without = await reads.products.variants_without_status(style_ids)
         listing_refs = await reads.listings.for_products(sorted(task_products | styles_of))
-        brand_set = False
-        if any(t.task.target_path == model.MANUFACTURER_TARGET for t in tasks):
-            brand_set = await uow.brand_profiles.default_manufacturer() is not None
+        brand_set: set[str] = set()
+        if any(t.task.target_path in model.BRAND_TARGETS for t in tasks):
+            defaults = await uow.brand_profiles.default_parties()
+            brand_set = {role for role, party in defaults.items() if party is not None}
         members = _task_members(tasks, facts, without, listing_refs)
         members += _issue_members(issues)
         groups = model.build_groups(members)
@@ -130,7 +137,7 @@ async def _read(principal: Principal, view: View) -> dict[str, Any]:
             found = issue_rows[g.newest.item_id]
             sample_issue = issue_fields(found.issue, labels.get(found.issue.id), found.product_id)
         out_groups.append(
-            _group_out(g, brand_set and g.scope == "brand", sample_task, sample_issue)
+            _group_out(g, g.scope == "brand" and g.field in brand_set, sample_task, sample_issue)
         )
     return {
         "enabled": True,
@@ -158,11 +165,12 @@ def _task_members(
         for owner in (task.product_id, t.parent_product_id):
             if owner is not None:
                 listing_ids += listed.get(owner, [])
+        code = model.task_code(task.reason)
         out.append(
             model.Member(
-                key=model.task_key(task.kind, task.target_path, task.expected_answer),
+                key=model.task_key(task.kind, task.target_path, task.expected_answer, code),
                 item_kind="task",
-                scope=model.task_scope(task.kind, task.target_path, task.expected_answer),
+                scope=model.task_scope(task.kind, task.target_path, task.expected_answer, code),
                 at=task.created_at,
                 blocking=bool(t.blocking),
                 item_id=task.id,
@@ -395,10 +403,10 @@ async def _answer_group(
         if peek is None:
             skipped.append({"task_id": task_id, "product_id": None, "reason": "gone"})
             continue
-        if model.task_key(peek.kind, peek.target_path, peek.expected_answer) != group:
+        if _key(peek) != group:
             raise InputError(ErrorCode.VALIDATION_FAILED, f"task_ids[{i}]")
         peeks.append(peek)
-    scopes = {model.task_scope(p.kind, p.target_path, p.expected_answer) for p in peeks}
+    scopes = {_scope(p) for p in peeks}
     if scopes - ANSWERABLE:
         raise InputError(ErrorCode.VALIDATION_FAILED, "group")
     if "exemption" in scopes and value is not True:
@@ -407,13 +415,11 @@ async def _answer_group(
     written: list[uuid.UUID] = []
     # plain values read before any savepoint: a rolled-back savepoint may expire loaded rows
     plan = sorted(
-        (
-            (p.product_id, p.id, model.task_scope(p.kind, p.target_path, p.expected_answer))
-            for p in peeks
-        ),
+        ((p.product_id, p.id, _scope(p), p.target_path) for p in peeks),
         key=lambda t: (str(t[0]), str(t[1])),
     )
-    for product_id, task_id, scope in plan:
+    answered: set[str] = set()
+    for product_id, task_id, scope, target_path in plan:
         if product_id is None:
             skipped.append({"task_id": task_id, "product_id": None, "reason": "gone"})
             continue
@@ -428,34 +434,60 @@ async def _answer_group(
             continue
         applied.append({"task_id": task_id, "product_id": product_id})
         written.append(product_id)
+        if target_path:
+            answered.add(target_path)
     if not applied and skipped and all(s["reason"] == "not_allowed" for s in skipped):
         raise InputError(ErrorCode.VALIDATION_FAILED, "value")
     return {
         "applied": applied,
         "skipped": skipped,
-        "listings": await _affected(uow, written),
+        "listings": await _affected(uow, written, sorted(answered)),
     }
 
 
+def _key(task: Any) -> str:
+    code = model.task_code(task.reason)
+    return model.task_key(task.kind, task.target_path, task.expected_answer, code)
+
+
+def _scope(task: Any) -> model.Scope:
+    code = model.task_code(task.reason)
+    return model.task_scope(task.kind, task.target_path, task.expected_answer, code)
+
+
 async def _affected(
-    uow: TenantUnitOfWork, product_ids: Sequence[uuid.UUID]
+    uow: TenantUnitOfWork, product_ids: Sequence[uuid.UUID], target_paths: Sequence[str]
 ) -> list[dict[str, Any]]:
-    """The listings (not archived) of the answered products and of their styles."""
+    """The listings (not archived) of the answered products and of their styles, each with the
+    sections the answered fact feeds (less the fully locked ones) and whether it can be
+    redrafted now: not while it is being written or paused, nor while a seller question still
+    stands on it (on its product, a size of it, or linked to its refusals)."""
+    from app.services.sections import affected_sections
+    from app.services.tasks import SELLER_KINDS
+
     if not product_ids:
         return []
     rows = await uow.inbox_groups.products.facts(product_ids)
     owners = set(product_ids) | {r.parent_product_id for r in rows if r.parent_product_id}
     refs = await uow.inbox_groups.listings.for_products(sorted(owners))
-    return [
-        {
-            "listing_id": ref.id,
-            "product_id": ref.product_id,
-            "marketplace": ref.marketplace,
-            "status": ref.status,
-            "redraft": model.redraft(ref.status, ref.paused),
-        }
-        for ref in refs
-    ]
+    waiting = await uow.inbox_groups.listings.with_open_questions(
+        [ref.id for ref in refs], sorted(SELLER_KINDS)
+    )
+    out = []
+    for ref in refs:
+        block = model.redraft_block(ref.status, ref.paused, ref.id in waiting)
+        out.append(
+            {
+                "listing_id": ref.id,
+                "product_id": ref.product_id,
+                "marketplace": ref.marketplace,
+                "status": ref.status,
+                "redraft": block is None,
+                "redraft_blocked": block,
+                "sections": affected_sections(target_paths, ref.locked_paths),
+            }
+        )
+    return out
 
 
 def _json(value: Any) -> Any:

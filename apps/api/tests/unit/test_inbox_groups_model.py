@@ -8,7 +8,9 @@ from typing import Any
 
 import pytest
 from app.services import inbox_groups_model as m
+from app.services.auto_fix.text import question_for
 from app.services.tasks import FACT_TARGET
+from mkos_schemas.codes import ErrorCode
 
 T0 = datetime(2026, 11, 15, 9, 0, tzinfo=UTC)
 GENDER = {"kind": "enum", "allowed_values": ["women", "men", "unisex"]}
@@ -77,7 +79,10 @@ def test_a_long_key_is_hashed_within_bounds() -> None:
         # never overwritten: each product already holds a value the photos disagree with
         ("conflicting_facts", "facts.attributes.color", GENDER, "per_item"),
         ("missing_fact", "facts.attributes.color", {"kind": "multi_enum"}, "per_item"),
-        ("missing_fact", "facts.marketer", {"kind": "text"}, "per_item"),
+        ("missing_fact", "facts.marketer", {"kind": "text"}, "brand"),
+        ("missing_fact", "facts.packer", {"kind": "text"}, "brand"),
+        ("missing_fact", "facts.importer", {"kind": "text"}, "brand"),
+        ("missing_fact", "facts.consumer_care", {"kind": "text"}, "per_item"),
         ("image_replacement", None, {"kind": "file"}, "per_item"),
         ("reconnect_account", "account.oauth", {"kind": "reconnect"}, "per_item"),
     ],
@@ -133,6 +138,8 @@ def test_has_value_columns() -> None:
     assert m.has_value("facts.hsn_code", _row(), _row(hsn_code="6204"))
     assert m.has_value("facts.manufacturer", _row(manufacturer_party_id=uuid.uuid4()), None)
     assert not m.has_value("facts.manufacturer", _row(), None)
+    assert m.has_value("facts.packer", _row(), _row(packer_party_id=uuid.uuid4()))
+    assert not m.has_value("facts.importer", _row(manufacturer_party_id=uuid.uuid4()), None)
 
 
 def test_has_value_identifier() -> None:
@@ -194,15 +201,52 @@ def test_order_blocking_then_size_then_newest() -> None:
 
 
 @pytest.mark.parametrize(
-    ("status", "paused", "redraft"),
+    ("status", "paused", "questions", "block"),
     [
-        ("created", False, False),
-        ("generating", False, False),
-        ("blocked", True, False),
-        ("blocked", False, True),
-        ("approved", False, True),
-        ("failed", False, True),
+        ("created", False, False, "busy"),
+        ("generating", True, True, "busy"),
+        ("blocked", True, True, "paused"),
+        ("blocked", False, True, "other_questions_open"),
+        ("blocked", False, False, None),
+        ("approved", False, False, None),
+        ("failed", False, False, None),
     ],
 )
-def test_redraft(status: str, paused: bool, redraft: bool) -> None:
-    assert m.redraft(status, paused) is redraft
+def test_redraft_block(status: str, paused: bool, questions: bool, block: str | None) -> None:
+    assert m.redraft_block(status, paused, questions) == block
+
+
+@pytest.mark.parametrize(
+    "code",
+    [ErrorCode.FACT_NEEDS_CONFIRMATION, ErrorCode.FACT_MISMATCH, ErrorCode.VALUE_NOT_ALLOWED],
+)
+def test_a_confirm_or_correct_question_is_its_own_per_item_group(code: ErrorCode) -> None:
+    _question, reason = question_for(code, "color", "Colour")
+    found = m.task_code(reason)
+    assert found == code.value
+    plain = m.task_key("missing_fact", "facts.attributes.color", GENDER)
+    keyed = m.task_key("missing_fact", "facts.attributes.color", GENDER, found)
+    assert keyed == f"{plain}|{code.value}"
+    assert m.task_scope("missing_fact", "facts.attributes.color", GENDER, found) == "per_item"
+
+
+def test_a_missing_value_question_stays_in_the_plain_group() -> None:
+    _question, reason = question_for(ErrorCode.MISSING_ATTRIBUTE, "color", "Colour")
+    found = m.task_code(reason)
+    assert found == "MISSING_ATTRIBUTE"
+    assert m.task_key("missing_fact", "facts.attributes.color", GENDER, found) == m.task_key(
+        "missing_fact", "facts.attributes.color", GENDER
+    )
+    assert m.task_scope("missing_fact", "facts.attributes.color", GENDER, found) == "product_fact"
+    assert m.task_code("Amazon needs it for this category.") is None
+    assert m.task_code(None) is None
+
+
+def test_the_manufacturer_question_names_the_brand_setting() -> None:
+    question, _reason = question_for(ErrorCode.MISSING_ATTRIBUTE, "manufacturer", "manufacturer")
+    assert question == (
+        "Add the manufacturer. Set it once for the brand in Settings > Compliance, or on this "
+        "product."
+    )
+    confirm, _ = question_for(ErrorCode.FACT_NEEDS_CONFIRMATION, "manufacturer", "manufacturer")
+    assert confirm == "Confirm the manufacturer on the product."

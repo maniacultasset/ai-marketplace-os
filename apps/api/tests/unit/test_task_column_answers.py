@@ -53,3 +53,22 @@ async def test_country_answer_refused(raw: str) -> None:
     with pytest.raises(InputError) as caught:
         await _column_value(None, "country_of_origin", raw)
     assert (caught.value.code, caught.value.field) == (ErrorCode.VALIDATION_FAILED, "value")
+
+
+FLIPKART_COUNTRY: dict[str, Any] = {
+    "kind": "enum",
+    "allowed_values": ["India", "Bangladesh", "China"],
+}
+
+
+@pytest.mark.parametrize(("raw", "stored"), [("India", "IN"), ("india", "IN"), ("IN", "IN"),
+                                             ("Bangladesh", "BD")])  # fmt: skip
+async def test_a_country_the_spec_names_is_stored_as_its_code(raw: str, stored: str) -> None:
+    assert await _column_value(None, "country_of_origin", raw, FLIPKART_COUNTRY) == stored
+
+
+@pytest.mark.parametrize("raw", ["Nepal", "Indi"])
+async def test_a_country_name_outside_the_spec_is_refused(raw: str) -> None:
+    with pytest.raises(InputError) as caught:
+        await _column_value(None, "country_of_origin", raw, FLIPKART_COUNTRY)
+    assert (caught.value.code, caught.value.field) == (ErrorCode.VALIDATION_FAILED, "value")

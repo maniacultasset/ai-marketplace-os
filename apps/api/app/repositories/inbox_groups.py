@@ -16,7 +16,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import and_, func, text
+from sqlalchemy import and_, exists, func, or_, select, text
 
 from app.db.models.catalog import Product
 from app.db.models.issues import HumanTask, ListingIssue
@@ -53,6 +53,7 @@ class ListingRef:
     marketplace: str
     status: str
     paused: bool
+    locked_paths: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,6 +67,9 @@ class ProductFactsRow:
     hsn_code: str | None
     country_of_origin: str | None
     manufacturer_party_id: uuid.UUID | None
+    marketer_party_id: uuid.UUID | None
+    packer_party_id: uuid.UUID | None
+    importer_party_id: uuid.UUID | None
     identifier_status: str | None
 
 
@@ -148,10 +152,94 @@ class InboxListingReads(TenantScopedRepository[Listing]):
                 Listing.marketplace,
                 Listing.status,
                 Listing.paused_at.is_not(None),
+                Listing.locked_paths,
             )
             .order_by(Listing.product_id, Listing.marketplace, Listing.id)
         )
-        return [ListingRef(*row) for row in (await self.db.execute(stmt)).all()]
+        return [
+            ListingRef(lid, product_id, marketplace, status, paused, tuple(locked or ()))
+            for lid, product_id, marketplace, status, paused, locked in (
+                await self.db.execute(stmt)
+            ).all()
+        ]
+
+    async def with_open_targets(
+        self, targets: Sequence[str], limit: int
+    ) -> builtins.list[uuid.UUID]:
+        """G1: the listings (not archived, not being written) of the products with an open task
+        on one of `targets`, and of their styles; at most `limit`, oldest first."""
+        product = and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id)
+        asking = exists(
+            select(HumanTask.id)
+            .join(Product, product)
+            .where(
+                HumanTask.tenant_id == Listing.tenant_id,
+                HumanTask.status == "open",
+                HumanTask.target_path.in_(list(targets)),
+                or_(
+                    Product.id == Listing.product_id,
+                    Product.parent_product_id == Listing.product_id,
+                ),
+            )
+        )
+        stmt = (
+            self._select()
+            .where(
+                Listing.archived_at.is_(None),
+                Listing.status.not_in(("created", "generating")),
+                asking,
+            )
+            .with_only_columns(Listing.id)
+            .order_by(Listing.created_at, Listing.id)
+            .limit(limit)
+        )
+        return list((await self.db.execute(stmt)).scalars())
+
+    async def with_open_questions(
+        self, listing_ids: Sequence[uuid.UUID], kinds: Sequence[str]
+    ) -> set[uuid.UUID]:
+        """The listings among these on which a live (`open`/`answered`) task of `kinds` still
+        stands: one on the listing's product or on a size of it, or one linked to the listing's
+        refusals (`listing_issues.live_task_ids`, the check `services.tasks.fact_edits` makes)."""
+        if not listing_ids:
+            return set()
+        live = (HumanTask.status.in_(("open", "answered")), HumanTask.kind.in_(list(kinds)))
+        on_product = exists(
+            select(HumanTask.id)
+            .join(
+                Product,
+                and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id),
+            )
+            .where(
+                HumanTask.tenant_id == Listing.tenant_id,
+                or_(
+                    Product.id == Listing.product_id,
+                    Product.parent_product_id == Listing.product_id,
+                ),
+                *live,
+            )
+        )
+        linked = exists(
+            select(ListingIssue.id)
+            .join(
+                HumanTask,
+                and_(
+                    HumanTask.tenant_id == ListingIssue.tenant_id,
+                    HumanTask.id == ListingIssue.human_task_id,
+                ),
+            )
+            .where(
+                ListingIssue.tenant_id == Listing.tenant_id,
+                ListingIssue.listing_id == Listing.id,
+                *live,
+            )
+        )
+        stmt = (
+            self._select()
+            .where(Listing.id.in_(sorted(set(listing_ids))), or_(on_product, linked))
+            .with_only_columns(Listing.id)
+        )
+        return set((await self.db.execute(stmt)).scalars())
 
 
 class InboxProductReads(TenantScopedRepository[Product]):
@@ -174,6 +262,9 @@ class InboxProductReads(TenantScopedRepository[Product]):
                 Product.hsn_code,
                 Product.country_of_origin,
                 Product.manufacturer_party_id,
+                Product.marketer_party_id,
+                Product.packer_party_id,
+                Product.importer_party_id,
                 Product.identifier_status,
             )
         )

@@ -5,14 +5,19 @@ same question 34 times). No I/O, no clock: `app.services.inbox_groups` reads the
   key, built from the row alone, so the answer can re-derive it from each task it is sent:
   - a question: `t|<kind>|<field family of target_path>|<spec12>`, `spec12` the first 12 hex of
     sha256 over the canonical JSON of `expected_answer`. Questions whose categories allow other
-    values land in other groups, so one answer input always fits every member of a group;
+    values land in other groups, so one answer input always fits every member of a group. A
+    `missing_fact` opened by a refusal that asks the seller to confirm or correct a value
+    (`FACT_NEEDS_CONFIRMATION`, `FACT_MISMATCH`, `VALUE_NOT_ALLOWED`, told by its templated
+    reason) gets `|<code>` appended: it never joins the plain missing-value questions;
   - an issue: `i|<error_code>|<field family of field_path>|<marketplace>|<severity>`.
   A key past 200 characters is replaced by `h|<sha256>` of itself (still derived from the row).
-- **Scope.** What one answer for the group may do: `brand` (the brand manufacturer, set once
-  through `PATCH /brand-profile`), `product_fact` (one value written to each product that has
-  none), `exemption` (the GTIN exemption, D1) or `per_item` (each member needs its own fix).
-  A conflicting-facts question is `per_item`: each product already holds a value the photos
-  disagree with, and an answer for many must never overwrite one.
+- **Scope.** What one answer for the group may do: `brand` (the brand manufacturer, marketer,
+  packer or importer, set once through `PATCH /brand-profile`), `product_fact` (one value
+  written to each product that has none), `exemption` (the GTIN exemption, D1) or `per_item`
+  (each member needs its own fix). A conflicting-facts question is `per_item`: each product
+  already holds a value the photos disagree with, and an answer for many must never overwrite
+  one; so is a confirm-or-correct question (a value each product holds already). The country of
+  origin stays `product_fact`: it is set per product.
 - **Has value.** Whether a member's product already holds the fact (its own value, or its
   style's for a variant): such a member is kept as it is, never overwritten.
 - **Order.** Blocking groups first, then the biggest, then the newest.
@@ -50,6 +55,11 @@ SPEC_KINDS: Final = frozenset(
     {"enum", "text", "number", "boolean", "money_inr", "percent_composition"}
 )
 MANUFACTURER_TARGET: Final = "facts.manufacturer"
+BRAND_TARGETS: Final[Mapping[str, str]] = {
+    f"facts.{role}": role for role in ("manufacturer", "marketer", "packer", "importer")
+}
+"""The party facts a brand default stands in for (`repositories.product_facts.PARTY_COLUMNS`)."""
+PER_ITEM_CODES: Final = frozenset({"FACT_NEEDS_CONFIRMATION", "FACT_MISMATCH", "VALUE_NOT_ALLOWED"})
 IDENTIFIER_TARGET: Final = "facts.identifier"
 _INDEX: Final = re.compile(r"\[[^\]]*\]")
 
@@ -83,17 +93,34 @@ def _bounded(key: str) -> str:
     return "h|" + hashlib.sha256(key.encode()).hexdigest()
 
 
-def task_key(kind: str, target_path: str | None, expected: Any) -> str:
-    return _bounded(f"t|{kind}|{field_family(target_path)}|{spec_digest(expected)}")
+def task_code(reason: str | None) -> str | None:
+    """The refusal code a question's templated reason names (`auto_fix.text.reason_code`)."""
+    from app.services.auto_fix.text import reason_code
+
+    found = reason_code(reason)
+    return None if found is None else found.value
+
+
+def _per_item_code(kind: str, code: str | None) -> bool:
+    return kind in FACT_KINDS and code in PER_ITEM_CODES
+
+
+def task_key(kind: str, target_path: str | None, expected: Any, code: str | None = None) -> str:
+    key = f"t|{kind}|{field_family(target_path)}|{spec_digest(expected)}"
+    if _per_item_code(kind, code):
+        key += f"|{code}"
+    return _bounded(key)
 
 
 def issue_key(error_code: str, field_path: str, marketplace: str, severity: str) -> str:
     return _bounded(f"i|{error_code}|{field_family(field_path)}|{marketplace}|{severity}")
 
 
-def task_scope(kind: str, target_path: str | None, expected: Any) -> Scope:
+def task_scope(kind: str, target_path: str | None, expected: Any, code: str | None = None) -> Scope:
     target = target_path or ""
-    if target == MANUFACTURER_TARGET:
+    if _per_item_code(kind, code):
+        return "per_item"
+    if target in BRAND_TARGETS:
         return "brand"
     if kind not in FACT_KINDS:
         return "per_item"
@@ -128,8 +155,8 @@ class FactRow:
     is_style: bool
     attributes: Mapping[str, Any]
     columns: Mapping[str, Any]
-    """`gender`, `brand_name`, `hsn_code`, `country_of_origin`, `manufacturer_party_id`,
-    `identifier_status`."""
+    """`gender`, `brand_name`, `hsn_code`, `country_of_origin`, `identifier_status` and the
+    `<role>_party_id` of each `BRAND_TARGETS` role."""
     variants_without_status: int = 0
     """For a style: its live variants with no barcode and no exemption."""
 
@@ -161,8 +188,9 @@ def has_value(target_path: str | None, own: FactRow | None, style: FactRow | Non
         if own.is_style:
             return own.variants_without_status == 0
         return _column(own, "identifier_status")
-    if target == MANUFACTURER_TARGET:
-        return _column(own, "manufacturer_party_id") or _column(style, "manufacturer_party_id")
+    if target in BRAND_TARGETS:
+        column = f"{BRAND_TARGETS[target]}_party_id"
+        return _column(own, column) or _column(style, column)
     found = PRODUCT_FACT_TARGET.match(target)
     if found is None:
         return False
@@ -271,7 +299,18 @@ def order(groups: Sequence[Group]) -> list[Group]:
     return sorted(groups, key=rank)
 
 
-def redraft(status: str, paused: bool) -> bool:
-    """Whether a listing can be written again now (`POST /listings/{id}/regenerate` answers 409
-    for a listing never written, one being written and a paused one)."""
-    return status not in ("created", "generating") and not paused
+RedraftBlock = Literal["busy", "paused", "other_questions_open"]
+
+
+def redraft_block(status: str, paused: bool, questions_open: bool) -> RedraftBlock | None:
+    """Why a listing should not be written again now, or None when it can be: `busy` (never
+    written, or being written: `POST /listings/{id}/regenerate` answers 409), `paused` (409
+    too), `other_questions_open` (a seller question still stands on it: one redraft once every
+    answer is in, as `services.tasks.fact_edits` waits)."""
+    if status in ("created", "generating"):
+        return "busy"
+    if paused:
+        return "paused"
+    if questions_open:
+        return "other_questions_open"
+    return None

@@ -71,6 +71,9 @@ async def test_get_without_row_is_empty(api: httpx.AsyncClient, fresh: World) ->
     assert response.status_code == 200, response.text
     assert response.json() == {
         "default_manufacturer": None,
+        "default_marketer": None,
+        "default_packer": None,
+        "default_importer": None,
         "website_url": None,
         "brand_description": None,
         "brand_voice": None,
@@ -486,3 +489,28 @@ async def test_voice_is_tenant_scoped(api: httpx.AsyncClient, fresh: World) -> N
     theirs = await api.get(URL, headers=_as(fresh, "owner@bharat.test"))
     assert theirs.status_code == 200
     assert "breathable" not in theirs.text
+
+
+async def test_the_brand_marketer_packer_and_importer_are_set_once(
+    api: httpx.AsyncClient, fresh: World, auth_db: Conn
+) -> None:
+    """G1: the brand's marketer, packer and importer are set as its manufacturer is."""
+    packer = {**PARTY, "legal_name": "Brand Packer LLP"}
+    response = await _put(api, fresh, {"default_marketer": PARTY, "default_packer": packer})
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert out["default_marketer"]["legal_name"] == PARTY["legal_name"]
+    assert out["default_packer"]["legal_name"] == "Brand Packer LLP"
+    assert out["default_importer"] is None and out["default_manufacturer"] is None
+    row = auth_db.execute(
+        "SELECT default_marketer_party_id IS NOT NULL, default_packer_party_id IS NOT NULL,"
+        " provenance ? 'marketer', provenance ? 'packer' FROM brand_profiles"
+        " WHERE tenant_id = %s",
+        [fresh.tenant("acme")],
+    ).fetchone()
+    assert row == (True, True, True, True)
+    assert set(_audits(auth_db)[-1][7]["provenance"]) == {"marketer", "packer"}
+    cleared = await _put(api, fresh, {"default_packer": None}, etag=response.headers["ETag"])
+    assert cleared.status_code == 200, cleared.text
+    assert cleared.json()["default_packer"] is None
+    assert cleared.json()["default_marketer"]["legal_name"] == PARTY["legal_name"]

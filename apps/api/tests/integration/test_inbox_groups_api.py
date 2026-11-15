@@ -292,8 +292,10 @@ async def test_answer_for_all_writes_each_product_without_a_value(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
     acme = products_world.tenant("acme")
-    a, b, c, kept = _products(products_world, auth_db, 4)
-    tasks = [await _ask(products_world, auth_db, p) for p in (a, b, c, kept)]
+    a, b, c, d, kept = _products(products_world, auth_db, 5)
+    tasks = [await _ask(products_world, auth_db, p) for p in (a, b, c, d, kept)]
+    # another question stays open on d: its listing waits for that answer too
+    await _ask(products_world, auth_db, d, target=FABRIC, spec=TEXT_SPEC)
     auth_db.execute(
         "UPDATE products SET attributes = %s WHERE id = %s",
         [Jsonb({"color": f.fact(value="black")}), kept],
@@ -303,14 +305,15 @@ async def test_answer_for_all_writes_each_product_without_a_value(
         created = f.listing(auth_db, acme, a)
         approved = f.listing(auth_db, acme, b, status="approved")
         f.listing(auth_db, acme, c, archived_at=datetime.now(UTC))
+        waiting = f.listing(auth_db, acme, d, status="approved")
     response = await _answer(api, products_world, tasks, "Red")
     assert response.status_code == 200, response.text
     body = response.json()
-    assert {x["task_id"] for x in body["applied"]} == {str(t) for t in tasks[:3]}
+    assert {x["task_id"] for x in body["applied"]} == {str(t) for t in tasks[:4]}
     assert body["skipped"] == [
-        {"task_id": str(tasks[3]), "product_id": str(kept), "reason": "has_value"}
+        {"task_id": str(tasks[4]), "product_id": str(kept), "reason": "has_value"}
     ]
-    for product, task in zip((a, b, c), tasks, strict=False):
+    for product, task in zip((a, b, c, d), tasks, strict=False):
         fact = _colour(auth_db, product)
         assert (fact["value"], fact["source"], fact["captured_via"]) == (
             "red", "seller", "human_task",
@@ -326,11 +329,18 @@ async def test_answer_for_all_writes_each_product_without_a_value(
             ("human_task.answered", operator),
             ("human_task.applied", operator),
         ]
-    assert _row_bytes(auth_db, kept) == before and _status(auth_db, tasks[3]) == "open"
+    assert _row_bytes(auth_db, kept) == before and _status(auth_db, tasks[4]) == "open"
     listings = {x["listing_id"]: x for x in body["listings"]}
-    assert set(listings) == {str(created), str(approved)}  # the archived listing is left out
-    assert listings[str(created)]["redraft"] is False  # never written: generate, not redraft
-    assert listings[str(approved)]["redraft"] is True
+    # the archived listing is left out
+    assert set(listings) == {str(created), str(approved), str(waiting)}
+    never = listings[str(created)]  # never written: generate, not redraft
+    assert (never["redraft"], never["redraft_blocked"]) == (False, "busy")
+    ready = listings[str(approved)]
+    assert (ready["redraft"], ready["redraft_blocked"]) == (True, None)
+    # the colour is a title fact: every section uses it (regenerate them `for_answers`)
+    assert ready["sections"] == ["title", "bullets", "description", "keywords", "attributes"]
+    held = listings[str(waiting)]
+    assert (held["redraft"], held["redraft_blocked"]) == (False, "other_questions_open")
 
 
 @pytest.mark.endpoint("inbox_groups_answer", case="validation")
@@ -511,9 +521,29 @@ async def test_exemption_marks_only_products_without_a_barcode(
     acme = products_world.tenant("acme")
     plain = f.product(auth_db, acme)
     barcoded = f.product(auth_db, acme, **f.barcoded())
-    style = f.product(auth_db, acme, "style")
-    sized = f.product(auth_db, acme, "child", parent=style, **f.barcoded())
-    bare = f.product(auth_db, acme, "child", parent=style)
+    style = f.product(auth_db, acme, "style", variation_theme="size", size_run=["m", "l"])
+    sizes: dict[str, uuid.UUID] = {}
+    with auth_db.transaction():  # each live size in its one available cell (0004's guard)
+        for size, extra in (("m", f.barcoded()), ("l", {})):
+            sizes[size] = f.product(
+                auth_db,
+                acme,
+                "child",
+                parent=style,
+                variant_attributes={"size": size},
+                attributes={"size": f.fact(value=size.upper(), normalized=size)},
+                **extra,
+            )
+            f.cell(
+                auth_db,
+                acme,
+                style,
+                size_key=size,
+                availability="available",
+                unavailable_reason=None,
+                variant_product_id=sizes[size],
+            )
+    sized, bare = sizes["m"], sizes["l"]
     tasks = [
         await _ask(products_world, auth_db, p, target=IDENTIFIER, spec=TEXT_SPEC)
         for p in (plain, barcoded, style)
@@ -547,3 +577,39 @@ async def test_exemption_marks_only_products_without_a_barcode(
         [bare],
     ).fetchone()
     assert audited == (1,)
+
+
+async def test_a_brand_party_question_is_a_brand_group(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """The marketer (as the packer and the importer) is set once for the brand: a `brand` group
+    that says when the brand value is set."""
+    auth_db.execute(
+        "DELETE FROM brand_profiles WHERE tenant_id = %s", [products_world.tenant("acme")]
+    )
+    target = "facts.marketer"
+    products = _products(products_world, auth_db, 2)
+    for p in products:
+        await _ask(products_world, auth_db, p, target=target, spec=TEXT_SPEC)
+    key = task_key("missing_fact", target, TEXT_SPEC)
+    group = _group(await _groups(api, products_world), key)
+    assert (group["scope"], group["field"], group["brand_value_set"]) == (
+        "brand", "marketer", False,
+    )  # fmt: skip
+    owner = bearer_for(products_world, "owner@acme.test")
+    tag = (await api.get("/api/v1/brand-profile", headers=owner)).headers["ETag"]
+    party = {
+        "legal_name": "Brand Marketer Pvt Ltd",
+        "address_line1": "1 Residency Road",
+        "city": "Bengaluru",
+        "state_code": "KA",
+        "postal_code": "560025",
+    }
+    saved = await api.patch(
+        "/api/v1/brand-profile",
+        json={"default_marketer": party},
+        headers={**owner, "If-Match": tag},
+    )
+    assert saved.status_code == 200, saved.text
+    group = _group(await _groups(api, products_world), key)
+    assert group["brand_value_set"] is True

@@ -861,10 +861,12 @@ export interface paths {
         head?: never;
         /**
          * Update the brand profile (If-Match: the ETag from GET)
-         * @description Set or clear the default manufacturer, the website, the brand description or the brand
-         *     voice (owner, admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an
-         *     absent field is unchanged, `null` clears. The voice shapes tone and emphasis only: product
-         *     facts always win.
+         * @description Set or clear the default manufacturer, marketer, packer or importer, the website, the brand
+         *     description or the brand voice (owner, admin). Setting a party checks again the listings
+         *     with an open question on it, so a question it answers closes (grouped Inbox switch on).
+         *     `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
+         *     unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always
+         *     win.
          */
         patch: operations["brand_profile_update"];
         trace?: never;
@@ -2945,9 +2947,19 @@ export interface components {
             product_id: string;
             /**
              * Redraft
-             * @description It can be written again now with `POST /listings/{listing_id}/regenerate` (not a listing never written, one being written, or a paused one).
+             * @description It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true` (`redraft_blocked` says why not).
              */
             redraft: boolean;
+            /**
+             * Redraft Blocked
+             * @description Why not now: `busy` (never written, or being written), `paused`, or `other_questions_open` (another seller question still stands on the listing: redraft once every answer is in). Null when `redraft` is true.
+             */
+            redraft_blocked?: ("busy" | "paused" | "other_questions_open") | null;
+            /**
+             * Sections
+             * @description The sections the answered fact feeds, in card order, less the ones every path of which the seller locked; empty when the fact reaches no section.
+             */
+            sections?: ("title" | "bullets" | "description" | "keywords" | "attributes")[];
             /** Status */
             status: string;
         };
@@ -3379,8 +3391,14 @@ export interface components {
             brand_description?: string | null;
             /** @description The whole brand voice (it replaces the stored one). Absent leaves it unchanged; null, or every answer empty, clears it. */
             brand_voice?: components["schemas"]["BrandVoice"] | null;
+            /** @description The brand's importer for every product without its own. Absent leaves it unchanged; null clears it. */
+            default_importer?: components["schemas"]["PartyIn"] | null;
             /** @description Absent leaves it unchanged; null clears it. */
             default_manufacturer?: components["schemas"]["PartyIn"] | null;
+            /** @description The brand's marketer for every product without its own. Absent leaves it unchanged; null clears it. */
+            default_marketer?: components["schemas"]["PartyIn"] | null;
+            /** @description The brand's packer for every product without its own. Absent leaves it unchanged; null clears it. */
+            default_packer?: components["schemas"]["PartyIn"] | null;
             /**
              * Website Url
              * @description Optional. Absent leaves it unchanged; null clears it. Never sent to a model.
@@ -3393,7 +3411,10 @@ export interface components {
             brand_description?: string | null;
             /** @description Null until the seller answers "Tell Kuinn about your brand". */
             brand_voice?: components["schemas"]["BrandVoiceOut"] | null;
+            default_importer?: components["schemas"]["PartyOut"] | null;
             default_manufacturer?: components["schemas"]["PartyOut"] | null;
+            default_marketer?: components["schemas"]["PartyOut"] | null;
+            default_packer?: components["schemas"]["PartyOut"] | null;
             /** Updated At */
             updated_at?: string | null;
             /** Website Url */
@@ -4919,7 +4940,7 @@ export interface components {
             blocking: boolean;
             /**
              * Brand Value Set
-             * @description `brand` only: the brand manufacturer is set already, so the items were written before it was; redraft them to use it.
+             * @description `brand` only: the brand's default for this party (manufacturer, marketer, packer or importer) is set already, so the items were written before it was; check or redraft them to use it.
              * @default false
              */
             brand_value_set: boolean;
@@ -4968,7 +4989,7 @@ export interface components {
             sample_task?: components["schemas"]["TaskOut"] | null;
             /**
              * Scope
-             * @description What one answer may do: `brand` (set the brand manufacturer once with `PATCH /brand-profile`), `product_fact` (one value for every product without one), `exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each item needs its own fix).
+             * @description What one answer may do: `brand` (set the brand manufacturer, marketer, packer or importer once with `PATCH /brand-profile`), `product_fact` (one value for every product without one), `exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each item needs its own fix).
              * @enum {string}
              */
             scope: "brand" | "product_fact" | "exemption" | "per_item";
@@ -29189,7 +29210,7 @@ export interface operations {
                      *             "id": "0b1c2d3e-0000-4000-8000-000000001101",
                      *             "kind": "missing_fact",
                      *             "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
-                     *             "question": "Add the manufacturer on the product.",
+                     *             "question": "Add the manufacturer. Set it once for the brand in Settings > Compliance, or on this product.",
                      *             "reason": "Amazon needs the manufacturer's name and address for this product.",
                      *             "resume_from": "generate",
                      *             "status": "open",
@@ -29564,6 +29585,12 @@ export interface operations {
                      *           "marketplace": "amazon",
                      *           "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
                      *           "redraft": true,
+                     *           "sections": [
+                     *             "bullets",
+                     *             "description",
+                     *             "keywords",
+                     *             "attributes"
+                     *           ],
                      *           "status": "blocked"
                      *         }
                      *       ],

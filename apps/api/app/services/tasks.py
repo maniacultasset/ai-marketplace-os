@@ -231,7 +231,7 @@ async def answer_in_uow(
     written: dict[str, Any] = {}
     if column is not None:
         if "value" in answer:
-            value = await _column_value(uow, column, answer["value"])
+            value = await _column_value(uow, column, answer["value"], task.expected_answer)
             column_fact: dict[str, Any] = {
                 "source": "seller",
                 "captured_via": "human_task",
@@ -288,12 +288,26 @@ async def answer_in_uow(
     return await uow.human_tasks.get_for_update(task.id)
 
 
-async def _column_value(uow: Any, column: str, raw: Any) -> str:
+def _country_text(raw: str, expected: Any) -> str:
+    """A country answer as a code: an allowed value of the spec that names a country in English
+    (Flipkart's enum lists `India`) becomes its ISO alpha-2 code; any other text is unchanged."""
+    from app.services.iso_countries import code_for_name
+
+    allowed = expected.get("allowed_values") if isinstance(expected, dict) else None
+    if not isinstance(allowed, list):
+        return raw
+    folded = fold(raw)
+    named = [e for e in allowed if isinstance(e, str) and fold(e) == folded]
+    code = code_for_name(named[0]) if len(named) == 1 else None
+    return raw if code is None else code
+
+
+async def _column_value(uow: Any, column: str, raw: Any, expected: Any = None) -> str:
     """SI11 T17: a `facts.gender` or `facts.brand_name` answer, checked as the product PATCH
     checks it (the gender vocabulary; a brand only from the tenant's own brand names). G1: a
     `facts.hsn_code` answer is 4, 6 or 8 digits and a `facts.country_of_origin` answer an
     assigned ISO 3166-1 alpha-2 code, stored upper-case (`intake_values`, the PATCH's and the
-    CSV import's own checks)."""
+    CSV import's own checks); a country the spec's allowed values name (`India`) is its code."""
     from app.services.intake_values import check_hsn, normalize_country
     from app.services.products import checked_brand
 
@@ -306,8 +320,11 @@ async def _column_value(uow: Any, column: str, raw: Any) -> str:
         return value
     if column in ("hsn_code", "country_of_origin"):
         check = check_hsn if column == "hsn_code" else normalize_country
+        text = raw.strip()
+        if column == "country_of_origin":
+            text = _country_text(text, expected)
         try:
-            return check(raw.strip())
+            return check(text)
         except ValueError:
             raise InputError(ErrorCode.VALIDATION_FAILED, "value") from None
     try:

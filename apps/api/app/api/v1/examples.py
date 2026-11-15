@@ -168,6 +168,9 @@ _BRAND_PROFILE: Final = {
         "gstin": "29ABCDE1234F1Z5",
         "inherited": False,
     },
+    "default_marketer": None,
+    "default_packer": None,
+    "default_importer": None,
     "website_url": "https://fabindia.example",
     "brand_description": "Hand-block printed cotton wear from Jaipur.",
     "brand_voice": {
@@ -631,7 +634,8 @@ _MANUFACTURER_TASK: Final[dict[str, Any]] = {
     "product_id": PRODUCT_1,
     "target_path": "facts.manufacturer",
     "image_id": None,
-    "question": "Add the manufacturer on the product.",
+    "question": "Add the manufacturer. Set it once for the brand in Settings > Compliance, "
+    "or on this product.",
     "reason": "Amazon needs the manufacturer's name and address for this product.",
     "expected_answer": {"kind": "text", "max_length": 256},
     "suggestions": [],
@@ -751,6 +755,8 @@ _INBOX_ANSWER: Final[dict[str, Any]] = {
             "marketplace": "amazon",
             "status": "blocked",
             "redraft": True,
+            "redraft_blocked": None,
+            "sections": ["bullets", "description", "keywords", "attributes"],
         }
     ],
 }

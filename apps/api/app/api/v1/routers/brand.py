@@ -104,6 +104,9 @@ def _profile_out(view: brand_profile.BrandProfileView) -> BrandProfileOut:
     voice = None if view.brand_voice is None else BrandVoiceOut.model_validate(view.brand_voice)
     return BrandProfileOut.model_construct(
         default_manufacturer=party_out(view.default_manufacturer),
+        default_marketer=party_out(view.default_marketer),
+        default_packer=party_out(view.default_packer),
+        default_importer=party_out(view.default_importer),
         website_url=view.website_url,
         brand_description=view.brand_description,
         brand_voice=voice,
@@ -125,14 +128,17 @@ async def brand_profile_get(principal: CurrentPrincipal, response: Response) -> 
 async def brand_profile_update(
     body: BrandProfileIn, if_match: IfMatch, principal: CurrentPrincipal, response: Response
 ) -> BrandProfileOut:
-    """Set or clear the default manufacturer, the website, the brand description or the brand
-    voice (owner, admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an
-    absent field is unchanged, `null` clears. The voice shapes tone and emphasis only: product
-    facts always win."""
+    """Set or clear the default manufacturer, marketer, packer or importer, the website, the brand
+    description or the brand voice (owner, admin). Setting a party checks again the listings
+    with an open question on it, so a question it answers closes (grouped Inbox switch on).
+    `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
+    unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always
+    win."""
     fields: dict[str, Any] = {}
-    if "default_manufacturer" in body.model_fields_set:
-        party = body.default_manufacturer
-        fields["default_manufacturer"] = None if party is None else PartyInput(**party.model_dump())
+    for key in brand_profile.PARTY_FIELDS:
+        if key in body.model_fields_set:
+            party = getattr(body, key)
+            fields[key] = None if party is None else PartyInput(**party.model_dump())
     for key in PROFILE_TEXT_FIELDS:
         if key in body.model_fields_set:
             fields[key] = getattr(body, key)
