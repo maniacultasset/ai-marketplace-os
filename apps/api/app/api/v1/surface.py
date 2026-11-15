@@ -94,6 +94,7 @@ from app.api.v1.schemas.images import (
     UploadUrlOut,
 )
 from app.api.v1.schemas.imports import ImportAccepted, ImportRowPage
+from app.api.v1.schemas.inbox_groups import InboxGroupAnswerOut, InboxGroupsOut
 from app.api.v1.schemas.invites import (
     InviteAccepted,
     InviteCreated,
@@ -1038,6 +1039,13 @@ _ROWS: Final[tuple[Operation, ...]] = (
     Operation("home_brands", "GET", "/home/brands", 200, HomeBrandsOut, "home",
               "Each of the caller's own brands with its counts, each counted inside that brand",
               "FB18", action=A.TENANT_READ),
+    # ---- G1 (prod bulk test, 15 Nov 2026): the grouped Inbox and one answer for many ----
+    Operation("inbox_groups_list", "GET", "/inbox/groups", 200, InboxGroupsOut, "inbox",
+              "The open Inbox grouped: identical questions and issues across products", "G1",
+              query=("view",), action=A.TENANT_READ),
+    Operation("inbox_groups_answer", "POST", "/inbox/groups/answer", 200, InboxGroupAnswerOut,
+              "inbox", "Answer one question for many products (never overwrites a value)", "G1",
+              has_body=True, idempotency=True, extra_codes=_501, action=A.PRODUCT_IMPORT),
 )  # fmt: skip
 
 OPS: Final[Mapping[str, Operation]] = MappingProxyType({op.op_id: op for op in _ROWS})

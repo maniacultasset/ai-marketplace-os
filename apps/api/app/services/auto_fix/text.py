@@ -6,6 +6,7 @@ audit `reason` and the issue's `action_taken` never copy seller or model text.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
@@ -172,6 +173,29 @@ _DEFAULT_QUESTION: Final = (
 )
 
 
+def _template(text: str) -> re.Pattern[str]:
+    return re.compile(re.escape(text).replace(re.escape("{label}"), ".+?"), re.DOTALL)
+
+
+_REASONS: Final = tuple((code, _template(reason)) for code, (_q, reason) in _QUESTIONS.items())
+
+
+def reason_code(reason: str | None) -> ErrorCode | None:
+    """The code whose templated reason `reason` is (`question_for`), else None: each code's
+    reason text is its own, so a stored question still tells which refusal opened it."""
+    if not reason:
+        return None
+    hits = [code for code, pattern in _REASONS if pattern.fullmatch(reason)]
+    return hits[0] if len(hits) == 1 else None
+
+
+_ADD: Final = "Add the {label} on the product."
+# G1: a fact the brand sets once for every product (the Compliance settings' default)
+BRAND_KEYS: Final = frozenset({"manufacturer"})
+BRAND_QUESTION: Final = (
+    "Add the {label}. Set it once for the brand in Settings > Compliance, or on this product."
+)
+
 # QA 2026-11-09: the seller's word for a key whose name is internal
 KEY_WORDS: Final[Mapping[str, str]] = {"identifier": "barcode"}
 
@@ -192,6 +216,8 @@ def question_for(
     They say why the value is needed, what to give and where to set it; never a value."""
     shown = _label(key, label)
     question, reason = _QUESTIONS.get(code, _DEFAULT_QUESTION)
+    if key in BRAND_KEYS and question == _ADD:
+        question = BRAND_QUESTION
     hint = _EXAMPLES.get(value_type or "", "")
     return _fit(question.format(label=shown) + hint), _fit(reason.format(label=shown))
 

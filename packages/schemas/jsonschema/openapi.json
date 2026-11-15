@@ -111,6 +111,90 @@
         "title": "ActivityItem",
         "type": "object"
       },
+      "AffectedListingOut": {
+        "properties": {
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
+          },
+          "marketplace": {
+            "$ref": "#/components/schemas/Marketplace"
+          },
+          "open_questions": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`other_questions_open` only: how many other live seller questions stand on the listing; null otherwise.",
+            "title": "Open Questions"
+          },
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "redraft": {
+            "description": "It can be written again now with `POST /listings/{listing_id}/regenerate` and these `sections` with `for_answers: true`: only when nothing blocks it and `sections` is not empty (`redraft_blocked` says why not).",
+            "title": "Redraft",
+            "type": "boolean"
+          },
+          "redraft_blocked": {
+            "anyOf": [
+              {
+                "enum": [
+                  "busy",
+                  "paused",
+                  "other_questions_open",
+                  "nothing_to_redraft",
+                  "not_written"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why not now: `not_written` (never generated: generate it instead), `nothing_to_redraft` (the answered fact feeds no unlocked section), `busy` (being written or published now), `paused`, or `other_questions_open` (other seller questions, `open_questions` of them, still stand on the listing: redraft once every answer is in). Null when `redraft` is true.",
+            "title": "Redraft Blocked"
+          },
+          "sections": {
+            "description": "The sections the answered fact feeds, in card order, less the ones every path of which the seller locked; empty when the fact reaches no section.",
+            "items": {
+              "enum": [
+                "title",
+                "bullets",
+                "description",
+                "keywords",
+                "attributes"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Sections",
+            "type": "array"
+          },
+          "status": {
+            "maxLength": 40,
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "listing_id",
+          "product_id",
+          "marketplace",
+          "status",
+          "redraft"
+        ],
+        "title": "AffectedListingOut",
+        "type": "object"
+      },
       "AiCreditOut": {
         "properties": {
           "checked_at": {
@@ -390,6 +474,26 @@
           "listings_generated"
         ],
         "title": "AnalyticsSummary",
+        "type": "object"
+      },
+      "AppliedOut": {
+        "properties": {
+          "product_id": {
+            "format": "uuid",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "product_id"
+        ],
+        "title": "AppliedOut",
         "type": "object"
       },
       "ApproveItem": {
@@ -1216,6 +1320,17 @@
             ],
             "description": "The whole brand voice (it replaces the stored one). Absent leaves it unchanged; null, or every answer empty, clears it."
           },
+          "default_importer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's importer for every product without its own. Absent leaves it unchanged; null clears it."
+          },
           "default_manufacturer": {
             "anyOf": [
               {
@@ -1226,6 +1341,28 @@
               }
             ],
             "description": "Absent leaves it unchanged; null clears it."
+          },
+          "default_marketer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's marketer for every product without its own. Absent leaves it unchanged; null clears it."
+          },
+          "default_packer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The brand's packer for every product without its own. Absent leaves it unchanged; null clears it."
           },
           "website_url": {
             "anyOf": [
@@ -1248,6 +1385,21 @@
       },
       "BrandProfileOut": {
         "properties": {
+          "affected_listings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AffectedListingOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "PATCH only, with the grouped Inbox on, when a party default (manufacturer, marketer, packer, importer) was set or cleared: the listings with an open question on that party, checked again first, each with its redraft verdict (as `POST /inbox/groups/answer` lists them). Redraft only those with `redraft: true`. Absent otherwise.",
+            "title": "Affected Listings"
+          },
           "brand_description": {
             "anyOf": [
               {
@@ -1270,7 +1422,37 @@
             ],
             "description": "Null until the seller answers \"Tell Kuinn about your brand\"."
           },
+          "default_importer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "default_manufacturer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_marketer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PartyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "default_packer": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/PartyOut"
@@ -5105,6 +5287,412 @@
           "issues_without_question"
         ],
         "title": "InboxCounts",
+        "type": "object"
+      },
+      "InboxGroupAnswerIn": {
+        "additionalProperties": false,
+        "description": "One answer for up to 100 questions of one group. Products that already hold a value are\nskipped, never overwritten.",
+        "properties": {
+          "group": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Group",
+            "type": "string"
+          },
+          "task_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Task Ids",
+            "type": "array"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "group",
+          "task_ids",
+          "value"
+        ],
+        "title": "InboxGroupAnswerIn",
+        "type": "object"
+      },
+      "InboxGroupAnswerOut": {
+        "properties": {
+          "applied": {
+            "items": {
+              "$ref": "#/components/schemas/AppliedOut"
+            },
+            "title": "Applied",
+            "type": "array"
+          },
+          "listings": {
+            "description": "The listings (not archived) of the products answered. A listing uses the answer only once it is written again.",
+            "items": {
+              "$ref": "#/components/schemas/AffectedListingOut"
+            },
+            "title": "Listings",
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedOut"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "applied",
+          "skipped",
+          "listings"
+        ],
+        "title": "InboxGroupAnswerOut",
+        "type": "object"
+      },
+      "InboxGroupMemberOut": {
+        "description": "One item of a group: a question (`task_id`) or an issue (`issue_id`), its product, and\nwhether the product already holds the fact (`has_value`: an answer for many keeps it).",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "has_value": {
+            "default": false,
+            "description": "The product (or its style) already holds this fact, or for a barcode question already has a barcode or an exemption: an answer for many keeps it as it is.",
+            "title": "Has Value",
+            "type": "boolean"
+          },
+          "issue_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issue Id"
+          },
+          "listing_ids": {
+            "description": "The listings this item stands on: an issue's own listing, or the product's listings that are not archived (a question is shared by both marketplaces).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Listing Ids",
+            "type": "array"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "sku": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sku"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "at"
+        ],
+        "title": "InboxGroupMemberOut",
+        "type": "object"
+      },
+      "InboxGroupOut": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The AnswerSpec every question of the group shares (the same allowed values); null for an issue group.",
+            "title": "Answer"
+          },
+          "at": {
+            "description": "When the newest item opened.",
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "blocking": {
+            "description": "At least one item holds a listing back (an ERROR).",
+            "title": "Blocking",
+            "type": "boolean"
+          },
+          "brand_value_set": {
+            "default": false,
+            "description": "`brand` only: the brand's default for this party (manufacturer, marketer, packer or importer) is set already, so the items were written before it was; check or redraft them to use it.",
+            "title": "Brand Value Set",
+            "type": "boolean"
+          },
+          "categories": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Categories",
+            "type": "array"
+          },
+          "count": {
+            "description": "The items in the group (every one, past the cap too).",
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The dictionary key a question asks about (`gender`, `manufacturer`, `identifier`), or the field family (`images[]`, `content.bullets[]`).",
+            "title": "Field"
+          },
+          "item_kind": {
+            "enum": [
+              "task",
+              "issue"
+            ],
+            "title": "Item Kind",
+            "type": "string"
+          },
+          "key": {
+            "description": "Opaque. Send it back as `group` on `POST /inbox/groups/answer`.",
+            "maxLength": 200,
+            "title": "Key",
+            "type": "string"
+          },
+          "listings": {
+            "description": "The distinct listings the items stand on.",
+            "minimum": 0.0,
+            "title": "Listings",
+            "type": "integer"
+          },
+          "marketplace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Marketplace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Issues only."
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/InboxGroupMemberOut"
+            },
+            "maxItems": 1000,
+            "title": "Members",
+            "type": "array"
+          },
+          "members_more": {
+            "default": false,
+            "title": "Members More",
+            "type": "boolean"
+          },
+          "products": {
+            "minimum": 0.0,
+            "title": "Products",
+            "type": "integer"
+          },
+          "sample_issue": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IssueOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest issue, as `GET /issues` lists it."
+          },
+          "sample_task": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest question, as `GET /tasks` lists it."
+          },
+          "scope": {
+            "description": "What one answer may do: `brand` (set the brand manufacturer, marketer, packer or importer once with `PATCH /brand-profile`), `product_fact` (one value for every product without one), `exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each item needs its own fix).",
+            "enum": [
+              "brand",
+              "product_fact",
+              "exemption",
+              "per_item"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "task_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "missing_fact",
+                  "conflicting_facts",
+                  "unverified_declaration",
+                  "approval_or_evidence",
+                  "permission_decision",
+                  "reconnect_account",
+                  "image_replacement",
+                  "marketplace_error_review",
+                  "category_review"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Kind"
+          }
+        },
+        "required": [
+          "key",
+          "item_kind",
+          "scope",
+          "count",
+          "products",
+          "listings",
+          "blocking",
+          "at"
+        ],
+        "title": "InboxGroupOut",
+        "type": "object"
+      },
+      "InboxGroupsOut": {
+        "properties": {
+          "as_of": {
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "enabled": {
+            "description": "False while the grouped Inbox is switched off: `groups` is empty, use the plain lists.",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/InboxGroupOut"
+            },
+            "maxItems": 300,
+            "title": "Groups",
+            "type": "array"
+          },
+          "more": {
+            "default": false,
+            "description": "More groups than the 300 listed.",
+            "title": "More",
+            "type": "boolean"
+          },
+          "total_items": {
+            "description": "Every item of the view, past the group cap too. It equals the summary's `inbox.open_items` (all), `inbox.questions` or `inbox.issues`.",
+            "minimum": 0.0,
+            "title": "Total Items",
+            "type": "integer"
+          },
+          "view": {
+            "enum": [
+              "all",
+              "questions",
+              "issues"
+            ],
+            "title": "View",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "as_of",
+          "view",
+          "total_items"
+        ],
+        "title": "InboxGroupsOut",
         "type": "object"
       },
       "InviteAccept": {
@@ -12496,6 +13084,45 @@
           "size"
         ],
         "title": "SizeRunVariantOut",
+        "type": "object"
+      },
+      "SkippedOut": {
+        "properties": {
+          "product_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "reason": {
+            "description": "`has_value`: the product already holds a value (kept); `closed`: the question is no longer open; `not_allowed`: the value is not one this product's category accepts; `wrong_level`: the fact belongs on another level of the product (its style or its sizes); `gone`: no such question in this brand.",
+            "enum": [
+              "has_value",
+              "closed",
+              "not_allowed",
+              "wrong_level",
+              "gone"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "task_id": {
+            "format": "uuid",
+            "title": "Task Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "reason"
+        ],
+        "title": "SkippedOut",
         "type": "object"
       },
       "SkuAvailabilityOut": {
@@ -26886,7 +27513,7 @@
         "x-mkos-action": "tenant:read"
       },
       "patch": {
-        "description": "Set or clear the default manufacturer, the website, the brand description or the brand\nvoice (owner, admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an\nabsent field is unchanged, `null` clears. The voice shapes tone and emphasis only: product\nfacts always win.",
+        "description": "Set or clear the default manufacturer, marketer, packer or importer, the website, the brand\ndescription or the brand voice (owner, admin). With the grouped Inbox on, setting a party\nchecks again the listings with an open question on it, so a question it answers closes, and\na changed party default returns `affected_listings` with each listing's redraft verdict.\n`If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is\nunchanged, `null` clears. The voice shapes tone and emphasis only: product facts always\nwin.",
         "operationId": "brand_profile_update",
         "parameters": [
           {
@@ -26917,6 +27544,29 @@
             "content": {
               "application/json": {
                 "example": {
+                  "affected_listings": [
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "redraft": true,
+                      "sections": [
+                        "attributes"
+                      ],
+                      "status": "blocked"
+                    },
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000001202",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000103",
+                      "redraft": false,
+                      "redraft_blocked": "not_written",
+                      "sections": [
+                        "attributes"
+                      ],
+                      "status": "created"
+                    }
+                  ],
                   "brand_description": "Hand-block printed cotton wear from Jaipur.",
                   "brand_voice": {
                     "audience": "Women 25 to 40 who buy for daily office wear",
@@ -35935,6 +36585,886 @@
         "summary": "Re-run the failed rows only",
         "tags": [
           "imports"
+        ],
+        "x-mkos-action": "product:import"
+      }
+    },
+    "/api/v1/inbox/groups": {
+      "get": {
+        "description": "The open Inbox with identical items across the brand's products in one group: a question\nby its kind, field and allowed answer; an issue by its code, field, marketplace and severity.\n`view=all` is the Inbox's All view (questions, and the issues no open question stands for),\n`questions` the Questions list and `issues` the Issues list, so `total_items` (and the sum of\nthe group counts) equals the Home summary's `inbox.open_items`, `inbox.questions` or\n`inbox.issues`. Blocking groups first, then the biggest, then the newest; at most 300\ngroups (`more`) and 1,000 members per group (`members_more`). With the switch off,\n`enabled: false` and no groups. A read past its 5 s budget answers 500 `INTERNAL_ERROR`.",
+        "operationId": "inbox_groups_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "view",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "questions",
+                "issues"
+              ],
+              "title": "View",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "as_of": "2026-10-05T09:31:00Z",
+                  "enabled": true,
+                  "groups": [
+                    {
+                      "answer": {
+                        "kind": "text",
+                        "max_length": 256
+                      },
+                      "at": "2026-10-05T09:30:00Z",
+                      "blocking": true,
+                      "brand_value_set": false,
+                      "categories": [
+                        "kurta_sets"
+                      ],
+                      "count": 34,
+                      "field": "manufacturer",
+                      "item_kind": "task",
+                      "key": "t|missing_fact|facts.manufacturer|cae91fb30742",
+                      "listings": 68,
+                      "members": [
+                        {
+                          "at": "2026-10-05T09:30:00Z",
+                          "has_value": false,
+                          "listing_ids": [
+                            "0b1c2d3e-0000-4000-8000-000000000201"
+                          ],
+                          "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                          "sku": "KTEST-001",
+                          "task_id": "0b1c2d3e-0000-4000-8000-000000001101",
+                          "title": "Hand Block Print Kurta Set"
+                        }
+                      ],
+                      "members_more": false,
+                      "products": 34,
+                      "sample_task": {
+                        "blocking": true,
+                        "created_at": "2026-10-05T09:30:00Z",
+                        "expected_answer": {
+                          "kind": "text",
+                          "max_length": 256
+                        },
+                        "id": "0b1c2d3e-0000-4000-8000-000000001101",
+                        "kind": "missing_fact",
+                        "product_id": "0b1c2d3e-0000-4000-8000-000000000101",
+                        "question": "Add the manufacturer. Set it once for the brand in Settings > Compliance, or on this product.",
+                        "reason": "Amazon needs the manufacturer's name and address for this product.",
+                        "resume_from": "generate",
+                        "status": "open",
+                        "suggestions": [],
+                        "target_path": "facts.manufacturer",
+                        "updated_at": "2026-10-05T09:30:00Z"
+                      },
+                      "scope": "brand",
+                      "task_kind": "missing_fact"
+                    },
+                    {
+                      "answer": {
+                        "allowed_values": [
+                          "women",
+                          "men",
+                          "unisex"
+                        ],
+                        "kind": "enum"
+                      },
+                      "at": "2026-10-05T09:30:00Z",
+                      "blocking": true,
+                      "brand_value_set": false,
+                      "categories": [
+                        "kurta_sets"
+                      ],
+                      "count": 12,
+                      "field": "gender",
+                      "item_kind": "task",
+                      "key": "t|missing_fact|facts.gender|503f4d45ede0",
+                      "listings": 24,
+                      "members": [
+                        {
+                          "at": "2026-10-05T09:30:00Z",
+                          "has_value": false,
+                          "listing_ids": [
+                            "0b1c2d3e-0000-4000-8000-000000000201"
+                          ],
+                          "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                          "sku": "KTEST-002",
+                          "task_id": "0b1c2d3e-0000-4000-8000-000000001102",
+                          "title": "Cotton Straight Kurta"
+                        },
+                        {
+                          "at": "2026-10-05T09:30:00Z",
+                          "has_value": true,
+                          "listing_ids": [],
+                          "product_id": "0b1c2d3e-0000-4000-8000-000000000103",
+                          "sku": "KTEST-003",
+                          "task_id": "0b1c2d3e-0000-4000-8000-000000001103",
+                          "title": "Printed A-Line Kurta"
+                        }
+                      ],
+                      "members_more": false,
+                      "products": 12,
+                      "sample_task": {
+                        "blocking": true,
+                        "created_at": "2026-10-05T09:30:00Z",
+                        "expected_answer": {
+                          "allowed_values": [
+                            "women",
+                            "men",
+                            "unisex"
+                          ],
+                          "kind": "enum"
+                        },
+                        "id": "0b1c2d3e-0000-4000-8000-000000001102",
+                        "kind": "missing_fact",
+                        "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                        "question": "Add the gender on the product.",
+                        "reason": "Amazon needs the gender for this category.",
+                        "resume_from": "generate",
+                        "status": "open",
+                        "suggestions": [],
+                        "target_path": "facts.gender",
+                        "updated_at": "2026-10-05T09:30:00Z"
+                      },
+                      "scope": "product_fact",
+                      "task_kind": "missing_fact"
+                    }
+                  ],
+                  "more": false,
+                  "total_items": 46,
+                  "view": "all"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InboxGroupsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "The open Inbox grouped: identical questions and issues across products",
+        "tags": [
+          "inbox"
+        ],
+        "x-mkos-action": "tenant:read"
+      }
+    },
+    "/api/v1/inbox/groups/answer": {
+      "post": {
+        "description": "One answer for up to 100 questions of one group (`group` is the group's `key`). A product\nthat already holds a value is skipped (`has_value`), never overwritten; each value is checked\nagainst that question's own allowed values (`not_allowed`); each answered product gets the\nsame fact and audit rows as a single answer, with the caller as the actor. A `product_fact`\ngroup takes the value; an `exemption` group takes `true` and marks the products without a\nbarcode as GTIN exempt (a barcode is never touched). Any other group, or a task of another\ngroup, is 422; when every product refuses the value, 422 at `value`. `listings` names the\naffected listings and which can be redrafted now (`POST /listings/{listing_id}/regenerate`);\nnothing is regenerated here. 501 while `INBOX_GROUPS_ENABLED` is off.",
+        "operationId": "inbox_groups_answer",
+        "parameters": [
+          {
+            "description": "1-255 visible ASCII characters. The same key with the same body replays the stored response; with a different body it is 409 IDEMPOTENCY_KEY_REUSED (24 h).",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "description": "1-255 visible ASCII characters. The same key with the same body replays the stored response; with a different body it is 409 IDEMPOTENCY_KEY_REUSED (24 h).",
+              "pattern": "^[\\x21-\\x7E]{1,255}$",
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InboxGroupAnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "applied": [
+                    {
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "task_id": "0b1c2d3e-0000-4000-8000-000000001102"
+                    }
+                  ],
+                  "listings": [
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
+                      "marketplace": "amazon",
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "redraft": true,
+                      "sections": [
+                        "bullets",
+                        "description",
+                        "keywords",
+                        "attributes"
+                      ],
+                      "status": "blocked"
+                    },
+                    {
+                      "listing_id": "0b1c2d3e-0000-4000-8000-000000001201",
+                      "marketplace": "flipkart",
+                      "open_questions": 2,
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000102",
+                      "redraft": false,
+                      "redraft_blocked": "other_questions_open",
+                      "sections": [
+                        "bullets",
+                        "description",
+                        "keywords",
+                        "attributes"
+                      ],
+                      "status": "needs_review"
+                    }
+                  ],
+                  "skipped": [
+                    {
+                      "product_id": "0b1c2d3e-0000-4000-8000-000000000103",
+                      "reason": "has_value",
+                      "task_id": "0b1c2d3e-0000-4000-8000-000000001103"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/InboxGroupAnswerOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "The request could not be parsed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request could not be parsed.",
+                    "status": 400,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request could not be parsed. Codes: `VALIDATION_FAILED`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "UNAUTHENTICATED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "UNAUTHENTICATED",
+                          "field": "request",
+                          "message": "Authentication required.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Authentication required.",
+                    "status": 401,
+                    "type": "UNAUTHENTICATED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Authentication required. Codes: `UNAUTHENTICATED`."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PERMISSION_DENIED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PERMISSION_DENIED",
+                          "field": "request",
+                          "message": "Permission denied.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Permission denied.",
+                    "status": 403,
+                    "type": "PERMISSION_DENIED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Permission denied. Codes: `PERMISSION_DENIED`."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "IDEMPOTENCY_KEY_REUSED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "IDEMPOTENCY_KEY_REUSED",
+                          "field": "request",
+                          "message": "The request conflicts with the current state.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "The request conflicts with the current state.",
+                    "status": 409,
+                    "type": "IDEMPOTENCY_KEY_REUSED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request conflicts with the current state. Codes: `IDEMPOTENCY_KEY_REUSED`."
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "PAYLOAD_TOO_LARGE",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "PAYLOAD_TOO_LARGE",
+                          "field": "request",
+                          "message": "Request body too large.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request body too large.",
+                    "status": 413,
+                    "type": "PAYLOAD_TOO_LARGE"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request body too large. Codes: `PAYLOAD_TOO_LARGE`."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "details": [
+                      {
+                        "loc": [
+                          "body",
+                          "field"
+                        ],
+                        "msg": "Field required"
+                      }
+                    ],
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "VALIDATION_FAILED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "VALIDATION_FAILED",
+                          "field": "request",
+                          "message": "Request validation failed.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Request validation failed.",
+                    "status": 422,
+                    "type": "VALIDATION_FAILED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Request validation failed. Codes: `VALIDATION_FAILED`."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "RATE_LIMITED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "RATE_LIMITED",
+                          "field": "request",
+                          "message": "Too many requests.",
+                          "retryable": true,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": true,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Too many requests.",
+                    "status": 429,
+                    "type": "RATE_LIMITED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Too many requests. Codes: `RATE_LIMITED`.",
+            "headers": {
+              "Retry-After": {
+                "description": "Whole seconds to wait before retrying. Every 429 carries it: the limiter's window, the rest of a per-listing window, or a fixed hint for a per-tenant cap.",
+                "example": 30,
+                "schema": {
+                  "minimum": 1,
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "501": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "NOT_IMPLEMENTED",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "NOT_IMPLEMENTED",
+                          "field": "request",
+                          "message": "Not implemented yet.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Not implemented yet.",
+                    "status": 501,
+                    "type": "NOT_IMPLEMENTED"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not implemented yet. Codes: `NOT_IMPLEMENTED`."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": {
+                    "correlation_id": "req-example-0001",
+                    "error_report": {
+                      "attempts_used": 0,
+                      "error_code": "INTERNAL_ERROR",
+                      "errors": [
+                        {
+                          "auto_fixable": false,
+                          "error_code": "INTERNAL_ERROR",
+                          "field": "request",
+                          "message": "Internal server error.",
+                          "retryable": false,
+                          "severity": "error",
+                          "source": "system"
+                        }
+                      ],
+                      "max_attempts": 3,
+                      "request_id": "req-example-0001",
+                      "retryable": false,
+                      "schema_version": "2.1.0",
+                      "status": "failed"
+                    },
+                    "message": "Internal server error.",
+                    "status": 500,
+                    "type": "INTERNAL_ERROR"
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Any other failure, in the same envelope: 405 `METHOD_NOT_ALLOWED`, 500 `INTERNAL_ERROR`."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Answer one question for many products (never overwrites a value)",
+        "tags": [
+          "inbox"
         ],
         "x-mkos-action": "product:import"
       }

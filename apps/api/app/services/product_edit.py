@@ -485,10 +485,10 @@ def _envelopes(row: Any, change: ProductChange, column_keys: Mapping[str, str]) 
     }
 
 
-async def _apply_fan_out(
+async def apply_fan_out(
     uow: Any, principal: Principal, fan_out: Sequence[tuple[uuid.UUID, Any, Any]], fact: Any
 ) -> None:
-    """SI5 (T11): each changed variant written, with its own `product.fact_updated` row."""
+    """SI5 (T11): each changed row written, with its own `product.fact_updated` row."""
     key = product_identifier.IDENTIFIER_KEY
     for variant_id, id_change, before in fan_out:
         await product_identifier.apply(uow.facts, variant_id, id_change, fact)
@@ -505,6 +505,36 @@ async def _apply_fan_out(
                 sort_keys=True,
             ),
         )
+
+
+async def exempt_in_uow(uow: Any, principal: Principal, row: Any, column_fact: Any) -> int:
+    """G1 (D1): the GTIN exemption of one locked product row inside the caller's transaction,
+    as `identifier_exemption: true` on the product PATCH sets it: a standalone or a variant with
+    no identifier status becomes `exempt`; a style's exemption fans out to its live variants with
+    none. A row with any status (a barcode, an exemption, `not_applicable`) is never touched.
+    Each written row gets its own `product.fact_updated` audit row (the PATCH's envelope). No
+    ETag: nothing a seller set is overwritten. Returns how many rows were written (0 when every
+    row already had a status)."""
+    level = _level(row)
+    if level == "style":
+        states = await uow.products.child_identifier_states(row.id)
+        # only a variant with no status at all: a barcode, an exemption or `not_applicable` stays
+        fan_out = product_identifier.plan_fan_out([s for s in states if s[1] is None], True)
+    else:
+        change = product_identifier.plan(
+            level, row, identifier=None, exemption=True, sent={"identifier_exemption"}
+        )
+        if change is None or row.identifier_status is not None:
+            return 0  # exempt already, or a barcode: never touched
+        before = (row.provenance or {}).get(product_identifier.IDENTIFIER_KEY)
+        fan_out = [(row.id, change, before)]
+    await apply_fan_out(uow, principal, fan_out, column_fact)
+    if fan_out and level != "style":
+        # the Core write bypasses the ORM: the loaded row's identifier columns are stale
+        uow.session.expire(
+            row, ["identifier_type", "identifier_value", "identifier_status", "provenance"]
+        )
+    return len(fan_out)
 
 
 async def update_product(
@@ -602,7 +632,7 @@ async def _update_product(
             return await full_view(uow, row)
         if product_etag(row.id, row.updated_at) != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "products_etag")
-        await _apply_fan_out(uow, principal, fan_out, column_fact)
+        await apply_fan_out(uow, principal, fan_out, column_fact)
         if change.empty and id_change is None:
             return await full_view(uow, row)  # only the variants changed (CP-D11)
         column_keys: dict[str, str] = {}

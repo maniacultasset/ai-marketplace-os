@@ -280,6 +280,11 @@ class Settings(BaseSettings):
     # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
     # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
     photo_match_enabled: bool = False
+    # G1 (prod bulk test, 15 Nov 2026): the Inbox grouped by repeated question or issue across
+    # products (`GET /inbox/groups`) and one answer for many products (`POST /inbox/groups/answer`,
+    # never overwriting a value). Off: the read answers `enabled: false` with no groups and the
+    # answer 501 `NOT_IMPLEMENTED`; every other Inbox read and write is unchanged.
+    inbox_groups_enabled: bool = False
     # Client feedback 11 and 19: copy v5 (keywords first, prompt v5, brand voice, copy checks).
     # Read by mkos-pipeline itself (>= 0.8.0, its `content_v5` setting) from the worker's process
     # env; the backend never reads it, the field only registers the name. Off: v4 copy as before.

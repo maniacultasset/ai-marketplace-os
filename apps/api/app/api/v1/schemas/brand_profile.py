@@ -19,6 +19,7 @@ from mkos_schemas.base import NonBlankStr, StrictModel, WireModel
 from pydantic import AfterValidator, AwareDatetime, Field, model_validator
 from pydantic_core import PydanticCustomError
 
+from app.api.v1.schemas.affected_listings import AffectedListingOut
 from app.core.india import STATE_CODES
 from app.core.website import WEBSITE_MAX, WEBSITE_PATTERN
 from app.services.brand_voice import BrandVoice, DescriptionText, PriceSegment
@@ -110,6 +111,21 @@ class BrandProfileIn(StrictModel):
     default_manufacturer: PartyIn | None = Field(
         default=None, description="Absent leaves it unchanged; null clears it."
     )
+    default_marketer: PartyIn | None = Field(
+        default=None,
+        description="The brand's marketer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
+    default_packer: PartyIn | None = Field(
+        default=None,
+        description="The brand's packer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
+    default_importer: PartyIn | None = Field(
+        default=None,
+        description="The brand's importer for every product without its own. Absent leaves it "
+        "unchanged; null clears it.",
+    )
     website_url: Website | None = Field(
         default=None,
         description="Optional. Absent leaves it unchanged; null clears it. Never sent to a model.",
@@ -140,9 +156,20 @@ class BrandVoiceOut(WireModel):
 
 class BrandProfileOut(WireModel):
     default_manufacturer: PartyOut | None = None
+    default_marketer: PartyOut | None = None
+    default_packer: PartyOut | None = None
+    default_importer: PartyOut | None = None
     website_url: str | None = None
     brand_description: str | None = None
     brand_voice: BrandVoiceOut | None = Field(
         default=None, description='Null until the seller answers "Tell Kuinn about your brand".'
     )
     updated_at: AwareDatetime | None = None
+    affected_listings: list[AffectedListingOut] | None = Field(
+        default=None,
+        description="PATCH only, with the grouped Inbox on, when a party default (manufacturer, "
+        "marketer, packer, importer) was set or cleared: the listings with an open question on "
+        "that party, checked again first, each with its redraft verdict (as `POST "
+        "/inbox/groups/answer` lists them). Redraft only those with `redraft: true`. Absent "
+        "otherwise.",
+    )
