@@ -1,5 +1,5 @@
-"""`marketplace_accounts` (DATABASE.md §5.5), `images` (§5.2), `image_candidates` (SI7, 0018) and
-`batches` (§5.3). Columns, defaults, keys and indexes mirror the revisions under the same names;
+"""`marketplace_accounts` (DATABASE.md §5.5), `images` (§5.2), `image_candidates` (SI7, 0018),
+`photo_links` (G2, 0040) and `batches` (§5.3). Columns, defaults, keys and indexes mirror the revisions under the same names;
 the CHECK constraints live only in the revisions."""
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from sqlalchemy import (
     LargeBinary,
     Numeric,
     PrimaryKeyConstraint,
+    SmallInteger,
     Text,
     UniqueConstraint,
     Uuid,
@@ -270,6 +271,72 @@ class ImageCandidate(TenantScoped, Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     decided_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created_at_column()
+    updated_at: Mapped[datetime] = updated_at_column()
+
+
+PHOTO_LINKS_WAITING_WHERE = "status IN ('queued', 'fetching')"
+
+
+class PhotoLink(TenantScoped, Base):
+    """A photo link a bulk import named for a product (G2): downloaded in the background and
+    stored through the upload path. `url` and `url_hash` are never granted to the read roles."""
+
+    __tablename__ = "photo_links"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", name=conv("pk_photo_links")),
+        anchor("photo_links"),
+        tenant_fk("photo_links"),
+        to_row("photo_links", "product_id", "products"),
+        to_row("photo_links", "colourway_id", "product_colourways", ondelete="RESTRICT"),
+        ForeignKeyConstraint(
+            ["colourway_id", "product_id"],
+            ["product_colourways.id", "product_colourways.style_product_id"],
+            ondelete="RESTRICT",
+            name=conv("fk_photo_links_colourway_id_product_id"),
+        ),
+        to_row("photo_links", "image_id", "images"),
+        to_membership("photo_links", "requested_by"),
+        Index(
+            conv("uq_photo_links_dedupe"),
+            "tenant_id",
+            "product_id",
+            "colourway_id",
+            "url_hash",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+        ),
+        Index(conv("ix_photo_links_import_rows"), "tenant_id", "import_id", "row_number"),
+        Index(
+            conv("ix_photo_links_waiting"),
+            "tenant_id",
+            "product_id",
+            postgresql_where=text(PHOTO_LINKS_WAITING_WHERE),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = id_column()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    product_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    colourway_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # the seller's link as typed (it may carry a signed token: never logged)
+    url: Mapped[str] = mapped_column(Text)
+    # sha256 of the direct-download link the fetcher opens; never granted to the read roles
+    url_hash: Mapped[str] = mapped_column(Text)
+    source_column: Mapped[str] = mapped_column(Text)
+    position: Mapped[int] = mapped_column(SmallInteger)
+    status: Mapped[str] = mapped_column(Text, server_default=text("'queued'"))
+    problem: Mapped[str | None] = mapped_column(Text)
+    http_status: Mapped[int | None] = mapped_column(SmallInteger)
+    file_type: Mapped[str | None] = mapped_column(Text)
+    image_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    # soft references, no FK: imports and job rows are pruned sooner than a link
+    import_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    row_number: Mapped[int | None] = mapped_column(Integer)
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    attempts: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = created_at_column()
     updated_at: Mapped[datetime] = updated_at_column()
 

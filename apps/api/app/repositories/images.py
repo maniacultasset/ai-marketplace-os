@@ -183,9 +183,16 @@ class _ImageJobs(TenantScopedRepository[JobRun]):
     model = JobRun
 
     async def count_live(self) -> int:
+        """G2: a sheet photo download job (`photo_links`) is left out: thousands may wait under
+        their own lock, and they must never refuse a seller's upload. The images they store are
+        counted through their own checks."""
         stmt = (
             self._select()
-            .where(JobRun.kind == "image_compliance", JobRun.status.in_(LIVE_JOB_STATES))
+            .where(
+                JobRun.kind == "image_compliance",
+                JobRun.status.in_(LIVE_JOB_STATES),
+                JobRun.entity_type != "photo_links",
+            )
             .with_only_columns(func.count(JobRun.id))
         )
         return int((await self.db.execute(stmt)).scalar_one())
@@ -688,6 +695,34 @@ class ImageRepository(TenantScopedRepository[Image]):
             .with_only_columns(func.coalesce(func.max(Image.position) + 1, 0))
         )
         return int((await self.db.execute(stmt)).scalar_one())
+
+    async def live_views(
+        self, product_id: UUID, colourway_id: UUID | None
+    ) -> builtins.list[tuple[str, str | None]]:
+        """G2: the (slot, role) of each live photo of this product and colourway (exactly that
+        colourway; None is the product's shared photos), for the free views a sheet photo fills."""
+        stmt = (
+            self._select()
+            .where(
+                Image.product_id == _uuid("product_id", product_id),
+                Image.colourway_id.is_not_distinct_from(colourway_id),
+                Image.deleted_at.is_(None),
+            )
+            .with_only_columns(Image.slot, Image.role)
+        )
+        return [(str(row[0]), row[1]) for row in (await self.db.execute(stmt)).all()]
+
+    async def live_slots(self, image_ids: Sequence[UUID]) -> dict[UUID, tuple[str, str | None]]:
+        """G2: the live (slot, role) of each of these images; a deleted one is left out."""
+        ids = [_uuid("image_id", i) for i in image_ids]
+        if not ids:
+            return {}
+        stmt = (
+            self._select()
+            .where(Image.id.in_(ids), Image.deleted_at.is_(None))
+            .with_only_columns(Image.id, Image.slot, Image.role)
+        )
+        return {row[0]: (str(row[1]), row[2]) for row in (await self.db.execute(stmt)).all()}
 
     async def live_main(self, product_id: UUID, colourway_id: UUID | None) -> Image | None:
         colourway = (

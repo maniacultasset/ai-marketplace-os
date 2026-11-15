@@ -188,6 +188,8 @@ def _out(view: products.ProductView) -> ProductOut:
             )
         ),
         photo_reading=view.photo_reading,
+        photo_links=list(view.photo_links),
+        photo_links_pending=view.photo_links_pending,
         product_identifier=(
             None
             if view.product_identifier is None

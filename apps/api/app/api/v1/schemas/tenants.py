@@ -74,6 +74,13 @@ class TenantCapabilitiesOut(WireModel):
     image_edit_enabled: bool = Field(
         default=False, description="`IMAGE_EDIT_ENABLED`: the AI white-background edit."
     )
+    sheet_photos_enabled: bool = Field(
+        default=False,
+        description=(
+            "`SHEET_PHOTOS_ENABLED` (G2): a bulk import downloads the `main_image` and "
+            "`additional_images` links as product photos. False: links are kept, not downloaded."
+        ),
+    )
     tenant_create_enabled: bool = Field(
         default=False,
         description="`TENANT_CREATE_ENABLED`: an owner can add another brand (ADR-0032).",

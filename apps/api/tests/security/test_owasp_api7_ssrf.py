@@ -37,6 +37,10 @@ OUTBOUND_CLIENTS = {
     # SI10 T4: the OpenRouter key check, one GET to the pinned https OPENROUTER_BASE_URL
     # (core/config.py), a 5 s timeout and follow_redirects=False
     "adapters/openrouter/key.py": ("adapters/openrouter/key.py", "{OPENROUTER_BASE_URL}/key"),
+    # G2: the seller's sheet photo links: https on 443, every resolved address public
+    # (core/public_address.py), connected by the vetted address, each of at most 3 redirects
+    # checked again, follow_redirects=False (tests/unit/test_photo_fetch.py)
+    "adapters/photo_fetch/fetcher.py": ("adapters/photo_fetch/fetcher.py", "is_public_address"),
 }
 CLIENT_CTORS = {"Client", "AsyncClient", "AsyncOpenAI"}
 MODULE_CALLS = {"get", "post", "put", "patch", "delete", "request", "stream", "head", "options"}

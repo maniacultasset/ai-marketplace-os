@@ -2278,6 +2278,19 @@ export interface ImageEditResult {
   [k: string]: unknown;
 }
 /**
+ * G2: the photo links of one import, by outcome (`failed` counts skipped links too).
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "ImportPhotoTotals".
+ */
+export interface ImportPhotoTotals {
+  failed: number;
+  saved: number;
+  total: number;
+  waiting: number;
+  [k: string]: unknown;
+}
+/**
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "ImportReport".
  */
@@ -2286,6 +2299,10 @@ export interface ImportReport {
   failed: number;
   import_id: string;
   imported: number;
+  /**
+   * G2: the file's photo links by outcome; null when the import named none.
+   */
+  photos?: ImportPhotoTotals | null;
   /**
    * @maxItems 10000
    */
@@ -2300,10 +2317,111 @@ export interface ImportReport {
  */
 export interface ImportRowResult {
   errors?: ErrorItem[];
+  /**
+   * G2: this row's photo links and what became of each (empty while the photo download is switched off, and for a row whose links another row of the file already named).
+   *
+   * @maxItems 9
+   */
+  photos?:
+    | []
+    | [PhotoLinkResult]
+    | [PhotoLinkResult, PhotoLinkResult]
+    | [PhotoLinkResult, PhotoLinkResult, PhotoLinkResult]
+    | [PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult]
+    | [PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult]
+    | [PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult, PhotoLinkResult]
+    | [
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult
+      ]
+    | [
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult
+      ]
+    | [
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult,
+        PhotoLinkResult
+      ];
   product_id?: string | null;
   row_number: number;
   sku?: string | null;
   status: "imported" | "failed";
+  [k: string]: unknown;
+}
+/**
+ * G2: one photo link from a spreadsheet row and what became of it. The link itself is never
+ * returned (it may carry a signed token): `position` and `column` say which cell it was.
+ *
+ * This interface was referenced by `MkosContracts`'s JSON-Schema
+ * via the `definition` "PhotoLinkResult".
+ */
+export interface PhotoLinkResult {
+  /**
+   * The colour the photo belongs to on a style split by colour.
+   */
+  colourway_id?: string | null;
+  column: "main_image" | "additional_images";
+  http_status?: number | null;
+  image_id?: string | null;
+  link_id: string;
+  /**
+   * The seller sentence for a failed or skipped link (prefix it with Photo N).
+   */
+  message?: string | null;
+  /**
+   * Which link of the row this is (1 = the first link), for 'Photo N'.
+   */
+  position: number;
+  problem?:
+    | (
+        | "not_found"
+        | "not_public"
+        | "not_image"
+        | "unsupported_type"
+        | "too_large"
+        | "too_many_pixels"
+        | "corrupt"
+        | "timeout"
+        | "unreachable"
+        | "blocked_address"
+        | "too_many_redirects"
+        | "server_error"
+        | "photo_limit"
+        | "import_cap"
+        | "removed_by_seller"
+        | "product_gone"
+      )
+    | null;
+  /**
+   * A retry (`POST .../photo-links/retry`) would download this link again.
+   */
+  retryable?: boolean;
+  /**
+   * `queued` waits to download; `downloading`; `saved` became a product photo (`image_id`, `view`); `failed` could not be used (`problem`, `message`); `skipped` was not downloaded (`problem`: the per-file cap, a photo the seller removed, or a deleted product).
+   */
+  status: "queued" | "downloading" | "saved" | "failed" | "skipped";
+  /**
+   * The view the saved photo holds now (`extra` for a plain additional photo); null until saved, and when the saved photo was removed.
+   */
+  view?: ("front" | "back" | "close_up" | "lifestyle" | "size_chart" | "packaging_label" | "extra") | null;
   [k: string]: unknown;
 }
 /**

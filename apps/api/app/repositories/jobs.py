@@ -94,6 +94,7 @@ ENTITY_TYPES: Final = frozenset(
         "column_map",
         "photo_facts_read",
         "photo_match",
+        "photo_links",  # G2 (0040)
     }
 )
 
@@ -917,7 +918,10 @@ class JobRunRepository(TenantScopedRepository[JobRun]):
             )
         if product_ids:
             matches.append(
-                and_(JobRun.entity_type == "category_suggestion", JobRun.entity_id.in_(product_ids))
+                and_(
+                    JobRun.entity_type.in_(("category_suggestion", "photo_links")),
+                    JobRun.entity_id.in_(product_ids),
+                )
             )
         if not matches:
             return []

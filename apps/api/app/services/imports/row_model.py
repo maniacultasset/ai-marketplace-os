@@ -10,8 +10,10 @@ The bounds are the database's own (DATABASE.md:1108-1112, written out here so a 
 accepts never trips a CHECK): money `numeric(12,2)` > 0; tax 0..100, `numeric(5,2)`; HSN 4, 6 or
 8 digits; dimensions `numeric(7,2)` > 0, all three or none; weights whole grams 1..2,000,000;
 GTIN-8/12/13/14 with a valid GS1 check digit (leading zeros kept, the cell is text). A media cell
-holds `https` URLs only (never fetched; at most 9, each ≤ 2,048 characters) and every row needs at
-least one (site L7929). There is no `status` column: an imported product is always `draft`.
+holds `https` URLs only (at most 9, each ≤ 2,048 characters), separated by `|`, `,`, `;` or
+whitespace; nothing here opens one. G2: while `SHEET_PHOTOS_ENABLED` is on the import queues a
+background download of each (`app.services.photo_links`); `main_image_count` says how many of the
+leading `image_urls` came from the `main_image` cell, so its first link can become the Front. There is no `status` column: an imported product is always `draft`.
 
 Every error is an `ErrorItem` at `file.row` with source `schema` whose message names the A.6
 column from this module's own text, never the cell (no `value_submitted`, Q7).
@@ -159,6 +161,8 @@ class ProductImportRow:
     package_breadth_cm: Decimal | None = None
     package_height_cm: Decimal | None = None
     image_urls: tuple[str, ...] = ()
+    # G2: the leading `image_urls` that came from the `main_image` cell (the rest are additional)
+    main_image_count: int = 0
     attributes: Mapping[str, str] = field(default_factory=dict)
     # SI1 D9
     style_number: str | None = None
@@ -168,6 +172,11 @@ class ProductImportRow:
     @property
     def colour_key(self) -> str | None:
         return None if self.color_name is None else self.color_name.strip().lower()
+
+    @property
+    def has_main_image(self) -> bool:
+        """G2: `image_urls[0]` came from the `main_image` cell."""
+        return self.main_image_count > 0 and bool(self.image_urls)
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +214,7 @@ class _Checker:
         self.norm = norm
         self.errors: list[ErrorItem] = []
         self.warnings: list[ErrorItem] = []
+        self.main_image_count = 0  # G2: set by `media`
 
     def fail(self, code: ErrorCode, message: str) -> None:
         self.errors.append(row_error(code, message))
@@ -299,7 +309,8 @@ class _Checker:
 
     def media(self, *, warn_without: bool) -> tuple[tuple[str, ...], str | None]:
         """The image URLs and the size chart URL. SI1 D9(d): a row without an image URL imports;
-        a standalone or style row gets a warning (images come through the product form)."""
+        a standalone or style row gets a warning (images come through the product form).
+        `main_image_count` (G2) is set to the number of URLs the `main_image` cell gave."""
         urls: list[str] = []
         for key in ("main_image", "additional_images"):
             cell = self.get(key)
@@ -308,6 +319,8 @@ class _Checker:
             for candidate in (u for u in _URL_SPLIT.split(cell) if u):
                 if self._url_ok(key, candidate):
                     urls.append(candidate)
+            if key == "main_image":
+                self.main_image_count = len(urls)
         size_chart = self.get("size_chart")
         chart_url = (
             size_chart
@@ -316,6 +329,7 @@ class _Checker:
         )
         if len(urls) > MAX_MEDIA_URLS:
             self.fail(ErrorCode.VALUE_NOT_ALLOWED, f"at most {MAX_MEDIA_URLS} media URLs per row")
+            self.main_image_count = 0
             return (), chart_url
         if (
             not urls
@@ -523,6 +537,7 @@ def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> Ro
         package_breadth_cm=dims[1],
         package_height_cm=dims[2],
         image_urls=urls,
+        main_image_count=c.main_image_count,
         attributes=attributes,
         style_number=style_number,
         size_chart_url=chart_url,

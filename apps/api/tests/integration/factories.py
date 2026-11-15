@@ -341,6 +341,20 @@ def image(conn: Conn, tenant_id: UUID, product_id: UUID, **columns: Any) -> UUID
     return insert(conn, "images", **{**defaults, **columns})  # type: ignore[no-any-return]
 
 
+def photo_link(conn: Conn, tenant_id: UUID, product_id: UUID, **columns: Any) -> UUID:
+    """G2: a `queued` sheet photo link of `product_id` (a fresh link and its hash)."""
+    n = _next()
+    defaults: dict[str, Any] = {
+        "tenant_id": tenant_id,
+        "product_id": product_id,
+        "url": f"https://cdn.example.com/p/{n}.jpg",
+        "url_hash": f"{n:064x}",
+        "source_column": "main_image",
+        "position": 1,
+    }
+    return insert(conn, "photo_links", **{**defaults, **columns})  # type: ignore[no-any-return]
+
+
 def batch(conn: Conn, tenant_id: UUID, **columns: Any) -> UUID:
     """An `approve` batch of one, created by a new owner of `tenant_id`."""
     defaults: dict[str, Any] = {"tenant_id": tenant_id, "kind": "approve", "item_count": 1}
