@@ -143,9 +143,18 @@ class InboxListingReads(TenantScopedRepository[Listing]):
         """The listings of these products that are not archived."""
         if not product_ids:
             return []
+        return await self._refs(Listing.product_id.in_(sorted(set(product_ids))))
+
+    async def by_ids(self, listing_ids: Sequence[uuid.UUID]) -> builtins.list[ListingRef]:
+        """These listings of this tenant that are not archived."""
+        if not listing_ids:
+            return []
+        return await self._refs(Listing.id.in_(sorted(set(listing_ids))))
+
+    async def _refs(self, where: Any) -> builtins.list[ListingRef]:
         stmt = (
             self._select()
-            .where(Listing.product_id.in_(sorted(set(product_ids))), Listing.archived_at.is_(None))
+            .where(where, Listing.archived_at.is_(None))
             .with_only_columns(
                 Listing.id,
                 Listing.product_id,
@@ -164,10 +173,11 @@ class InboxListingReads(TenantScopedRepository[Listing]):
         ]
 
     async def with_open_targets(
-        self, targets: Sequence[str], limit: int
+        self, targets: Sequence[str], limit: int, *, written_only: bool = True
     ) -> builtins.list[uuid.UUID]:
-        """G1: the listings (not archived, not being written) of the products with an open task
-        on one of `targets`, and of their styles; at most `limit`, oldest first."""
+        """G1: the listings (not archived; with `written_only`, not created nor being written) of
+        the products with an open task on one of `targets`, and of their styles; at most
+        `limit`, oldest first."""
         product = and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id)
         asking = exists(
             select(HumanTask.id)
@@ -184,43 +194,66 @@ class InboxListingReads(TenantScopedRepository[Listing]):
         )
         stmt = (
             self._select()
-            .where(
-                Listing.archived_at.is_(None),
-                Listing.status.not_in(("created", "generating")),
-                asking,
-            )
+            .where(Listing.archived_at.is_(None), asking)
             .with_only_columns(Listing.id)
             .order_by(Listing.created_at, Listing.id)
             .limit(limit)
         )
+        if written_only:
+            stmt = stmt.where(Listing.status.not_in(("created", "generating")))
         return list((await self.db.execute(stmt)).scalars())
 
-    async def with_open_questions(
-        self, listing_ids: Sequence[uuid.UUID], kinds: Sequence[str]
-    ) -> set[uuid.UUID]:
-        """The listings among these on which a live (`open`/`answered`) task of `kinds` still
-        stands: one on the listing's product or on a size of it, or one linked to the listing's
-        refusals (`listing_issues.live_task_ids`, the check `services.tasks.fact_edits` makes)."""
+    async def open_question_counts(
+        self,
+        listing_ids: Sequence[uuid.UUID],
+        kinds: Sequence[str],
+        *,
+        except_targets: Sequence[str] = (),
+    ) -> dict[uuid.UUID, int]:
+        """How many live (`open`/`answered`) tasks of `kinds` still stand on each of these
+        listings: one on the listing's product or on a size of it, or one linked to the
+        listing's refusals (`listing_issues.live_task_ids`, the check `services.tasks.fact_edits`
+        makes), each task counted once. Tasks on `except_targets` (the fact just answered) are
+        left out. Listings with none are absent."""
         if not listing_ids:
-            return set()
-        live = (HumanTask.status.in_(("open", "answered")), HumanTask.kind.in_(list(kinds)))
-        on_product = exists(
-            select(HumanTask.id)
+            return {}
+        ids = sorted(set(listing_ids))
+        live: builtins.list[Any] = [
+            HumanTask.status.in_(("open", "answered")),
+            HumanTask.kind.in_(list(kinds)),
+        ]
+        if except_targets:
+            live.append(
+                or_(
+                    HumanTask.target_path.is_(None),
+                    HumanTask.target_path.not_in(list(except_targets)),
+                )
+            )
+        on_product = (
+            self._select()
             .join(
                 Product,
-                and_(Product.tenant_id == HumanTask.tenant_id, Product.id == HumanTask.product_id),
-            )
-            .where(
-                HumanTask.tenant_id == Listing.tenant_id,
-                or_(
-                    Product.id == Listing.product_id,
-                    Product.parent_product_id == Listing.product_id,
+                and_(
+                    Product.tenant_id == Listing.tenant_id,
+                    or_(
+                        Product.id == Listing.product_id,
+                        Product.parent_product_id == Listing.product_id,
+                    ),
                 ),
-                *live,
             )
+            .join(HumanTask, and_(HumanTask.tenant_id == Product.tenant_id, _task_product()))
+            .where(Listing.id.in_(ids), *live)
+            .with_only_columns(Listing.id, HumanTask.id)
         )
-        linked = exists(
-            select(ListingIssue.id)
+        linked = (
+            self._select()
+            .join(
+                ListingIssue,
+                and_(
+                    ListingIssue.tenant_id == Listing.tenant_id,
+                    ListingIssue.listing_id == Listing.id,
+                ),
+            )
             .join(
                 HumanTask,
                 and_(
@@ -228,18 +261,14 @@ class InboxListingReads(TenantScopedRepository[Listing]):
                     HumanTask.id == ListingIssue.human_task_id,
                 ),
             )
-            .where(
-                ListingIssue.tenant_id == Listing.tenant_id,
-                ListingIssue.listing_id == Listing.id,
-                *live,
-            )
+            .where(Listing.id.in_(ids), *live)
+            .with_only_columns(Listing.id, HumanTask.id)
         )
-        stmt = (
-            self._select()
-            .where(Listing.id.in_(sorted(set(listing_ids))), or_(on_product, linked))
-            .with_only_columns(Listing.id)
-        )
-        return set((await self.db.execute(stmt)).scalars())
+        tasks: dict[uuid.UUID, set[uuid.UUID]] = {}
+        for stmt in (on_product, linked):
+            for listing_id, task_id in (await self.db.execute(stmt)).all():
+                tasks.setdefault(listing_id, set()).add(task_id)
+        return {listing_id: len(found) for listing_id, found in tasks.items()}
 
 
 class InboxProductReads(TenantScopedRepository[Product]):

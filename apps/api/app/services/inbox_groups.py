@@ -26,9 +26,12 @@ so every task locks its product, then itself, as a single answer does:
 
 When nothing is applied and every skip is `not_allowed`, the whole answer is 422 at `value`. The
 answer lists the affected listings that are not archived, each with the `sections` the answered
-fact feeds and flagged `redraft` when it can be written again now, else `redraft_blocked`: `busy`,
-`paused`, or `other_questions_open` while another seller question still stands on it (one
-redraft once every answer is in, as `tasks.fact_edits` waits). Nothing is queued here: the
+fact feeds and flagged `redraft` when it can be written again now, else `redraft_blocked`:
+`not_written` (never generated), `nothing_to_redraft` (the fact feeds no unlocked section),
+`busy` (being written or published), `paused`, or `other_questions_open` while other seller
+questions (`open_questions`) still stand on it (one redraft once every answer is in, as
+`tasks.fact_edits` waits). `PATCH /brand-profile` returns the same verdicts for a brand party
+default (`listing_verdicts`). Nothing is queued here: the
 dashboard regenerates those sections (`for_answers: true`) through
 `POST /listings/{listing_id}/regenerate`.
 """
@@ -458,24 +461,36 @@ def _scope(task: Any) -> model.Scope:
 async def _affected(
     uow: TenantUnitOfWork, product_ids: Sequence[uuid.UUID], target_paths: Sequence[str]
 ) -> list[dict[str, Any]]:
-    """The listings (not archived) of the answered products and of their styles, each with the
-    sections the answered fact feeds (less the fully locked ones) and whether it can be
-    redrafted now: not while it is being written or paused, nor while a seller question still
-    stands on it (on its product, a size of it, or linked to its refusals)."""
-    from app.services.sections import affected_sections
-    from app.services.tasks import SELLER_KINDS
-
+    """The listings (not archived) of the answered products and of their styles, with the
+    redraft verdict of each (`listing_verdicts`)."""
     if not product_ids:
         return []
     rows = await uow.inbox_groups.products.facts(product_ids)
     owners = set(product_ids) | {r.parent_product_id for r in rows if r.parent_product_id}
     refs = await uow.inbox_groups.listings.for_products(sorted(owners))
-    waiting = await uow.inbox_groups.listings.with_open_questions(
-        [ref.id for ref in refs], sorted(SELLER_KINDS)
+    return await listing_verdicts(uow, refs, target_paths)
+
+
+async def listing_verdicts(
+    uow: TenantUnitOfWork, refs: Sequence[ListingRef], target_paths: Sequence[str]
+) -> list[dict[str, Any]]:
+    """Each listing with the sections the answered facts (`target_paths`) feed, less the fully
+    locked ones, and whether it can be redrafted now (`inbox_groups_model.redraft_block`): not
+    when never written, when the facts feed no section, while it is being written, published or
+    paused, nor while another seller question still stands on it (on its product, a size of it,
+    or linked to its refusals; `open_questions` counts them). A question on one of
+    `target_paths` is the one being answered and never counts."""
+    from app.services.sections import affected_sections
+    from app.services.tasks import SELLER_KINDS
+
+    counts = await uow.inbox_groups.listings.open_question_counts(
+        [ref.id for ref in refs], sorted(SELLER_KINDS), except_targets=list(target_paths)
     )
     out = []
     for ref in refs:
-        block = model.redraft_block(ref.status, ref.paused, ref.id in waiting)
+        sections = affected_sections(target_paths, ref.locked_paths)
+        waiting = counts.get(ref.id, 0)
+        block = model.redraft_block(ref.status, ref.paused, waiting, bool(sections))
         out.append(
             {
                 "listing_id": ref.id,
@@ -484,7 +499,8 @@ async def _affected(
                 "status": ref.status,
                 "redraft": block is None,
                 "redraft_blocked": block,
-                "sections": affected_sections(target_paths, ref.locked_paths),
+                "open_questions": waiting if block == "other_questions_open" else None,
+                "sections": sections,
             }
         )
     return out

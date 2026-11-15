@@ -756,8 +756,44 @@ _INBOX_ANSWER: Final[dict[str, Any]] = {
             "status": "blocked",
             "redraft": True,
             "redraft_blocked": None,
+            "open_questions": None,
             "sections": ["bullets", "description", "keywords", "attributes"],
-        }
+        },
+        {
+            "listing_id": "0b1c2d3e-0000-4000-8000-000000001201",
+            "product_id": PRODUCT_2,
+            "marketplace": "flipkart",
+            "status": "needs_review",
+            "redraft": False,
+            "redraft_blocked": "other_questions_open",
+            "open_questions": 2,
+            "sections": ["bullets", "description", "keywords", "attributes"],
+        },
+    ],
+}
+_BRAND_PROFILE_UPDATED: Final[dict[str, Any]] = {
+    **_BRAND_PROFILE,
+    "affected_listings": [
+        {
+            "listing_id": LISTING,
+            "product_id": PRODUCT_2,
+            "marketplace": "amazon",
+            "status": "blocked",
+            "redraft": True,
+            "redraft_blocked": None,
+            "open_questions": None,
+            "sections": ["attributes"],
+        },
+        {
+            "listing_id": "0b1c2d3e-0000-4000-8000-000000001202",
+            "product_id": PRODUCT_3,
+            "marketplace": "amazon",
+            "status": "created",
+            "redraft": False,
+            "redraft_blocked": "not_written",
+            "open_questions": None,
+            "sections": ["attributes"],
+        },
     ],
 }
 
@@ -945,7 +981,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "photo_read": {"status": "read", "at": T1, "written": 1, "asked": 0},
         },
         "brand_profile_get": _BRAND_PROFILE,
-        "brand_profile_update": _BRAND_PROFILE,
+        "brand_profile_update": _BRAND_PROFILE_UPDATED,
         "products_update": {
             **_product(PRODUCT_1, "FAB-KURTA-001", "Organic Cotton Kurta Set"),
             "style_number": "KS-24",
