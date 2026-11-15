@@ -216,6 +216,7 @@ _JOB_ACCEPTED: Final = {
     "status": "queued",
     "estimated_duration_seconds": 30,
     "poll_url": f"/api/v1/jobs/{JOB}",
+    "waiting_for_slot": False,
 }
 _JOB_ENVELOPE: Final = {
     "schema_version": "2.0.0",
@@ -233,6 +234,7 @@ _JOB_ENVELOPE: Final = {
     "queued_at": T0,
     "started_at": T1,
     "finished_at": None,
+    "waiting_for_slot": False,
 }
 _ACCOUNT: Final = {
     "id": ACCOUNT,

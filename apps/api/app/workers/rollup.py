@@ -21,7 +21,8 @@ Cost (spec L12705; BACKEND-ARCHITECTURE.md:2761):
 Jobs (R12661a; the alert checks):
 - `job_outcomes(s, now, window=15 min)`: per job kind, terminal and failed counts finished in the
   window (failed = `failed` or `dead_letter`).
-- `oldest_queued(s, now)`: per queue, the age of the oldest `queued` job (None when empty).
+- `oldest_queued(s, now)`: per queue, the age of the oldest `queued` job on the queue (None when
+  empty; B19: a waiting generation, with no queue entry yet, is left out).
 - `processing_time(s, now, window)`: per job kind, `finished_at - started_at` count, mean and max.
 """
 
@@ -35,7 +36,7 @@ from decimal import Decimal
 from typing import Final
 from uuid import UUID
 
-from sqlalchemy import Date, cast, func, select
+from sqlalchemy import Date, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -61,6 +62,15 @@ FAILED: Final = ("failed", "dead_letter")
 async def rollup_session() -> AsyncIterator[AsyncSession]:
     async with platform_scope() as session:
         yield session
+
+
+def on_queue() -> ColumnElement[bool]:
+    """A `queued` job on the queue. B19: a generation waiting for its brand's free slot (no queue
+    entry yet) is backlog, not queue latency; its `queued_at` restarts when it is promoted."""
+    return and_(
+        JobRun.status == "queued",
+        or_(JobRun.kind != "listing_generate", JobRun.queue_job_id.is_not(None)),
+    )
 
 
 def aware_utc(now: datetime) -> datetime:
@@ -341,13 +351,10 @@ async def job_outcomes(
 
 
 async def oldest_queued(session: AsyncSession, now: datetime) -> list[QueueAge]:
-    """Per queue (every known queue listed), the age of its oldest `queued` job."""
+    """Per queue (every known queue listed), the age of its oldest `queued` job on the queue (B19:
+    a generation waiting for its brand's free slot has no queue entry yet and is not counted)."""
     current = aware_utc(now)
-    stmt = (
-        select(JobRun.queue, func.min(JobRun.queued_at))
-        .where(JobRun.status == "queued")
-        .group_by(JobRun.queue)
-    )
+    stmt = select(JobRun.queue, func.min(JobRun.queued_at)).where(on_queue()).group_by(JobRun.queue)
     oldest: dict[str, datetime] = {str(q): at for q, at in (await session.execute(stmt)).all()}
     out: list[QueueAge] = []
     for queue in sorted(set(QUEUES) | set(oldest)):

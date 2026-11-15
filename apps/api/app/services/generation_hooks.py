@@ -9,6 +9,8 @@
   reservation as it is (a timeout or crash stays counted, DATABASE.md:998). SI11: when that job
   was a resolution fix (`mode` `auto_fix` or `ai_field`), its still-open refusals then go to the
   human lanes (`resolution.run.hand_over`), so the listing never stalls with nobody told.
+  B19: then, after every end, the tenant's oldest waiting generation takes the freed slot
+  (`generation_backlog.promote_on_terminal`: a try of the generate lock, in a savepoint).
 - `on_generate_requeue(session, old, new)`: refused (CP5). A dead-lettered generation's listing is
   already `failed/generation_failed`, and only a user `regenerate` (with its decision row) may
   send it back to `generating`; the staff CLI exits 4.
@@ -22,6 +24,7 @@ from app.core.logging import get_logger
 from app.db.models.ops import JobRun
 from app.repositories.jobs import NotEligibleError
 from app.repositories.listings import JobActor, ListingRepository
+from app.services.generation_backlog import promote_on_terminal
 from app.workers.registry import Outcome
 
 log = get_logger(__name__)
@@ -31,6 +34,11 @@ FIX_MODES: Final = frozenset({"auto_fix", "ai_field"})
 
 async def on_generate_terminal(session: Any, job: JobRun, outcome: Outcome | None) -> None:
     del outcome  # S13 `Hook`: branch on the final status only
+    await _fail_listing(session, job)
+    await promote_on_terminal(session, job)
+
+
+async def _fail_listing(session: Any, job: JobRun) -> None:
     if job.status not in ENDED_WITHOUT_LISTING or job.listing_id is None:
         return
     listings = ListingRepository(session, job.tenant_id)

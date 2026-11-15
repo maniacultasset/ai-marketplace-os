@@ -3,8 +3,8 @@
 Core SELECTs on a `platform_scope()` session (read-only, `app_platform_ro`; R5 allows it here),
 each returning frozen dataclasses. Money stays `Decimal` from `agent_runs.cost_usd`; days are UTC.
 
-- `queue_stats(now)`: per queue, depth (`queued` + `running`), the oldest `queued` age, and the
-  dead-letter count.
+- `queue_stats(now)`: per queue, depth (`queued` + `running`), the oldest `queued` age (B19: of
+  a job on the queue, `rollup.on_queue`), and the dead-letter count.
 - `dead_letters(limit=50)`: the newest dead letters with the tenant slug; no payload, no result.
 - `daily_spend(now, days=7)`: AI spend per UTC day, in total and per tenant.
 - `cost_per_published_listing(now)`: 30-day spend over listings first published in those 30 days
@@ -33,6 +33,7 @@ from app.workers.rollup import (
     aware_utc,
     cost_per_published_listing,
     daily_spend,
+    on_queue,
 )
 
 DEAD_LETTER_LIMIT: Final = 50
@@ -72,7 +73,7 @@ async def queue_stats(session: AsyncSession, now: datetime) -> list[QueueStat]:
         select(
             JobRun.queue,
             func.count().filter(live),
-            func.min(JobRun.queued_at).filter(JobRun.status == "queued"),
+            func.min(JobRun.queued_at).filter(on_queue()),  # B19: not a waiting generation
             func.count().filter(JobRun.status == "dead_letter"),
         )
         .group_by(JobRun.queue)

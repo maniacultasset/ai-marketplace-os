@@ -5,6 +5,7 @@ and the cancel of a queued job.
   `result_url` come from `result_json` (`{"import_id", "progress_pct"}`, Q8); a finished
   `succeeded`/`partial` job reads 100. `stage` is the row's `node`. A row with no `request_id`
   (written outside a request) shows its `correlation_id`, so the field is never empty.
+  `waiting_for_slot` (B19): a generation waiting for a free slot of its brand's live cap.
 - `get(principal, job_id)`: the caller's tenant's job, or None (another tenant's reads as missing).
 - `cancel(principal, job_id, key, path)`: `queued → cancelled` and the queue entry cancelled in
   one idempotent transaction, then the kind's terminal hook; any other status is 409
@@ -78,6 +79,16 @@ def to_envelope(job: JobRun) -> JobEnvelope:
         queued_at=job.queued_at,
         started_at=job.started_at,
         finished_at=job.finished_at,
+        waiting_for_slot=waiting_for_slot(job),
+    )
+
+
+def waiting_for_slot(job: JobRun) -> bool:
+    """B19: a generation past its brand's live cap, `queued` with no queue entry yet."""
+    return (
+        job.kind == JobKind.LISTING_GENERATE.value
+        and job.status == JobState.QUEUED.value
+        and job.queue_job_id is None
     )
 
 

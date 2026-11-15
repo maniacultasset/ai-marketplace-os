@@ -18,6 +18,10 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   - a `queued` row whose entry is final or gone (the queue gave up after `INFRA_RETRY_CAP`
     infrastructure errors) is ended: `dead_letter` + `INTERNAL_ERROR`, or `cancelled` for a
     stopped tenant, and the kind's terminal hook runs.
+  Last (B19), every tenant holding a waiting generation (past its live cap, no queue entry yet)
+  gets its free slots filled, oldest first, under its generate lock in its own unit of work
+  (`generation_backlog.promote_tenant`), so a promotion lost to a crash waits at most one pass.
+  One tenant's failure is logged and the pass goes on.
 - `prune_rate_limits` (every 5 min): counters whose window started over 5 minutes ago.
 - `prune_idempotency_keys` (hourly): expired HTTP keys, tenant by tenant.
 - `expire_trials` (hourly): `expire_trials()` (trials past their end → `suspended`).
@@ -116,6 +120,7 @@ from app.repositories.jobs import (
     finished_jobs,
     retire_doing,
     tenants_with_queued,
+    tenants_with_waiting_generations,
 )
 from app.repositories.login_flows import LoginFlowRepository
 from app.repositories.marketplace_accounts import due_accounts
@@ -123,6 +128,7 @@ from app.repositories.oauth_states import OAuthStateRepository, tenants_with_exp
 from app.repositories.transactions import identity_session
 from app.repositories.trusted_devices import TrustedDeviceRepository
 from app.services.ai_credit import CREDIT_ALERT_PCTS, CREDIT_FLOOR_USD
+from app.services.generation_backlog import promote_tenant
 from app.services.image_keys import parse_image_key
 from app.services.job_hooks import run_terminal_hook
 from app.workers import rollup
@@ -151,6 +157,7 @@ class ReapResult:
     pruned_workers: list[int] = field(default_factory=list)
     redeferred: list[UUID] = field(default_factory=list)
     retired_entries: list[int] = field(default_factory=list)
+    promoted: list[UUID] = field(default_factory=list)
 
 
 def _timeout_report(job: Any, request_id: str) -> dict[str, Any]:
@@ -203,6 +210,7 @@ async def reap_once(job_manager: Any | None = None) -> ReapResult:
             result.pruned_workers = list(await job_manager.prune_stalled_workers(STALLED_WORKER_S))
         await _retire_finished_entries(result)
         await _reconcile_queued(result, ctx.request_id)
+        await _promote_waiting(result)
     return result
 
 
@@ -279,6 +287,18 @@ async def _reconcile_queued(result: ReapResult, request_id: str) -> None:
             else:
                 result.cancelled.append(job_id)
             log.info("job.queue_lost", job_run_id=str(job_id), action=reaped.action)
+
+
+async def _promote_waiting(result: ReapResult) -> None:
+    """B19: each tenant's waiting generations take its free slots (module docstring)."""
+    try:
+        async with platform_scope() as session:
+            tenants = await tenants_with_waiting_generations(session)
+    except Exception as exc:
+        log.exception("job.promote_sweep_failed", error_class=type(exc).__name__)
+        return
+    for tenant_id in tenants:
+        result.promoted.extend(await promote_tenant(tenant_id))
 
 
 async def prune_rate_limits(now: datetime | None = None) -> int:

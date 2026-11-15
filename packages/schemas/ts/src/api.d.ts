@@ -5048,6 +5048,12 @@ export interface components {
             poll_url: string;
             /** @default queued */
             status: components["schemas"]["JobState"];
+            /**
+             * Waiting For Slot
+             * @description True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.
+             * @default false
+             */
+            waiting_for_slot: boolean;
         };
         /** JobEnvelope */
         JobEnvelope: {
@@ -5095,6 +5101,12 @@ export interface components {
             /** Started At */
             started_at?: string | null;
             status: components["schemas"]["JobState"];
+            /**
+             * Waiting For Slot
+             * @description True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.
+             * @default false
+             */
+            waiting_for_slot: boolean;
         };
         /**
          * JobKind
@@ -20946,7 +20958,8 @@ export interface operations {
                      *       "estimated_duration_seconds": 30,
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
@@ -28467,7 +28480,8 @@ export interface operations {
                      *       "estimated_duration_seconds": 30,
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
@@ -31684,7 +31698,8 @@ export interface operations {
                      *       "schema_version": "2.0.0",
                      *       "stage": "content_agent",
                      *       "started_at": "2026-10-05T09:31:00Z",
-                     *       "status": "running"
+                     *       "status": "running",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobEnvelope"];
@@ -32012,7 +32027,8 @@ export interface operations {
                      *       "request_id": "req-example-0001",
                      *       "schema_version": "2.0.0",
                      *       "started_at": "2026-10-05T09:31:00Z",
-                     *       "status": "cancelled"
+                     *       "status": "cancelled",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobEnvelope"];
@@ -33132,7 +33148,8 @@ export interface operations {
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
@@ -36799,7 +36816,8 @@ export interface operations {
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
@@ -37237,7 +37255,8 @@ export interface operations {
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
@@ -37640,7 +37659,8 @@ export interface operations {
                      *       "job_id": "0b1c2d3e-0000-4000-8000-000000000301",
                      *       "listing_id": "0b1c2d3e-0000-4000-8000-000000000201",
                      *       "poll_url": "/api/v1/jobs/0b1c2d3e-0000-4000-8000-000000000301",
-                     *       "status": "queued"
+                     *       "status": "queued",
+                     *       "waiting_for_slot": false
                      *     }
                      */
                     "application/json": components["schemas"]["JobAccepted"];
