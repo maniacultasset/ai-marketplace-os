@@ -574,6 +574,12 @@
     },
     "status": {
       "$ref": "#/$defs/JobState"
+    },
+    "waiting_for_slot": {
+      "default": false,
+      "description": "True while a `queued` generation waits for a free slot: its brand already has the most generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest first, as the brand's earlier ones finish; nothing to retry.",
+      "title": "Waiting For Slot",
+      "type": "boolean"
     }
   },
   "required": [

@@ -42,12 +42,20 @@ class GenerateListingRequest(StrictModel):
     force_regenerate: bool = False
 
 
+WAITING_FOR_SLOT: Final = (
+    "True while a `queued` generation waits for a free slot: its brand already has the most "
+    "generations on the queue (GENERATION_LIVE_JOBS_PER_TENANT). It starts on its own, oldest "
+    "first, as the brand's earlier ones finish; nothing to retry."
+)
+
+
 class JobAccepted(WireModel):
     job_id: UUID
     listing_id: UUID | None = None
     status: JobState = JobState.QUEUED
     estimated_duration_seconds: Annotated[int, Field(ge=0)] = 30
     poll_url: NonBlankStr
+    waiting_for_slot: bool = Field(default=False, description=WAITING_FOR_SLOT)
 
 
 class JobEnvelope(WireModel):
@@ -66,6 +74,7 @@ class JobEnvelope(WireModel):
     queued_at: AwareDatetime
     started_at: AwareDatetime | None = None
     finished_at: AwareDatetime | None = None
+    waiting_for_slot: bool = Field(default=False, description=WAITING_FOR_SLOT)
 
 
 class BrandChunkDTO(WireModel):
