@@ -97,10 +97,11 @@ PHOTO_FACTS_READ_ENTITY: Final = "photo_facts_read"
 # (entity = the image); it takes the same per-tenant AI lock.
 PHOTO_MATCH_ENTITY: Final = "photo_match"
 # G2: a sheet photo download is an `image_compliance` job about `photo_links` (entity = the target
-# product). It runs under its own per-tenant lock, so one brand fetches one product's links at a
-# time, a waiting fetch holds no worker slot, and neither uploads nor the AI image jobs wait on it.
+# product). Every one runs under one platform-wide lock, so at most one download job runs at a
+# time across all tenants (it holds one of the 4 `default` slots for at most 240 s), a waiting
+# download holds no worker slot, and neither uploads nor the AI image jobs wait on it.
 PHOTO_LINKS_ENTITY: Final = "photo_links"
-PHOTO_LINK_LOCK_PREFIX: Final = "photo_link:"
+PHOTO_LINK_LOCK: Final = "photo_link"
 TENANT_LOCKED_ENTITIES: Final = frozenset(
     {
         CANDIDATE_ENTITY,
@@ -119,15 +120,13 @@ def lock_for(
     """The procrastinate lock every queue entry of `kind` carries, or None (unserialised). An
     upload image job takes `image_compliance:<tenant_id>`; a candidate job
     (`entity_type='image_candidate'`) and a size-chart read (`size_chart_read`, SI12) take
-    `image_candidate:<tenant_id>`; a sheet photo download (`photo_links`, G2) takes
-    `photo_link:<tenant_id>`."""
+    `image_candidate:<tenant_id>`; a sheet photo download (`photo_links`, G2) takes the one
+    platform-wide `photo_link`."""
     known = JobKind(kind)
     if known is not JobKind.IMAGE_COMPLIANCE:
         return None
     if entity_type == PHOTO_LINKS_ENTITY:
-        if tenant_id is None:
-            raise ValueError("a photo link job's lock needs its tenant")
-        return f"{PHOTO_LINK_LOCK_PREFIX}{tenant_id}"
+        return PHOTO_LINK_LOCK
     if entity_type in TENANT_LOCKED_ENTITIES:
         if tenant_id is None:
             raise ValueError("a candidate or size-chart read job's lock needs its tenant")

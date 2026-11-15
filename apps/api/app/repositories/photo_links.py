@@ -18,11 +18,12 @@ from dataclasses import dataclass
 from typing import Any, Final
 from uuid import UUID
 
-from sqlalchemy import func, or_, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.db.guard import TENANT_INFO_KEY, CrossTenantQueryError
 from app.db.models.catalog_assets import PhotoLink
+from app.db.models.ops import JobRun
 from app.repositories.base import TenantScopedRepository
 
 __all__ = ["RETRYABLE_SKIPS", "WAITING", "LinkTotals", "PhotoLinkRepository", "PlannedLink"]
@@ -31,6 +32,7 @@ WAITING: Final = ("queued", "fetching")
 # a skip a retry may lift (the per-import cap); the others are the seller's or the product's
 RETRYABLE_SKIPS: Final = ("import_cap",)
 SWEEP_LIMIT: Final = 500
+LIVE_JOBS: Final = ("queued", "running")
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +54,8 @@ class LinkTotals:
     waiting: int
     saved: int
     failed: int
+    skipped: int
+    retryable: int  # failed, plus the skips a retry may lift (`RETRYABLE_SKIPS`)
 
 
 def _uuid(name: str, value: object) -> UUID:
@@ -204,6 +208,29 @@ class PhotoLinkRepository(TenantScopedRepository[PhotoLink]):
         )
         return bool(await self._ids(stmt))
 
+    async def mark_skipped(self, link_id: UUID, job_id: UUID, problem: str) -> bool:
+        stmt = self._update(
+            PhotoLink.id == _uuid("link_id", link_id),
+            PhotoLink.job_id == _uuid("job_id", job_id),
+            PhotoLink.status == "fetching",
+        ).values(status="skipped", problem=problem, fetched_at=func.now())
+        return bool(await self._ids(stmt))
+
+    async def release_finished(self) -> builtins.list[UUID]:
+        """The sweeper's repair: `fetching` links whose claiming job is no longer queued or
+        running (or is gone) back to `queued`, so a lost terminal hook never strands them."""
+        live = (
+            select(JobRun.id)
+            .where(
+                JobRun.tenant_id == self.tenant_id,
+                JobRun.id == PhotoLink.job_id,
+                JobRun.status.in_(LIVE_JOBS),
+            )
+            .exists()
+        )
+        stmt = self._update(PhotoLink.status == "fetching", ~live).values(status="queued")
+        return await self._ids(stmt)
+
     async def release(
         self, job_id: UUID, link_ids: Sequence[UUID] | None = None
     ) -> builtins.list[UUID]:
@@ -348,11 +375,23 @@ class PhotoLinkRepository(TenantScopedRepository[PhotoLink]):
         total = sum(counts.values())
         if total == 0:
             return None
+        lifted = (
+            self._select()
+            .where(
+                PhotoLink.import_id == import_id,
+                PhotoLink.status == "skipped",
+                PhotoLink.problem.in_(RETRYABLE_SKIPS),
+            )
+            .with_only_columns(func.count(PhotoLink.id))
+        )
+        failed = counts.get("failed", 0)
         return LinkTotals(
             total=total,
             waiting=counts.get("queued", 0) + counts.get("fetching", 0),
             saved=counts.get("saved", 0),
-            failed=counts.get("failed", 0) + counts.get("skipped", 0),
+            failed=failed,
+            skipped=counts.get("skipped", 0),
+            retryable=failed + int((await self.db.execute(lifted)).scalar_one()),
         )
 
     async def products_with_queued(self, limit: int = SWEEP_LIMIT) -> builtins.list[UUID]:

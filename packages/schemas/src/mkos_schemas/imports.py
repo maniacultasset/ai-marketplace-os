@@ -78,12 +78,26 @@ class PhotoLinkResult(WireModel):
 
 
 class ImportPhotoTotals(WireModel):
-    """G2: the photo links of one import, by outcome (`failed` counts skipped links too)."""
+    """G2: the photo links of one import, by outcome (`total` = waiting + saved + failed +
+    skipped)."""
 
     total: Annotated[int, Field(ge=0)]
     waiting: Annotated[int, Field(ge=0)]
     saved: Annotated[int, Field(ge=0)]
     failed: Annotated[int, Field(ge=0)]
+    skipped: Annotated[int, Field(ge=0)] = Field(
+        default=0,
+        description=(
+            "Links not downloaded: the per-file cap, a photo the seller removed, a deleted product."
+        ),
+    )
+    retryable: Annotated[int, Field(ge=0)] = Field(
+        default=0,
+        description=(
+            "Links a retry (`POST /imports/{import_id}/photo-links/retry`) would download again: "
+            "the failed ones and the per-file cap skips."
+        ),
+    )
 
 
 class ImportRowResult(WireModel):
