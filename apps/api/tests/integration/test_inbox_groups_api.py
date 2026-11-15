@@ -227,8 +227,7 @@ async def test_group_counts_add_up_to_the_home_inbox_counts(
                         error_code="REQUIRED_FIELD_MISSING")  # fmt: skip
         lc = f.listing(auth_db, acme, c)
         f.listing_issue(auth_db, acme, lc)  # an issue no question stands for
-        f.listing_issue(auth_db, acme, lc, marketplace="amazon", field_path="content.bullets[0]",
-                        error_code="FIELD_TOO_LONG", dedupe_key="b0")  # fmt: skip
+        f.listing_issue(auth_db, acme, lc, field_path="content.bullets[0]")
         lb = f.listing(auth_db, acme, b, archived_at=datetime.now(UTC))
         f.listing_issue(auth_db, acme, lb)  # an archived listing's issue leaves the Inbox
     home = await api.get(HOME, headers=bearer_for(products_world, email))
