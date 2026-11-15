@@ -50,6 +50,7 @@ from app.adapters.amazon.client import TIMEOUT, SpApiClient, failure
 from app.adapters.base import AdapterError, AuthExpired, MarketplaceUnavailable
 from app.adapters.oauth.base import OAuthError, OAuthRejectedError
 from app.core.logging import get_logger
+from app.core.public_address import is_public_address
 
 log = get_logger(__name__)
 
@@ -59,8 +60,6 @@ LOG_PATH: Final = "<schema link>"
 TOKEN_MARGIN: Final = timedelta(seconds=60)
 MAX_DISPLAY_NAME: Final = 256
 MAX_META_SCHEMA_ID: Final = 512
-_CGNAT: Final = ipaddress.ip_network("100.64.0.0/10")
-_ULA: Final = ipaddress.ip_network("fc00::/7")
 
 
 class SchemaInvalid(AdapterError):  # noqa: N818 - the plan's name (DW2 T4)
@@ -121,30 +120,6 @@ class LinkPolicy(NamedTuple):
 async def _resolve(host: str) -> Sequence[str]:
     infos = await asyncio.get_running_loop().getaddrinfo(host, 443, type=socket.SOCK_STREAM)
     return [str(info[4][0]) for info in infos]
-
-
-def is_public_address(address: str) -> bool:
-    """True only for a global unicast address (C7)."""
-    try:
-        ip = ipaddress.ip_address(address.split("%", 1)[0])
-    except ValueError:
-        return False
-    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-        ip = ip.ipv4_mapped
-    if (
-        ip.is_private
-        or ip.is_loopback
-        or ip.is_link_local
-        or ip.is_reserved
-        or ip.is_multicast
-        or ip.is_unspecified
-    ):
-        return False
-    if isinstance(ip, ipaddress.IPv4Address) and ip in _CGNAT:
-        return False
-    if isinstance(ip, ipaddress.IPv6Address) and ip in _ULA:
-        return False
-    return ip.is_global
 
 
 def _is_ip_literal(host: str) -> bool:

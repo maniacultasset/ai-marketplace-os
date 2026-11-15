@@ -33,6 +33,7 @@ from typing import Any, Final, Literal
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot
+from mkos_schemas.imports import PhotoLinkResult
 from sqlalchemy.exc import DBAPIError
 
 from app.adapters.base import item_dimensions_text, parse_item_dimensions
@@ -48,6 +49,7 @@ from app.repositories.product_facts import manufacturer_inherited
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.variants import ColourwayRow
 from app.services import category_suggest, image_views, photo_views, product_identifier
+from app.services import photo_links as sheet_photos
 from app.services.budget import admit
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
@@ -224,6 +226,9 @@ class ProductView:
     photo_facts: tuple[PhotoFactView, ...] = ()
     photo_read: PhotoReadRow | None = None  # SI9 B7: the detail read only
     photo_reading: bool = False  # V1.1: a photo read on upload is queued or running (detail only)
+    # G2: the spreadsheet photo links and whether one still waits (detail only)
+    photo_links: tuple[PhotoLinkResult, ...] = ()
+    photo_links_pending: bool = False
     product_identifier: tuple[str, str] | None = None
     identifier_exemption: bool = False
     # SI12: the seller fields (single reads: own → style, origin → brand default; lists: own)
@@ -713,9 +718,16 @@ async def full_view(uow: TenantUnitOfWork, row: Any) -> ProductView:
         photo_reading=upload_read is not None and upload_read.status in ("queued", "running"),
         category_suggestion=public_category_suggestion(row),
         category_suggest_enabled=get_settings().category_suggest_enabled,
+        **await _photo_links(uow, row),
         **await _thumbnail(uow, row, details),
         **await _photo_checks(uow, row, details),
     )
+
+
+async def _photo_links(uow: TenantUnitOfWork, row: Any) -> dict[str, Any]:
+    """G2: the product's spreadsheet photo links (a style's colourway links included)."""
+    found = await sheet_photos.product_photo_links(uow, row.id)
+    return {"photo_links": tuple(found.links), "photo_links_pending": found.pending}
 
 
 async def _photo_checks(

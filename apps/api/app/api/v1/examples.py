@@ -84,6 +84,8 @@ _COLUMN_MAP: Final[dict[str, Any]] = {
 }
 IMPORT: Final = "0b1c2d3e-0000-4000-8000-000000000401"
 IMAGE: Final = "0b1c2d3e-0000-4000-8000-000000000501"
+PHOTO_LINK: Final = "0b1c2d3e-0000-4000-8000-000000000511"
+PHOTO_LINK_2: Final = "0b1c2d3e-0000-4000-8000-000000000512"
 ACCOUNT: Final = "0b1c2d3e-0000-4000-8000-000000000601"
 RULE: Final = "0b1c2d3e-0000-4000-8000-000000000701"
 BATCH: Final = "0b1c2d3e-0000-4000-8000-000000000801"
@@ -874,6 +876,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
             "failed": 1,
             "rows": [],
             "error": None,
+            "photos": {"total": 2, "waiting": 0, "saved": 1, "failed": 1},
         },
         "imports_rows": _page(
             [
@@ -892,10 +895,49 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                             "retryable": False,
                         }
                     ],
-                }
+                },
+                {  # G2: a row whose two photo links were read: one saved, one refused
+                    "row_number": 2,
+                    "sku": "FAB-KURTA-002",
+                    "status": "imported",
+                    "product_id": PRODUCT_1,
+                    "errors": [],
+                    "photos": [
+                        {
+                            "link_id": PHOTO_LINK,
+                            "position": 1,
+                            "column": "main_image",
+                            "status": "saved",
+                            "view": "front",
+                            "image_id": IMAGE,
+                            "colourway_id": None,
+                            "problem": None,
+                            "http_status": None,
+                            "message": None,
+                            "retryable": False,
+                        },
+                        {
+                            "link_id": PHOTO_LINK_2,
+                            "position": 2,
+                            "column": "additional_images",
+                            "status": "failed",
+                            "view": None,
+                            "image_id": None,
+                            "colourway_id": None,
+                            "problem": "not_found",
+                            "http_status": 404,
+                            "message": "The link returned 404. Check the link is right and public.",
+                            "retryable": True,
+                        },
+                    ],
+                },
             ]
         ),
         "imports_rows_retry": _JOB_ACCEPTED,
+        # G2: photos from spreadsheet links
+        "products_photo_links_retry": _JOB_ACCEPTED,
+        "imports_photo_links_retry": {"queued": 3, "products": 2},
+        "photo_links_dismiss": None,
         "listings_generate": {**_JOB_ACCEPTED, "listing_id": LISTING},
         "listings_validate": _VALIDATION_FAILED_SUMMARY,
         "listings_approve": {"batch_id": BATCH, "items": _BATCH_ITEMS},

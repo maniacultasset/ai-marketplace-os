@@ -21,6 +21,7 @@ from uuid import UUID
 
 from mkos_schemas.base import NonBlankStr, Slug, StrictModel, WireModel
 from mkos_schemas.enums import ImageRole, ImageSlot
+from mkos_schemas.imports import PhotoLinkResult
 from mkos_schemas.size_chart_read import (
     MAX_SIZE_CHART_MEASURE,
     MAX_SIZE_CHART_READ_ROWS,
@@ -737,6 +738,21 @@ class ProductOut(WireModel):
         description=(
             "V1.1: a photo read on upload is queued or running (product detail only); poll the "
             "product until it is false, then `photo_read` and `photo_facts` show the result."
+        ),
+    )
+    photo_links: list[PhotoLinkResult] = Field(
+        default_factory=list,
+        description=(
+            "G2: the photo links a spreadsheet import named for this product (a style's colour "
+            "links included, `colourway_id` set) and what became of each; product detail only, "
+            "empty on lists. Links the seller dismissed are left out."
+        ),
+    )
+    photo_links_pending: bool = Field(
+        default=False,
+        description=(
+            "G2: a link is still waiting or downloading (product detail only); poll the product "
+            "until it is false. Generate is not blocked: it uses the photos present."
         ),
     )
     product_identifier: ProductIdentifierOut | None = Field(

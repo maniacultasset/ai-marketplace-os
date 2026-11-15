@@ -17,7 +17,7 @@ import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Final
+from typing import Any, Final, Protocol
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import ImageSlot, JobKind, Marketplace
@@ -43,6 +43,17 @@ REGISTER_WINDOW: Final = timedelta(hours=23)
 MAX_LIVE_IMAGES_PER_PRODUCT: Final = 50
 LIVE_IMAGE_JOB_CAP: Final = 20
 MULTIPART_CONTENT_TYPE: Final = "application/octet-stream"
+
+
+class ImageActor(Protocol):
+    """Who stores an image: a `Principal` (an upload), or the member whose import or retry asked
+    for a sheet photo download (G2). Only these two fields are read."""
+
+    @property
+    def tenant_id(self) -> uuid.UUID: ...
+
+    @property
+    def user_id(self) -> uuid.UUID: ...
 
 
 class ImageTooLargeError(DomainError):
@@ -299,7 +310,7 @@ async def _register(
 
 async def take_role(
     uow: TenantUnitOfWork,
-    principal: Principal,
+    principal: ImageActor,
     product_id: uuid.UUID,
     colourway_id: uuid.UUID | None,
     role: str,
@@ -311,7 +322,7 @@ async def take_role(
 
 
 async def insert_image_and_job(
-    uow: TenantUnitOfWork, principal: Principal, new: NewImage, *, field: str
+    uow: TenantUnitOfWork, principal: ImageActor, new: NewImage, *, field: str
 ) -> uuid.UUID:
     """The image row, its `image_compliance` job and the `image.uploaded` audit row; the job id.
     A key already registered (the row insert found a conflict) is 422 at `field`."""
@@ -426,7 +437,7 @@ def _uow_on(session: Any, tenant: uuid.UUID) -> TenantUnitOfWork:
 
 async def _audit(
     uow: TenantUnitOfWork,
-    principal: Principal,
+    principal: ImageActor,
     action: str,
     image_id: uuid.UUID,
     *,

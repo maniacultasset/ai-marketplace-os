@@ -44,6 +44,7 @@ def capabilities_out() -> TenantCapabilitiesOut:
         category_lamps_enabled=s.category_lamps_enabled,
         size_chart_read_enabled=s.size_chart_read_enabled,
         image_edit_enabled=s.image_edit_enabled,
+        sheet_photos_enabled=s.sheet_photos_enabled,
         tenant_create_enabled=s.tenant_create_enabled,
     )
 

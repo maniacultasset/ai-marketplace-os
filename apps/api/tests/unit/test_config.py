@@ -897,3 +897,28 @@ def test_blank_platform_refresh_token_is_unset(
 ) -> None:
     loaded = boot(monkeypatch, APP_ENV="local", APP_ROLE="shell", AMAZON_PLATFORM_REFRESH_TOKEN="")
     assert loaded.amazon_platform_refresh_token is None
+
+
+# ---- G2: the sheet photo fixture hosts are local e2e only ----
+
+
+@pytest.mark.parametrize("app_env", ["staging", "production"])
+def test_boot_sheet_photo_local_hosts_refused_off_local(
+    clean_env: Path, monkeypatch: pytest.MonkeyPatch, app_env: str
+) -> None:
+    env = _deployed_kms_env("worker")
+    env.update(APP_ENV=app_env, KMS_KEY_URI=KMS_URI, ALEMBIC_DATABASE_URL=LOCAL_URL)
+    message = abort(monkeypatch, **env, SHEET_PHOTOS_LOCAL_HOSTS="127.0.0.1:4120")
+    assert f"APP_ENV={app_env} refuses SHEET_PHOTOS_LOCAL_HOSTS" in message
+    assert "4120" not in message
+
+
+def test_boot_sheet_photo_defaults(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    loaded = boot(monkeypatch, APP_ENV="local", APP_ROLE="shell")
+    assert loaded.sheet_photos_enabled is False
+    assert loaded.sheet_photos_max_per_import == 1000
+    assert loaded.sheet_photos_local_hosts is None
+    local = boot(
+        monkeypatch, APP_ENV="local", APP_ROLE="shell", SHEET_PHOTOS_LOCAL_HOSTS="127.0.0.1:4120"
+    )
+    assert local.sheet_photos_local_hosts == "127.0.0.1:4120"

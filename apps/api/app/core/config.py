@@ -280,6 +280,16 @@ class Settings(BaseSettings):
     # unsure answer asks the seller on the photo, and an unresolved mismatch blocks approval.
     # Off: no check is queued, a queued check ends `skipped` with no call, and nothing blocks.
     photo_match_enabled: bool = False
+    # G2: photos from spreadsheet links. On: a bulk import writes each row's `main_image` and
+    # `additional_images` links as `photo_links` rows and queues one background download per
+    # product; each photo is stored through the upload path (its checks, photo read and match).
+    # Off: the links are kept on the product as before and nothing is downloaded or queued.
+    sheet_photos_enabled: bool = False
+    # G2: links fetched per import file at most; the rest are `skipped/import_cap` (retryable).
+    sheet_photos_max_per_import: int = Field(default=1000, ge=1, le=10_000)
+    # G2, local e2e only (refused unless APP_ENV=local): `host:port` pairs fetched over plain
+    # http with no address check (the fake marketplace's fixture photos).
+    sheet_photos_local_hosts: str | None = None
     # Client feedback 11 and 19: copy v5 (keywords first, prompt v5, brand voice, copy checks).
     # Read by mkos-pipeline itself (>= 0.8.0, its `content_v5` setting) from the worker's process
     # env; the backend never reads it, the field only registers the name. Off: v4 copy as before.
@@ -397,6 +407,7 @@ class Settings(BaseSettings):
         "llm_gateway_embedding",
         "llm_gateway_classify",
         "llm_gateway_columns",
+        "sheet_photos_local_hosts",
         mode="before",
     )
     @classmethod
@@ -531,6 +542,8 @@ def _kms_errors(s: Settings) -> list[str]:
         return errors
     if "kms_local_dev_key" in s.model_fields_set:
         errors.append(f"APP_ENV={s.app_env} refuses KMS_LOCAL_DEV_KEY (LocalKmsStub only)")
+    if s.sheet_photos_local_hosts:  # G2: the e2e fixture hosts skip the address check
+        errors.append(f"APP_ENV={s.app_env} refuses SHEET_PHOTOS_LOCAL_HOSTS (local e2e only)")
     if s.app_role not in ("api", "worker"):
         return errors
     uri = s.kms_key_uri

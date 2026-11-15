@@ -34,6 +34,12 @@ listings go back to `blocked/validation_errors`. Parties
 (B11): the manufacturer is matched on its dedupe key with the address kept whole (a PIN is
 taken only when exactly one trails it); consumer care equal to the brand default is inherited
 (no product override), otherwise a nameless consumer-care party, never an invented name.
+
+G2 (`SHEET_PHOTOS_ENABLED`, read once per run): each written row's photo links become
+`photo_links` rows inside the row's savepoint (`app.services.photo_links.plan_row`; no network,
+and a refused link write never fails the row): a standalone or style row's on its product, a
+variant row's on its style and, on a family split by colour, its colourway. Each batch commit
+then queues one download job per product that got a new or requeued link. Off: nothing is written.
 """
 
 from __future__ import annotations
@@ -89,6 +95,7 @@ from app.services.imports.row_model import (
     validate_row,
 )
 from app.services.intake_values import inherited_money_breach
+from app.services.photo_links import ImportPlan, enqueue_fetch, new_plan, plan_row
 from app.services.product_facts import fact_stamp
 from app.workers.errors import JobFailed, RetryableJobError, system_report
 from app.workers.policy import POLICIES
@@ -277,6 +284,7 @@ class Run:
     mapped: set[str] = field(default_factory=set)
     brand_care: Any = None
     brand_care_loaded: bool = False
+    photo_plan: ImportPlan | None = None  # G2: None while the sheet photo switch is off
 
     @property
     def tenant(self) -> uuid.UUID:
@@ -395,6 +403,7 @@ async def run_import(ctx: JobContext) -> Outcome:
     mark_duplicates(units, loaded.imported_skus)
     todo = [u for u in units if u.size and not u.row_numbers <= finished]
     run = Run(ctx, imp, Facts(fact_stamp(datetime.now(UTC))), total=sum(u.size for u in units))
+    run.photo_plan = new_plan(imp.id, imp.created_by)
     run.done = run.total - sum(u.size for u in todo)
     for batch in batches(todo):
         await _run_batch(run, batch)
@@ -427,6 +436,7 @@ async def _run_batch(run: Run, batch: list[Unit]) -> None:
                 await writer.standalone(unit.rows[0])
             else:
                 await writer.family(unit)
+        await _queue_photo_downloads(run, session)
         run.done += sum(u.size for u in batch)
         progress = min(99, (100 * run.done) // max(run.total, 1))
         fenced = await JobRunRepository(session, run.tenant).set_result(
@@ -437,6 +447,29 @@ async def _run_batch(run: Run, batch: list[Unit]) -> None:
         if not fenced:
             raise StaleAttempt("a newer attempt owns the job")
     log.info("import.batch_committed", import_id=str(run.imp.id), rows=run.done)
+
+
+async def _queue_photo_downloads(run: Run, session: Any) -> None:
+    """G2: one download job per product the batch gave a new or requeued photo link, in the
+    batch's transaction (a refused enqueue is logged; the sweeper queues it later)."""
+    plan = run.photo_plan
+    if plan is None or not plan.targets:
+        return
+    uow = repositories_on(session, run.tenant)
+    for product_id in sorted(plan.targets, key=str):
+        try:
+            async with row_savepoint(session):
+                await enqueue_fetch(
+                    uow, product_id, created_by=run.imp.created_by, import_id=run.imp.id
+                )
+        except RowDbError as exc:
+            log.warning(
+                "import.photo_job_refused",
+                import_id=str(run.imp.id),
+                product_id=str(product_id),
+                sqlstate=exc.sqlstate,
+            )
+    plan.targets.clear()
 
 
 # ---- the writes of one batch ----
@@ -453,6 +486,45 @@ class _Writer:
         self.parties = BusinessPartyRepository(session, tenant)
         self.colourways = ColourwayRepository(session, tenant)
         self.cells = MatrixCellRepository(session, tenant)
+        # G2: the targets the row in progress planned, kept only when its savepoint commits
+        self._photo_targets: set[uuid.UUID] = set()
+        self._photo_planned = 0
+
+    # -- G2: photo links --
+
+    async def _plan_photos(
+        self,
+        p: Prepared,
+        row: ProductImportRow,
+        product_id: uuid.UUID,
+        colourway_id: uuid.UUID | None = None,
+    ) -> None:
+        plan = self.run.photo_plan
+        if plan is None or not row.image_urls:
+            return
+        self._photo_targets |= await plan_row(
+            self.session,
+            self.run.tenant,
+            plan,
+            product_id=product_id,
+            colourway_id=colourway_id,
+            image_urls=row.image_urls,
+            main_image_count=row.main_image_count,
+            row_number=p.row_number,
+        )
+
+    def _photos_begin(self) -> None:
+        self._photo_targets = set()
+        self._photo_planned = self.run.photo_plan.planned if self.run.photo_plan else 0
+
+    def _photos_end(self, *, committed: bool) -> None:
+        plan = self.run.photo_plan
+        if plan is not None:
+            if committed:
+                plan.targets |= self._photo_targets
+            else:  # the row's savepoint rolled its links back
+                plan.planned = self._photo_planned
+        self._photo_targets = set()
 
     # -- import_rows --
 
@@ -497,10 +569,13 @@ class _Writer:
 
     async def _guarded(self, p: Prepared, write: Any) -> uuid.UUID | None:
         """`write()` in the row's savepoint; a refusal becomes the row's `failed` result."""
+        self._photos_begin()
+        committed = False
         try:
             async with row_savepoint(self.session):
                 product_id: uuid.UUID = await write()
                 await self._write_row(p, "imported", product_id)
+            committed = True
             return product_id
         except RowDbError as exc:
             await self._fail(p, [row_db_item(exc.sqlstate, exc.constraint)])
@@ -519,6 +594,8 @@ class _Writer:
             await self._fail(
                 p, [row_error(ErrorCode.VALUE_NOT_ALLOWED, "the row could not be written")]
             )
+        finally:
+            self._photos_end(committed=committed)
         return None
 
     # -- standalone (B9) --
@@ -547,6 +624,7 @@ class _Writer:
             done = await self._upsert_product(self._upsert(row))
             await self._settle_category(done.id, before, row.category)
             await self._row_facts(done.id, row, level="standalone")
+            await self._plan_photos(p, row, done.id)
             return done.id
 
         await self._guarded(p, write)
@@ -815,6 +893,8 @@ class _Writer:
                 if style_row is not None:
                     await self._row_facts(written, identity, level="style")
                     await self._style_money(written, live)
+                    if identity is style_row.row:  # G2: the style row's own links
+                        await self._plan_photos(style_row, identity, written)
                 elif identity.size_system is not None:
                     await self.facts.set_attribute(
                         written, "size_system", self.run.facts.fact(identity.size_system)
@@ -838,17 +918,20 @@ class _Writer:
                 )
             return written
 
+        self._photos_begin()
         try:
             async with row_savepoint(self.session):
                 style_id = await write_style()
                 if style_row is not None and not style_row.skip:
                     await self._write_row(style_row, "imported", style_id)
         except (RowDbError, RowRefused, InputError, RowCountError) as exc:
+            self._photos_end(committed=False)
             item = self._item(exc)
             for p in unit.rows:
                 if not p.skip:
                     await self._fail(p, p.errors or [item])
             return
+        self._photos_end(committed=True)
         assert style_id is not None  # noqa: S101
 
         # pass 2: the children and their cells (a retry's imported members stay as they are)
@@ -1035,13 +1118,11 @@ class _Writer:
                 )
             await self._row_facts(done.id, row, level="variant", inherited_exemption=exemption)
             await self._child_money(done.id, style_id)
-            await self.cells.upsert(
-                style_id,
-                colourway_ids.get(variant["color"]) if "color" in variant else None,
-                variant.get("size"),
-                done.id,
-            )
+            colourway = colourway_ids.get(variant["color"]) if "color" in variant else None
+            await self.cells.upsert(style_id, colourway, variant.get("size"), done.id)
             await self.cells.check_now()
+            # G2: a variant's photos belong to its style, and to its colour when split by colour
+            await self._plan_photos(p, row, style_id, colourway)
             return done.id
 
         await self._guarded(p, write)

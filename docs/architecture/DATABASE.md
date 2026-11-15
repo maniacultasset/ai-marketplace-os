@@ -562,6 +562,21 @@ Std tenant + `updated_at`. A proposed product image, never read by the `images` 
 
 **Indexes:** `uq_image_candidates_cache UNIQUE (tenant_id, product_id, kind, source_hash, generator_key) WHERE status <> 'accepted' AND NOT (status = 'failed' AND failure_reason IN ('model_failed','credit_used_up','budget','source_changed'))` (the cache: one paid call per source; the retryable failures stay outside it, and a create retires an open cached row made from another image with the same pixels; since 0030 accepted rows stay outside it too: they are provenance, and answer a create only while their image is still the asking colourway's live main); `(tenant_id, product_id, created_at DESC)`; `(tenant_id, created_at)` (the daily AI count and the retention scan).
 
+#### `photo_links` — [G2] (0040)
+One photo link a bulk import named (`main_image`, `additional_images`) for one target: a standalone or style product, or a style's colourway (a variant row's links go to its style, and to its colourway when the family is split by colour). The import writes the row and never opens the link; an `image_compliance` job about `photo_links` (entity = the product, the one platform-wide lock `photo_link`: at most one download job runs at a time) downloads it through `app/adapters/photo_fetch/` and stores the photo through the upload path (`images` + its check job), then marks it `saved`.
+
+| Column | Type | Notes |
+|---|---|---|
+| tenant_id / product_id / colourway_id? | uuid | → products, product_colourways (as `images`: the composite `(colourway_id, product_id)` → `(id, style_product_id)`) |
+| url / url_hash | text / text | the seller's link as typed (`https://`, ≤ 2048) and sha256 hex of its direct-download form (a Drive or Dropbox share link rewritten, `app/services/share_links.py`); write-once; **never granted to the read roles** (a link can carry a signed token) and never copied to `images.source_url` |
+| source_column / position | text / smallint | `main_image\|additional_images`; 1..9, "Photo N" of the row |
+| status / problem? / http_status? / file_type? | text / text / smallint / text | `queued\|fetching\|saved\|failed\|skipped\|dismissed` DEFAULT `queued`; `problem` a closed list (`not_found`, `not_public`, `not_image`, `unsupported_type`, `too_large`, `too_many_pixels`, `corrupt`, `timeout`, `unreachable`, `blocked_address`, `too_many_redirects`, `server_error`, `photo_limit`, `import_cap`, `removed_by_seller`, `product_gone`), set exactly for `failed`/`skipped` (and kept on `dismissed`); `file_type` `gif\|webp\|tiff\|heic\|bmp` for `unsupported_type` |
+| image_id? | uuid | → images (NO ACTION: images are soft-deleted; the purge removes `photo_links` first); set for `saved` (`ck_photo_links_saved`) |
+| import_id? / row_number? / requested_by? | uuid / int / uuid | the import row that owns the link (**no FK**: imports are pruned at 90 days); → tenant_memberships, the importer (the audit actor of the stored photo) |
+| job_id? / attempts / fetched_at? | uuid / smallint / timestamptz | the claiming download job, **no FK** (job rows are pruned); every outcome write is fenced on it |
+
+**Indexes:** `uq_photo_links_dedupe UNIQUE (tenant_id, product_id, colourway_id, url_hash) NULLS NOT DISTINCT` (S/M/L rows of one colour that share a link fetch it once; the first row of the file owns it); `ix_photo_links_import_rows (tenant_id, import_id, row_number)` (the import report's rows page); `ix_photo_links_waiting (tenant_id, product_id) WHERE status IN ('queued','fetching')` (the sweeper and the product's pending flag). app_rw UPDATEs only status, problem, http_status, file_type, image_id, import_id, row_number, position, source_column, requested_by, job_id, attempts, fetched_at and updated_at. A re-import requeues `failed` and capped links, keeps `saved` ones, and marks a saved link whose photo the seller deleted `skipped/removed_by_seller`. A product delete marks its waiting links `skipped/product_gone`.
+
 #### `rules` — [Site] [06]/[70]/[93] + [Canon A§4] + [Fix KI-B key, versions] + [Proposed #4]
 Created in 0002 together with `CREATE SEQUENCE rules_revision_seq AS integer` (shared with the dictionary, §5.6).
 

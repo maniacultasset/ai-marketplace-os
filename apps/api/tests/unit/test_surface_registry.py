@@ -181,6 +181,10 @@ FROZEN: tuple[tuple[str, str, str], ...] = (
     ("home_summary", "GET", "/home/summary"),
     # client feedback 11 Nov 2026, item 18: every brand of the caller
     ("home_brands", "GET", "/home/brands"),
+    # G2: photos from spreadsheet links (131 + 3)
+    ("products_photo_links_retry", "POST", "/products/{product_id}/photo-links/retry"),
+    ("imports_photo_links_retry", "POST", "/imports/{import_id}/photo-links/retry"),
+    ("photo_links_dismiss", "DELETE", "/photo-links/{link_id}"),
 )
 
 E = ErrorCode
@@ -329,6 +333,8 @@ D9_IDEMPOTENT = {
     "tasks_close",  # SI9
     "products_bulk_delete",  # PD1
     "tenants_create",  # ADR-0032
+    "products_photo_links_retry",  # G2
+    "imports_photo_links_retry",  # G2
 }
 
 
@@ -520,7 +526,8 @@ def test_operation_count() -> None:
     # item 16 adds the listing field requirements read
     # client item 20 adds the seller's apply of Kuinn's suggested fixes
     # Chrome pass 2 adds the product archive and unarchive
-    assert len(OPS) == 131
+    # G2 adds the two sheet photo retries and the link dismiss
+    assert len(OPS) == 134
 
 
 def test_error_codes_per_d2() -> None:
@@ -546,6 +553,10 @@ def test_error_codes_per_d2() -> None:
         "tasks_close": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),  # SI9
         # V1.1: no question on the photo
         "images_photo_match_keep": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        # G2: no link to retry, or a link that is not failed or skipped
+        "products_photo_links_retry": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "imports_photo_links_retry": (E.IDEMPOTENCY_KEY_REUSED, E.INVALID_STATUS_TRANSITION),
+        "photo_links_dismiss": (E.INVALID_STATUS_TRANSITION,),
         "imports_column_map_confirm": (  # SI14: still mapping, or confirmed already
             E.IDEMPOTENCY_KEY_REUSED,
             E.INVALID_STATUS_TRANSITION,
@@ -695,7 +706,7 @@ def test_owner_steps_known() -> None:
     allowed = {
         "S10", "S12", "S13", "S14b", "S15", "S16", "S17b", "S18", "S19", "S20", "S21", "S23",
         "ADR-0019", "DPP-1", "ADR-0020", "ADR-0023", "SI1", "SI3", "SI5", "SI7", "SI9", "SI10", "SI11",
-        "SI12", "SI14", "PD1", "FB6", "FB18", "ADR-0032",
+        "SI12", "SI14", "PD1", "FB6", "FB18", "ADR-0032", "G2",
     }  # fmt: skip
     for op in OPS.values():
         assert op.owner_step in allowed, op.op_id

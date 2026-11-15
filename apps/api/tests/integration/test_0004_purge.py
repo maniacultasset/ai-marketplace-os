@@ -154,6 +154,10 @@ def _world(db: Conn) -> tuple[UUID, UUID]:
         )
         # 0029 (client feedback 11 Nov): a SKU counter
         f.insert(db, "sku_counters", tenant_id=side.tenant_id, code="ACME-KUR", last_value=3)
+        # 0040 (G2): a sheet photo link saved as the image it became
+        f.photo_link(
+            db, side.tenant_id, style, status="saved", image_id=main, colourway_id=colourway
+        )
         party = f.party(db, side.tenant_id)
         f.brand_profile(db, side.tenant_id, default_manufacturer_party_id=party)
         f.insert(
