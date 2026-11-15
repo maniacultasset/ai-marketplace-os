@@ -265,6 +265,26 @@ def test_row_model_tax_rate_bounds(cell: str, valid: bool) -> None:
 
 
 @pytest.mark.parametrize(
+    "cell", ["0", "0.1", "0.25", "1", "1.5", "3", "5", "6", "7.5", "12", "12.00", "18%", "28", "40"]
+)
+def test_row_model_gst_rates_are_kept(cell: str) -> None:
+    result = run(tax_rate=cell)
+    assert result.warnings == [] and result.row is not None
+    assert result.row.tax_rate == Decimal(cell.removesuffix("%"))
+
+
+@pytest.mark.parametrize("cell", ["7", "2.5", "14", "100"])
+def test_row_model_tax_rate_off_the_gst_rates_warns_and_is_not_kept(cell: str) -> None:
+    """Prod bulk test (15 Nov): GST 7 imported silently. The row still imports, without the rate."""
+    result = run(tax_rate=cell)
+    assert result.errors == []
+    assert result.row is not None and result.row.tax_rate is None
+    [warning] = result.warnings
+    assert warning.severity == Severity.WARNING
+    assert warning.message.startswith("tax_rate is not a GST rate (0, 0.1, 0.25")
+
+
+@pytest.mark.parametrize(
     ("cell", "valid"),
     [("1234", True), ("123456", True), ("12345678", True), ("12345", False), ("12a4", False)],
 )
@@ -384,11 +404,27 @@ def test_row_model_composition_parsed() -> None:
     )
 
 
-@pytest.mark.parametrize("cell", ["90% cotton", "60% a, 40% A", "cotton"])
+@pytest.mark.parametrize("cell", ["90% cotton", "60% a, 40% A", "60 cotton 40 viscose"])
 def test_row_model_bad_composition_is_a_row_error(cell: str) -> None:
     result = run(fiber_composition=cell)
     assert codes(result) == [ErrorCode.VALUE_NOT_ALLOWED]
     assert "add up to 100" in result.errors[0].message
+
+
+@pytest.mark.parametrize("cell", ["silk-cotton chanderi", "linen", "Pure linen"])
+def test_row_model_free_text_composition_imports_with_a_warning(cell: str) -> None:
+    """Prod bulk test (15 Nov): a description with no percents keeps the row. The text is not
+    stored, so no marketplace is sent it as the composition, and a warning asks for it."""
+    result = run(fiber_composition=cell, fabric_type="Chanderi")
+    assert result.errors == []
+    assert result.row is not None
+    assert "fiber_composition" not in result.row.attributes
+    assert result.row.attributes["fabric_type"] == "Chanderi"
+    assert result.row.fiber_fibres == ()
+    [warning] = [w for w in result.warnings if "fiber_composition" in w.message]
+    assert warning.severity == Severity.WARNING
+    assert warning.error_code == ErrorCode.VALUE_NOT_ALLOWED
+    assert cell not in warning.message  # Q7: never the cell
 
 
 def test_row_model_style_number_and_size_chart_url() -> None:
