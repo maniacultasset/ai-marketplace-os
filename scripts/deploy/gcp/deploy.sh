@@ -288,8 +288,10 @@ esac
 # photo QA warnings. One value on the api and the worker, so the ask and the job agree.
 # V1.1 (client feedback item 9): PHOTO_MATCH_ENABLED, the variant photo match (queue and gate on
 # the api, the check on the worker).
+# Bulk test 15 Nov: INBOX_GROUPS_ENABLED (answer a repeated Inbox question once for all products)
+# and SHEET_PHOTOS_ENABLED (download a sheet's photo links after import; the job runs on the worker).
 for switch in CATEGORY_SUGGEST_ENABLED COLUMN_MAP_AI_ENABLED CATEGORY_LAMPS_ENABLED PHOTO_QA_ENABLED \
-  PHOTO_VIEWS_ENABLED PHOTO_MATCH_ENABLED; do
+  PHOTO_VIEWS_ENABLED PHOTO_MATCH_ENABLED INBOX_GROUPS_ENABLED SHEET_PHOTOS_ENABLED; do
   value="${!switch:-false}"
   case "$value" in
     true | false) ;;
@@ -1158,6 +1160,9 @@ app_env() {
       # V1.1: the variant photo match, so the api's product read and approve gate and the
       # worker's check agree
       printf 'PHOTO_MATCH_ENABLED\t%s\n' "$PHOTO_MATCH_ENABLED"
+      # Bulk test 15 Nov: the Inbox groups and the sheet photo links, one value on api and worker
+      printf 'INBOX_GROUPS_ENABLED\t%s\nSHEET_PHOTOS_ENABLED\t%s\n' \
+        "$INBOX_GROUPS_ENABLED" "$SHEET_PHOTOS_ENABLED"
       printf 'CATEGORY_SUGGEST_MODEL\t%s\n' "$CATEGORY_SUGGEST_MODEL"
       [ -z "$LLM_MODEL_IMAGE_EDIT" ] || printf 'LLM_MODEL_IMAGE_EDIT\t%s\n' "$LLM_MODEL_IMAGE_EDIT"
       [ -z "$IMAGE_EDIT_TENANT_DAILY_LIMIT" ] ||

@@ -2885,6 +2885,8 @@ PROD_BC_ON = {
     "PHOTO_MATCH_ENABLED": ("api", "worker"),
     "MKOS_CONTENT_V5": ("worker",),
     "TENANT_CREATE_ENABLED": ("api",),
+    "INBOX_GROUPS_ENABLED": ("api", "worker"),
+    "SHEET_PHOTOS_ENABLED": ("api", "worker"),
 }
 
 
