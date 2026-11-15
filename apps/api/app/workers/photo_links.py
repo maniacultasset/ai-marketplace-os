@@ -1,24 +1,27 @@
 """The sheet photo download job body (G2): `run_photo_links(ctx)`.
 
 An `image_compliance` job (`entity_type='photo_links'`, entity = the target product) whose payload
-names `photo_links` (`app.workers.image_jobs` dispatches). It runs under `photo_link:<tenant>`, so
-one brand downloads one product's links at a time and a waiting job holds no worker slot.
+names `photo_links` (`app.workers.image_jobs` dispatches). It runs under the one platform-wide
+`photo_link` lock (`app.workers.policy.lock_for`), so at most one download job runs at a time across
+every tenant and a waiting job holds no worker slot. It never sleeps in its slot.
 
 1. `SHEET_PHOTOS_ENABLED` off: `succeeded {skipped: off}`; the links stay `queued`.
 2. The product gone: its waiting links are `skipped/product_gone`.
 3. Claim the links (`queued`, or this job's own `fetching` ones after a crash), one commit.
 4. Per link, while `DEADLINE_S` (240 s of the 300 s policy timeout) leaves room for one more:
-   a. wait (2 s polls) until the tenant's live image jobs leave the seller's uploads
-      `UPLOAD_HEADROOM` slots, so an import never makes an upload answer 429;
+   a. the tenant's live image jobs must leave the seller's uploads `UPLOAD_HEADROOM` slots, so
+      an import never makes an upload answer 429; with no room the job ends at once;
    b. download it (`app.adapters.photo_fetch`, the only code that opens a link; never in a
       transaction);
    c. a photo: the object is stored first (as an upload's), then `save_fetched` in one
       transaction stores the image through the upload path and marks the link `saved`; over the
       50-photo cap the object is deleted and the link `failed/photo_limit`;
-   d. a failure: the link `failed` with its problem.
-   Out of time or of upload room, the rest go back to `queued` for the sweeper
-   (`schedule_photo_links`, every 2 minutes).
-5. `succeeded`, or `partial` with `{saved, failed, deferred}`.
+   d. a failure: the link `failed` with its problem;
+   e. `save_fetched` says `gone`: the product deleted cancels its waiting links and ends the job;
+      a link moved off its product (or its colourway) is `skipped/product_gone`.
+   Out of time or of upload room, the rest go back to `queued` and the job ends `partial`; the
+   sweeper (`schedule_photo_links`, every 2 minutes) queues the product again.
+5. `succeeded`, or `partial` with `{saved, failed, skipped, deferred}`.
 
 A body exception or a timeout ends the job through the policy; the terminal hook
 (`app.services.image_candidate_hooks`) then releases this job's `fetching` links. Logs carry the
@@ -51,7 +54,6 @@ from app.workers.registry import JobContext, Outcome
 
 log = get_logger(__name__)
 DEADLINE_S: Final = 240.0
-ROOM_POLL_S: Final = 2.0
 # a link is started only while this much of the deadline is left (its 30 s cap plus the store)
 LINK_BUDGET_S: Final = 40.0
 
@@ -99,15 +101,9 @@ async def _release(ctx: JobContext, links: list[PhotoLink]) -> None:
         await uow.photo_links.release(ctx.job_run_id, [link.id for link in links])
 
 
-async def _wait_for_room(ctx: JobContext, deadline: float) -> bool:
-    loop = asyncio.get_running_loop()
-    while True:
-        async with tenant_uow(ctx.tenant_id) as uow:
-            if await svc.room_for_photos(uow):
-                return True
-        if loop.time() + ROOM_POLL_S + LINK_BUDGET_S > deadline:
-            return False
-        await asyncio.sleep(ROOM_POLL_S)
+async def _room(ctx: JobContext) -> bool:
+    async with tenant_uow(ctx.tenant_id) as uow:
+        return await svc.room_for_photos(uow)
 
 
 async def _fail(ctx: JobContext, link: PhotoLink, failure: FetchFailure) -> None:
@@ -170,10 +166,10 @@ async def run_photo_links(ctx: JobContext) -> Outcome:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + DEADLINE_S
     fetcher = _fetcher_factory()
-    counts = {"saved": 0, "failed": 0, "deferred": 0}
+    counts = {"saved": 0, "failed": 0, "skipped": 0, "deferred": 0}
     for index, link in enumerate(links):
         rest = links[index:]
-        if loop.time() + LINK_BUDGET_S > deadline or not await _wait_for_room(ctx, deadline):
+        if loop.time() + LINK_BUDGET_S > deadline or not await _room(ctx):
             await _release(ctx, rest)
             counts["deferred"] += len(rest)
             break
@@ -208,6 +204,9 @@ async def run_photo_links(ctx: JobContext) -> Outcome:
                 if await uow.products.get_by_id(product_id) is None:
                     await uow.photo_links.cancel_for_products([product_id])
                     break
+                # the product is still there: never leave this link `fetching`
+                await uow.photo_links.mark_skipped(link.id, ctx.job_run_id, "product_gone")
+            counts["skipped"] += 1
             continue
         # no upload room (or the store is down): this link and the rest wait for the sweeper
         await _release(ctx, rest)

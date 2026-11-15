@@ -2278,14 +2278,23 @@ export interface ImageEditResult {
   [k: string]: unknown;
 }
 /**
- * G2: the photo links of one import, by outcome (`failed` counts skipped links too).
+ * G2: the photo links of one import, by outcome (`total` = waiting + saved + failed +
+ * skipped).
  *
  * This interface was referenced by `MkosContracts`'s JSON-Schema
  * via the `definition` "ImportPhotoTotals".
  */
 export interface ImportPhotoTotals {
   failed: number;
+  /**
+   * Links a retry (`POST /imports/{import_id}/photo-links/retry`) would download again: the failed ones and the per-file cap skips.
+   */
+  retryable?: number;
   saved: number;
+  /**
+   * Links not downloaded: the per-file cap, a photo the seller removed, a deleted product.
+   */
+  skipped?: number;
   total: number;
   waiting: number;
   [k: string]: unknown;

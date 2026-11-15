@@ -542,3 +542,105 @@ async def test_a_connect_error_is_unreachable_and_carries_no_text() -> None:
     result = await fetch(fetcher(handler))
     assert result == FetchFailure("unreachable")
     assert "token" not in repr(result)
+
+
+# ---- encoding: a compressed body is never inflated ----
+
+
+@pytest.mark.parametrize("encoding", ["gzip", "deflate", "br", "zstd", "gzip, identity"])
+async def test_a_compressed_body_is_refused_unread(encoding: str) -> None:
+    import gzip
+
+    # a gzip bomb: 64 MiB of zeros in well under 100 KiB, a valid PNG header in front
+    bomb = gzip.compress(png_header(10, 10) + b"\x00" * (64 * 1024 * 1024))
+    assert len(bomb) < 100_000
+    pulled: list[int] = []
+
+    class Body(httpx.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            pulled.append(1)
+            yield bomb
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, headers={"content-type": "image/png", "content-encoding": encoding}, stream=Body()
+        )
+
+    assert await fetch(fetcher(handler)) == FetchFailure("corrupt", 200)
+    assert pulled == []
+
+
+async def test_an_identity_encoding_passes() -> None:
+    data = png()
+    result = await fetch(fetcher(image_response(data, **{"content-encoding": "identity"})))
+    assert isinstance(result, FetchOk) and result.data == data
+
+
+# ---- every vetted address, in order ----
+
+
+async def test_the_next_vetted_address_is_tried_when_one_will_not_connect() -> None:
+    tried: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.host)
+        if request.url.host == PUBLIC_V6:
+            raise httpx.ConnectError("no route")
+        return httpx.Response(200, content=png(), headers={"content-type": "image/png"})
+
+    f = fetcher(handler, {"cdn.example.com": [PUBLIC_V6, PUBLIC_V4]})
+    assert isinstance(await fetch(f), FetchOk)
+    assert tried == [PUBLIC_V6, PUBLIC_V4]
+
+
+async def test_a_connect_timeout_moves_on_to_the_next_address() -> None:
+    tried: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.host)
+        if request.url.host == PUBLIC_V4:
+            raise httpx.ConnectTimeout("slow")
+        return httpx.Response(200, content=png(), headers={"content-type": "image/png"})
+
+    f = fetcher(handler, {"cdn.example.com": [PUBLIC_V4, "8.8.8.8"]})
+    assert isinstance(await fetch(f), FetchOk)
+    assert tried == [PUBLIC_V4, "8.8.8.8"]
+
+
+async def test_every_address_failing_is_the_last_failure() -> None:
+    tried: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.host)
+        if request.url.host == PUBLIC_V4:
+            raise httpx.ConnectTimeout("slow")
+        raise httpx.ConnectError("refused")
+
+    f = fetcher(handler, {"cdn.example.com": [PUBLIC_V4, "8.8.8.8", "8.8.8.8"]})
+    assert await fetch(f) == FetchFailure("unreachable")
+    assert tried == [PUBLIC_V4, "8.8.8.8"]  # a repeated answer is tried once
+
+
+async def test_an_answer_that_is_not_a_connect_failure_ends_the_hop() -> None:
+    tried: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        tried.append(request.url.host)
+        raise httpx.ReadTimeout("slow body")
+
+    f = fetcher(handler, {"cdn.example.com": [PUBLIC_V4, "8.8.8.8"]})
+    assert await fetch(f) == FetchFailure("timeout")
+    assert tried == [PUBLIC_V4]
+
+
+async def test_trying_addresses_stays_within_the_total_timeout() -> None:
+    async def slow(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.2)
+        raise httpx.ConnectError("refused")
+
+    f = PhotoFetcher(
+        resolver=resolver({"cdn.example.com": [PUBLIC_V4, "8.8.8.8", "1.1.1.1", "9.9.9.9"]}),
+        transport=httpx.MockTransport(slow),
+        limits=Limits(total_s=0.3),
+    )
+    assert await fetch(f) == FetchFailure("timeout")

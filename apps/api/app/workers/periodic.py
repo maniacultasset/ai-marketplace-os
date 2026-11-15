@@ -69,9 +69,10 @@ queue entry carries only `{"timestamp"}`, never tenant data.
   photo that passed its checks and was never matched (uploaded while the switch was off). One
   tenant's failure is logged and the pass goes on.
 - `schedule_photo_links` (every 2 min, G2; off unless `SHEET_PHOTOS_ENABLED`): tenant by tenant,
-  one sheet photo download job for each product with a `queued` link and no queued download
-  (a job that ran out of time or upload room, or a crash). One tenant's failure is logged and
-  the pass goes on.
+  first puts back to `queued` any `fetching` link whose claiming job is finished (a lost
+  terminal hook), then queues one sheet photo download job for each product with a `queued` link
+  and no queued download (a job that ran out of time or upload room, or a crash). One tenant's
+  failure is logged and the pass goes on.
 - `refresh_ai_credit` (every 5 min, SI10 D3): only under `LLM_GATEWAY=openrouter` with a key, one
   `GET /key` (`app.adapters.openrouter.key`). A 200, in one transaction, first runs the CP-D3
   auto-clear against the stored previous check (`app_ai_credit_auto_clear`), then records the
@@ -550,6 +551,9 @@ async def schedule_photo_links() -> int:
     for tenant_id in tenants:
         try:
             async with tenant_uow(tenant_id) as uow:
+                stranded = await uow.photo_links.release_finished()
+                if stranded:
+                    log.info("photo_links.stranded_released", links=len(stranded))
                 for product_id in await uow.photo_links.products_with_queued():
                     latest = await uow.job_runs.latest_for_entity("photo_links", product_id)
                     if latest is not None and latest.status in ("queued", "running"):

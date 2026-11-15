@@ -152,3 +152,16 @@ def test_si14_jobs_take_the_tenant_lock(entity: str) -> None:
     tenant = uuid.uuid4()
     assert entity in policy.TENANT_LOCKED_ENTITIES
     assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, entity, tenant) == f"image_candidate:{tenant}"
+
+
+# ---- G2: every sheet photo download shares one platform-wide lock (at most one runs) ----
+
+
+def test_photo_link_jobs_share_one_platform_lock() -> None:
+    import uuid
+
+    one, two = uuid.uuid4(), uuid.uuid4()
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "photo_links", one) == "photo_link"
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "photo_links", two) == "photo_link"
+    assert policy.lock_for(JobKind.IMAGE_COMPLIANCE, "photo_links", None) == "photo_link"
+    assert policy.lock_for(JobKind.LISTING_GENERATE, "photo_links", one) is None

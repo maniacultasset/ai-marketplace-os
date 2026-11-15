@@ -96,6 +96,11 @@ def _row(**columns: Any) -> Any:
             "The link is not public. Share it so anyone with the link can view, then retry.",
         ),
         (
+            {"problem": "too_many_pixels"},
+            "The photo is too big to read (over 40 megapixels or 20,000 px on a side). "
+            "Use a smaller one.",
+        ),
+        (
             {"status": "skipped", "problem": "removed_by_seller"},
             "You removed this photo earlier, so it was not downloaded again.",
         ),

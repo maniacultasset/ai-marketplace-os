@@ -382,16 +382,30 @@
       "type": "string"
     },
     "ImportPhotoTotals": {
-      "description": "G2: the photo links of one import, by outcome (`failed` counts skipped links too).",
+      "description": "G2: the photo links of one import, by outcome (`total` = waiting + saved + failed +\nskipped).",
       "properties": {
         "failed": {
           "minimum": 0,
           "title": "Failed",
           "type": "integer"
         },
+        "retryable": {
+          "default": 0,
+          "description": "Links a retry (`POST /imports/{import_id}/photo-links/retry`) would download again: the failed ones and the per-file cap skips.",
+          "minimum": 0,
+          "title": "Retryable",
+          "type": "integer"
+        },
         "saved": {
           "minimum": 0,
           "title": "Saved",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": 0,
+          "description": "Links not downloaded: the per-file cap, a photo the seller removed, a deleted product.",
+          "minimum": 0,
+          "title": "Skipped",
           "type": "integer"
         },
         "total": {

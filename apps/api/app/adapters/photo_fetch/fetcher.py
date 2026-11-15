@@ -7,9 +7,11 @@ The link is user-supplied, so every request is treated as SSRF-critical:
   `*.localhost`, `*.local`, `*.internal`, `metadata`, `metadata.google.internal`).
 - The host is resolved with `getaddrinfo` under a short timeout; every address it answers must
   pass `is_public_address` (`app.core.public_address`), else `blocked_address`.
-- The connection is pinned to the vetted address: the request URL names the IP, the `Host` header
+- The connection is pinned to a vetted address: the request URL names the IP, the `Host` header
   and the TLS SNI name the host (`sni_hostname`), so the certificate is still checked for the host
-  name and nothing resolves the name again after the check (no DNS-rebinding window).
+  name and nothing resolves the name again after the check (no DNS-rebinding window). The vetted
+  addresses are tried in the resolver's order while a connection to one fails, all within the
+  link's total timeout.
 - A fresh client per hop: `trust_env=False` (no proxy or netrc from the environment), no redirect
   following, no cookie jar carried between hops, TLS verified. The headers are exactly
   `USER_AGENT` (a constant, no user data), `Accept: image/jpeg,image/png` and
@@ -22,8 +24,10 @@ The link is user-supplied, so every request is treated as SSRF-critical:
   that keeps each read under 10 s still ends).
 - Only a 200 is read. 404/410 `not_found`, 401/403 `not_public`, 429 and 5xx `server_error`, any
   other status `unreachable`.
-- Size: a `Content-Length` over `max_bytes` (the upload limit, 10 MiB) is refused unread; the body
-  is streamed decoded (`aiter_bytes`, so a gzip body is capped too) and the read stops past the cap.
+- Encoding: a response with any `Content-Encoding` other than `identity` (we ask for `identity`)
+  is `corrupt` unread, so a compressed body is never inflated (no decompression bomb).
+- Size: a `Content-Length` over `max_bytes` (the upload limit, 10 MiB) is refused unread; the read
+  stops past the cap.
 - Content: a `text/html` or `image/svg+xml` type is `not_image` unread; then the magic bytes
   decide (`app.services.image_header`): JPEG and PNG pass; GIF, WebP, TIFF, HEIC and BMP are
   `unsupported_type`; anything else is `not_image`. A Google Drive or Dropbox link that answers a
@@ -234,7 +238,7 @@ class PhotoFetcher:
             share = share or target.host in _SHARE_HOSTS
         return FetchFailure("too_many_redirects")
 
-    async def _address(self, host: str) -> str | FetchFailure:
+    async def _addresses(self, host: str) -> list[str] | FetchFailure:
         try:
             async with asyncio.timeout(self._limits.resolve_s):
                 found = list(await self._resolver(host))
@@ -246,10 +250,14 @@ class PhotoFetcher:
             return FetchFailure("unreachable")
         if not all(is_public_address(a) for a in found):
             return FetchFailure("blocked_address")
-        ip = ipaddress.ip_address(found[0].split("%", 1)[0])
-        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
-            ip = ip.ipv4_mapped
-        return str(ip)
+        vetted: list[str] = []
+        for address in found:
+            ip = ipaddress.ip_address(address.split("%", 1)[0])
+            if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+                ip = ip.ipv4_mapped
+            if str(ip) not in vetted:
+                vetted.append(str(ip))
+        return vetted
 
     def _client(self) -> httpx.AsyncClient:
         limits = self._limits
@@ -270,30 +278,43 @@ class PhotoFetcher:
     async def _get(self, target: _Target, *, share: bool) -> FetchOk | FetchFailure | httpx.URL:
         """One hop: the image, a failure, or the next link to check (a redirect)."""
         if target.local:
-            url = target.url
+            urls = [target.url]
             extensions: dict[str, str] = {}
         else:
-            address = await self._address(target.host)
-            if isinstance(address, FetchFailure):
-                return address
-            url = httpx.URL(scheme="https", host=address, raw_path=target.raw_path)
+            addresses = await self._addresses(target.host)
+            if isinstance(addresses, FetchFailure):
+                return addresses
+            urls = [
+                httpx.URL(scheme="https", host=address, raw_path=target.raw_path)
+                for address in addresses
+            ]
             extensions = {"sni_hostname": target.host}
         host_header = target.host if target.port is None else f"{target.host}:{target.port}"
         # Every failure is a value set inside the `except`, returned after it: no httpx
         # exception (its text can hold the link) ever becomes a result's context.
         failure: FetchFailure | None = None
         async with self._client() as client:
-            request = client.build_request(
-                "GET", url, headers={"host": host_header}, extensions=extensions
-            )
-            try:
-                response = await client.send(request, stream=True)
-            except httpx.TimeoutException:
-                failure = FetchFailure("timeout")
-            except httpx.HTTPError:
-                failure = FetchFailure("unreachable")
-            if failure is not None:
-                return failure
+            response: httpx.Response | None = None
+            for url in urls:  # the next vetted address only while connecting fails
+                request = client.build_request(
+                    "GET", url, headers={"host": host_header}, extensions=extensions
+                )
+                try:
+                    response = await client.send(request, stream=True)
+                except httpx.ConnectTimeout:
+                    failure = FetchFailure("timeout")
+                    continue
+                except httpx.ConnectError:
+                    failure = FetchFailure("unreachable")
+                    continue
+                except httpx.TimeoutException:
+                    failure = FetchFailure("timeout")
+                except httpx.HTTPError:
+                    failure = FetchFailure("unreachable")
+                break
+            if response is None:
+                return failure or FetchFailure("unreachable")
+            failure = None
             try:
                 return await self._read(response, target, share=share)
             except httpx.TimeoutException:
@@ -321,12 +342,15 @@ class PhotoFetcher:
         content_type = response.headers.get("content-type", "").lower()
         if any(t in content_type for t in _PAGE_TYPES):
             return FetchFailure("not_public" if share else "not_image", status)
+        encoding = (response.headers.get("content-encoding") or "").strip().lower()
+        if encoding not in ("", "identity"):
+            return FetchFailure("corrupt", status)
         declared = (response.headers.get("content-length") or "").strip()
         if declared.isdigit() and int(declared) > self._limits.max_bytes:
             return FetchFailure("too_large", status)
         chunks: list[bytes] = []
         size = 0
-        async for chunk in response.aiter_bytes():
+        async for chunk in response.aiter_bytes():  # identity only: never inflated
             size += len(chunk)
             if size > self._limits.max_bytes:
                 return FetchFailure("too_large", status)

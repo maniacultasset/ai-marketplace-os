@@ -83,7 +83,10 @@ MESSAGES: Final[Mapping[str, str]] = {
         "The link opens a web page, not a photo. Use a link that opens the JPG or PNG itself."
     ),
     "too_large": "The photo is over 10 MB. Use a smaller file.",
-    "too_many_pixels": "The photo is too big to read. Use one under 40 megapixels.",
+    "too_many_pixels": (
+        "The photo is too big to read (over 40 megapixels or 20,000 px on a side). "
+        "Use a smaller one."
+    ),
     "corrupt": "The file could not be read as a photo.",
     "timeout": "The site took too long to answer. Retry later.",
     "unreachable": "The site could not be reached. Check the link.",
@@ -494,7 +497,12 @@ async def import_totals(uow: TenantUnitOfWork, import_id: uuid.UUID) -> ImportPh
     if totals is None:
         return None
     return ImportPhotoTotals(
-        total=totals.total, waiting=totals.waiting, saved=totals.saved, failed=totals.failed
+        total=totals.total,
+        waiting=totals.waiting,
+        saved=totals.saved,
+        failed=totals.failed,
+        skipped=totals.skipped,
+        retryable=totals.retryable,
     )
 
 

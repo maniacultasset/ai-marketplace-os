@@ -4741,13 +4741,26 @@ export interface components {
         };
         /**
          * ImportPhotoTotals
-         * @description G2: the photo links of one import, by outcome (`failed` counts skipped links too).
+         * @description G2: the photo links of one import, by outcome (`total` = waiting + saved + failed +
+         *     skipped).
          */
         ImportPhotoTotals: {
             /** Failed */
             failed: number;
+            /**
+             * Retryable
+             * @description Links a retry (`POST /imports/{import_id}/photo-links/retry`) would download again: the failed ones and the per-file cap skips.
+             * @default 0
+             */
+            retryable: number;
             /** Saved */
             saved: number;
+            /**
+             * Skipped
+             * @description Links not downloaded: the per-file cap, a photo the seller removed, a deleted product.
+             * @default 0
+             */
+            skipped: number;
             /** Total */
             total: number;
             /** Waiting */

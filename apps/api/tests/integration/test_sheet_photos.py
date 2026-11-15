@@ -347,7 +347,9 @@ async def test_a_failed_link_never_fails_the_row_and_the_row_shows_it(
     assert failed["retryable"] is True
     assert "cdn.example.com" not in rows.text  # the link itself is never returned
     report = await api.get(f"/api/v1/imports/{import_id}", headers=hdrs)
-    assert report.json()["photos"] == {"total": 2, "waiting": 0, "saved": 1, "failed": 1}
+    assert report.json()["photos"] == {
+        "total": 2, "waiting": 0, "saved": 1, "failed": 1, "skipped": 0, "retryable": 1
+    }  # fmt: skip
 
 
 async def test_the_per_import_cap_skips_the_rest(
@@ -355,13 +357,17 @@ async def test_the_per_import_cap_skips_the_rest(
 ) -> None:
     _switch(monkeypatch, on=True, SHEET_PHOTOS_MAX_PER_IMPORT="2")
     links = "|".join(LINK.format(n=f"3{c}") for c in "bc")
-    await _import(sheet, api, [row(3, additional_images=links)])
+    import_id = await _import(sheet, api, [row(3, additional_images=links)])
     product = _product(sheet, "SKU-00003")
     assert [(lk["status"], lk["problem"]) for lk in _links(sheet, product)] == [
         ("queued", None),
         ("queued", None),
         ("skipped", "import_cap"),
     ]
+    report = await api.get(f"/api/v1/imports/{import_id}", headers=as_member(sheet.jw, OPERATOR))
+    assert report.json()["photos"] == {
+        "total": 3, "waiting": 2, "saved": 0, "failed": 0, "skipped": 1, "retryable": 1
+    }  # fmt: skip
 
 
 async def test_the_photo_cap_fails_the_link(sheet: Sheet, api: httpx.AsyncClient) -> None:
@@ -400,17 +406,77 @@ async def test_no_upload_room_defers_and_the_sweeper_queues_again(
                     defer=False,
                 )
             )
-    monkeypatch.setattr(worker, "DEADLINE_S", 1.0)
-    monkeypatch.setattr(worker, "LINK_BUDGET_S", 0.5)
-    monkeypatch.setattr(worker, "ROOM_POLL_S", 0.01)
+    import time
+
     (job,) = _fetch_jobs(sheet, product)
-    await run_job(job)
+    started = time.monotonic()
+    await run_job(job)  # the full 240 s deadline: no room ends the job at once, never a wait
+    assert time.monotonic() - started < 10
+    assert not hasattr(worker, "ROOM_POLL_S")
     assert sheet.fetcher.calls == []
     assert [lk["status"] for lk in _links(sheet, product)] == ["queued"]
     status = sheet.conn.execute("SELECT status FROM job_runs WHERE id = %s", [job]).fetchone()
     assert status is not None and status[0] == "partial"
     assert await schedule_photo_links() >= 1
     assert len(_fetch_jobs(sheet, product)) == 2
+
+
+async def test_photo_link_jobs_share_one_platform_lock(
+    sheet: Sheet, api: httpx.AsyncClient
+) -> None:
+    """At most one download job runs at a time across every tenant: they share one lock."""
+    await _import(sheet, api, [row(1), row(2)])
+    jobs = _fetch_jobs(sheet, _product(sheet, "SKU-00001")) + _fetch_jobs(
+        sheet, _product(sheet, "SKU-00002")
+    )
+    locks = sheet.conn.execute(
+        "SELECT q.lock FROM job_runs j JOIN procrastinate_jobs q ON q.id = j.queue_job_id::bigint "
+        "WHERE j.id = ANY(%s)",
+        [jobs],
+    ).fetchall()
+    assert [r[0] for r in locks] == ["photo_link", "photo_link"]
+
+
+async def test_a_link_gone_from_a_live_product_is_skipped_not_left_fetching(
+    sheet: Sheet, api: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import photo_links as svc
+
+    async def gone(*_: Any, **__: Any) -> Any:
+        return svc.Saved("gone")
+
+    await _import(sheet, api, [row(8)])
+    product = _product(sheet, "SKU-00008")
+    monkeypatch.setattr(svc, "save_fetched", gone)
+    await _download(sheet, product)
+    assert [(lk["status"], lk["problem"]) for lk in _links(sheet, product)] == [
+        ("skipped", "product_gone")
+    ]
+    assert sheet.store.objects == {}
+    (job,) = _fetch_jobs(sheet, product)
+    done = sheet.conn.execute("SELECT result_json FROM job_runs WHERE id = %s", [job]).fetchone()
+    assert done is not None and done[0]["skipped"] == 1
+
+
+async def test_the_sweeper_releases_links_whose_job_is_finished(
+    sheet: Sheet, api: httpx.AsyncClient
+) -> None:
+    from app.workers.periodic import schedule_photo_links
+
+    await _import(sheet, api, [row(9), row(10)])
+    stranded, live = _product(sheet, "SKU-00009"), _product(sheet, "SKU-00010")
+    (live_job,) = _fetch_jobs(sheet, live)
+    sheet.conn.execute(  # a claim whose job row is gone (pruned, or its hook never ran)
+        "UPDATE photo_links SET status = 'fetching', job_id = %s WHERE product_id = %s",
+        [uuid.uuid4(), stranded],
+    )
+    sheet.conn.execute(  # a claim by a job still queued: left alone
+        "UPDATE photo_links SET status = 'fetching', job_id = %s WHERE product_id = %s",
+        [live_job, live],
+    )
+    await schedule_photo_links()
+    assert [lk["status"] for lk in _links(sheet, stranded)] == ["queued"]
+    assert [lk["status"] for lk in _links(sheet, live)] == ["fetching"]
 
 
 async def test_the_terminal_hook_releases_claimed_links(
