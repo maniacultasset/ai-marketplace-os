@@ -175,6 +175,19 @@ def test_check_header_unknown_header_echo_sanitised() -> None:
     assert all("<" not in m and ";" not in m for m in messages)
 
 
+def test_check_header_plain_printable_header_is_echoed() -> None:
+    """Prod bulk test (15 Nov): a seller's `Weight (g)` showed as `column 18`. Plain printable text
+    is echoed; a header that could open a formula, or holds markup, stays a position."""
+    problems = check_header([*MINIMAL, "Weight (g)", "fabric / blend %", "=sum(a1)", "-x", "a<b"])
+    assert [m for _, m in problems] == [
+        "unknown column weight (g)",
+        "unknown column fabric / blend %",
+        "unknown column column 6",
+        "unknown column column 7",
+        "unknown column column 8",
+    ]
+
+
 def test_check_header_bullets_are_content() -> None:
     assert check_header([*MINIMAL, "bullet_1", "bullet_2"]) == []
     assert row_key("bullet_3") == "bullet_1_to_n"

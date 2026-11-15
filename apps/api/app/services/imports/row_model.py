@@ -15,6 +15,13 @@ least one (site L7929). There is no `status` column: an imported product is alwa
 
 Every error is an `ErrorItem` at `file.row` with source `schema` whose message names the A.6
 column from this module's own text, never the cell (no `value_submitted`, Q7).
+
+Two cells are kept out of the product with a warning instead of failing the row (prod bulk test,
+15 Nov 2026): a `tax_rate` that is not an Indian GST rate (`GST_RATES`), and a
+`fiber_composition` written as plain words with no percent ("silk-cotton chanderi"). Neither is
+stored, so the product asks for it later and no marketplace is sent the unchecked value. A
+composition that gives percents and still does not parse (a sum other than 100, a repeated fibre)
+stays a row error.
 """
 
 from __future__ import annotations
@@ -80,6 +87,18 @@ MAX_EMAIL_BYTES: Final = 254
 MAX_MEDIA_URLS: Final = 9
 MAX_URL: Final = 2_048
 MAX_TAX: Final = Decimal(100)
+GST_RATES: Final = frozenset(
+    Decimal(r)
+    for r in ("0", "0.1", "0.25", "1", "1.5", "3", "5", "6", "7.5", "12", "18", "28", "40")
+)
+"""Indian GST rates in percent (CGST + SGST, or IGST): the general slabs 0, 5, 18 and 40, the 12 and
+28 slabs that older stock and price lists still carry, and the special rates (0.1 for merchant
+exporters, 0.25 and 1.5 for diamonds and stones, 3 for gold and jewellery, and 1, 6 and 7.5 of
+a few special schemes). A rate outside these is kept out with a warning, never guessed."""
+GST_RATES_TEXT: Final = "0, 0.1, 0.25, 1, 1.5, 3, 5, 6, 7.5, 12, 18, 28 or 40"
+# A composition cell with no digit and no `%` is a description ("silk-cotton chanderi"), not a
+# breakdown that went wrong.
+_HAS_PERCENT: Final = re.compile(r"[0-9%]")
 MAX_STYLE_NUMBER: Final = 64
 
 ATTRIBUTE_COLUMNS: Final[tuple[str, ...]] = (
@@ -189,6 +208,9 @@ class _Checker:
 
     def fail(self, code: ErrorCode, message: str) -> None:
         self.errors.append(row_error(code, message))
+
+    def warn(self, code: ErrorCode, message: str) -> None:
+        self.warnings.append(row_error(code, message, severity=Severity.WARNING))
 
     def get(self, key: str) -> str | None:
         return self.norm.get(key)
@@ -406,6 +428,13 @@ def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> Ro
     if tax is not None and tax > MAX_TAX:
         c.fail(ErrorCode.VALUE_NOT_ALLOWED, "tax_rate must be from 0 to 100")
         tax = None
+    if tax is not None and tax not in GST_RATES:
+        c.warn(
+            ErrorCode.VALUE_NOT_ALLOWED,
+            f"tax_rate is not a GST rate ({GST_RATES_TEXT}); it was not saved, so set the GST "
+            "rate on the product",
+        )
+        tax = None
     hsn = c.get("hsn_code")
     if hsn is not None and not HSN_PATTERN.fullmatch(hsn):
         c.fail(ErrorCode.PATTERN_MISMATCH, "hsn_code must be 4, 6 or 8 digits")
@@ -434,10 +463,19 @@ def validate_row(norm: Mapping[str, str | None], *, brands: Sequence[str]) -> Ro
         try:
             fibres = tuple(normalized(parse_composition(composition)))
         except CompositionError:
-            c.fail(
-                ErrorCode.VALUE_NOT_ALLOWED,
-                "fiber_composition must list fibres whose percents add up to 100",
-            )
+            if _HAS_PERCENT.search(composition):
+                c.fail(
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    "fiber_composition must list fibres whose percents add up to 100",
+                )
+            else:
+                # Not stored: the text would otherwise reach a marketplace as the composition.
+                del attributes["fiber_composition"]
+                c.warn(
+                    ErrorCode.VALUE_NOT_ALLOWED,
+                    "fiber_composition has no percents (60% cotton, 40% viscose); it was not "
+                    "saved, so add the fabric composition on the product",
+                )
     style_number = c.text("style_number", MAX_STYLE_NUMBER)
     if style_number is not None and "\x00" in style_number:
         c.fail(ErrorCode.VALUE_NOT_ALLOWED, "style_number must not contain NUL")
