@@ -178,6 +178,11 @@ def _side(conn: Any, world: World, slug: str) -> Side:
     candidate_id = f.image_candidate(
         conn, t, product_id, source_image_id, status="ready", storage_key=f"{canary}-candidate"
     )
+    # G2: a failed sheet photo link of the product (the retry and dismiss path ids)
+    link_id = f.photo_link(
+        conn, t, product_id, status="failed", problem="not_found", requested_by=operator,
+        import_id=import_id, row_number=2,
+    )  # fmt: skip
     document_id = f.brand_document(conn, t, created_by=owner, filename=f"{canary}.pdf")
     issue_id = f.listing_issue(conn, t, listing_id, message=f"{canary} issue")
     # SI3: an open photo colour question on the product, answerable by the registry's valid
@@ -250,6 +255,7 @@ def _side(conn: Any, world: World, slug: str) -> Side:
         "image_id": image_id,
         "source_image_id": source_image_id,
         "candidate_id": candidate_id,
+        "link_id": link_id,
         "document_id": document_id,
         "issue_id": issue_id,
         "task_id": task_id,

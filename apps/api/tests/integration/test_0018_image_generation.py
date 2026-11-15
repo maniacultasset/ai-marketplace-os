@@ -296,7 +296,8 @@ def test_audit_allowlist_for_candidates(db: Conn) -> None:
 
 def test_purge_deletes_candidates_first(db: Conn) -> None:
     order = db.execute("SELECT purge_tenant_order()").fetchone()
-    assert order is not None and order[0][0] == "image_candidates"
+    # 0040 (G2) puts photo_links ahead: it references images too, and no row references it
+    assert order is not None and order[0][:2] == ["photo_links", "image_candidates"]
     tenant, product, source = _source(db)
     run = f.agent_run(db, tenant, agent_name="image", trigger="vision")
     candidate = f.image_candidate(

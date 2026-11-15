@@ -509,15 +509,16 @@ async def retry_product(
     principal: Principal, product_id: uuid.UUID, key: str, path: str
 ) -> dict[str, Any]:
     """`POST /products/{product_id}/photo-links/retry`: the product's failed and capped links back
-    in the queue and its download job (202 `JobAccepted`); 409 when none can be retried."""
-    if not enabled():
-        raise SheetPhotosOff(SheetPhotosOff.MESSAGE)
+    in the queue and its download job (202 `JobAccepted`); 409 when none can be retried. Another
+    tenant's product is 404 before the switch is read (501 while off)."""
     tenant = principal.tenant_id
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
         uow = repositories_on(session, tenant)
         if await uow.products.get_by_id(product_id) is None:
             raise NotFoundError("product_id")
+        if not enabled():
+            raise SheetPhotosOff(SheetPhotosOff.MESSAGE)
         requeued = await uow.photo_links.requeue_failed(
             product_id=product_id, requested_by=principal.user_id
         )
@@ -542,8 +543,6 @@ async def retry_import(
 ) -> dict[str, Any]:
     """`POST /imports/{import_id}/photo-links/retry`: every failed and capped link of the import
     back in the queue, one download job per product (202 `{queued, products}`)."""
-    if not enabled():
-        raise SheetPhotosOff(SheetPhotosOff.MESSAGE)
     tenant = principal.tenant_id
 
     async def handler(session: Any) -> tuple[int, dict[str, Any]]:
@@ -552,6 +551,8 @@ async def retry_import(
         uow = repositories_on(session, tenant)
         if await ImportRepository(session, tenant).get(import_id) is None:
             raise NotFoundError("import_id")
+        if not enabled():
+            raise SheetPhotosOff(SheetPhotosOff.MESSAGE)
         requeued = await uow.photo_links.requeue_failed(
             import_id=import_id, requested_by=principal.user_id
         )
