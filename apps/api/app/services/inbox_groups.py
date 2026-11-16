@@ -4,7 +4,8 @@
 across the brand's products in one group (`inbox_groups_model`). The rows are the Inbox lists' own
 (`task_in_inbox`, `issue_in_inbox`, and for `all` only the issues no open question stands for), so
 `total_items` and the sum of the group counts equal Home's `inbox.open_items` (`all`),
-`inbox.questions` (`questions`) or `inbox.issues` (`issues`). The read re-checks the review queue
+`inbox.questions` (`questions`) or `inbox.issues` (`issues`). A group's `members` are its rows:
+one per question, one per listing for issues (`items` the group's issues on it, `issue_ids` them). The read re-checks the review queue
 first, as the Inbox lists and Home do, then reads in one READ ONLY transaction under Home's 5 s
 budget (`AnalyticsBudgetError` past it). Computed at read time: nothing is stored.
 
@@ -250,6 +251,10 @@ def _group_out(
             {
                 "task_id": m.item_id if m.item_kind == "task" else None,
                 "issue_id": m.item_id if m.item_kind == "issue" else None,
+                "items": m.items,
+                "issue_ids": (
+                    list(m.item_ids[: model.MEMBER_ITEM_IDS_MAX]) if m.item_kind == "issue" else []
+                ),
                 "product_id": m.product_id,
                 "sku": m.sku,
                 "title": m.title,

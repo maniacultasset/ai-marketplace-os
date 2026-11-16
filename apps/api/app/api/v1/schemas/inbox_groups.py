@@ -22,11 +22,27 @@ SkipReason = Literal["has_value", "closed", "not_allowed", "wrong_level", "gone"
 
 
 class InboxGroupMemberOut(WireModel):
-    """One item of a group: a question (`task_id`) or an issue (`issue_id`), its product, and
-    whether the product already holds the fact (`has_value`: an answer for many keeps it)."""
+    """One row of a group: a question (`task_id`), or a listing's issues of the group (`issue_id`
+    the newest, `issue_ids` all of them), its product, and whether the product already holds the
+    fact (`has_value`: an answer for many keeps it)."""
 
     task_id: UUID | None = None
-    issue_id: UUID | None = None
+    issue_id: UUID | None = Field(
+        default=None, description="The row's newest issue (the one to open)."
+    )
+    items: int = Field(
+        default=1,
+        ge=1,
+        description="The group's items this row stands for: 1 for a question; for issues, every "
+        "open issue of the group on this listing (two photos failing the same check, or two "
+        "required photo views missing, are two issues on one row).",
+    )
+    issue_ids: list[UUID] = Field(
+        default_factory=list,
+        max_length=50,
+        description="Issues only: the row's issues, newest first (at most 50; `items` counts "
+        "them all). Empty for a question.",
+    )
     product_id: UUID | None = None
     sku: str | None = None
     title: str | None = None
@@ -56,7 +72,11 @@ class InboxGroupOut(WireModel):
         "`exemption` (mark the products without a barcode as GTIN exempt), `per_item` (each "
         "item needs its own fix)."
     )
-    count: int = Field(ge=1, description="The items in the group (every one, past the cap too).")
+    count: int = Field(
+        ge=1,
+        description="The items in the group (every one, past the row cap too): the sum of "
+        "its members' `items` unless `members_more`. The sum over the groups is `total_items`.",
+    )
     products: int = Field(ge=0)
     listings: int = Field(ge=0, description="The distinct listings the items stand on.")
     blocking: bool = Field(description="At least one item holds a listing back (an ERROR).")
@@ -87,8 +107,13 @@ class InboxGroupOut(WireModel):
     sample_issue: IssueOut | None = Field(
         default=None, description="The newest issue, as `GET /issues` lists it."
     )
-    members: list[InboxGroupMemberOut] = Field(default_factory=list, max_length=1000)
-    members_more: bool = False
+    members: list[InboxGroupMemberOut] = Field(
+        default_factory=list,
+        max_length=1000,
+        description="The rows, newest first: one per question, one per listing for an issue "
+        "group (so an issue group lists `listings` rows).",
+    )
+    members_more: bool = Field(default=False, description="More rows than the 1,000 listed.")
 
 
 class InboxGroupsOut(WireModel):
