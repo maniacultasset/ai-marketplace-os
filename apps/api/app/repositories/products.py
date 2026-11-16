@@ -544,12 +544,31 @@ class ProductRepository(TenantScopedRepository[Product]):
         changed = tuple_(*(table.c[name] for name in columns)).is_distinct_from(
             tuple_(*new_values.values())
         ) | table.c.deleted_at.is_not(None)
+        # The FactWriter rule (facts.py): a key's provenance moves only when its value or its
+        # source does. Without it, a variants import that turns a guided-form product into a
+        # style (a new theme and size run) relabelled its unchanged category "From sheet".
+        provenance: Any = table.c.provenance
+        no_change = cast(literal("{}"), JSONB)
+        for column, key in UPSERT_FACT_KEYS.items():
+            incoming = stmt.excluded.provenance[key]
+            moved = table.c[column].is_distinct_from(new_values[column]) | table.c.provenance[key][
+                "source"
+            ].is_distinct_from(incoming["source"])
+            provenance = provenance.op("||")(
+                case(
+                    (
+                        stmt.excluded.provenance.has_key(key) & moved,
+                        func.jsonb_build_object(key, incoming),
+                    ),
+                    else_=no_change,
+                )
+            )
         upsert = stmt.on_conflict_do_update(
             constraint="products_tenant_sku_idx",
             set_={
                 **new_values,
                 "deleted_at": None,
-                "provenance": table.c.provenance.op("||")(stmt.excluded.provenance),
+                "provenance": provenance,
             },
             where=changed,
         ).returning(table.c.id, literal_column("(xmax = 0)"))
