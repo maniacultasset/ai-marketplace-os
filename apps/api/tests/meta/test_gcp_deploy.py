@@ -509,9 +509,9 @@ def test_env_files_hold_no_secret(repo_root: Path, env_name: str) -> None:
     # prod left the sandbox once the Amazon app cleared (2026-11-05); staging stays on it.
     sandbox = {"staging": "true", "prod": "false"}[env_name]
     assert values["FLIPKART_ENABLED"] == "false" and values["AMAZON_USE_SANDBOX"] == sandbox
-    # The publish kill switch: the owner's real seller account gets no publishes until they say
-    # go (2026-11-09), so prod pins it off; staging talks to the sandbox and publishes.
-    assert values["AMAZON_PUBLISH_ENABLED"] == {"staging": "true", "prod": "false"}[env_name]
+    # The publish kill switch: the owner turned prod publishing on for the beta (2026-11-16);
+    # staging talks to the sandbox and publishes.
+    assert values["AMAZON_PUBLISH_ENABLED"] == "true"
     # The placeholder until the dashboard is hosted, then the committed https origins (runbook).
     for name in ("ALLOWED_ORIGINS", "DASHBOARD_BASE_URL"):
         for origin in values[name].split(","):
@@ -1475,12 +1475,12 @@ def test_photo_views_switch_reaches_both_roles(toolkit: Path, tmp_path: Path) ->
     assert "PHOTO_VIEWS_ENABLED must be true or false" in result.stderr
 
 
-def test_prod_pins_amazon_publishing_off(repo_root: Path) -> None:
-    """The owner asked on 2026-11-09 that the real seller account receives no publishes until
-    they say go: prod.env ships the kill switch off, with the reason next to it."""
+def test_prod_turns_amazon_publishing_on_for_the_beta(repo_root: Path) -> None:
+    """The owner turned prod publishing on for the beta on 2026-11-16: prod.env ships the kill
+    switch on, with the reason next to it."""
     text = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
-    assert re.findall(r"^AMAZON_PUBLISH_ENABLED=(.*)$", text, re.MULTILINE) == ["false"]
-    assert "2026-11-09" in text.split("AMAZON_PUBLISH_ENABLED=")[0].rsplit("\n\n", 1)[-1]
+    assert re.findall(r"^AMAZON_PUBLISH_ENABLED=(.*)$", text, re.MULTILINE) == ["true"]
+    assert "2026-11-16" in text.split("AMAZON_PUBLISH_ENABLED=")[0].rsplit("\n\n", 1)[-1]
 
 
 def test_publish_switch_reaches_every_role(toolkit: Path, tmp_path: Path) -> None:
@@ -2431,7 +2431,7 @@ def test_the_api_and_the_worker_never_get_the_preview_switches(
         for name in PREVIEW_SWITCHES:
             assert name not in env, name
     prod = (repo_root / DEPLOY / "prod.env").read_text(encoding="utf-8")
-    assert re.search(r"^AMAZON_PUBLISH_ENABLED=false$", prod, re.MULTILINE)
+    assert re.search(r"^AMAZON_PUBLISH_ENABLED=(true|false)$", prod, re.MULTILINE)
     for name in PREVIEW_SWITCHES:
         assert not re.search(rf"^{name}=", prod, re.MULTILINE), name
 
