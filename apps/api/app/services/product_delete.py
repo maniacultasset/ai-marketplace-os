@@ -112,6 +112,7 @@ async def delete_one(uow: TenantUnitOfWork, principal: Principal, product_id: uu
         await uow.images.lock_product_images(family_id)
     images = await uow.images.soft_delete_for_products(plan.family)
     await uow.image_candidates.retire_for_products(plan.family)
+    await uow.photo_links.cancel_for_products(plan.family)  # G2: nothing more is downloaded
     style, children = plan.family[0], plan.family[1:]
     if children:
         await MatrixCellRepository(uow.session, principal.tenant_id).discontinue_for_style(style)

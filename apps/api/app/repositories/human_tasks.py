@@ -421,6 +421,40 @@ class HumanTaskRepository(TenantScopedRepository[HumanTask]):
         )
         return _rowcount(await self.db.execute(stmt))
 
+    async def cancel_brand_party_tasks(self, roles: builtins.list[str]) -> int:
+        """G1: the brand default for these party roles is now set. Cancel (`superseded`) the live
+        `missing_fact` questions on `facts.<role>` that no listing refusal links (a photo or
+        intake question: no listing check would ever close it) on products without their own
+        party for that role, which now inherit the brand's. The count."""
+        from app.db.models.issues import ListingIssue
+
+        total = 0
+        for role in roles:
+            column = getattr(Product, f"{role}_party_id")
+            own = select(Product.id).where(
+                Product.tenant_id == HumanTask.tenant_id,
+                Product.id == HumanTask.product_id,
+                column.is_(None),
+            )
+            linked = select(ListingIssue.id).where(
+                ListingIssue.tenant_id == HumanTask.tenant_id,
+                ListingIssue.human_task_id == HumanTask.id,
+            )
+            stmt = self._scoped_write(
+                update(HumanTask)
+                .where(
+                    self._tenant_criterion(include_platform=False),
+                    HumanTask.kind == "missing_fact",
+                    HumanTask.status.in_(LIVE),
+                    HumanTask.target_path == f"facts.{role}",
+                    exists(own),
+                    ~exists(linked),
+                )
+                .values(status="cancelled", cancelled_reason="superseded")
+            )
+            total += _rowcount(await self.db.execute(stmt))
+        return total
+
     async def cancel_rejected_fact_tasks(
         self, product_id: uuid.UUID, target_paths: builtins.list[str] | tuple[str, ...]
     ) -> builtins.list[str]:

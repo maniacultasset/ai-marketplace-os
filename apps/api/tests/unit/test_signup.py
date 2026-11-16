@@ -861,8 +861,8 @@ def test_0021_is_the_single_head() -> None:
     # then the wave B/C train: the brand voice (0033), the SKU counters (0034), the variant photo
     # match (0035) and the section locks (0036), then the wave A2 train: the sign-up's one
     # question and reply (0037, client item 2), then the auto-fix setting (0038, client item 20),
-    # then the product archive (0039, Chrome pass 2)
-    assert revisions - parents == {"0039_product_archive"}
+    # then the product archive (0039, Chrome pass 2), then the sheet photo links (0040, G2)
+    assert revisions - parents == {"0040_sheet_photo_links"}
 
 
 @pytest.mark.parametrize(

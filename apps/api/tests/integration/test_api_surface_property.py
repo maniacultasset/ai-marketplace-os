@@ -119,6 +119,10 @@ def surface(
     # ADR-0032: adding a brand is on, so `POST /tenants` answers for real instead of the
     # switched-off 501
     monkeypatch.setenv("TENANT_CREATE_ENABLED", "true")
+    # G1: the grouped Inbox is on, so its answer runs for real instead of the switched-off 501
+    monkeypatch.setenv("INBOX_GROUPS_ENABLED", "true")
+    # G2: the sheet photo retries answer for real instead of the switched-off 501
+    monkeypatch.setenv("SHEET_PHOTOS_ENABLED", "true")
     monkeypatch.chdir(tmp_path)
     get_settings.cache_clear()
     get_sessionmaker.cache_clear()

@@ -381,6 +381,53 @@
       "title": "Gate",
       "type": "string"
     },
+    "ImportPhotoTotals": {
+      "description": "G2: the photo links of one import, by outcome (`total` = waiting + saved + failed +\nskipped).",
+      "properties": {
+        "failed": {
+          "minimum": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "retryable": {
+          "default": 0,
+          "description": "Links a retry (`POST /imports/{import_id}/photo-links/retry`) would download again: the failed ones and the per-file cap skips.",
+          "minimum": 0,
+          "title": "Retryable",
+          "type": "integer"
+        },
+        "saved": {
+          "minimum": 0,
+          "title": "Saved",
+          "type": "integer"
+        },
+        "skipped": {
+          "default": 0,
+          "description": "Links not downloaded: the per-file cap, a photo the seller removed, a deleted product.",
+          "minimum": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "waiting": {
+          "minimum": 0,
+          "title": "Waiting",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "waiting",
+        "saved",
+        "failed"
+      ],
+      "title": "ImportPhotoTotals",
+      "type": "object"
+    },
     "ImportRowResult": {
       "properties": {
         "errors": {
@@ -388,6 +435,15 @@
             "$ref": "#/$defs/ErrorItem"
           },
           "title": "Errors",
+          "type": "array"
+        },
+        "photos": {
+          "description": "G2: this row's photo links and what became of each (empty while the photo download is switched off, and for a row whose links another row of the file already named).",
+          "items": {
+            "$ref": "#/$defs/PhotoLinkResult"
+          },
+          "maxItems": 9,
+          "title": "Photos",
           "type": "array"
         },
         "product_id": {
@@ -444,6 +500,163 @@
       "title": "Marketplace",
       "type": "string"
     },
+    "PhotoLinkResult": {
+      "description": "G2: one photo link from a spreadsheet row and what became of it. The link itself is never\nreturned (it may carry a signed token): `position` and `column` say which cell it was.",
+      "properties": {
+        "colourway_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The colour the photo belongs to on a style split by colour.",
+          "title": "Colourway Id"
+        },
+        "column": {
+          "enum": [
+            "main_image",
+            "additional_images"
+          ],
+          "title": "Column",
+          "type": "string"
+        },
+        "http_status": {
+          "anyOf": [
+            {
+              "maximum": 599,
+              "minimum": 100,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Http Status"
+        },
+        "image_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Image Id"
+        },
+        "link_id": {
+          "format": "uuid",
+          "title": "Link Id",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The seller sentence for a failed or skipped link (prefix it with Photo N).",
+          "title": "Message"
+        },
+        "position": {
+          "description": "Which link of the row this is (1 = the first link), for 'Photo N'.",
+          "maximum": 9,
+          "minimum": 1,
+          "title": "Position",
+          "type": "integer"
+        },
+        "problem": {
+          "anyOf": [
+            {
+              "enum": [
+                "not_found",
+                "not_public",
+                "not_image",
+                "unsupported_type",
+                "too_large",
+                "too_many_pixels",
+                "corrupt",
+                "timeout",
+                "unreachable",
+                "blocked_address",
+                "too_many_redirects",
+                "server_error",
+                "photo_limit",
+                "import_cap",
+                "removed_by_seller",
+                "product_gone"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Problem"
+        },
+        "retryable": {
+          "default": false,
+          "description": "A retry (`POST .../photo-links/retry`) would download this link again.",
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "status": {
+          "description": "`queued` waits to download; `downloading`; `saved` became a product photo (`image_id`, `view`); `failed` could not be used (`problem`, `message`); `skipped` was not downloaded (`problem`: the per-file cap, a photo the seller removed, or a deleted product).",
+          "enum": [
+            "queued",
+            "downloading",
+            "saved",
+            "failed",
+            "skipped"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "view": {
+          "anyOf": [
+            {
+              "enum": [
+                "front",
+                "back",
+                "close_up",
+                "lifestyle",
+                "size_chart",
+                "packaging_label",
+                "extra"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The view the saved photo holds now (`extra` for a plain additional photo); null until saved, and when the saved photo was removed.",
+          "title": "View"
+        }
+      },
+      "required": [
+        "link_id",
+        "position",
+        "column",
+        "status"
+      ],
+      "title": "PhotoLinkResult",
+      "type": "object"
+    },
     "RetryClass": {
       "enum": [
         "auto_retry",
@@ -490,6 +703,18 @@
       "minimum": 0,
       "title": "Imported",
       "type": "integer"
+    },
+    "photos": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ImportPhotoTotals"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "G2: the file's photo links by outcome; null when the import named none."
     },
     "rows": {
       "items": {

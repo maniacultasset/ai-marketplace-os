@@ -111,6 +111,11 @@ IMPLEMENTED: frozenset[str] = frozenset(
         "admin_quality",  # SI14
         "home_summary",  # FB6
         "home_brands",  # FB18
+        "inbox_groups_list",  # G1
+        "inbox_groups_answer",  # G1
+        "products_photo_links_retry",  # G2
+        "imports_photo_links_retry",  # G2
+        "photo_links_dismiss",  # G2
         "image_candidates_list",
         "image_candidates_accept",
         "image_candidates_reject",

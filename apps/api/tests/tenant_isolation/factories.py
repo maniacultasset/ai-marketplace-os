@@ -138,6 +138,8 @@ def _tenant_rows(conn: Conn, world: World) -> None:
         "sku_counters",
         f.insert(conn, "sku_counters", tenant_id=t, code="ACME-KUR", last_value=1),
     )
+    # 0040 (G2): a sheet photo link of the product
+    put("photo_links", f.photo_link(conn, t, side.product_id))
     ops.idempotency_key(conn, side)
     put("idempotency_keys", None)
     put("refresh_tokens", ops.refresh_token(conn, side))

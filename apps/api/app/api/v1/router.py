@@ -20,12 +20,14 @@ from app.api.v1.routers import (
     image_candidates,
     images,
     imports,
+    inbox_groups,
     invites,
     issues,
     jobs,
     listings,
     marketplaces,
     members,
+    photo_links,
     product_delete,
     products,
     rules,
@@ -66,5 +68,7 @@ for module in (
     size_run,
     home,
     skus,
+    inbox_groups,
+    photo_links,
 ):
     router.include_router(module.router)

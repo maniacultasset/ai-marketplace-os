@@ -115,6 +115,7 @@ CAPABILITY_ENV = {
     "size_chart_read_enabled": "SIZE_CHART_READ_ENABLED",
     "image_edit_enabled": "IMAGE_EDIT_ENABLED",
     "tenant_create_enabled": "TENANT_CREATE_ENABLED",
+    "sheet_photos_enabled": "SHEET_PHOTOS_ENABLED",  # G2
 }
 
 

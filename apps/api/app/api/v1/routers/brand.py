@@ -17,6 +17,7 @@ from app.api.errors import ApiError, domain_api_error
 from app.api.pagination import PageInfo, PageParams, encode_cursor
 from app.api.v1.deps import IdempotencyKey, IfMatch, get_current_principal
 from app.api.v1.routers.products import party_out
+from app.api.v1.schemas.affected_listings import AffectedListingOut
 from app.api.v1.schemas.brand import BrandDocumentOut, BrandDocumentPage, UploadChunkType
 from app.api.v1.schemas.brand_profile import BrandProfileIn, BrandProfileOut, BrandVoiceOut
 from app.api.v1.surface import OPS, route
@@ -104,10 +105,18 @@ def _profile_out(view: brand_profile.BrandProfileView) -> BrandProfileOut:
     voice = None if view.brand_voice is None else BrandVoiceOut.model_validate(view.brand_voice)
     return BrandProfileOut.model_construct(
         default_manufacturer=party_out(view.default_manufacturer),
+        default_marketer=party_out(view.default_marketer),
+        default_packer=party_out(view.default_packer),
+        default_importer=party_out(view.default_importer),
         website_url=view.website_url,
         brand_description=view.brand_description,
         brand_voice=voice,
         updated_at=view.updated_at,
+        affected_listings=(
+            None
+            if view.affected_listings is None
+            else [AffectedListingOut.model_validate(x) for x in view.affected_listings]
+        ),
     )
 
 
@@ -125,14 +134,18 @@ async def brand_profile_get(principal: CurrentPrincipal, response: Response) -> 
 async def brand_profile_update(
     body: BrandProfileIn, if_match: IfMatch, principal: CurrentPrincipal, response: Response
 ) -> BrandProfileOut:
-    """Set or clear the default manufacturer, the website, the brand description or the brand
-    voice (owner, admin). `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an
-    absent field is unchanged, `null` clears. The voice shapes tone and emphasis only: product
-    facts always win."""
+    """Set or clear the default manufacturer, marketer, packer or importer, the website, the brand
+    description or the brand voice (owner, admin). With the grouped Inbox on, setting a party
+    checks again the listings with an open question on it, so a question it answers closes, and
+    a changed party default returns `affected_listings` with each listing's redraft verdict.
+    `If-Match` is the `ETag` from GET (409 STALE_VERSION when stale); an absent field is
+    unchanged, `null` clears. The voice shapes tone and emphasis only: product facts always
+    win."""
     fields: dict[str, Any] = {}
-    if "default_manufacturer" in body.model_fields_set:
-        party = body.default_manufacturer
-        fields["default_manufacturer"] = None if party is None else PartyInput(**party.model_dump())
+    for key in brand_profile.PARTY_FIELDS:
+        if key in body.model_fields_set:
+            party = getattr(body, key)
+            fields[key] = None if party is None else PartyInput(**party.model_dump())
     for key in PROFILE_TEXT_FIELDS:
         if key in body.model_fields_set:
             fields[key] = getattr(body, key)

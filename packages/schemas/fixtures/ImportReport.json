@@ -10,8 +10,10 @@
       "sku": "SKU-1",
       "status": "imported",
       "product_id": null,
-      "errors": []
+      "errors": [],
+      "photos": []
     }
   ],
-  "error": null
+  "error": null,
+  "photos": null
 }

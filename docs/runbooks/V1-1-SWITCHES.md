@@ -13,6 +13,7 @@ gate passes"). The daily AI caps (prod since 2026-11-10: USD 20 platform, USD 3 
 | `CATEGORY_LAMPS_ENABLED` | New lamps listings (`home_decor_lamps`), lamps in the classifier's offer, and the lamps template in the requirements read. Off, an existing lamps listing still regenerates, corrects and publishes. | The read-only count below; then the 20 G-gen lamp cases pass |
 | `PHOTO_QA_ENABLED` | The deterministic photo checks: fill ratio, text on the image, watermark. Always warnings, never blocking. | 100 labelled images: precision at least 90 % |
 | `PHOTO_MATCH_ENABLED` (client feedback item 9; `deploy.sh` defaults it to `false` while the env files do not name it) | After a product photo passes its upload checks, one vision call (pipeline `photo_match`, mkos-pipeline 0.8.0) checks it shows this product in its colour, once per image content and colour. A `mismatch` or `unsure` photo asks the seller ("This is the right photo" keeps it, audited; or Remove). At approval an unkept `mismatch` blocks; an unkept `unsure`, a check still queued and a kept `mismatch` warn. A colour edit and each generate or regenerate queue the due checks (checks that ended with no call, e.g. a budget refusal, run again then). Photos uploaded before the switch went on, or whose queue failed, are checked by the worker's `schedule_photo_matches` pass within 5 minutes (every Front, Back, Close-up and lifestyle photo of the last 30 days that passed its checks and was never matched, 25 per brand a pass): no separate backfill step, and no generate needed. About USD 0.001 a photo. | The pipeline pin carries `photo_match` (0.8.0); G-match replay: 0 wrong photos passed as `match`, at most 20 % right photos questioned; then a live G-match record on the vision model |
+| `SHEET_PHOTOS_ENABLED` (G2; **not yet forwarded by `deploy.sh`**, see below) | A bulk import downloads each row's `main_image` and `additional_images` links in the background and stores them as product photos through the upload path, so the upload checks, the photo read and the photo match run on them as on an upload (inside the AI caps: each saved Front, Back or Close-up can mean one photo read and one photo match call). The import report row and the product show each link's result; the seller can retry failed links. Links only: no AI call of its own. `SHEET_PHOTOS_MAX_PER_IMPORT` (default 1000) caps the links per file. | Staging: import a sheet with public JPG/PNG links, a Google Drive share link, a 404 link and a private-address link; check the saved views, the per-row results, a retry, and that seller uploads during the download never answer 429 |
 
 ## Turning a switch on
 
@@ -22,6 +23,21 @@ gate passes"). The daily AI caps (prod since 2026-11-10: USD 20 platform, USD 3 
 3. Deploy with `scripts/deploy/gcp/deploy.sh prod deploy --sha <sha>` (the user runs it).
 4. Watch the first hour: `agent_runs` cost against the caps (`GET /admin/ai-credit`), and for the
    classifier the `category_review` tasks opened.
+
+### `SHEET_PHOTOS_ENABLED` (G2): the forwarding first
+
+`deploy.sh` forwards switches from an explicit list, and it does not name `SHEET_PHOTOS_ENABLED`
+yet, so a value in `prod.env` alone never reaches the containers. The release owner:
+
+1. Adds the forwarding to the api and the worker, the same way as `PHOTO_MATCH_ENABLED` (its
+   `true|false` check and both env blocks), with a deploy meta test like
+   `test_photo_match_switch_reaches_api_and_worker`. Both roles read it: the api for the retries
+   and the capability flag, the worker for the import plan, the download job and the sweeper.
+2. Turns it on in `staging.env`, deploys, and runs the staging check in the table above.
+3. Then sets `SHEET_PHOTOS_ENABLED=true` in `prod.env` and deploys (the user runs it).
+
+Off again: links already queued stay `queued` (the job ends `skipped: off`), nothing new is
+written, and the retries answer 501.
 
 Turning a switch off is the same PR with `false`. A queued classification then settles
 `unavailable` with no call, and a queued column map is answered with the deterministic mappings.
