@@ -209,6 +209,15 @@ def test_manufacturer_needs_party_id() -> None:
     assert _plan({"manufacturer": None}, row=row).typed_clear == ("manufacturer",)
 
 
+def test_manufacturer_address_correction_is_a_change() -> None:
+    # the same party with a corrected state (Sikkim -> Tamil Nadu) must not plan as a no-op
+    party = uuid.uuid4()
+    row = _row(manufacturer_party_id=party)
+    change = _plan({"manufacturer": object()}, row=row, party_id=party, party_moved=True)
+    assert change.typed_set == {"manufacturer_party_id": party}
+    assert not change.empty
+
+
 def test_size_chart_same_table_is_empty() -> None:
     chart = {"unit": "cm", "basis": "body", "rows": [{"size": "M", "chest": 90}]}
     row = _row(attributes={"size_measurements": {"normalized": chart, **SELLER}})

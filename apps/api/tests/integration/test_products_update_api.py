@@ -401,19 +401,72 @@ async def test_category_with_listing_refused(api: httpx.AsyncClient, products_wo
     assert ok.status_code == 200, ok.text
 
 
-async def test_operator_patch_cannot_rewrite_party(
+async def test_patch_corrects_the_own_manufacturer_address(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:
+    """Prod repro (KTEST-E2E-01): the product's own manufacturer moved from one state to another
+    at the same name, line 1 and PIN. The edit is saved on the matched party, not dropped."""
+    created = await _create(api, products_world, "SI1-P-MFR-FIX", manufacturer=PARTY)
+    party_id = created["manufacturer"]["id"]
+    moved = {**PARTY, "city": "Mysuru", "state_code": "TN", "gstin": "33ABCDE1234F1Z5"}
+    response = await _patch(
+        api, products_world, created["id"], {"manufacturer": moved, "country_of_origin": "IN"}
+    )
+    assert response.status_code == 200, response.text
+    out = response.json()["manufacturer"]
+    assert (out["id"], out["city"], out["state_code"], out["gstin"]) == (
+        party_id,
+        "Mysuru",
+        "TN",
+        "33ABCDE1234F1Z5",
+    )
+    reread = await api.get(f"{PRODUCTS}/{created['id']}", headers=_op(products_world))
+    assert reread.json()["manufacturer"]["state_code"] == "TN"
+    assert reread.json()["country_of_origin"] == "IN"
+    rows = _fact_audits(auth_db, created["id"])
+    assert len(rows) == 1
+    assert set(rows[0][7]["provenance"]) == {"manufacturer", "country_of_origin"}
+    # a line 2 or GSTIN the seller empties is cleared, not kept
+    cleared = {k: v for k, v in moved.items() if k != "gstin"}
+    again = await _patch(api, products_world, created["id"], {"manufacturer": cleared})
+    assert again.status_code == 200, again.text
+    assert again.json()["manufacturer"]["gstin"] is None
+    # the same body again is a no-op
+    same = await _patch(api, products_world, created["id"], {"manufacturer": cleared})
+    assert same.status_code == 200 and same.headers["ETag"] == again.headers["ETag"]
+
+
+async def test_operator_patch_cannot_rewrite_brand_party(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """Decision 16: a product route never rewrites a brand default party; the moved address is
+    a 422 at the changed field (never silently dropped), and the party row stays as it was."""
     seeded = await _create(api, products_world, "SI1-P-AC6-A", manufacturer=PARTY)
     tenant = products_world.tenant("acme")
+    owner = bearer_for(products_world, "owner@acme.test")
+    profile = await api.get("/api/v1/brand-profile", headers=owner)
+    made_default = await api.patch(
+        "/api/v1/brand-profile",
+        json={"default_manufacturer": PARTY},
+        headers={**owner, "If-Match": profile.headers["ETag"]},
+    )
+    assert made_default.status_code == 200, made_default.text
+    assert made_default.json()["default_manufacturer"]["id"] == seeded["manufacturer"]["id"]
     query = "SELECT * FROM business_parties WHERE legal_name = %s AND tenant_id = %s"
     before = auth_db.execute(query, [PARTY["legal_name"], tenant]).fetchall()
     target = await _create(api, products_world, "SI1-P-AC6-B")
     moved = {**PARTY, "city": "Mysuru", "state_code": "TN", "gstin": "33ABCDE1234F1Z5"}
     response = await _patch(api, products_world, target["id"], {"manufacturer": moved})
-    assert response.status_code == 200, response.text
+    assert response.status_code == 422, response.text
+    error = response.json()["error"]
+    assert error["type"] == "VALIDATION_FAILED"
+    assert error["details"][0]["loc"] == ["body", "manufacturer", "city"]
+    assert "Brand profile" in error["details"][0]["msg"]
     assert auth_db.execute(query, [PARTY["legal_name"], tenant]).fetchall() == before
-    assert response.json()["manufacturer"]["id"] == seeded["manufacturer"]["id"]
+    # the unchanged brand party still links
+    linked = await _patch(api, products_world, target["id"], {"manufacturer": PARTY})
+    assert linked.status_code == 200, linked.text
+    assert linked.json()["manufacturer"]["id"] == seeded["manufacturer"]["id"]
 
 
 async def test_audit_changed_keys_only(
