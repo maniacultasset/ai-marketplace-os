@@ -20,6 +20,12 @@ same question 34 times). No I/O, no clock: `app.services.inbox_groups` reads the
   origin stays `product_fact`: it is set per product.
 - **Has value.** Whether a member's product already holds the fact (its own value, or its
   style's for a variant): such a member is kept as it is, never overwritten.
+- **Rows.** A group's `count` is its items (one per open question or issue row), so the counts
+  add up to the Inbox's. Its `members` are rows: one per question, and one per listing for issues.
+  A listing can hold several distinct issues of one group, each its own stored row: two photos
+  failing the same check (`images[0]`, `images[3]`), or two required views missing (the front and
+  the size chart, both `IMAGE_NON_COMPLIANT` at `listing`, told apart by `raw_code`). Such a row
+  carries every item it stands for (`item_ids`, newest first), so "N listings" lists N rows.
 - **Order.** Blocking groups first, then the biggest, then the newest.
 """
 
@@ -41,8 +47,10 @@ ItemKind = Literal["task", "issue"]
 KEY_MAX: Final = 200
 GROUPS_MAX: Final = 300
 MEMBERS_MAX: Final = 1000
+"""Rows listed per group (listings for an issue group, questions for a question group)."""
 CATEGORIES_MAX: Final = 20
 MEMBER_LISTINGS_MAX: Final = 4
+MEMBER_ITEM_IDS_MAX: Final = 50
 ANSWER_IDS_MAX: Final = 100
 
 FACT_KINDS: Final = frozenset({"missing_fact"})
@@ -222,6 +230,12 @@ class Member:
     category: str | None = None
     listing_ids: tuple[uuid.UUID, ...] = ()
     has_value: bool = False
+    item_ids: tuple[uuid.UUID, ...] = ()
+    """On a row (`Group.members`): every item it stands for, newest first (`item_id` the first)."""
+
+    @property
+    def items(self) -> int:
+        return len(self.item_ids) or 1
 
 
 @dataclass(slots=True)
@@ -252,9 +266,33 @@ def _newest_first(member: Member) -> tuple[float, str]:
     return (-member.at.timestamp(), str(member.item_id))
 
 
+def _row_of(member: Member) -> tuple[str, uuid.UUID]:
+    """What one row stands for: an issue's listing, else the item itself (a question, or an
+    issue whose listing is unknown)."""
+    if member.item_kind == "issue" and member.listing_ids:
+        return ("listing", member.listing_ids[0])
+    return ("item", member.item_id)
+
+
+def rows(found: Sequence[Member]) -> list[Member]:
+    """`found` (one group's items, newest first) as rows: one per listing for issues, one per
+    question; each row is its newest item with `item_ids` set, the rows newest first."""
+    by_row: dict[tuple[str, uuid.UUID], list[Member]] = {}
+    for member in found:
+        by_row.setdefault(_row_of(member), []).append(member)
+    return [
+        dataclasses.replace(
+            items[0],
+            blocking=any(m.blocking for m in items),
+            item_ids=tuple(m.item_id for m in items),
+        )
+        for items in by_row.values()
+    ]
+
+
 def build_groups(members: Iterable[Member]) -> list[Group]:
     """Every member in exactly one group (so the counts add up to the Inbox's), each group's
-    members newest first (capped at `MEMBERS_MAX`, `members_more` past it), the groups in
+    rows (`rows`) newest first (capped at `MEMBERS_MAX`, `members_more` past it), the groups in
     `order`. The shared fields come from the newest member."""
     buckets: dict[str, list[Member]] = {}
     for member in members:
@@ -266,6 +304,7 @@ def build_groups(members: Iterable[Member]) -> list[Group]:
         products = {m.product_id for m in found if m.product_id is not None}
         listings = {lid for m in found for lid in m.listing_ids}
         categories = sorted({m.category for m in found if m.category})
+        listed = rows(found)
         groups.append(
             Group(
                 key=key,
@@ -282,8 +321,8 @@ def build_groups(members: Iterable[Member]) -> list[Group]:
                 blocking=any(m.blocking for m in found),
                 at=first.at,
                 categories=categories[:CATEGORIES_MAX],
-                members=found[:MEMBERS_MAX],
-                members_more=len(found) > MEMBERS_MAX,
+                members=listed[:MEMBERS_MAX],
+                members_more=len(listed) > MEMBERS_MAX,
             )
         )
     return order(groups)

@@ -4997,8 +4997,9 @@ export interface components {
         };
         /**
          * InboxGroupMemberOut
-         * @description One item of a group: a question (`task_id`) or an issue (`issue_id`), its product, and
-         *     whether the product already holds the fact (`has_value`: an answer for many keeps it).
+         * @description One row of a group: a question (`task_id`), or a listing's issues of the group (`issue_id`
+         *     the newest, `issue_ids` all of them), its product, and whether the product already holds the
+         *     fact (`has_value`: an answer for many keeps it).
          */
         InboxGroupMemberOut: {
             /**
@@ -5012,8 +5013,22 @@ export interface components {
              * @default false
              */
             has_value: boolean;
-            /** Issue Id */
+            /**
+             * Issue Id
+             * @description The row's newest issue (the one to open).
+             */
             issue_id?: string | null;
+            /**
+             * Issue Ids
+             * @description Issues only: the row's issues, newest first (at most 50; `items` counts them all). Empty for a question.
+             */
+            issue_ids?: string[];
+            /**
+             * Items
+             * @description The group's items this row stands for: 1 for a question; for issues, every open issue of the group on this listing (two photos failing the same check, or two required photo views missing, are two issues on one row).
+             * @default 1
+             */
+            items: number;
             /**
              * Listing Ids
              * @description The listings this item stands on: an issue's own listing, or the product's listings that are not archived (a question is shared by both marketplaces).
@@ -5058,7 +5073,7 @@ export interface components {
             categories?: string[];
             /**
              * Count
-             * @description The items in the group (every one, past the cap too).
+             * @description The items in the group (every one, past the row cap too): the sum of its members' `items` unless `members_more`. The sum over the groups is `total_items`.
              */
             count: number;
             error_code?: components["schemas"]["ErrorCode"] | null;
@@ -5084,10 +5099,14 @@ export interface components {
             listings: number;
             /** @description Issues only. */
             marketplace?: components["schemas"]["Marketplace"] | null;
-            /** Members */
+            /**
+             * Members
+             * @description The rows, newest first: one per question, one per listing for an issue group (so an issue group lists `listings` rows).
+             */
             members?: components["schemas"]["InboxGroupMemberOut"][];
             /**
              * Members More
+             * @description More rows than the 1,000 listed.
              * @default false
              */
             members_more: boolean;

@@ -249,6 +249,46 @@ async def test_group_counts_add_up_to_the_home_inbox_counts(
     assert {g["field"] for g in titles} == {"content.title", "content.bullets[]"}
 
 
+async def test_an_issue_group_lists_each_listing_once(
+    api: httpx.AsyncClient, products_world: World, auth_db: Conn
+) -> None:
+    """Prod 16 Nov (brand Yash): two required views missing on each listing (two issue rows at
+    `listing`, told apart by `raw_code`) listed every listing twice. One row per listing, its
+    `items` the issues on it; the counts still add up to Home's."""
+    acme = products_world.tenant("acme")
+    products = _products(products_world, auth_db, 3)
+    photo = {
+        "source": "vision_model",
+        "field_path": "listing",
+        "error_code": "IMAGE_NON_COMPLIANT",
+        "error_class": "media_error",
+        "retry_class": "user_action",
+    }
+    listings: dict[str, set[str]] = {}
+    with _guards_off(auth_db):
+        for i, product in enumerate(products):
+            lid = f.listing(auth_db, acme, product)
+            found: set[str] = set()
+            for view in ("front", "size_chart") if i < 2 else ("front",):
+                code = f"photo_view:{view}"
+                key = f"vision_model|listing|IMAGE_NON_COMPLIANT|{code}"
+                issue = f.listing_issue(
+                    auth_db, acme, lid, **photo, marketplace_code=code, dedupe_key=key
+                )
+                found.add(str(issue))
+            listings[str(lid)] = found
+    body = await _groups(api, products_world, "issues")
+    (group,) = [g for g in body["groups"] if g["error_code"] == "IMAGE_NON_COMPLIANT"]
+    assert (group["count"], group["listings"], len(group["members"])) == (5, 3, 3)
+    rows = {r["listing_ids"][0]: r for r in group["members"]}
+    assert set(rows) == set(listings)
+    for lid, row in rows.items():
+        assert set(row["issue_ids"]) == listings[lid]
+        assert row["items"] == len(listings[lid]) and row["issue_id"] == row["issue_ids"][0]
+    home = await api.get(HOME, headers=bearer_for(products_world, OPERATOR))
+    assert sum(g["count"] for g in body["groups"]) == home.json()["inbox"]["issues"]
+
+
 async def test_a_product_with_its_own_value_is_listed_as_kept(
     api: httpx.AsyncClient, products_world: World, auth_db: Conn
 ) -> None:

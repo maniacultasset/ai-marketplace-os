@@ -192,6 +192,71 @@ def test_members_are_capped_but_counted() -> None:
     assert len(groups[0].members) == m.MEMBERS_MAX and groups[0].members_more
 
 
+def _photo_issue(listing: uuid.UUID, product: uuid.UUID, *, at: datetime = T0) -> m.Member:
+    key = m.issue_key("IMAGE_NON_COMPLIANT", "listing", "amazon", "error")
+    return _member(
+        key,
+        at=at,
+        blocking=True,
+        item_kind="issue",
+        scope="per_item",
+        product_id=product,
+        listing_ids=(listing,),
+    )
+
+
+def test_an_issue_group_lists_one_row_per_listing() -> None:
+    """Prod 16 Nov (brand Yash): 49 listings each missing the front and the size chart (two
+    `IMAGE_NON_COMPLIANT` rows at `listing`, one per view) listed 98 identical rows."""
+    members: list[m.Member] = []
+    listings = [(uuid.uuid4(), uuid.uuid4()) for _ in range(49)]
+    for i, (listing, product) in enumerate(listings):
+        members.append(_photo_issue(listing, product, at=T0 + timedelta(minutes=i)))
+        members.append(_photo_issue(listing, product, at=T0 + timedelta(minutes=i, seconds=1)))
+    (group,) = m.build_groups(members)
+    assert (group.count, group.listings, group.products) == (98, 49, 49)
+    assert len(group.members) == 49 and not group.members_more
+    assert {r.listing_ids[0] for r in group.members} == {lid for lid, _ in listings}
+    assert all(r.items == 2 for r in group.members)
+    assert sum(r.items for r in group.members) == group.count
+    newest = group.members[0]
+    assert newest.listing_ids[0] == listings[-1][0]
+    assert newest.item_id == newest.item_ids[0]
+    assert newest.at == T0 + timedelta(minutes=48, seconds=1)
+    every = {i for r in group.members for i in r.item_ids}
+    assert every == {x.item_id for x in members}
+
+
+def test_a_listing_with_one_issue_is_one_row_of_one_item() -> None:
+    listing, product = uuid.uuid4(), uuid.uuid4()
+    (group,) = m.build_groups([_photo_issue(listing, product)])
+    assert (group.count, len(group.members), group.members[0].items) == (1, 1, 1)
+
+
+def test_questions_stay_one_row_each() -> None:
+    product = uuid.uuid4()
+    members = [_member("a", product_id=product, listing_ids=(uuid.uuid4(),)) for _ in range(3)]
+    (group,) = m.build_groups(members)
+    assert (group.count, len(group.members)) == (3, 3)
+    assert all(r.items == 1 and r.item_ids == (r.item_id,) for r in group.members)
+
+
+def test_an_issue_without_a_listing_is_its_own_row() -> None:
+    members = [_member("b", item_kind="issue", scope="per_item") for _ in range(2)]
+    (group,) = m.build_groups(members)
+    assert (group.count, len(group.members)) == (2, 2)
+
+
+def test_rows_are_capped_but_every_item_counted() -> None:
+    members: list[m.Member] = []
+    for _ in range(m.MEMBERS_MAX + 2):
+        listing, product = uuid.uuid4(), uuid.uuid4()
+        members += [_photo_issue(listing, product), _photo_issue(listing, product)]
+    (group,) = m.build_groups(members)
+    assert group.count == 2 * (m.MEMBERS_MAX + 2)
+    assert len(group.members) == m.MEMBERS_MAX and group.members_more
+
+
 def test_order_blocking_then_size_then_newest() -> None:
     members = [_member("big") for _ in range(5)]
     members += [_member("blocking", blocking=True)]
