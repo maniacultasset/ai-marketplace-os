@@ -61,6 +61,46 @@ async def test_upsert_by_sku_insert_update_revive(imports_db: JobWorld) -> None:
     assert found == ("Kurta", None, True, True)
 
 
+async def test_upsert_by_sku_restamps_only_changed_keys(imports_db: JobWorld) -> None:
+    """A key's provenance moves only when its value or source does (the FactWriter rule): a
+    style write that adds a theme keeps the stored source of an unchanged category."""
+    tenant = imports_db.tenant("acme")
+    form = {"source": "seller", "captured_via": "api", "updated_at": "2026-10-01T00:00:00Z"}
+    async with unit_of_work(tenant) as session:
+        made = await ProductRepository(session, tenant).upsert_by_sku(
+            ProductUpsert(sku="UP-2", title="Kurta", category="kurtas", stamp=form)
+        )
+    async with unit_of_work(tenant) as session:
+        await ProductRepository(session, tenant).upsert_by_sku(
+            upsert("UP-2", brand_name="Acme", variation_theme="size", size_run=("s",))
+        )
+
+    def via() -> tuple[Any, ...]:
+        row = imports_db.conn.execute(
+            "SELECT provenance -> 'title' ->> 'captured_via', "
+            "provenance -> 'category' ->> 'captured_via', "
+            "provenance -> 'brand_name' ->> 'captured_via', variation_theme "
+            "FROM products WHERE id = %s",
+            [made.id],
+        ).fetchone()
+        assert row is not None
+        return tuple(row)
+
+    assert via() == ("api", "api", "import", "size")
+    async with unit_of_work(tenant) as session:
+        await ProductRepository(session, tenant).upsert_by_sku(
+            ProductUpsert(
+                sku="UP-2",
+                title="Kurta",
+                category="tshirts",
+                stamp=STAMP,
+                variation_theme="size",
+                size_run=("s",),
+            )
+        )
+    assert via() == ("api", "import", "import", "size")
+
+
 async def test_upsert_by_sku_parent_link(imports_db: JobWorld) -> None:
     tenant = imports_db.tenant("acme")
     async with unit_of_work(tenant) as session:

@@ -182,3 +182,23 @@ async def test_a_saved_barcode_is_refused_with_a_reason(
     assert "barcode" in message
     # nothing moved: still a standalone with its barcode
     assert _identity(imports_db, pid) == [(SKU, True, "provided", "4006381333931", True)]
+
+
+async def test_add_variants_keeps_the_source_of_an_unchanged_category(
+    imports_db: JobWorld, api: httpx.AsyncClient
+) -> None:
+    """Prod 16 Nov (KTEST-E2E-01): a category chosen in the guided form read "From sheet" after
+    "Save variants". The style row repeats the same title and category, and the new theme and
+    size run made the upsert write, which re-stamped every identity key as an import."""
+    pid = await _saved(api, imports_db)
+    import_id = await _import(imports_db, api, _family_csv(exempt=True))
+    assert {r[1] for r in row_results(imports_db.conn, import_id)} == {"imported"}
+    via = imports_db.conn.execute(
+        "SELECT provenance -> 'category' ->> 'captured_via', "
+        "provenance -> 'title' ->> 'captured_via', variation_theme FROM products WHERE id = %s",
+        [pid],
+    ).fetchone()
+    assert via is not None and tuple(via) == ("api", "api", "size_color")
+    read = await api.get(f"{PRODUCTS}/{pid}", headers=as_member(imports_db, "operator@acme.test"))
+    assert read.status_code == 200, read.text
+    assert read.json()["field_sources"]["category"]["kind"] == "you"
