@@ -2899,7 +2899,7 @@ def test_prod_bc_release_switches_as_committed(repo_root: Path) -> None:
         assert values[name] == "true", name
     assert values["PIPELINE_REF"] == "3ed2bf6a6226b62d6e544f6abfadfd8d1657643e"
     assert values["CATEGORY_SUGGEST_ENABLED"] == "true"
-    assert values["AMAZON_PUBLISH_ENABLED"] == "false"
+    assert values["AMAZON_PUBLISH_ENABLED"] == "true"
 
 
 def test_prod_bc_release_switches_reach_their_roles(toolkit: Path, tmp_path: Path) -> None:
@@ -2913,8 +2913,8 @@ def test_prod_bc_release_switches_reach_their_roles(toolkit: Path, tmp_path: Pat
                 assert env[name] == "true", (name, role)
             else:
                 assert name not in env, (name, role)
-    assert by_role["api"]["AMAZON_PUBLISH_ENABLED"] == "false"
-    assert by_role["worker"]["AMAZON_PUBLISH_ENABLED"] == "false"
+    assert by_role["api"]["AMAZON_PUBLISH_ENABLED"] == "true"
+    assert by_role["worker"]["AMAZON_PUBLISH_ENABLED"] == "true"
 
 
 # ---- V1 hardening #9: the worker's size and its parallel image check children ----
