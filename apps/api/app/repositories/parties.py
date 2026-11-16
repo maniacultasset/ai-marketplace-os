@@ -8,9 +8,15 @@ name). `brand_consumer_care()` reads the brand default consumer-care contact.
 SI1 T8 (decision 16): `PartyFields` carries the full address (line 2, city, state, GSTIN). On a
 dedupe match the role is appended; only with `update_on_match=True` (the brand profile route,
 `settings:manage`) are line 2, city, state and GSTIN updated, each as `COALESCE(new, stored)`.
-A match that changes nothing writes nothing (the row stays byte-identical). The brand profile
-repository gains `ensure`, `get_for_update`, `set_default_manufacturer` and (client item 1)
-`set_website`.
+A match that changes nothing writes nothing (the row stays byte-identical).
+
+Product edit (`PATCH /products/{id}`): `find(fields)` reads the live party a match would link,
+and `set_address(party_id, fields)` writes its line 2, city, state and GSTIN as sent (None
+clears), so a seller's correction of a product's own manufacturer is saved. The service refuses
+it for a brand default party (decision 16 keeps those to the brand profile route).
+
+The brand profile repository gains `ensure`, `get_for_update`, `set_default_manufacturer` and
+(client item 1) `set_website`.
 """
 
 from __future__ import annotations
@@ -21,7 +27,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
-from sqlalchemy import ColumnElement, and_, case, cast, func, literal, not_, or_, update
+from sqlalchemy import ColumnElement, Row, and_, case, cast, func, literal, not_, or_, update
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
@@ -145,6 +151,42 @@ class BusinessPartyRepository(TenantScopedRepository[BusinessParty]):
             )
         ).scalar_one()
         return found, False
+
+    async def find(self, fields: PartyFields) -> Row[Any] | None:
+        """The `id` and `MATCH_UPDATABLE` columns of the live party `match_or_create(fields)`
+        would link (same `dedupe_key`), or None. Plain columns, not an ORM row, so a later
+        `set_address` leaves no stale party in the session for the response to read."""
+        columns = [BusinessParty.id, *(getattr(BusinessParty, n) for n in MATCH_UPDATABLE)]
+        found: Row[Any] | None = (
+            await self.db.execute(
+                self._select()
+                .where(
+                    BusinessParty.deleted_at.is_(None),
+                    BusinessParty.dedupe_key == self._dedupe(fields),
+                )
+                .with_only_columns(*columns)
+            )
+        ).one_or_none()
+        return found
+
+    async def set_address(self, party_id: uuid.UUID, fields: PartyFields) -> bool:
+        """Write `MATCH_UPDATABLE` (line 2, city, state, GSTIN) of a live party exactly as given
+        (None clears). True when the stored row changed; an unchanged one is not written."""
+        self._check_uow()
+        values = {name: getattr(fields, name) for name in MATCH_UPDATABLE}
+        table = BusinessParty.__table__
+        changed = or_(*(table.c[name].is_distinct_from(v) for name, v in values.items()))
+        stmt = self._scoped_write(
+            update(BusinessParty)
+            .where(
+                self._tenant_criterion(include_platform=False),
+                BusinessParty.id == party_id,
+                BusinessParty.deleted_at.is_(None),
+                changed,
+            )
+            .values(values)
+        ).returning(BusinessParty.id)
+        return (await self.db.execute(stmt)).first() is not None
 
     async def get(self, party_id: uuid.UUID) -> BusinessParty | None:
         """A live party of this tenant, or None."""

@@ -15,6 +15,12 @@ so a lost-response retry is safe (invariant 10). Every write goes through `FactW
 `product.fact_updated` audit row holds the changed keys' envelopes only, under `attributes` and
 `provenance` (the allow-list; never a party's name or address, CP4).
 
+Manufacturer: a party at the same legal name, line 1 and PIN as a stored one is that party
+(`dedupe_key`), so a new line 2, city, state or GSTIN corrects the stored party's address (written
+as sent, after `If-Match`) and counts as a manufacturer change. A brand default party is refused
+with 422 `VALIDATION_FAILED` at the changed field: only the brand profile route rewrites it
+(decision 16).
+
 SI3: `confirm_attributes` confirms photo-derived values as they are (`confirmed_by`/`_at` on the
 `ai` Fact); `{attributes: {<key>: null}}` on a photo value is the reject. SI9 B5: the reject of an
 unconfirmed photo value records the value in `products.photo_rejections[key]`, so the next photo
@@ -65,6 +71,7 @@ from sqlalchemy.exc import DBAPIError
 from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.rbac import Principal
 from app.repositories.attribute_definitions import AttributeDef
+from app.repositories.parties import MATCH_UPDATABLE, PartyFields
 from app.repositories.uow import tenant_uow
 from app.services import product_identifier
 from app.services.category_confirm import settle_on_category_write
@@ -345,11 +352,14 @@ def plan_patch(
     has_listing: bool,
     now: datetime,
     party_id: uuid.UUID | None = None,
+    party_moved: bool = False,
     children: Sequence[tuple[Decimal | None, Decimal | None]] = (),
     size_chart_image_id: uuid.UUID | None = None,
 ) -> ProductChange:
     """The change set of `patch` against the locked `row` (pure). `party_id` is the matched or
-    created party for a non-null `manufacturer`; `children` are a style's `(price, mrp)`."""
+    created party for a non-null `manufacturer`; `party_moved` says its address is corrected by
+    this patch, so the manufacturer changes even when `party_id` is the one already linked;
+    `children` are a style's `(price, mrp)`."""
     unknown = set(patch) - PATCH_FIELDS
     if unknown:
         raise InputError(ErrorCode.VALIDATION_FAILED, sorted(unknown)[0])
@@ -373,7 +383,7 @@ def plan_patch(
             value = party_id
             if value is None:
                 raise ValueError("a manufacturer patch needs its party id")
-        if getattr(row, column) != value:
+        if getattr(row, column) != value or (name == "manufacturer" and party_moved):
             if name == "category" and has_listing:
                 raise InputError(ErrorCode.VALIDATION_FAILED, "category")
             typed[column] = value
@@ -570,6 +580,26 @@ async def _size_chart_image(
     return image
 
 
+BRAND_PARTY_MSG: Final = "This is your brand's manufacturer. Change its address in Brand profile."
+
+
+async def _party_moved(uow: Any, party: PartyFields) -> bool:
+    """True when `party` corrects the address of the stored party it matches (same legal name,
+    line 1 and PIN: the `dedupe_key`) in line 2, city, state or GSTIN. Linking the match as it
+    was dropped that edit silently, so the caller writes it (`set_address`) after `If-Match`. A
+    brand default party is 422 `VALIDATION_FAILED` at the first changed field (decision 16:
+    only `PATCH /brand-profile` rewrites one, so an operator cannot void every approval)."""
+    stored = await uow.parties.find(party)
+    if stored is None:
+        return False
+    moved = [n for n in MATCH_UPDATABLE if getattr(stored, n) != getattr(party, n)]
+    if not moved:
+        return False
+    if stored.id in (await uow.brand_profiles.default_parties()).values():
+        raise InputError(ErrorCode.VALIDATION_FAILED, f"manufacturer.{moved[0]}", BRAND_PARTY_MSG)
+    return True
+
+
 async def _update_product(
     principal: Principal, product_id: uuid.UUID, patch: Mapping[str, Any], if_match: str
 ) -> ProductView:
@@ -593,12 +623,15 @@ async def _update_product(
         attribute_names += list(patch.get("confirm_attributes") or ())
         defs = await uow.attribute_definitions.resolve(attribute_names)
         party_id = None
+        party: PartyFields | None = None
+        party_moved = False
         manufacturer = patch.get("manufacturer")
         if isinstance(manufacturer, PartyInput):
             if level not in TYPED["manufacturer"][2]:
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "manufacturer")
-            # decision 16: a product route links the matching party, never rewrites it
-            party_id = await uow.parties.match_or_create(party_fields(manufacturer))
+            party = party_fields(manufacturer)
+            party_moved = await _party_moved(uow, party)
+            party_id = await uow.parties.match_or_create(party)
         if patch.get("brand_name") is not None:
             if level not in TYPED["brand_name"][2]:
                 raise InputError(ErrorCode.FACT_LEVEL_INVALID, "brand_name")
@@ -614,6 +647,7 @@ async def _update_product(
             has_listing=has_listing,
             now=now,
             party_id=party_id,
+            party_moved=party_moved,
             children=children,
             size_chart_image_id=chart_image,
         )
@@ -633,6 +667,8 @@ async def _update_product(
         if product_etag(row.id, row.updated_at) != if_match:
             raise ConflictError(ErrorCode.STALE_VERSION, "products_etag")
         await apply_fan_out(uow, principal, fan_out, column_fact)
+        if party_moved and party_id is not None and party is not None:
+            await uow.parties.set_address(party_id, party)
         if change.empty and id_change is None:
             return await full_view(uow, row)  # only the variants changed (CP-D11)
         column_keys: dict[str, str] = {}
