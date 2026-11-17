@@ -7,6 +7,7 @@ from __future__ import annotations
 import dataclasses
 import inspect
 import string
+import uuid
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
@@ -291,3 +292,31 @@ def test_setting_defaults_off(clean_env: Any) -> None:
 def test_env_example_turns_it_on(repo_root: Any) -> None:
     text = (repo_root / ".env.example").read_text(encoding="utf-8")
     assert "AMAZON_VALIDATION_PREVIEW_ENABLED=true" in text.splitlines()
+
+
+# ---- feedback 17 Nov: a bottomwear type is not dry-run without its stored definition ----
+
+
+async def test_bottomwear_preview_without_definition_sends_nothing(fake: Any) -> None:
+    from app.adapters.base import ProductTypeSchema
+
+    adapter = _adapter(fake)
+    body = amazon_item().listing.model_copy(update={"category": "jeans"})
+    jeans = _no_images(amazon_item(body, template=template("jeans")))
+    result = await adapter.preview_remote(jeans)
+    assert result.status == "failed"
+    assert [e.message for e in result.errors if e.error_code.value == "CATEGORY_NOT_MAPPED"] == [
+        c.PTD_REQUIRED_MESSAGE
+    ]
+    assert fake.state.fake.spapi_preview_calls == 0
+    stored = ProductTypeSchema(
+        definition_id=uuid.uuid4(),
+        product_type="PANTS",
+        product_type_version="1",
+        requirements="LISTING",
+        enforced=True,
+        digest=bytes(32),
+    )
+    result = await adapter.preview_remote(dataclasses.replace(jeans, product_type_schema=stored))
+    assert "CATEGORY_NOT_MAPPED" not in {e.error_code.value for e in result.errors}
+    await adapter.aclose()

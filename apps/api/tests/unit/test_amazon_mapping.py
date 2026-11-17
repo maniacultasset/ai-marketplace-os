@@ -355,7 +355,8 @@ def test_amazon_bottomwear_with_its_stored_definition_is_not_refused() -> None:
     assert "CATEGORY_NOT_MAPPED" not in {e.error_code.value for e in check(stored)}
     other = _bottom("jeans", product_type_schema=_ptd("SHIRT"))
     assert "CATEGORY_NOT_MAPPED" in {e.error_code.value for e in check(other)}
-    # the update path never reads a definition, so it is never refused for lack of one
+    # `schema=False` alone (the repair reads, which send nothing) leaves the guard off; every
+    # send path (create, update, remote preview) turns it on
     _, errors = build(_bottom("jeans"), schema=False)
     assert "CATEGORY_NOT_MAPPED" not in {e.error_code.value for e in errors}
 
