@@ -51,6 +51,7 @@ from app.repositories.variants import ColourwayRow
 from app.services import category_suggest, image_views, photo_views, product_identifier
 from app.services import photo_links as sheet_photos
 from app.services.budget import admit
+from app.services.category_honesty import LOOKS_LIKE_GROUPS as CATEGORY_GROUP_NAMES
 from app.services.field_sources import FieldSource, field_sources
 from app.services.hsn_suggest import HsnSuggestion, suggest_hsn
 from app.services.image_fixes import fix_unavailable_for, fixes_for
@@ -812,6 +813,10 @@ def public_category_suggestion(row: Any) -> dict[str, Any] | None:
         "candidates": candidates,
         "calibration_version": stored.get("calibration_version"),
         "at": stored.get("at"),
+        "not_listed": stored.get("not_listed") is True,
+        "looks_like": (
+            stored.get("looks_like") if stored.get("looks_like") in CATEGORY_GROUP_NAMES else None
+        ),
     }
 
 

@@ -3713,6 +3713,13 @@ export interface components {
         CategoryDraftSuggestionOut: {
             /** Candidates */
             candidates?: components["schemas"]["CategoryDraftCandidateOut"][];
+            /** Looks Like */
+            looks_like?: ("topwear" | "bottomwear" | "ethnic" | "home" | "other") | null;
+            /**
+             * Not Listed
+             * @default false
+             */
+            not_listed: boolean;
             /**
              * Status
              * @enum {string}
@@ -3766,6 +3773,13 @@ export interface components {
             calibration_version?: string | null;
             /** Candidates */
             candidates?: components["schemas"]["CategoryCandidateOut"][];
+            /** Looks Like */
+            looks_like?: ("topwear" | "bottomwear" | "ethnic" | "home" | "other") | null;
+            /**
+             * Not Listed
+             * @default false
+             */
+            not_listed: boolean;
             /**
              * Status
              * @enum {string}

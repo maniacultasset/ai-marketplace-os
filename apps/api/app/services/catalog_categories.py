@@ -26,11 +26,13 @@ from app.repositories.uow import tenant_uow
 from app.services.category_gate import UNCATEGORIZED, category_enabled
 
 __all__ = [
+    "CATEGORY_GROUPS",
     "CATEGORY_LABELS",
     "CategoryCatalog",
     "CategoryChoice",
     "MarketplaceMapping",
     "build_categories",
+    "category_group",
     "category_label",
     "list_categories",
     "type_name",
@@ -41,6 +43,17 @@ CATEGORY_LABELS: Final[Mapping[str, str]] = {
     "ethnic_wear_kurta_sets": "Kurta sets",
     "tshirts": "T-shirts",
     "home_decor_lamps": "Lamps",
+}
+# The shelf a category sits on in the picker; a slug missing here is "other".
+CATEGORY_GROUPS: Final[Mapping[str, str]] = {
+    "tshirts": "topwear",
+    "ethnic_wear_kurta_sets": "ethnic",
+    "home_decor_lamps": "home",
+    "jeans": "bottomwear",
+    "trousers": "bottomwear",
+    "track_pants": "bottomwear",
+    "shorts": "bottomwear",
+    "skirts": "bottomwear",
 }
 TYPE_NAMES: Final[Mapping[Marketplace, Mapping[str, str]]] = {
     Marketplace.AMAZON: amazon.PRODUCT_TYPE_NAMES,
@@ -80,6 +93,11 @@ def _words(code: str) -> str:
 def category_label(slug: str) -> str:
     """`ethnic_wear_kurta_sets` -> "Kurta sets"; an unknown slug reads as words."""
     return CATEGORY_LABELS.get(slug) or _words(slug)
+
+
+def category_group(slug: str) -> str:
+    """`jeans` -> "bottomwear"; an unknown slug is "other"."""
+    return CATEGORY_GROUPS.get(slug, "other")
 
 
 def type_name(marketplace: str, product_type: str) -> str:

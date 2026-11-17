@@ -4,7 +4,7 @@ A draft classification is an `image_compliance` job (`entity_type='category_sugg
 entity id derived from the draft's digest: a draft has no product row) whose payload names
 `category_draft` with the draft text and its digest (`app.services.category_draft`;
 `app.workers.image_jobs` dispatches). Its answer is the
-job's `result_json`: `{status, candidates, calibration_version}`. It writes no product, fact,
+job's `result_json`: `{status, candidates, calibration_version, not_listed, looks_like}`. It writes no product, fact,
 provenance, task or listing: the seller picks a candidate on the add form.
 
 1. The payload's text is re-validated as `ProductText` (an invalid one fails the job).
@@ -30,14 +30,15 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from mkos_schemas.classify import CategoryOption, ClassifyRequest, ClassifyResult, ProductText
+from mkos_schemas.classify import ClassifyRequest, ClassifyResult, ProductText
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
 from pydantic import BaseModel, ValidationError
 
 from app.core.logging import get_logger
 from app.repositories.uow import tenant_uow
-from app.services.category_gate import CategoryOffer, category_offers
+from app.services.category_gate import CategoryOffer, category_offers, classify_options
+from app.services.category_honesty import Honesty, assess
 from app.services.image_edit_result import trust_records
 from app.workers.category_suggestion import AGENT, PROMPT_PREFIX, SEAM_GRACE_S, TRIGGERS, screen
 from app.workers.errors import JobFailed, RetryableJobError, system_report
@@ -70,7 +71,10 @@ def _text(ctx: JobContext) -> ProductText:
         raise _failed("the draft classification job has no valid text", ctx) from None
 
 
-def _answer(status: str, result: ClassifyResult | None = None) -> Outcome:
+def _answer(
+    status: str, result: ClassifyResult | None = None, honesty: Honesty | None = None
+) -> Outcome:
+    honest = honesty or Honesty()
     body: dict[str, Any] = {
         "status": status,
         "candidates": (
@@ -82,6 +86,8 @@ def _answer(status: str, result: ClassifyResult | None = None) -> Outcome:
             ]
         ),
         "calibration_version": None if result is None else result.calibration_version[:32],
+        "not_listed": honest.not_listed,
+        "looks_like": honest.looks_like,
     }
     return Outcome("succeeded", body, zero_reservation=True)
 
@@ -94,14 +100,7 @@ def _request(ctx: JobContext, text: ProductText, offers: list[CategoryOffer]) ->
         request_id=ctx.request_id,
         text=text,
         images=[],
-        categories=[
-            CategoryOption(
-                category=offer.category,
-                key_attributes=list(offer.key_attributes),
-                template_version=offer.template_version,
-            )
-            for offer in offers
-        ],
+        categories=classify_options(offers),
     )
 
 
@@ -187,4 +186,4 @@ async def run_category_draft(ctx: JobContext) -> Outcome:
         return _answer("failed")
     screened = screen(checked, request)
     log.info("category_draft.stored", job_run_id=str(job_id), candidates=len(screened.candidates))
-    return _answer("suggested", screened)
+    return _answer("suggested", screened, assess(checked, screened, request.text))
