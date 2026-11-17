@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
 from mkos_schemas.enums import Marketplace
 
@@ -26,11 +26,13 @@ from app.repositories.uow import tenant_uow
 from app.services.category_gate import UNCATEGORIZED, category_enabled
 
 __all__ = [
+    "CATEGORY_GROUPS",
     "CATEGORY_LABELS",
     "CategoryCatalog",
     "CategoryChoice",
     "MarketplaceMapping",
     "build_categories",
+    "category_group",
     "category_label",
     "list_categories",
     "type_name",
@@ -41,6 +43,23 @@ CATEGORY_LABELS: Final[Mapping[str, str]] = {
     "ethnic_wear_kurta_sets": "Kurta sets",
     "tshirts": "T-shirts",
     "home_decor_lamps": "Lamps",
+    "jeans": "Jeans",
+    "trousers": "Trousers",
+    "track_pants": "Track pants",
+    "shorts": "Shorts",
+    "skirts": "Skirts",
+}
+# Feedback 17 Nov: the picker's heading for each category; a slug missing here is "other".
+CategoryGroup = Literal["topwear", "bottomwear", "ethnic", "home", "other"]
+CATEGORY_GROUPS: Final[Mapping[str, CategoryGroup]] = {
+    "tshirts": "topwear",
+    "ethnic_wear_kurta_sets": "ethnic",
+    "home_decor_lamps": "home",
+    "jeans": "bottomwear",
+    "trousers": "bottomwear",
+    "track_pants": "bottomwear",
+    "shorts": "bottomwear",
+    "skirts": "bottomwear",
 }
 TYPE_NAMES: Final[Mapping[Marketplace, Mapping[str, str]]] = {
     Marketplace.AMAZON: amazon.PRODUCT_TYPE_NAMES,
@@ -64,6 +83,7 @@ class CategoryChoice:
     label: str
     enabled: bool
     marketplaces: tuple[MarketplaceMapping, ...]
+    group: CategoryGroup = "other"
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +100,11 @@ def _words(code: str) -> str:
 def category_label(slug: str) -> str:
     """`ethnic_wear_kurta_sets` -> "Kurta sets"; an unknown slug reads as words."""
     return CATEGORY_LABELS.get(slug) or _words(slug)
+
+
+def category_group(slug: str) -> CategoryGroup:
+    """The picker group of a category; an unknown slug is "other"."""
+    return CATEGORY_GROUPS.get(slug, "other")
 
 
 def type_name(marketplace: str, product_type: str) -> str:
@@ -111,6 +136,7 @@ def build_categories(
             label=category_label(slug),
             enabled=category_enabled(slug, settings),
             marketplaces=tuple(sorted(rows, key=lambda m: m.marketplace)),
+            group=category_group(slug),
         )
         for slug, rows in grouped.items()
     ]

@@ -316,3 +316,52 @@ def test_registry_amazon_previewer() -> None:
     from app.adapters.registry import previewer
 
     assert previewer("amazon") is preview
+
+
+# ---- feedback 17 Nov: bottomwear waits for its stored product type definition ----
+
+
+def _ptd(product_type: str) -> Any:
+    from app.adapters.base import ProductTypeSchema
+
+    return ProductTypeSchema(
+        definition_id=uuid.uuid4(),
+        product_type=product_type,
+        product_type_version="1",
+        requirements="LISTING",
+        enforced=True,
+        digest=bytes(32),
+    )
+
+
+def _bottom(category: str, **over: Any) -> Any:
+    body = listing().model_copy(update={"category": category})
+    return amazon_item(body, template=template(category), **over)
+
+
+@pytest.mark.parametrize("category", ["jeans", "trousers", "track_pants", "shorts", "skirts"])
+def test_amazon_bottomwear_without_stored_definition_not_mapped(category: str) -> None:
+    from app.adapters.amazon.constants import PTD_REQUIRED_MESSAGE
+    from app.adapters.amazon.mapping import check
+
+    errors = [e for e in check(_bottom(category)) if e.error_code.value == "CATEGORY_NOT_MAPPED"]
+    assert [(e.field, e.message) for e in errors] == [("listing", PTD_REQUIRED_MESSAGE)]
+
+
+def test_amazon_bottomwear_with_its_stored_definition_is_not_refused() -> None:
+    from app.adapters.amazon.mapping import build, check
+
+    stored = _bottom("jeans", product_type_schema=_ptd("PANTS"))
+    assert "CATEGORY_NOT_MAPPED" not in {e.error_code.value for e in check(stored)}
+    other = _bottom("jeans", product_type_schema=_ptd("SHIRT"))
+    assert "CATEGORY_NOT_MAPPED" in {e.error_code.value for e in check(other)}
+    # the update path never reads a definition, so it is never refused for lack of one
+    _, errors = build(_bottom("jeans"), schema=False)
+    assert "CATEGORY_NOT_MAPPED" not in {e.error_code.value for e in errors}
+
+
+@pytest.mark.parametrize("category", ["ethnic_wear_kurta_sets", "tshirts"])
+def test_amazon_launch_categories_never_wait_for_a_definition(category: str) -> None:
+    body = listing().model_copy(update={"category": category})
+    sent = amazon_item(body, template=template(category))
+    assert "CATEGORY_NOT_MAPPED" not in {e[1] for e in _codes(sent)}

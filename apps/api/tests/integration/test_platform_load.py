@@ -50,7 +50,7 @@ def test_platform_load_idempotent_no_tenants(
     code, out, err = run(capsys)
     assert (code, err) == (0, "")
     assert out == (
-        "platform load: ok (6 templates inserted, 6 promoted, 9 error-map rows inserted, "
+        "platform load: ok (16 templates inserted, 16 promoted, 9 error-map rows inserted, "
         "0 toggled)\n"
     )
     first = counts(superuser_conn)
@@ -72,6 +72,8 @@ def test_platform_load_idempotent_no_tenants(
     # feedback item 10: kurta v4, tshirts v3, lamps v3 (recommended attributes)
     assert ("tshirts", 3, "SHIRT") in current and ("ethnic_wear_kurta_sets", 4, "KURTA") in current
     assert ("home_decor_lamps", 3, "LAMP") in current
+    # feedback 17 Nov: the bottomwear mappings, version 1 each
+    assert ("jeans", 1, "PANTS") in current and ("skirts", 1, "SKIRT") in current
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])

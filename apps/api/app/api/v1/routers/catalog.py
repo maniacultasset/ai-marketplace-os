@@ -27,6 +27,7 @@ from app.api.v1.schemas.catalog import (
     PhotoViewRuleOut,
     RequirementLevelsOut,
     RequirementsOut,
+    SizeProfileOut,
 )
 from app.api.v1.surface import OPS, route
 from app.core.rbac import Principal
@@ -80,6 +81,15 @@ async def catalog_requirements_get(
         levels=RequirementLevelsOut.model_validate(
             {m.value: dict(v) for m, v in found.levels.items()}
         ),
+        size_profile=(
+            None
+            if found.size_profile is None
+            else SizeProfileOut(
+                size_system=found.size_profile.size_system,
+                sizes=list(found.size_profile.sizes),
+                measures=list(found.size_profile.measures),
+            )
+        ),
     )
 
 
@@ -97,6 +107,7 @@ async def catalog_categories_list(principal: CurrentPrincipal) -> CategoryCatalo
                 category=item.category,
                 label=item.label,
                 enabled=item.enabled,
+                group=item.group,
                 marketplaces=[
                     MarketplaceCategoryOut.model_validate(m, from_attributes=True)
                     for m in item.marketplaces

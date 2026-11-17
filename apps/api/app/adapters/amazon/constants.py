@@ -41,13 +41,25 @@ EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
         None: ("identifier", "package_dimensions", "package_weight"),
         "tshirts": ("gender",),
         "ethnic_wear_kurta_sets": ("gender",),
+        "jeans": ("gender",),
+        "trousers": ("gender",),
+        "track_pants": ("gender",),
+        "shorts": ("gender",),
+        "skirts": ("gender",),
     }
 )
 # Client feedback 11 Nov (item 5): the plain name of each seeded Amazon product type, shown beside
 # the type itself in the category picker ("On Amazon: Kurta (KURTA)"). A type missing here reads
 # as words from its code.
 PRODUCT_TYPE_NAMES: Final[Mapping[str, str]] = MappingProxyType(
-    {"KURTA": "Kurta", "SHIRT": "Shirt", "LAMP": "Lamp"}
+    {
+        "KURTA": "Kurta",
+        "SHIRT": "Shirt",
+        "LAMP": "Lamp",
+        "PANTS": "Pants",
+        "SHORTS": "Shorts",
+        "SKIRT": "Skirt",
+    }
 )
 # Client feedback item 5 (2026-11-12): the Amazon browse node a category's listings ask for. The
 # node id is the category template's `external_category_id` (the mapping table of spec [71]);
@@ -102,8 +114,13 @@ AUDIENCE: Final[Mapping[str, Mapping[str, str]]] = MappingProxyType(
     }
 )
 """`products.gender` -> the three Amazon audience attributes (SI8 PLAN §2.2; believed, DL-A)."""
-AUDIENCE_PRODUCT_TYPES: Final = frozenset({"KURTA", "SHIRT"})
+AUDIENCE_PRODUCT_TYPES: Final = frozenset({"KURTA", "SHIRT", "PANTS", "SHORTS", "SKIRT"})
 """The apparel product types that send (and need) the audience."""
+PTD_REQUIRED_PRODUCT_TYPES: Final = frozenset({"PANTS", "SHORTS", "SKIRT"})
+"""Feedback 17 Nov: the bottomwear product types, whose attribute names are believed only. Check
+and publish refuse them (`CATEGORY_NOT_MAPPED`) until a stored LISTING definition exists for the
+type; draft, generate and edit stay open. Lift a type by the owner's PTD refresh, no code change."""
+PTD_REQUIRED_MESSAGE: Final = "Kuinn can draft this category now; sending it to Amazon opens soon."
 TEXT_IDENTITY: Final = frozenset({BRAND_ATTRIBUTE, DEPARTMENT, AGE_RANGE})
 """The identity attributes whose entries carry `language_tag`."""
 ITEM_NAME_MAX: Final = 200

@@ -22,6 +22,14 @@ HSN_BY_CATEGORY: Final = MappingProxyType(
         "ethnic_wear_kurta_sets": "6204",
         # 9405: luminaires and lighting fittings, including lamps
         "home_decor_lamps": "9405",
+        # 6203: men's or boys' trousers, breeches and shorts, not knitted (jeans, chinos, shorts)
+        "jeans": "6203",
+        "trousers": "6203",
+        "shorts": "6203",
+        # 6103: men's or boys' trousers and shorts, knitted or crocheted (track pants, joggers)
+        "track_pants": "6103",
+        # 6204: women's or girls' skirts and divided skirts, not knitted
+        "skirts": "6204",
     }
 )
 

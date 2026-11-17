@@ -53,7 +53,8 @@ from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.budget import admit, refuse
 from app.services.catalog_categories import category_label
-from app.services.category_gate import category_offers
+from app.services.category_gate import category_offers, offer_digest_slugs
+from app.services.category_honesty import LOOKS_LIKE_GROUPS as GROUPS
 from app.services.category_suggest import (
     DESCRIPTION_CHARS,
     MAX_ATTRIBUTES,
@@ -164,15 +165,31 @@ def _body(
     status: str,
     suggestion_id: uuid.UUID | None = None,
     candidates: list[dict[str, Any]] | None = None,
+    *,
+    not_listed: bool = False,
+    looks_like: str | None = None,
 ) -> dict[str, Any]:
     return {
         "suggestion_id": None if suggestion_id is None else str(suggestion_id),
         "status": status,
         "candidates": candidates or [],
+        "not_listed": not_listed,
+        "looks_like": looks_like,
     }
 
 
+def _flags(result: Mapping[str, Any]) -> tuple[bool, str | None]:
+    """The stored `not_listed` and `looks_like` (absent on an answer stored before them)."""
+    looks_like = result.get("looks_like")
+    return (
+        result.get("not_listed") is True,
+        looks_like if isinstance(looks_like, str) and looks_like in GROUPS else None,
+    )
+
+
 def _candidates(result: Mapping[str, Any]) -> list[dict[str, Any]]:
+    not_listed, looks_like = _flags(result)
+    guess = not_listed or looks_like is not None
     out: list[dict[str, Any]] = []
     raw = result.get("candidates")
     for item in raw if isinstance(raw, list) else []:
@@ -185,7 +202,7 @@ def _candidates(result: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "label": category_label(item["category"]),
                 "confidence": confidence,
                 "rationale": str(item.get("rationale") or ""),
-                "unsure": confidence < CLASSIFY_CONFIDENCE_TASK_THRESHOLD,
+                "unsure": guess or confidence < CLASSIFY_CONFIDENCE_TASK_THRESHOLD,
             }
         )
     return out
@@ -203,7 +220,12 @@ def answer_from_job(
     answer = stored.get("status")
     if answer not in ANSWERS:
         return _body("failed", job_id)
-    return _body(str(answer), job_id, _candidates(stored) if answer == "suggested" else [])
+    if answer != "suggested":
+        return _body(str(answer), job_id)
+    not_listed, looks_like = _flags(stored)
+    return _body(
+        "suggested", job_id, _candidates(stored), not_listed=not_listed, looks_like=looks_like
+    )
 
 
 async def _earlier(
@@ -244,7 +266,7 @@ async def request_draft_suggestion(
     now = datetime.now(UTC)
     async with tenant_uow(tenant, user_id=principal.user_id) as uow:
         offers = await category_offers(uow, settings)
-        digest = draft_digest(text, [offer.category for offer in offers])
+        digest = draft_digest(text, offer_digest_slugs(offers))
         fast = await _earlier(uow, digest, now) if offers else None
     if not offers:
         return 200, _body("unavailable")

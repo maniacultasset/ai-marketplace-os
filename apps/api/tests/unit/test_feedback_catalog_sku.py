@@ -54,6 +54,11 @@ def test_brand_prefix(name: str | None, prefix: str) -> None:
         ("ethnic_wear_kurta_sets", "KUR"),
         ("tshirts", "TSH"),
         ("home_decor_lamps", "LMP"),
+        ("jeans", "JNS"),
+        ("trousers", "TRS"),
+        ("track_pants", "TRK"),
+        ("shorts", "SHT"),
+        ("skirts", "SKT"),
         ("mens_formal_shirts", "SHI"),
         ("bags", "BAG"),
         (None, "GEN"),
@@ -110,6 +115,31 @@ def test_build_groups_by_category_sorted_by_label() -> None:
     ]
     assert [m.product_type_name for m in built[2].marketplaces] == ["Shirt", "T-shirt"]
     assert built[2].marketplaces[0].template_version == 2
+
+
+def test_build_gives_each_category_its_group() -> None:
+    rows = [
+        _row("amazon", "tshirts", "SHIRT"),
+        _row("amazon", "ethnic_wear_kurta_sets", "KURTA"),
+        _row("amazon", "home_decor_lamps", "LAMP"),
+        _row("amazon", "jeans", "PANTS"),
+        _row("flipkart", "jeans", "jean"),
+        _row("amazon", "track_pants", "PANTS"),
+        _row("amazon", "skirts", "SKIRT"),
+        _row("amazon", "mens_formal_shirts", "SHIRT"),
+    ]
+    built = {c.category: c for c in build_categories(rows, _settings())}
+    assert {slug: c.group for slug, c in built.items()} == {
+        "tshirts": "topwear",
+        "ethnic_wear_kurta_sets": "ethnic",
+        "home_decor_lamps": "home",
+        "jeans": "bottomwear",
+        "track_pants": "bottomwear",
+        "skirts": "bottomwear",
+        "mens_formal_shirts": "other",
+    }
+    assert (built["jeans"].label, built["track_pants"].label) == ("Jeans", "Track pants")
+    assert [m.product_type_name for m in built["jeans"].marketplaces] == ["Pants", "Jeans"]
 
 
 def test_lamps_switch_enables_lamps() -> None:
@@ -196,6 +226,8 @@ def test_answer_live_is_queued(status: str) -> None:
         "suggestion_id": str(JOB),
         "status": "queued",
         "candidates": [],
+        "not_listed": False,
+        "looks_like": None,
     }
 
 

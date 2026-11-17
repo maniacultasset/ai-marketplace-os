@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 import mkos_pipeline
 import pytest
+from app.services.category_gate import NOT_LISTED
 from mkos_pipeline import classify as stub
 
 from . import factories as f
@@ -104,7 +105,13 @@ async def test_switch_off_is_unavailable_and_spends_nothing(
     set_switch(monkeypatch, "category", on=False)
     response = await _ask(api, images_db)
     assert response.status_code == 200, response.text
-    assert response.json() == {"suggestion_id": None, "status": "unavailable", "candidates": []}
+    assert response.json() == {
+        "suggestion_id": None,
+        "status": "unavailable",
+        "candidates": [],
+        "not_listed": False,
+        "looks_like": None,
+    }
     assert _jobs(images_db) == 0
     assert count(images_db.conn, "SELECT count(*) FROM idempotency_keys") == 0
 
@@ -216,7 +223,13 @@ async def test_queued_then_suggested_with_its_run(
     job = await _asked(api, images_db)
     queued = await _read(api, images_db, job)
     assert queued.status_code == 200, queued.text
-    assert queued.json() == {"suggestion_id": str(job), "status": "queued", "candidates": []}
+    assert queued.json() == {
+        "suggestion_id": str(job),
+        "status": "queued",
+        "candidates": [],
+        "not_listed": False,
+        "looks_like": None,
+    }
     await run_image_job(job)
     assert job_row(images_db.conn, job)["status"] == "succeeded"
     read = await _read(api, images_db, job)
@@ -233,11 +246,13 @@ async def test_queued_then_suggested_with_its_run(
                 "unsure": False,
             }
         ],
+        "not_listed": False,
+        "looks_like": None,
     }
     request = stub.LAST_REQUEST
     assert request is not None and request.images == []
     assert request.product_id == job and request.text.seller_category is None
-    assert [c.category for c in request.categories] == list(CATEGORIES)
+    assert [c.category for c in request.categories] == [*CATEGORIES, NOT_LISTED]
     (run,) = _runs(images_db, job)
     assert (run["agent_name"], run["trigger"]) == ("attribute", "generate")
     assert run["product_id"] is None and run["listing_id"] is None

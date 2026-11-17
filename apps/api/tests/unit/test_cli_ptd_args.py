@@ -177,7 +177,7 @@ def test_check_reports_missing_definitions(
     out = capsys.readouterr().out
     assert "ethnic_wear_kurta_sets -> KURTA: definition v1, 0 drift(s)" in out
     assert "home_decor_lamps -> LAMP: no stored definition for LAMP, not checked" in out
-    assert "2 without a stored definition" in out
+    assert "7 without a stored definition" in out  # feedback 17 Nov: + 5 bottomwear
 
 
 def test_check_all_stored_and_clean(

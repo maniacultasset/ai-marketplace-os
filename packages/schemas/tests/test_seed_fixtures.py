@@ -45,6 +45,10 @@ REQUIRED = {
     "home_decor_lamps": {"color", "product_dimensions"},
     "tshirts": {"color", "fabric_type"},
 }
+# feedback 17 Nov: the bottomwear RuleSets, copies of the tshirts ones (category codes 4-8)
+BOTTOMWEAR = ("jeans", "trousers", "track_pants", "shorts", "skirts")
+REQUIRED |= {c: {"color", "fabric_type"} for c in BOTTOMWEAR}
+CATEGORY_CODES = range(1, 9)
 S9_SCOPES = {
     (m, c) for m in ("amazon", "flipkart") for c in ("ethnic_wear_kurta_sets", "home_decor_lamps")
 }
@@ -91,7 +95,8 @@ def test_rules_seed_banned_terms_listed() -> None:
             for r in rule_set.rules
             if r.version == 1 and r.field == "content.title"
         }
-        title_max = 150 if rule_set.category == "tshirts" and _is_flipkart(rule_set) else 200
+        tops = rule_set.category == "tshirts" or rule_set.category in BOTTOMWEAR
+        title_max = 150 if tops and _is_flipkart(rule_set) else 200
         assert by_type["max_length"].limit == title_max  # type: ignore[union-attr]
         assert by_type["min_length"].limit == 5  # type: ignore[union-attr]
 
@@ -193,7 +198,22 @@ def test_rules_seed_tshirts_rulesets_present() -> None:
             if isinstance(r.rule_def, RequiredAttribute)
         } == {"color", "fabric_type"}
         assert all(r.tenant_id is None and r.rule_def.policy_ref for r in rule_set.rules)
-    assert list(scopes)[-2:] == [("amazon", "tshirts"), ("flipkart", "tshirts")]
+    assert list(scopes)[4:6] == [("amazon", "tshirts"), ("flipkart", "tshirts")]
+
+
+def test_rules_seed_bottomwear_rulesets_copy_tshirts() -> None:
+    """Feedback 17 Nov: each bottomwear RuleSet is the tshirts one with its own category and ids."""
+    scopes = _by_scope()
+    for marketplace in ("amazon", "flipkart"):
+        tshirts = scopes[(marketplace, "tshirts")].rules
+        for code, category in enumerate(BOTTOMWEAR, start=4):
+            rules = scopes[(marketplace, category)].rules
+            assert len(rules) == len(tshirts)
+            for own, src in zip(rules, tshirts, strict=True):
+                assert str(own.id)[:-8] == str(src.id)[:-8]
+                assert str(own.id)[-8:] == f"000{code}{str(src.id)[-4:]}"
+                assert own.category == category and own.field == src.field
+                assert own.rule_def.type == src.rule_def.type
 
 
 def test_rules_seed_canonical_json() -> None:
@@ -275,6 +295,7 @@ BYTE_RULE_IDS = {
     "ethnic_wear_kurta_sets": "5eed0000-0000-4000-8000-000100010007",
     "home_decor_lamps": "5eed0000-0000-4000-8000-000100020007",
     "tshirts": "5eed0000-0000-4000-8000-000100030007",
+    **{c: f"5eed0000-0000-4000-8000-000100{n:02d}0007" for n, c in enumerate(BOTTOMWEAR, start=4)},
 }
 APPAREL_RULES_SHA256 = "8a6f6bd465dbb3b049c9e5cc741e4fe49f17349e60ab71d044db700e2507baa0"
 
@@ -309,12 +330,12 @@ PHOTO_RULES_2_1_IDS = {
 RETIRED_PHOTO_RULE_IDS = {"5eed0000-0000-4000-8000-000702000005"}
 
 
-def test_rules_seed_count_108() -> None:
+def test_rules_seed_count_228() -> None:
     """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
     secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
     warnings (text overlay and watermark, Amazon and Flipkart main), plus the twelve photo
-    rules 2.1.0 rows."""
-    assert sum(len(s.rules) for s in _load()) == 108
+    rules 2.1.0 rows, plus five bottomwear copies of the tshirts RuleSets (14 + 10 rows each)."""
+    assert sum(len(s.rules) for s in _load()) == 108 + 5 * (14 + 10)
     ids = {str(r.id) for s in _load() for r in s.rules}
     assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS | PHOTO_RULES_2_1_IDS
     retired = [r for s in _load() for r in s.rules if str(r.id) in RETIRED_PHOTO_RULE_IDS]
@@ -384,7 +405,7 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
     apparel = [
         {**s, "rules": [pre_gate(r) for r in s["rules"] if r["id"] not in new_ids]}
         for s in raw
-        if s["category"] != "home_decor_lamps"
+        if s["category"] != "home_decor_lamps" and s["category"] not in BOTTOMWEAR
     ]
     digest = hashlib.sha256(json.dumps(apparel, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_RULES_SHA256
@@ -408,7 +429,9 @@ SI8_TEXT_RULE_IDS = {
 
 # ---- contact details and markup: one platform `*` regex row per RuleSet (pack `contact`) ----
 
-CONTACT_RULE_IDS = {f"5eed0000-0000-4000-8000-000{m}000{c}0008" for m in (1, 2) for c in (1, 2, 3)}
+CONTACT_RULE_IDS = {
+    f"5eed0000-0000-4000-8000-000{m}000{c}0008" for m in (1, 2) for c in CATEGORY_CODES
+}
 
 
 def test_rules_seed_contact_details_row_each_ruleset() -> None:
@@ -438,7 +461,7 @@ def test_rules_seed_contact_details_row_each_ruleset() -> None:
 CLAIM_RULE_IDS = {
     f"5eed0000-0000-4000-8000-000{m}000{c}00{n}"
     for m in (1, 2)
-    for c in (1, 2, 3)
+    for c in CATEGORY_CODES
     for n in ("09", "10", "11")
 }
 CLAIM_BACKING = {
