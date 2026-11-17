@@ -482,3 +482,23 @@ async def test_amazon_auth_refresh_called_once() -> None:
     await adapter.create_listing(amazon_family())
     assert tokens.refreshes == 1
     assert len(app.state.fake.calls) == 6  # one refused try, then five accepted PUTs
+
+
+# ---- feedback 17 Nov: a bottomwear type is never sent without its stored definition ----
+
+
+async def test_amazon_bottomwear_without_definition_no_http_create_or_update() -> None:
+    """A product recategorized to jeans after it went live as a T-shirt: neither the create nor
+    the PATCH reaches Amazon while PANTS has no stored definition."""
+    from tests.adapters.amazon_support import template
+
+    app = build_fake()
+    adapter = amazon_adapter(app)
+    body = _five().listing.model_copy(update={"category": "jeans"})
+    jeans = amazon_item(body, template=template("jeans"))
+    created = await adapter.create_listing(jeans)
+    assert created.status == "failed" and app.state.fake.calls == []
+    assert created.error is not None
+    assert ErrorCode.CATEGORY_NOT_MAPPED in [e.error_code for e in created.error.errors]
+    updated = await adapter.update_listing(jeans, fields=["content.title"])
+    assert updated.status == "failed" and app.state.fake.calls == []
