@@ -13,6 +13,7 @@ from typing import Any
 
 import mkos_pipeline
 import pytest
+from app.services.category_gate import NOT_LISTED
 from mkos_pipeline import classify as stub
 from PIL import Image as PILImage
 
@@ -204,7 +205,10 @@ async def test_request_holds_only_the_product_text(images_db: JobWorld, store: F
         "seller_category",
         "attributes",
     }
-    assert request.images == [] and [c.category for c in request.categories] == list(CATEGORIES)
+    assert request.images == [] and [c.category for c in request.categories] == [
+        *CATEGORIES,
+        NOT_LISTED,
+    ]
     sent = request.model_dump_json()
     assert "party" not in sent and "gstin" not in sent.lower() and "phone" not in sent
 

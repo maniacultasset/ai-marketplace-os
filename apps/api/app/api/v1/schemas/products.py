@@ -41,7 +41,7 @@ from pydantic_core import PydanticCustomError
 
 from app.api.pagination import Page
 from app.api.v1.schemas.brand_profile import PartyIn, PartyOut
-from app.api.v1.schemas.catalog import PhotoViewRuleOut
+from app.api.v1.schemas.catalog import CategoryGroup, PhotoViewRuleOut
 from app.api.v1.schemas.common import StorageKey
 from app.api.v1.schemas.images import PhotoMatchOut
 from app.services.intake_values import (
@@ -613,6 +613,11 @@ class CategorySuggestionOut(WireModel):
     )
     calibration_version: str | None = None
     at: AwareDatetime | None = None
+    not_listed: bool = False
+    """True when the best answer is "none of the offered categories" (the candidates are
+    guesses; the suggestion stays in review)."""
+    looks_like: CategoryGroup | None = None
+    """The group the seller's own words name when the top candidate sits in another one."""
 
 
 class SuggestionsOut(WireModel):

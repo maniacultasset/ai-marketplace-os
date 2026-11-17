@@ -33,6 +33,8 @@ class CurrentCategory:
     category: str
     version: int
     required_attributes: tuple[str, ...]
+    # required, recommended then optional keys (union over marketplaces): what the category holds
+    attribute_keys: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -171,15 +173,28 @@ class CategoryTemplateRepository:
         )
         merged: dict[str, CurrentCategory] = {}
         for category, version, attributes in (await self.db.execute(stmt)).all():
-            required = tuple((attributes or {}).get("required_attributes") or ())
+            attrs = attributes or {}
+            required = tuple(attrs.get("required_attributes") or ())
+            every = tuple(
+                dict.fromkeys(
+                    str(k)
+                    for name in (
+                        "required_attributes",
+                        "recommended_attributes",
+                        "optional_attributes",
+                    )
+                    for k in attrs.get(name) or ()
+                )
+            )
             seen = merged.get(category)
             if seen is None:
-                merged[category] = CurrentCategory(str(category), int(version), required)
+                merged[category] = CurrentCategory(str(category), int(version), required, every)
             else:
                 keys = seen.required_attributes + tuple(
                     k for k in required if k not in seen.required_attributes
                 )
+                union = tuple(dict.fromkeys((*seen.attribute_keys, *every)))
                 merged[category] = CurrentCategory(
-                    seen.category, max(seen.version, int(version)), keys
+                    seen.category, max(seen.version, int(version)), keys, union
                 )
         return [merged[name] for name in sorted(merged)]

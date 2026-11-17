@@ -44,7 +44,7 @@ from app.repositories.images import ListingImageRow
 from app.repositories.jobs import EnqueueSpec
 from app.repositories.uow import TenantUnitOfWork, repositories_on, tenant_uow
 from app.services.budget import admit, refuse
-from app.services.category_gate import CategoryOffer, category_offers
+from app.services.category_gate import CategoryOffer, category_offers, offer_digest_slugs
 from app.services.generation_images import pick_context
 from app.services.idempotency import idempotent, key_reused, request_hash
 from app.workers.budget import classify_reservation_usd
@@ -147,7 +147,7 @@ async def suggest_inputs(
     images = classify_images(await uow.images.listing_set(product.id))
     offers = await category_offers(uow, settings)
     hashes = [row.clean_content_hash for row in images if row.clean_content_hash is not None]
-    digest = compute_digest(text, hashes, [offer.category for offer in offers])
+    digest = compute_digest(text, hashes, offer_digest_slugs(offers))
     return SuggestInputs(text=text, images=images, offers=offers, digest=digest)
 
 

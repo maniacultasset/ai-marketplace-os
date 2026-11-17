@@ -81,6 +81,10 @@ class MarketplaceCategoryOut(WireModel):
     template_version: int
 
 
+# the shelf a category sits on (`app.services.catalog_categories.CATEGORY_GROUPS`)
+CategoryGroup = Literal["topwear", "bottomwear", "ethnic", "home", "other"]
+
+
 class CategoryOut(WireModel):
     category: Slug
     label: Annotated[str, Field(max_length=200)]
@@ -133,3 +137,9 @@ class CategoryDraftSuggestionOut(WireModel):
     suggestion_id: UUID | None = None
     status: Literal["queued", "suggested", "unavailable", "failed"]
     candidates: list[CategoryDraftCandidateOut] = Field(default_factory=list)
+    not_listed: bool = False
+    """True when the best answer is "none of the offered categories": every candidate is a
+    guess."""
+    looks_like: CategoryGroup | None = None
+    """The group the seller's own words name when the top candidate sits in another one (the
+    candidates are then guesses)."""

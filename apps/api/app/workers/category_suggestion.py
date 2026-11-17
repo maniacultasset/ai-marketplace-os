@@ -22,8 +22,11 @@ provenance or a listing: the seller confirms a candidate with PATCH (AC6).
    refs that point at a sent input are kept; highest confidence first, at most 3.
 6. Under the product row lock the digest is recomputed: when the text, the photos or the offer
    changed during the call the answer is stale and stores `failed`, with no task.
-7. `suggested` is stored. When the product still has no category and the top confidence is below
-   0.80 (or nothing fits), one `category_review` task opens (one live per product).
+7. `suggested` is stored with `not_listed` (the model ranked the `not_listed` option first) and
+   `looks_like` (the seller's words name another group than the top candidate's,
+   `app.services.category_honesty`). When the product still has no category and the top
+   confidence is below 0.80, nothing fits, or either flag is set, one `category_review` task opens
+   (one live per product).
 
 The seller's decision wins: a stored `confirmed` or `overridden` value is never replaced by a
 `failed` or `unavailable` write, nor by a `suggested` one for the same inputs. When the seller
@@ -47,7 +50,6 @@ from uuid import UUID
 from mkos_schemas.classify import (
     CLASSIFY_CONFIDENCE_TASK_THRESHOLD,
     MAX_CANDIDATES,
-    CategoryOption,
     ClassifyRequest,
     ClassifyResult,
     ProductText,
@@ -60,6 +62,8 @@ from app.adapters.storage import get_storage
 from app.core.logging import get_logger
 from app.repositories.products import SETTLED_SUGGESTION_STATUSES
 from app.repositories.uow import tenant_uow
+from app.services.category_gate import NOT_LISTED, classify_options
+from app.services.category_honesty import Honesty, assess
 from app.services.category_suggest import SuggestInputs, suggest_inputs
 from app.services.generation_images import load_context_images
 from app.services.image_edit_result import trust_records
@@ -140,13 +144,20 @@ def _done(product_id: UUID, status: str) -> Outcome:
 
 
 def _value(
-    status: str, job: _Job, ctx: JobContext, result: ClassifyResult | None = None
+    status: str,
+    job: _Job,
+    ctx: JobContext,
+    result: ClassifyResult | None = None,
+    honesty: Honesty | None = None,
 ) -> dict[str, Any]:
+    honest = honesty or Honesty()
     return {
         "status": status,
         "candidates": (
             [] if result is None else [c.model_dump(mode="json") for c in result.candidates]
         ),
+        "not_listed": honest.not_listed,
+        "looks_like": honest.looks_like,
         "input_digest": job.inputs.digest,
         "calibration_version": None if result is None else result.calibration_version[:32],
         "job_id": str(ctx.job_run_id),
@@ -201,14 +212,7 @@ async def _request(ctx: JobContext, job: _Job, *, photos: bool = True) -> Classi
         request_id=ctx.request_id,
         text=ProductText.model_validate(job.inputs.text),
         images=images,
-        categories=[
-            CategoryOption(
-                category=offer.category,
-                key_attributes=list(offer.key_attributes),
-                template_version=offer.template_version,
-            )
-            for offer in job.inputs.offers
-        ],
+        categories=classify_options(job.inputs.offers),
     )
 
 
@@ -303,10 +307,10 @@ def _refs(refs: list[str], request: ClassifyRequest) -> list[str]:
 
 
 def screen(result: ClassifyResult, request: ClassifyRequest) -> ClassifyResult:
-    """Only offered categories, once each, highest confidence first, at most 3, with a clean
-    rationale that never cites the brand, and only the evidence refs that point at a sent
-    product input (never `text.brand`)."""
-    offered = {option.category for option in request.categories}
+    """Only offered categories (never the `not_listed` option), once each, highest confidence
+    first, at most 3, with a clean rationale that never cites the brand, and only the evidence
+    refs that point at a sent product input (never `text.brand`)."""
+    offered = {option.category for option in request.categories} - {NOT_LISTED}
     seen: set[str] = set()
     kept = []
     for candidate in sorted(result.candidates, key=lambda c: -c.confidence):
@@ -333,13 +337,15 @@ def _status(job: _Job, product_category: str | None, result: ClassifyResult) -> 
     return "confirmed" if product_category in candidates else "overridden"
 
 
-def _needs_review(result: ClassifyResult) -> bool:
-    if not result.candidates:
+def _needs_review(result: ClassifyResult, honesty: Honesty) -> bool:
+    if honesty.unsure or not result.candidates:
         return True
     return result.candidates[0].confidence < CLASSIFY_CONFIDENCE_TASK_THRESHOLD
 
 
-async def _store_suggested(ctx: JobContext, job: _Job, result: ClassifyResult) -> Outcome:
+async def _store_suggested(
+    ctx: JobContext, job: _Job, result: ClassifyResult, honesty: Honesty
+) -> Outcome:
     """The fence, the suggestion and (when unsure) the review task, in one unit."""
     from app.core.config import get_settings
 
@@ -374,10 +380,10 @@ async def _store_suggested(ctx: JobContext, job: _Job, result: ClassifyResult) -
             return _done(job.product_id, "skipped")
         status = _status(job, product.category, result)
         await uow.products.write_category_suggestion(
-            job.product_id, _value(status, job, ctx, result)
+            job.product_id, _value(status, job, ctx, result, honesty)
         )
         task = False
-        if status == "suggested" and product.category is None and _needs_review(result):
+        if status == "suggested" and product.category is None and _needs_review(result, honesty):
             task = await uow.human_tasks.open_category_review(
                 job.product_id,
                 reason=REVIEW_REASON,
@@ -455,4 +461,6 @@ async def run_category_suggestion(ctx: JobContext) -> Outcome:
             await uow.agent_runs.insert(record)
     if checked.status == "failed" or checked.error is not None:
         return await _settle(ctx, job, _value("failed", job, ctx))
-    return await _store_suggested(ctx, job, screen(checked, request))
+    screened = screen(checked, request)
+    honesty = assess(checked, screened, request.text)
+    return await _store_suggested(ctx, job, screened, honesty)

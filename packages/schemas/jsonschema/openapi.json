@@ -2052,6 +2052,29 @@
             "title": "Candidates",
             "type": "array"
           },
+          "looks_like": {
+            "anyOf": [
+              {
+                "enum": [
+                  "topwear",
+                  "bottomwear",
+                  "ethnic",
+                  "home",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Looks Like"
+          },
+          "not_listed": {
+            "default": false,
+            "title": "Not Listed",
+            "type": "boolean"
+          },
           "status": {
             "enum": [
               "queued",
@@ -2186,6 +2209,29 @@
             "maxItems": 3,
             "title": "Candidates",
             "type": "array"
+          },
+          "looks_like": {
+            "anyOf": [
+              {
+                "enum": [
+                  "topwear",
+                  "bottomwear",
+                  "ethnic",
+                  "home",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Looks Like"
+          },
+          "not_listed": {
+            "default": false,
+            "title": "Not Listed",
+            "type": "boolean"
           },
           "status": {
             "enum": [
