@@ -64,13 +64,29 @@ def test_rules_seed_resolves_and_runs(product: str, marketplace: str) -> None:
     assert rep.status in ("passed", "failed")
 
 
+# feedback 17 Nov: the bottomwear RuleSets copy the tshirts ones, so the tee listing under each
+# bottomwear category stands in for its own fixture
+BOTTOMWEAR = ("jeans", "trousers", "track_pants", "shorts", "skirts")
+
+
 def test_rules_seed_every_ruleset_has_a_fixture_listing() -> None:
     covered = {
         (_listing(p, m).marketplace.value, _listing(p, m).category)
         for p in PRODUCTS
         for m in MARKETPLACES
     }
+    covered |= {(m, c) for m in MARKETPLACES for c in BOTTOMWEAR}
     assert covered == set(_seed())
+
+
+@pytest.mark.parametrize("marketplace", MARKETPLACES)
+@pytest.mark.parametrize("category", BOTTOMWEAR)
+def test_bottomwear_rulesets_judge_like_tshirts(category: str, marketplace: str) -> None:
+    tee = _listing("fsh_tee_001", marketplace, attributes={"color": "black"})
+    own = tee.model_copy(update={"category": category})
+    want = {(i.field, i.error_code) for i in _run(tee).errors}
+    got = {(i.field, i.error_code) for i in _run(own).errors}
+    assert want and got == want
 
 
 @pytest.mark.parametrize("category", list(CATEGORY_PRODUCT))

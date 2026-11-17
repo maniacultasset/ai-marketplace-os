@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
 from mkos_schemas.enums import Marketplace
 
@@ -43,9 +43,15 @@ CATEGORY_LABELS: Final[Mapping[str, str]] = {
     "ethnic_wear_kurta_sets": "Kurta sets",
     "tshirts": "T-shirts",
     "home_decor_lamps": "Lamps",
+    "jeans": "Jeans",
+    "trousers": "Trousers",
+    "track_pants": "Track pants",
+    "shorts": "Shorts",
+    "skirts": "Skirts",
 }
-# The shelf a category sits on in the picker; a slug missing here is "other".
-CATEGORY_GROUPS: Final[Mapping[str, str]] = {
+# Feedback 17 Nov: the picker's heading for each category; a slug missing here is "other".
+CategoryGroup = Literal["topwear", "bottomwear", "ethnic", "home", "other"]
+CATEGORY_GROUPS: Final[Mapping[str, CategoryGroup]] = {
     "tshirts": "topwear",
     "ethnic_wear_kurta_sets": "ethnic",
     "home_decor_lamps": "home",
@@ -77,6 +83,7 @@ class CategoryChoice:
     label: str
     enabled: bool
     marketplaces: tuple[MarketplaceMapping, ...]
+    group: CategoryGroup = "other"
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,8 +102,8 @@ def category_label(slug: str) -> str:
     return CATEGORY_LABELS.get(slug) or _words(slug)
 
 
-def category_group(slug: str) -> str:
-    """`jeans` -> "bottomwear"; an unknown slug is "other"."""
+def category_group(slug: str) -> CategoryGroup:
+    """The picker group of a category; an unknown slug is "other"."""
     return CATEGORY_GROUPS.get(slug, "other")
 
 
@@ -129,6 +136,7 @@ def build_categories(
             label=category_label(slug),
             enabled=category_enabled(slug, settings),
             marketplaces=tuple(sorted(rows, key=lambda m: m.marketplace)),
+            group=category_group(slug),
         )
         for slug, rows in grouped.items()
     ]

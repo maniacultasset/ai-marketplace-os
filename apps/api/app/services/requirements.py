@@ -24,7 +24,7 @@ from app.adapters.flipkart import constants as flipkart
 from app.core.config import get_settings
 from app.core.rbac import Principal
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
-from app.services import photo_views
+from app.services import photo_views, size_profiles
 from app.services.category_gate import UNCATEGORIZED, category_enabled
 from app.services.rules_engine import requirement_levels
 
@@ -51,6 +51,8 @@ class Requirements:
     levels: Mapping[Marketplace, Mapping[str, str]]
     # feedback 7: the category's photo view checklist (empty while PHOTO_VIEWS_ENABLED is off)
     photo_views: tuple[photo_views.MergedView, ...] = ()
+    # feedback 17 Nov: the category's size step (None: no size step, as for lamps)
+    size_profile: size_profiles.SizeProfile | None = None
 
 
 def needs_for(
@@ -89,6 +91,7 @@ async def requirements(uow: TenantUnitOfWork, category: str) -> Requirements:
         flipkart=out[Marketplace.FLIPKART],
         photo_views=photo_views.merged(slug) if views else (),
         levels=levels,
+        size_profile=size_profiles.profile_for(slug),
     )
 
 

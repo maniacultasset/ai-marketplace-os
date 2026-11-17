@@ -978,6 +978,15 @@ def _family_errors(listing: AdapterListing, template: CategoryTemplate | None) -
     return []
 
 
+def _awaits_definition(listing: AdapterListing, template: AdapterTemplate) -> bool:
+    """Feedback 17 Nov: a bottomwear product type with no stored LISTING definition of its own
+    (the names in its mapping are believed only), so Amazon is not sent it yet."""
+    if template.product_type not in c.PTD_REQUIRED_PRODUCT_TYPES:
+        return False
+    stored = listing.product_type_schema
+    return stored is None or stored.product_type != template.product_type
+
+
 def build(
     listing: AdapterListing,
     *,
@@ -1002,6 +1011,8 @@ def build(
                 f"Category {listing.listing.category} has no Amazon mapping yet.",
             )
         )
+    elif schema and _awaits_definition(listing, template):
+        errors.append(error("listing", ErrorCode.CATEGORY_NOT_MAPPED, c.PTD_REQUIRED_MESSAGE))
     errors += _family_errors(listing, mapped)
     items = [
         item_payload(

@@ -61,6 +61,11 @@ CATEGORY_CODES: Final[Mapping[str, str]] = {
     "ethnic_wear_kurta_sets": "KUR",
     "tshirts": "TSH",
     "home_decor_lamps": "LMP",
+    "jeans": "JNS",
+    "trousers": "TRS",
+    "track_pants": "TRK",
+    "shorts": "SHT",
+    "skirts": "SKT",
 }
 NO_CATEGORY: Final = "GEN"
 NO_BRAND: Final = "SKU"

@@ -44,6 +44,21 @@ class RequirementLevelsOut(WireModel):
     flipkart: dict[str, RequirementLevel] = Field(default_factory=dict)
 
 
+SizeSystem = Literal["alpha", "waist"]
+SizeMeasure = Literal["chest", "waist", "hip", "length", "shoulder", "sleeve", "inseam"]
+CategoryGroup = Literal["topwear", "bottomwear", "ethnic", "home", "other"]
+
+
+class SizeProfileOut(WireModel):
+    """Feedback 17 Nov: the category's size step. `size_system` is letter sizes (`alpha`) or
+    waist inches (`waist`); `sizes` are offered in this order; `measures` are the size chart
+    columns the seller fills, in display order."""
+
+    size_system: SizeSystem
+    sizes: list[Annotated[str, Field(max_length=16)]] = Field(default_factory=list)
+    measures: list[SizeMeasure] = Field(default_factory=list)
+
+
 class RequirementsOut(WireModel):
     """Each list is the sorted dictionary keys the marketplace needs before it accepts a listing
     of this category: its required facts, the category template's required attributes and a
@@ -63,6 +78,13 @@ class RequirementsOut(WireModel):
         ),
     )
     levels: RequirementLevelsOut = Field(default_factory=RequirementLevelsOut)
+    size_profile: SizeProfileOut | None = Field(
+        default=None,
+        description=(
+            "Feedback 17 Nov: the category's sizes and size chart measures; null when the "
+            "category has no size step (lamps, an unknown or no category)."
+        ),
+    )
 
 
 # ---- client feedback 11 Nov (item 5): the category picker ----
@@ -81,10 +103,6 @@ class MarketplaceCategoryOut(WireModel):
     template_version: int
 
 
-# the shelf a category sits on (`app.services.catalog_categories.CATEGORY_GROUPS`)
-CategoryGroup = Literal["topwear", "bottomwear", "ethnic", "home", "other"]
-
-
 class CategoryOut(WireModel):
     category: Slug
     label: Annotated[str, Field(max_length=200)]
@@ -92,6 +110,9 @@ class CategoryOut(WireModel):
     """False while the category is switched off (lamps while `CATEGORY_LAMPS_ENABLED` is off):
     shown on an existing product, never offered for a new one."""
     marketplaces: list[MarketplaceCategoryOut] = Field(default_factory=list)
+    group: CategoryGroup = Field(
+        default="other", description="Feedback 17 Nov: the picker heading the category sits under."
+    )
 
 
 class CategoryCatalogOut(WireModel):

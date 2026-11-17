@@ -17,6 +17,15 @@ FIXTURES = Path(__file__).parent / "rules_engine" / "fixtures"
 S9_V1_SHA256 = "6e582d2dbcd740736ed635ec4c215379d4e3996364f3da1edbab3809bb617729"
 APPAREL = [["size"], ["color"], ["size", "color"]]
 THEMES = {"ethnic_wear_kurta_sets": APPAREL, "tshirts": APPAREL, "home_decor_lamps": [["color"]]}
+# feedback 17 Nov: the bottomwear mappings, version 1 each, after the three launch ones
+BOTTOMWEAR = {
+    "jeans": ("PANTS", "jean"),
+    "trousers": ("PANTS", "trouser"),
+    "track_pants": ("PANTS", "track_pant"),
+    "shorts": ("SHORTS", "short"),
+    "skirts": ("SKIRT", "skirt"),
+}
+THEMES |= dict.fromkeys(BOTTOMWEAR, APPAREL)
 
 
 def test_amazon_seed_templates_two_categories() -> None:
@@ -27,6 +36,7 @@ def test_amazon_seed_templates_two_categories() -> None:
         ("amazon", "ethnic_wear_kurta_sets", 4, "KURTA"),  # SI2, feedback item 10
         ("amazon", "tshirts", 3, "SHIRT"),  # SI2, feedback item 10
         ("amazon", "home_decor_lamps", 3, "LAMP"),  # A2, feedback item 10
+        *(("amazon", c, 1, types[0]) for c, types in BOTTOMWEAR.items()),
     ]
     for seed in seed_templates():
         assert seed.template.variation_themes == THEMES[seed.template.category]
@@ -108,6 +118,7 @@ def test_flipkart_seed_templates_two_categories() -> None:
         ("flipkart", "ethnic_wear_kurta_sets", 4, "kurta"),  # SI2, feedback item 10
         ("flipkart", "tshirts", 3, "t_shirt"),  # SI2, feedback item 10
         ("flipkart", "home_decor_lamps", 3, "table_lamp"),  # A2, feedback item 10
+        *(("flipkart", c, 1, types[1]) for c, types in BOTTOMWEAR.items()),
     ]
     for seed in flipkart_seed_templates():
         assert seed.template.variation_themes == THEMES[seed.template.category]
@@ -277,6 +288,7 @@ def test_apparel_templates_unchanged() -> None:
         entry.model_dump(mode="json")
         for entry in platform_template_loads()
         if entry.template.category != "home_decor_lamps"
+        and entry.template.category not in BOTTOMWEAR
     ]
     digest = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
     assert digest == APPAREL_TEMPLATES_SHA256
@@ -443,6 +455,11 @@ RECOMMENDED = {
     "ethnic_wear_kurta_sets": ["fit", "kurta_type", "neckline", "pattern", "sleeve_length"],
     "tshirts": ["fit", "neckline", "pattern", "sleeve_length"],
     "home_decor_lamps": ["lamp_material", "lamp_type", "light_source_type", "shade_material"],
+    "jeans": ["fit", "leg_style", "pattern", "rise", "wash"],
+    "trousers": ["fit", "leg_style", "pattern", "rise"],
+    "track_pants": ["fit", "leg_style", "pattern", "rise"],
+    "shorts": ["fit", "leg_style", "pattern", "rise"],
+    "skirts": ["fit", "pattern", "rise"],
 }
 
 
@@ -466,3 +483,30 @@ def test_recommended_attributes_are_optional_mapped_specs(marketplace: str, cate
     levels = requirement_levels(template)
     assert sorted(k for k, v in levels.items() if v == "recommended") == RECOMMENDED[category]
     assert {k for k, v in levels.items() if v == "required"} == set(template.required_attributes)
+
+
+# ---- feedback 17 Nov: the bottomwear mappings ----
+
+WAIST = [str(n) for n in range(26, 46, 2)]
+LETTERS = ["XS", "S", "M", "L", "XL", "XXL", "3XL"]
+
+
+@pytest.mark.parametrize("marketplace", ["amazon", "flipkart"])
+@pytest.mark.parametrize("category", sorted(BOTTOMWEAR))
+def test_bottomwear_templates_have_bottomwear_keys_and_sizes(
+    marketplace: str, category: str
+) -> None:
+    template = _apparel(marketplace, category).template
+    assert template.required_attributes == ["color", "fabric_type"]
+    assert "sleeve_length" not in template.specs and "neckline" not in template.specs
+    assert {"rise", "leg_style", "closure", "waist_style", "stretch"} <= set(template.specs)
+    assert ({"wash", "distressed"} <= set(template.specs)) is (category == "jeans")
+    sizes = template.specs["size"].allowed_values or []
+    assert set(LETTERS) <= set(sizes)
+    if category in ("jeans", "trousers"):
+        assert set(WAIST) <= set(sizes)
+    if category == "shorts":
+        assert set(WAIST[:8]) <= set(sizes) and "42" not in sizes
+    for text, value in template.specs["size"].value_map.items():
+        assert value in sizes, text
+    assert template.specs["size"].value_map.get("32w") == "32"
