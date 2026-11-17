@@ -113,6 +113,37 @@ def test_short_sleeve_is_not_shorts() -> None:
     assert assess(raw, screen(raw, request), request.text).looks_like is None
 
 
+def test_construction_values_do_not_contradict_a_live_tshirt() -> None:
+    # live T-shirt rows store sleeve_length "short" and fabric_type "Denim" (template value maps)
+    request = _request(
+        "Graphic print crew neck",
+        attributes={"sleeve_length": "short", "fabric_type": "Denim", "neckline": "polo"},
+    )
+    raw = _result(("tshirts", 0.9))
+    assert assess(raw, screen(raw, request), request.text).looks_like is None
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Brass table top lamp",
+        "Desk-top LED lamp",
+        "Top quality bedside lamp",
+        "Lamp with top light",
+    ],
+)
+def test_lamp_titles_do_not_read_as_topwear(title: str) -> None:
+    request = ClassifyRequest(
+        tenant_id=UUID(int=1),
+        product_id=UUID(int=2),
+        request_id="req-lamp",
+        text=ProductText(title=title, attributes={"lamp_type": "Table Top"}),
+        categories=[CategoryOption(category="home_decor_lamps", name="Lamps")],
+    )
+    raw = _result(("home_decor_lamps", 0.9))
+    assert assess(raw, screen(raw, request), request.text).looks_like is None
+
+
 def test_a_top_pick_of_no_known_group_is_not_contradicted() -> None:
     request = _request("Cotton crew tee")
     raw = _result(("sarees", 0.9))
@@ -137,6 +168,9 @@ def test_no_candidates_still_hint_the_group() -> None:
         ("Laptop sleeve", []),
         ("Short kurta", ["ethnic"]),
         ("Denim shorts", ["bottomwear"]),
+        ("Crop top", ["topwear"]),
+        ("Tops for women", ["topwear"]),
+        ("Table top", []),
     ],
 )
 def test_word_groups(text: str, groups: list[str]) -> None:

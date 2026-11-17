@@ -85,12 +85,26 @@ GROUP_WORDS: Final[Mapping[str, tuple[str, ...]]] = {
 LOOKS_LIKE_GROUPS: Final = frozenset(GROUP_WORDS)
 # "short sleeve" / "short kurta" describe a top, not shorts
 _NOT_SHORTS: Final = r"(?![\s-]+(?:sleeve|sleeves|sleeved|kurta|kurti|length|top))"
+# "table top lamp" / "top quality" are not topwear (a live lamp title must not contradict its pick)
+_NOT_TOP_BEFORE: Final = r"(?<!table )(?<!table-)(?<!desk )(?<!desk-)(?<!counter )(?<!counter-)"
+_NOT_TOP_AFTER: Final = (
+    r"(?![\s-]+(?:quality|selling|seller|sellers|rated|brand|brands|class|grade|notch|lamp|light))"
+)
+# Attribute keys that describe how an item is made, not what it is: their values ("short" sleeve,
+# "Denim" fabric, "polo" neck, "Table Top" lamp type) would name a group the item is not in.
+_CONSTRUCTION_KEY: Final = re.compile(
+    r"sleeve|neck|collar|fabric|material|fiber|fibre|pattern|fit|closure|colou?r|lamp|shade|light"
+)
 
 
 def _pattern(word: str) -> str:
     body = r"[\s-]+".join(re.escape(part) for part in re.split(r"[\s-]+", word))
-    tail = _NOT_SHORTS if word == "short" else ""
-    return rf"(?<![a-z0-9]){body}(?![a-z0-9]){tail}"
+    head, tail = "", ""
+    if word == "short":
+        tail = _NOT_SHORTS
+    elif word in ("top", "tops"):
+        head, tail = _NOT_TOP_BEFORE, _NOT_TOP_AFTER
+    return rf"{head}(?<![a-z0-9]){body}(?![a-z0-9]){tail}"
 
 
 _GROUP_RES: Final[Mapping[str, re.Pattern[str]]] = {
@@ -116,7 +130,8 @@ def word_groups(texts: Iterable[str | None]) -> list[str]:
 
 
 def _seller_words(text: ProductText) -> list[str | None]:
-    return [text.title, text.seller_category, *text.attributes.values()]
+    values = (v for k, v in text.attributes.items() if not _CONSTRUCTION_KEY.search(k))
+    return [text.title, text.seller_category, *values]
 
 
 def ranked_not_listed(result: ClassifyResult) -> bool:
