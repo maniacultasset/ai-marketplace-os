@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "profiles": {
+    "tshirts": {"size_system": "alpha", "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"], "measures": ["chest", "waist", "hip", "length"]},
+    "ethnic_wear_kurta_sets": {"size_system": "alpha", "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"], "measures": ["chest", "waist", "hip", "length"]},
+    "jeans": {"size_system": "waist", "sizes": ["26", "28", "30", "32", "34", "36", "38", "40", "42", "44"], "measures": ["waist", "hip", "inseam", "length"]},
+    "trousers": {"size_system": "waist", "sizes": ["26", "28", "30", "32", "34", "36", "38", "40", "42", "44"], "measures": ["waist", "hip", "inseam", "length"]},
+    "track_pants": {"size_system": "alpha", "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"], "measures": ["waist", "hip", "inseam", "length"]},
+    "shorts": {"size_system": "waist", "sizes": ["26", "28", "30", "32", "34", "36", "38", "40"], "measures": ["waist", "hip", "length"]},
+    "skirts": {"size_system": "alpha", "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"], "measures": ["waist", "hip", "length"]}
+  }
+}

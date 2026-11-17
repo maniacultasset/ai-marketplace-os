@@ -215,14 +215,13 @@ async def test_seed_category_templates_present(superuser_conn: Conn) -> None:
     rows = superuser_conn.execute(
         "SELECT marketplace, category FROM category_templates WHERE is_current ORDER BY 1, 2"
     ).fetchall()
-    assert rows == [
-        ("amazon", "ethnic_wear_kurta_sets"),
-        ("amazon", "home_decor_lamps"),
-        ("amazon", "tshirts"),  # S20 T5: the Amazon tshirts mapping
-        ("flipkart", "ethnic_wear_kurta_sets"),
-        ("flipkart", "home_decor_lamps"),
-        ("flipkart", "tshirts"),  # S22 T15: the Flipkart tshirts mapping
-    ]
+    # S20 T5 / S22 T15: the tshirts mappings; feedback 17 Nov: the five bottomwear ones
+    bottoms = ("jeans", "shorts", "skirts", "track_pants", "trousers")
+    assert rows == sorted(
+        (m, c)
+        for m in ("amazon", "flipkart")
+        for c in ("ethnic_wear_kurta_sets", "home_decor_lamps", "tshirts", *bottoms)
+    )
 
 
 def _fixture_rule_ids() -> set[UUID]:

@@ -69,6 +69,24 @@ async def test_tshirts(images_db: JobWorld, api: httpx.AsyncClient) -> None:
         "size": "optional",
     }
     assert body["levels"] == {"amazon": levels, "flipkart": levels}
+    assert body["size_profile"] == {
+        "size_system": "alpha",
+        "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"],
+        "measures": ["chest", "waist", "hip", "length"],
+    }
+
+
+async def test_jeans_ask_waist_sizes(images_db: JobWorld, api: httpx.AsyncClient) -> None:
+    """Feedback 17 Nov: jeans ask waist sizes and waist, hip, inseam and length, never chest."""
+    response = await api.get(
+        URL, params={"category": "jeans"}, headers=as_member(images_db, "reviewer@acme.test")
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["size_profile"] == {
+        "size_system": "waist",
+        "sizes": ["26", "28", "30", "32", "34", "36", "38", "40", "42", "44"],
+        "measures": ["waist", "hip", "inseam", "length"],
+    }
 
 
 # client item 4: the add form asks for `uncategorized` while "Let Kuinn suggest" is on
@@ -95,6 +113,7 @@ async def test_unknown_category_facts_and_extras_only(
     ]
     assert "color" not in body["flipkart"] and "hsn_code" in body["flipkart"]
     assert body["levels"] == {"amazon": {}, "flipkart": {}}
+    assert body["size_profile"] is None
 
 
 @pytest.mark.endpoint("catalog_requirements_get", case="validation")

@@ -2092,6 +2092,19 @@
             "title": "Enabled",
             "type": "boolean"
           },
+          "group": {
+            "default": "other",
+            "description": "Feedback 17 Nov: the picker heading the category sits under.",
+            "enum": [
+              "topwear",
+              "bottomwear",
+              "ethnic",
+              "home",
+              "other"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
           "label": {
             "maxLength": 200,
             "title": "Label",
@@ -12071,6 +12084,17 @@
             },
             "title": "Photo Views",
             "type": "array"
+          },
+          "size_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeProfileOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Feedback 17 Nov: the category's sizes and size chart measures; null when the category has no size step (lamps, an unknown or no category)."
           }
         },
         "required": [
@@ -13271,6 +13295,48 @@
           "status"
         ],
         "title": "SizeChartSuggestionOut",
+        "type": "object"
+      },
+      "SizeProfileOut": {
+        "description": "Feedback 17 Nov: the category's size step. `size_system` is letter sizes (`alpha`) or\nwaist inches (`waist`); `sizes` are offered in this order; `measures` are the size chart\ncolumns the seller fills, in display order.",
+        "properties": {
+          "measures": {
+            "items": {
+              "enum": [
+                "chest",
+                "waist",
+                "hip",
+                "length",
+                "shoulder",
+                "sleeve",
+                "inseam"
+              ],
+              "type": "string"
+            },
+            "title": "Measures",
+            "type": "array"
+          },
+          "size_system": {
+            "enum": [
+              "alpha",
+              "waist"
+            ],
+            "title": "Size System",
+            "type": "string"
+          },
+          "sizes": {
+            "items": {
+              "maxLength": 16,
+              "type": "string"
+            },
+            "title": "Sizes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "size_system"
+        ],
+        "title": "SizeProfileOut",
         "type": "object"
       },
       "SizeRunIn": {
@@ -29309,6 +29375,7 @@
                     {
                       "category": "ethnic_wear_kurta_sets",
                       "enabled": true,
+                      "group": "ethnic",
                       "label": "Kurta sets",
                       "marketplaces": [
                         {
@@ -30394,6 +30461,24 @@
                       "size": "optional",
                       "sleeve_length": "recommended"
                     }
+                  },
+                  "size_profile": {
+                    "measures": [
+                      "chest",
+                      "waist",
+                      "hip",
+                      "length"
+                    ],
+                    "size_system": "alpha",
+                    "sizes": [
+                      "XS",
+                      "S",
+                      "M",
+                      "L",
+                      "XL",
+                      "XXL",
+                      "3XL"
+                    ]
                   }
                 },
                 "schema": {

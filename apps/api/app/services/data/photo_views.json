@@ -47,6 +47,66 @@
         {"view": "back", "requirement": "optional", "why": "Shows the cable and the back of the base."},
         {"view": "packaging_label", "requirement": "optional", "why": "Wattage and maker details are read from it. It is never published."}
       ]
+    },
+    {
+      "marketplace": null,
+      "category": "jeans",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour, wash and fit are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back pockets and yoke."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the denim, wash and stitching up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The jeans as they are worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "trousers",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour and fit are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back pockets and waistband."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric and stitching up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The trousers as they are worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "track_pants",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour and fit are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back and any side stripe."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric, waistband and cuffs up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The track pants as they are worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "shorts",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour and fit are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back pockets and waistband."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric and stitching up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The shorts as they are worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
+    },
+    {
+      "marketplace": null,
+      "category": "skirts",
+      "views": [
+        {"view": "front", "requirement": "required", "why": "The main photo buyers see first. Colour, pattern and length are read from it."},
+        {"view": "back", "requirement": "recommended", "why": "Shows the back and any zip or slit."},
+        {"view": "close_up", "requirement": "recommended", "why": "Shows the fabric and print up close."},
+        {"view": "size_chart", "requirement": "required", "why": "Buyers pick their size from it, so it cuts returns."},
+        {"view": "lifestyle", "requirement": "optional", "why": "The skirt as it is worn."},
+        {"view": "packaging_label", "requirement": "optional", "why": "Fabric and care details are read from it. It is never published."}
+      ]
     }
   ]
 }

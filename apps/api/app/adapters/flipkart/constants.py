@@ -99,7 +99,16 @@ EXTRA_NEEDS: Final[Mapping[str | None, tuple[str, ...]]] = MappingProxyType(
 # Client feedback 11 Nov (item 5): the plain name of each seeded Flipkart vertical, shown in the
 # category picker ("On Flipkart: Kurta"). A vertical missing here reads as words from its code.
 PRODUCT_TYPE_NAMES: Final[Mapping[str, str]] = MappingProxyType(
-    {"kurta": "Kurta", "t_shirt": "T-shirt", "table_lamp": "Table lamp"}
+    {
+        "kurta": "Kurta",
+        "t_shirt": "T-shirt",
+        "table_lamp": "Table lamp",
+        "jean": "Jeans",
+        "trouser": "Trousers",
+        "track_pant": "Track pants",
+        "short": "Shorts",
+        "skirt": "Skirt",
+    }
 )
 
 # Never sent in v1. Any payload key here is a bug (price travels only inside `price`).

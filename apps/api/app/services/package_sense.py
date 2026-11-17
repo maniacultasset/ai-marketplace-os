@@ -59,6 +59,11 @@ RANGES: Final[Mapping[str, PackageRange]] = MappingProxyType(
         "tshirts": _APPAREL,
         "ethnic_wear_kurta_sets": _APPAREL,
         "home_decor_lamps": _LAMPS,
+        "jeans": _APPAREL,
+        "trousers": _APPAREL,
+        "track_pants": _APPAREL,
+        "shorts": _APPAREL,
+        "skirts": _APPAREL,
     }
 )
 

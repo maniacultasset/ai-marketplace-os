@@ -3727,6 +3727,13 @@ export interface components {
             category: string;
             /** Enabled */
             enabled: boolean;
+            /**
+             * Group
+             * @description Feedback 17 Nov: the picker heading the category sits under.
+             * @default other
+             * @enum {string}
+             */
+            group: "topwear" | "bottomwear" | "ethnic" | "home" | "other";
             /** Label */
             label: string;
             /** Marketplaces */
@@ -7438,6 +7445,8 @@ export interface components {
              * @description Feedback 7: the category's photo view checklist, in display order; empty while the checklist is switched off (show the fixed Front, Back, Close-up and Size chart tiles then).
              */
             photo_views?: components["schemas"]["PhotoViewRuleOut"][];
+            /** @description Feedback 17 Nov: the category's sizes and size chart measures; null when the category has no size step (lamps, an unknown or no category). */
+            size_profile?: components["schemas"]["SizeProfileOut"] | null;
         };
         /** ResetLinkOut */
         ResetLinkOut: {
@@ -7889,6 +7898,23 @@ export interface components {
              * @description The printed line the read unit came from (for example `All measurements in cm`), shown so the seller can confirm the unit; null when `chart.unit` is `unknown`.
              */
             unit_source_line?: string | null;
+        };
+        /**
+         * SizeProfileOut
+         * @description Feedback 17 Nov: the category's size step. `size_system` is letter sizes (`alpha`) or
+         *     waist inches (`waist`); `sizes` are offered in this order; `measures` are the size chart
+         *     columns the seller fills, in display order.
+         */
+        SizeProfileOut: {
+            /** Measures */
+            measures?: ("chest" | "waist" | "hip" | "length" | "shoulder" | "sleeve" | "inseam")[];
+            /**
+             * Size System
+             * @enum {string}
+             */
+            size_system: "alpha" | "waist";
+            /** Sizes */
+            sizes?: string[];
         };
         /**
          * SizeRunIn
@@ -22188,6 +22214,7 @@ export interface operations {
                      *         {
                      *           "category": "ethnic_wear_kurta_sets",
                      *           "enabled": true,
+                     *           "group": "ethnic",
                      *           "label": "Kurta sets",
                      *           "marketplaces": [
                      *             {
@@ -23222,6 +23249,24 @@ export interface operations {
                      *           "size": "optional",
                      *           "sleeve_length": "recommended"
                      *         }
+                     *       },
+                     *       "size_profile": {
+                     *         "measures": [
+                     *           "chest",
+                     *           "waist",
+                     *           "hip",
+                     *           "length"
+                     *         ],
+                     *         "size_system": "alpha",
+                     *         "sizes": [
+                     *           "XS",
+                     *           "S",
+                     *           "M",
+                     *           "L",
+                     *           "XL",
+                     *           "XXL",
+                     *           "3XL"
+                     *         ]
                      *       }
                      *     }
                      */

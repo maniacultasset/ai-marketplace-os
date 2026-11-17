@@ -62,6 +62,7 @@ async def test_categories_with_their_marketplace_mapping(
     assert all(m["external_category_id"] is None for m in kurta)
     tees = body["items"][2]["marketplaces"]
     assert [m["product_type_name"] for m in tees] == ["Shirt", "T-shirt"]
+    assert [c["group"] for c in body["items"]] == ["ethnic", "home", "topwear"]
 
 
 async def test_lamps_switch_on_enables_lamps(

@@ -187,7 +187,8 @@ def test_browse_node_choices() -> None:
 def test_check_reports_a_missing_definition_as_not_checked() -> None:
     checks = check_templates(_amazon_seed(), {"KURTA": StoredDefinition("v1", _schema())})
     by_type = {one.product_type: one for one in checks}
-    assert set(by_type) == {"KURTA", "SHIRT", "LAMP"}
+    # feedback 17 Nov: jeans, trousers and track pants share PANTS
+    assert set(by_type) == {"KURTA", "SHIRT", "LAMP", "PANTS", "SHORTS", "SKIRT"}
     assert by_type["KURTA"].checked and by_type["KURTA"].drifts == ()
     assert not by_type["SHIRT"].checked and not by_type["LAMP"].checked
     text = render_checks(checks)
@@ -196,8 +197,8 @@ def test_check_reports_a_missing_definition_as_not_checked() -> None:
         "tshirts -> SHIRT: no stored definition for SHIRT, not checked; browse node not set" in text
     )
     assert text.splitlines()[-1] == (
-        "templates check: 3 template(s), 1 checked, 2 without a stored definition, 0 drift(s), "
-        "3 without a browse node"
+        "templates check: 8 template(s), 1 checked, 7 without a stored definition, 0 drift(s), "
+        "8 without a browse node"
     )
 
 

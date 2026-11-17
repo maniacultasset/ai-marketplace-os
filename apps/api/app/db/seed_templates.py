@@ -303,6 +303,10 @@ def seed_templates() -> list[SeedTemplate]:
         SeedTemplate(KURTA_PRODUCT_TYPE, 4, CategoryTemplate.model_validate(_kurta())),
         SeedTemplate(TSHIRT_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_tshirt())),
         SeedTemplate(LAMP_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_amazon_lamp())),
+        *(
+            SeedTemplate(b.amazon_type, 1, CategoryTemplate.model_validate(_amazon_bottom(b)))
+            for b in BOTTOMWEAR
+        ),
     ]
 
 
@@ -434,6 +438,12 @@ def flipkart_seed_templates() -> list[SeedTemplate]:
         SeedTemplate(FLIPKART_KURTA_VERTICAL, 4, CategoryTemplate.model_validate(kurta)),
         SeedTemplate(FLIPKART_TSHIRT_VERTICAL, 3, CategoryTemplate.model_validate(tshirt)),
         SeedTemplate(FLIPKART_LAMP_VERTICAL, 3, CategoryTemplate.model_validate(lamp)),
+        *(
+            SeedTemplate(
+                b.flipkart_vertical, 1, CategoryTemplate.model_validate(_flipkart_bottom(b))
+            )
+            for b in BOTTOMWEAR
+        ),
     ]
 
 
@@ -524,3 +534,105 @@ def _flipkart_lamp() -> dict[str, Any]:
             "country_of_origin": _text("Country of Origin"),
         },
     )
+
+
+# ---- Client feedback 17 Nov (P1-A): the bottomwear mappings ----
+#
+# Five new categories, each **version 1** on both marketplaces, so no existing row moves. Built
+# from canonical dictionary keys only, with no sleeve_length or neckline. The waist categories
+# take waist sizes (26-44 in inches, "32W" reads as "32"); every one also takes the letter sizes,
+# so a seller who sizes track pants or skirts S-XL is never refused. Required attributes are
+# color and fabric_type, the same as tshirts and the seeded RuleSets (invariant 2).
+#
+# Every Amazon product type (PANTS, SHORTS, SKIRT), Flipkart vertical and attribute name here is
+# believed, not confirmed: no product type definition is stored for them yet, so Amazon check and
+# publish refuse these categories (`adapters/amazon/mapping.py`) until the owner's PTD refresh.
+
+WAIST_SIZES: Final = tuple(str(n) for n in range(26, 46, 2))
+WAIST_MAP: Final = {f"{n}w": str(n) for n in range(26, 46, 2)} | {
+    f"w{n}": str(n) for n in range(26, 46, 2)
+}
+BOTTOM_FITS: Final = ("Loose", "Regular", "Relaxed", "Slim")
+BOTTOM_RECOMMENDED: Final = ("fit", "leg_style", "pattern", "rise")
+
+
+@dataclass(frozen=True)
+class Bottomwear:
+    category: str
+    amazon_type: str
+    flipkart_vertical: str
+    sizes: tuple[str, ...]
+    extra_keys: tuple[str, ...] = ()
+    recommended: tuple[str, ...] = BOTTOM_RECOMMENDED
+
+
+def _sizes(*groups: tuple[str, ...]) -> tuple[str, ...]:
+    out: list[str] = []
+    for group in groups:
+        out.extend(v for v in group if v not in out)
+    return tuple(out)
+
+
+BOTTOMWEAR: Final = (
+    Bottomwear(
+        "jeans",
+        "PANTS",
+        "jean",
+        _sizes(WAIST_SIZES, SIZES),
+        ("wash", "distressed"),
+        tuple(sorted((*BOTTOM_RECOMMENDED, "wash"))),
+    ),
+    Bottomwear("trousers", "PANTS", "trouser", _sizes(WAIST_SIZES, SIZES)),
+    Bottomwear("track_pants", "PANTS", "track_pant", _sizes(SIZES, WAIST_SIZES)),
+    Bottomwear("shorts", "SHORTS", "short", _sizes(WAIST_SIZES[:8], SIZES)),
+    Bottomwear(
+        "skirts", "SKIRT", "skirt", _sizes(SIZES, WAIST_SIZES[:5]), (), ("fit", "pattern", "rise")
+    ),
+)
+BOTTOMWEAR_CATEGORIES: Final = frozenset(b.category for b in BOTTOMWEAR)
+
+# marketplace field per bottomwear key: (Amazon, Flipkart)
+_BOTTOM_FIELDS: Final = {
+    "rise": ("rise_style", "Rise"),
+    "leg_style": ("leg_style", "Leg Style"),
+    "closure": ("closure_type", "Closure"),
+    "waist_style": ("waist_style", "Waistband"),
+    "stretch": ("fabric_stretchability", "Stretchable"),
+    "wash": ("finish_type", "Wash"),
+    "distressed": ("special_feature", "Distressed"),
+}
+
+
+def _bottomwear_specs(b: Bottomwear, *, flipkart: bool) -> dict[str, Any]:
+    """The bottomwear specs on one marketplace: the shared apparel specs without the topwear
+    keys, the bottomwear sizes and fits, and the bottomwear keys as text."""
+    base = _flipkart_apparel_specs() if flipkart else _apparel_specs()
+    specs = {k: v for k, v in base.items() if k not in ("sleeve_length", "neckline")}
+    size_map = {k: v for k, v in {**SIZE_MAP, **WAIST_MAP}.items() if v in b.sizes}
+    specs["size"] = _enum("Size" if flipkart else "size", b.sizes, size_map, "optional")
+    specs["fit"] = _enum("Fit" if flipkart else "fit_type", BOTTOM_FITS, {}, "optional")
+    keys = ("rise", "leg_style", "closure", "waist_style", "stretch", *b.extra_keys)
+    for key in keys:
+        specs[key] = _text(_BOTTOM_FIELDS[key][1 if flipkart else 0])
+    return specs
+
+
+def _bottom(b: Bottomwear, marketplace: str, specs: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "marketplace": marketplace,
+        "category": b.category,
+        "external_category_id": None,
+        "required_attributes": ["color", "fabric_type"],
+        "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "recommended_attributes": list(b.recommended),
+        "specs": specs,
+        "variation_themes": THEMES,
+    }
+
+
+def _amazon_bottom(b: Bottomwear) -> dict[str, Any]:
+    return _bottom(b, "amazon", _bottomwear_specs(b, flipkart=False))
+
+
+def _flipkart_bottom(b: Bottomwear) -> dict[str, Any]:
+    return _bottom(b, "flipkart", _bottomwear_specs(b, flipkart=True))

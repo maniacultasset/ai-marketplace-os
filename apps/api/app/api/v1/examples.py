@@ -1589,6 +1589,7 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                     "category": "ethnic_wear_kurta_sets",
                     "label": "Kurta sets",
                     "enabled": True,
+                    "group": "ethnic",
                     "marketplaces": [
                         {
                             "marketplace": "amazon",
@@ -1676,6 +1677,11 @@ SUCCESS_EXAMPLES: Final[Mapping[str, Any]] = MappingProxyType(
                 "selling_price",
             ],
             "levels": {"amazon": _TSHIRT_LEVELS_AMAZON, "flipkart": _TSHIRT_LEVELS_FLIPKART},
+            "size_profile": {
+                "size_system": "alpha",
+                "sizes": ["XS", "S", "M", "L", "XL", "XXL", "3XL"],
+                "measures": ["chest", "waist", "hip", "length"],
+            },
         },
         "home_brands": {
             "as_of": T1,
