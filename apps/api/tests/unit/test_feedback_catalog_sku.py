@@ -196,6 +196,8 @@ def test_answer_live_is_queued(status: str) -> None:
         "suggestion_id": str(JOB),
         "status": "queued",
         "candidates": [],
+        "not_listed": False,
+        "looks_like": None,
     }
 
 

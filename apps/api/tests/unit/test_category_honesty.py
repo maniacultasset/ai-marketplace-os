@@ -113,6 +113,12 @@ def test_short_sleeve_is_not_shorts() -> None:
     assert assess(raw, screen(raw, request), request.text).looks_like is None
 
 
+def test_a_top_pick_of_no_known_group_is_not_contradicted() -> None:
+    request = _request("Cotton crew tee")
+    raw = _result(("sarees", 0.9))
+    assert assess(raw, raw, request.text).looks_like is None
+
+
 def test_no_candidates_still_hint_the_group() -> None:
     request = _request("Pleated midi skirt")
     raw = _result()

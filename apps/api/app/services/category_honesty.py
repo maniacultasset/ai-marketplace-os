@@ -127,12 +127,13 @@ def ranked_not_listed(result: ClassifyResult) -> bool:
 
 def assess(raw: ClassifyResult, screened: ClassifyResult, text: ProductText) -> Honesty:
     """`not_listed` from the raw answer; `looks_like` when the seller's words name a group and
-    the top screened candidate (if any) is not in it."""
+    the top screened candidate (if any) sits in another known group."""
     not_listed = ranked_not_listed(raw)
     groups = word_groups(_seller_words(text))
     top = screened.candidates[0].category if screened.candidates and not not_listed else None
     top_group = category_group(top) if top is not None else None
     looks_like = None
-    if groups and top_group not in groups:
+    # a top candidate of no known group ("other") is never contradicted: there is nothing to compare
+    if groups and top_group != "other" and top_group not in groups:
         looks_like = groups[0]
     return Honesty(not_listed=not_listed, looks_like=looks_like)
