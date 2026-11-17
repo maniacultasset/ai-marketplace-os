@@ -512,8 +512,14 @@ class AmazonAdapter(MarketplaceAdapter):
         per_sku = fields_by_sku(item, fields)
         # DW2 D5/AC9: schema errors show in preview and the snapshot, never block a PATCH.
         # SI5 CP-D14: a live item is never refused for a missing barcode (a create is).
+        # Feedback 17 Nov: a bottomwear type is never sent, create or update, without its stored
+        # definition (publish loads it for every send).
         mapped, errors = build(
-            item, marketplace_id=self._marketplace_id, schema=False, require_identifier=False
+            item,
+            marketplace_id=self._marketplace_id,
+            schema=False,
+            require_identifier=False,
+            definition_guard=True,
         )
         template = item.template.template if item.template is not None else None
         index = reverse_index(template)
@@ -522,7 +528,8 @@ class AmazonAdapter(MarketplaceAdapter):
             unknown = [p for p in paths if p not in by_sku[sku].paths]
             if unknown:
                 raise ValueError("a field path this item does not carry")
-        if not is_mapped(item.template):
+        unmapped = any(e.error_code is ErrorCode.CATEGORY_NOT_MAPPED for e in errors)
+        if not is_mapped(item.template) or unmapped:
             return self._blocked(item, [by_sku[s] for s in per_sku], errors)
         results: list[ItemResult] = []
         bodies: list[bytes] = []
