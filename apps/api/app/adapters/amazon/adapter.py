@@ -182,6 +182,8 @@ class AmazonAdapter(MarketplaceAdapter):
             marketplace_id=self._marketplace_id,
             schema=False,
             require_identifier=not item.live,
+            # Feedback 17 Nov: a bottomwear type with no stored definition is not sent at all
+            definition_guard=True,
         )
         local = tuple(e for e in errors if e.severity is Severity.ERROR)
         if local:

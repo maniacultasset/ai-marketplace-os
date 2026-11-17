@@ -26,12 +26,14 @@ from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import Severity
 from mkos_schemas.errors import MAX_ERROR_ITEMS
 
+from app.adapters.amazon import constants as amazon
 from app.adapters.base import PrecheckResult, RemotePreview
 from app.core.config import get_settings
 from app.core.flags import PAUSED_REASON, publish_enabled
 from app.core.logging import get_logger
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.services.adapter_input import build_adapter_listing
+from app.services.product_type_schema import current_schemas
 from app.services.remote_preview import apply_preview, previewable
 from app.services.repair_input import adapter_repairs
 from app.workers.errors import JobFailed, RetryableJobError
@@ -78,12 +80,22 @@ async def run_remote_preview(ctx: JobContext) -> Outcome:
             return Outcome("succeeded", result={"skipped": "stale"})
         skus = {row.id: row.seller_sku for row in await uow.listing_items.for_listing(listing.id)}
         repairs = adapter_repairs(await uow.listing_repairs.live_for_listing(listing.id), skus)
+        # Feedback 17 Nov: a bottomwear type reaches Amazon, even as a dry run, only with its
+        # stored definition (`preview_remote` refuses it otherwise). Read for those types only,
+        # so the other categories' dry run is unchanged.
+        stored = None
+        product_type = source.template.product_type if source.template is not None else None
+        if listing.marketplace == "amazon" and product_type in amazon.PTD_REQUIRED_PRODUCT_TYPES:
+            stored, _ = await current_schemas(
+                uow, marketplace=listing.marketplace, product_type=product_type, with_parent=False
+            )
         item = build_adapter_listing(
             source,
             facts=family,
             image_refs={},
             idempotency_key=f"preview:{ctx.job_run_id}",
             repairs=repairs,
+            product_type_schema=stored,
         )
     try:
         view = await open_previewer(ctx.tenant_id, account)
