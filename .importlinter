@@ -352,8 +352,8 @@ forbidden_modules =
     app.adapters.flipkart.client
     app.adapters.flipkart.adapter
     app.workers.adapters
-# DW2: the staff PTD refresh is a platform call under the platform authorization (T53), never a
-# tenant token; only the CLI reaches the definitions client.
+# DW2: the staff PTD refresh is a platform call under the platform authorization (T53); only the
+# CLI reaches the definitions client (ADR-0033's via-tenant fetch runs in a worker child).
 # V1 hardening #11: the connect's seller check is one read-only GET with the token just granted
 # (never a stored credential), so the callback service reaches the client through it alone.
 ignore_imports =

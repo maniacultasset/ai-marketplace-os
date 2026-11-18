@@ -145,7 +145,7 @@ class GetOnlyTransport(httpx.AsyncBaseTransport):
         await self._inner.aclose()
 
 
-class _FreshToken:
+class FreshToken:
     """The access token step 2 just obtained. A 401/403 with it is the answer, not a reason to
     refresh again."""
 
@@ -153,7 +153,7 @@ class _FreshToken:
         self._token = token
 
     def __repr__(self) -> str:
-        return "_FreshToken()"
+        return "FreshToken()"
 
     async def get(self) -> SecretStr:
         return self._token
@@ -384,7 +384,7 @@ class _Run:
                 endpoint=self.settings.amazon_spapi_endpoint,
                 marketplace_id=self.settings.amazon_marketplace_id,
                 seller_id=self.account.seller_id,
-                tokens=_FreshToken(self.access),
+                tokens=FreshToken(self.access),
                 limiter=limiter,
                 transport=self.transport,
             )
