@@ -311,3 +311,69 @@ async def test_no_pin_or_no_current_template_is_unchanged() -> None:
 
     assert await template_pin(_uow(), _listing_row(), SimpleNamespace(category_template_id=None), NEW) is None  # fmt: skip
     assert await template_pin(_uow(), _listing_row(), SimpleNamespace(category_template_id=OLD), None) == OLD  # fmt: skip
+
+
+# ---- the build: one predicate for the edit pin and the send template (contract 6) ----
+
+
+@pytest.mark.parametrize(
+    ("over", "expected"),
+    [
+        ({}, True),  # never accepted, same category: built with the current template
+        ({"accepted": True}, False),  # live: its update payload never changes under it
+        ({"pinned_category": "jeans"}, False),  # recategorised: publish asks for the regenerate
+        ({"current_id": OLD}, False),  # already the current template
+        ({"current_id": None}, False),
+        ({"pinned_id": None}, False),
+    ],
+)
+def test_takes_current(over: dict[str, Any], expected: bool) -> None:
+    from app.repositories.templates import takes_current
+
+    args: dict[str, Any] = {
+        "pinned_id": OLD,
+        "pinned_category": "tshirts",
+        "current_id": NEW,
+        "listing_category": "tshirts",
+        "accepted": False,
+    }
+    assert takes_current(**{**args, **over}) is expected
+
+
+def _payload_style(
+    category: str, t: CategoryTemplate, product: ProductFacts, **attributes: str
+) -> Any:
+    from app.adapters.amazon.mapping import build
+    from app.adapters.base import AdapterTemplate
+    from tests.adapters.amazon_support import amazon_item
+
+    body = sample_listing().model_copy(
+        update={
+            "category": category,
+            "attributes": {"color": "navy blue", "fabric_type": "cotton", **attributes},
+            "attribute_sources": {},
+        }
+    )
+    overlaid = seller_overlay(body, product, t)
+    kind = "SHIRT" if category == "tshirts" else "KURTA"
+    mapped, _ = build(amazon_item(overlaid, template=AdapterTemplate(kind, None, t)), schema=False)
+    return mapped[0].payload["attributes"].get("style")
+
+
+def test_the_tshirt_payload_sends_the_derived_style() -> None:
+    sent = _payload_style("tshirts", template("tshirts"), facts(neckline="round"))
+    assert sent is not None and sent[0]["value"] == "Round Neck"
+    assert _payload_style("tshirts", template("tshirts"), facts()) is None  # nothing invented
+
+
+def test_kurta_v5_sends_the_same_style_as_v4() -> None:
+    """A kurta's Amazon `style` was the listing's kurta type (v4); v5 sends the same value
+    from the seller's own kurta type."""
+    v5 = template("ethnic_wear_kurta_sets")
+    specs = {k: s for k, s in v5.specs.items() if k != "style"}
+    specs["kurta_type"] = v5.specs["style"].model_copy(update={"requirement": "optional"})
+    v4 = v5.model_copy(update={"specs": specs})
+    product = facts(kurta_type="Anarkali")
+    old = _payload_style("ethnic_wear_kurta_sets", v4, product, kurta_type="Anarkali")
+    new = _payload_style("ethnic_wear_kurta_sets", v5, product)
+    assert old is not None and old == new and new[0]["value"] == "Anarkali"
