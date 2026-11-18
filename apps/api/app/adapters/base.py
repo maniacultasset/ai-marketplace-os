@@ -265,6 +265,10 @@ class AdapterListing:
     repairs: tuple[AdapterRepair, ...] = ()
     """SI11: the listing's live adapter-side repairs (`listing_repairs`), applied while their
     source value is unchanged; a stale one is reported, never applied."""
+    current_template: CategoryTemplate | None = None
+    """Prod feedback 18 Nov: the category's current template when the version pinned an older
+    one, read only to place a marketplace issue on an attribute the pinned template does not map
+    (so the seller can answer it); never used to build a payload."""
 
     def __post_init__(self) -> None:
         attempt = self.attempt

@@ -19,6 +19,26 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models.platform import CategoryTemplate
 
 
+def takes_current(
+    *,
+    pinned_id: UUID | None,
+    pinned_category: str | None,
+    current_id: UUID | None,
+    listing_category: str,
+    accepted: bool,
+) -> bool:
+    """Prod feedback 18 Nov: a listing version is built with its category's current template
+    instead of the older one it pinned when the marketplace never accepted the listing
+    (`accepted`: a published or live version) and the pin is of the listing's own category.
+    A live listing keeps its pin (its update payload does not change under it); a recategorised
+    one keeps its old pin, so publish still asks for the regenerate. The rules check already
+    judges every version against the current template, so the send then matches what was
+    approved (a T-shirt pinned before Amazon `style` was mapped sends its `style`)."""
+    if pinned_id is None or current_id is None or pinned_id == current_id or accepted:
+        return False
+    return pinned_category == listing_category
+
+
 @dataclass(frozen=True, slots=True)
 class CurrentTemplate:
     id: UUID

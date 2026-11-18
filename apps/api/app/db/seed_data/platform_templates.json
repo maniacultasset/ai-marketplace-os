@@ -1,6 +1,6 @@
 [
   {
-    "version": 4,
+    "version": 5,
     "product_type": "KURTA",
     "template": {
       "marketplace": "amazon",
@@ -296,9 +296,19 @@
           "unit": null,
           "when": []
         },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
         "kurta_type": {
           "requirement": "optional",
-          "marketplace_field": "style",
+          "marketplace_field": null,
           "value_type": "text",
           "allowed_values": null,
           "value_map": {},
@@ -322,7 +332,7 @@
     }
   },
   {
-    "version": 3,
+    "version": 4,
     "product_type": "SHIRT",
     "template": {
       "marketplace": "amazon",
@@ -617,6 +627,16 @@
           "unit": null,
           "when": []
         },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
         "product_weight": {
           "requirement": "optional",
           "marketplace_field": "item_weight",
@@ -769,7 +789,7 @@
     }
   },
   {
-    "version": 1,
+    "version": 2,
     "product_type": "PANTS",
     "template": {
       "marketplace": "amazon",
@@ -1125,6 +1145,16 @@
           "max_length": null,
           "unit": null,
           "when": []
+        },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
         }
       },
       "variation_themes": [
@@ -1142,7 +1172,7 @@
     }
   },
   {
-    "version": 1,
+    "version": 2,
     "product_type": "PANTS",
     "template": {
       "marketplace": "amazon",
@@ -1475,6 +1505,16 @@
           "max_length": null,
           "unit": null,
           "when": []
+        },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
         }
       },
       "variation_themes": [
@@ -1492,7 +1532,7 @@
     }
   },
   {
-    "version": 1,
+    "version": 2,
     "product_type": "PANTS",
     "template": {
       "marketplace": "amazon",
@@ -1825,6 +1865,16 @@
           "max_length": null,
           "unit": null,
           "when": []
+        },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
         }
       },
       "variation_themes": [
@@ -1842,7 +1892,7 @@
     }
   },
   {
-    "version": 1,
+    "version": 2,
     "product_type": "SHORTS",
     "template": {
       "marketplace": "amazon",
@@ -2169,6 +2219,16 @@
           "max_length": null,
           "unit": null,
           "when": []
+        },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
         }
       },
       "variation_themes": [
@@ -2186,7 +2246,7 @@
     }
   },
   {
-    "version": 1,
+    "version": 2,
     "product_type": "SKIRT",
     "template": {
       "marketplace": "amazon",
@@ -2497,6 +2557,16 @@
         "stretch": {
           "requirement": "optional",
           "marketplace_field": "fabric_stretchability",
+          "value_type": "text",
+          "allowed_values": null,
+          "value_map": {},
+          "max_length": null,
+          "unit": null,
+          "when": []
+        },
+        "style": {
+          "requirement": "required",
+          "marketplace_field": "style",
           "value_type": "text",
           "allowed_values": null,
           "value_map": {},

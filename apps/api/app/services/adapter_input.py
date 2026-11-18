@@ -157,4 +157,5 @@ def build_adapter_listing(
         allow_http_images=allow_http_images,
         live=source.live,
         repairs=repairs,
+        current_template=source.current_template,
     )

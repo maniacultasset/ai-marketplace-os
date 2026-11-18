@@ -36,6 +36,7 @@ from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
+from mkos_schemas.jobs import CategoryTemplate as WireTemplate
 from sqlalchemy import exists, func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -51,7 +52,7 @@ from app.db.models.ops import JobRun
 from app.db.session import USER_INFO_KEY
 from app.repositories.base import TenantScopedRepository
 from app.repositories.home import in_bucket
-from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate
+from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate, takes_current
 
 __all__ = [
     "QUEUE_STATUSES",
@@ -191,6 +192,9 @@ class PreviewSource:
     """colour_key -> the live images of that colourway, main first, then by position (S22 C1)."""
     live: bool = False
     """SI9 B4: the listing has a published version (its next full send is an update)."""
+    current_template: WireTemplate | None = None
+    """18 Nov: the category's current template when the version pinned
+    another one, so an issue on an attribute only it maps reaches the seller; else None."""
 
 
 class _Versions(TenantScopedRepository[ListingVersion]):
@@ -678,7 +682,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
     ) -> PreviewSource | None:
         """The listing's adapter input. SI9 B4: with `version` (content not stored yet: the
         generation persist and the edit check it before the insert), that version replaces the
-        current one, and the template is the one it pins."""
+        current one, and the template is the one it pins. 18 Nov: a listing the marketplace
+        never accepted is built with its category's current template instead (`takes_current`)."""
         lst = Listing
         row = (
             await self.db.execute(
@@ -692,6 +697,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
                     lst.product_id,
                     lst.current_version_id,
                     lst.published_version_id,
+                    lst.live_version_id,
                 )
             )
         ).one_or_none()
@@ -707,6 +713,24 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if version is not None and version.category_template_id is not None:
             pinned = await CategoryTemplateRepository(self.db).pinned(version.category_template_id)
             template = pinned if pinned is not None and pinned.product_type else None
+        current_template = None
+        if template is not None:
+            templates = CategoryTemplateRepository(self.db)
+            current = await templates.current(row.marketplace, row.category)
+            accepted = row.published_version_id is not None or row.live_version_id is not None
+            if current is not None and takes_current(
+                pinned_id=template.id,
+                pinned_category=template.template.category,
+                current_id=current.id,
+                listing_category=row.category,
+                accepted=accepted,
+            ):
+                # 18 Nov: never accepted, so built with the current template (`takes_current`)
+                latest = await templates.pinned(current.id)
+                if latest is not None and latest.product_type:
+                    template = latest
+            if current is not None and current.id != template.id:
+                current_template = current.template
         children = await _children(products, product.id)
         colour_images: dict[str, tuple[uuid.UUID, ...]] = {}
         if children:
@@ -722,6 +746,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
             template=template,
             colour_images=colour_images,
             live=row.published_version_id is not None,
+            current_template=current_template,
         )
 
     async def _colours(

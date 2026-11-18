@@ -118,7 +118,7 @@ async def test_no_seller_fabric_is_missing_and_blocks(
 async def test_ai_colour_needs_the_dictionary_confidence(
     gen_world: GenWorld, monkeypatch: pytest.MonkeyPatch, score: float, kept: bool
 ) -> None:
-    sku = await _product(gen_world, {"fabric_type": "Cotton"})
+    sku = await _product(gen_world, {"fabric_type": "Cotton", "style": "Straight"})
     _ai(monkeypatch, {"color": "Navy"}, score)
     listing_id, content = await _generate(gen_world, sku)
     assert ("color" in content["attributes"]) is kept

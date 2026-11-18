@@ -42,8 +42,11 @@ case "$pid1" in
   *"/uvicorn app.main:app"*) ;;
   *) fail "PID 1 is not uvicorn: $pid1" ;;
 esac
+# The image's HEALTHCHECK probe (`python -c "...urllib.request..."` and its `sh -c` parent) can
+# be running at this moment; it is not the app, so it is left out of the count.
 pythons="$(docker exec "$cid" sh -c \
-  'for f in /proc/[0-9]*/cmdline; do tr "\0" " " < "$f" 2>/dev/null; echo; done' | grep -c python)"
+  'for f in /proc/[0-9]*/cmdline; do tr "\0" " " < "$f" 2>/dev/null; echo; done' \
+  | grep python | grep -v urllib.request | wc -l | tr -d ' ')"
 [ "$pythons" -eq 1 ] || fail "want exactly one python process, found $pythons"
 
 # S3: the frozen /api/v1 surface, through the image. No token is 401, and since S10 an unverified

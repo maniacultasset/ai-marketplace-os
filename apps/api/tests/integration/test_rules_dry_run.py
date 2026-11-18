@@ -61,7 +61,7 @@ def draft(title: str = TITLE_200, **over: Any) -> dict[str, Any]:
             "bullets": ["Soft cotton fabric"],
             "description": "A cotton kurta set.",
         },
-        "attributes": {"color": "indigo", "fabric_type": "cotton"},
+        "attributes": {"color": "indigo", "fabric_type": "cotton", "style": "Straight"},
     }
     listing.update(over)
     return {"listing": listing}

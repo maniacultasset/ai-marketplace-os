@@ -144,10 +144,22 @@ async def test_adapter_input_pinned_template_not_current(
     )
     product_id = f.product(auth_db, acme, category=CATEGORY)
     listing_id = _listing(auth_db, acme, product_id, template_id=v1)
+    # 18 Nov: never accepted by the marketplace, so built with the current template
+    fresh = await _source(products_world, listing_id)
+    assert fresh.template.id == v2 and fresh.current_template is None
+    # once accepted, the version's own pin is kept (its update payload never changes under it)
+    with auth_db.transaction():
+        auth_db.execute("SET LOCAL session_replication_role = replica")
+        auth_db.execute(
+            "UPDATE listings SET published_version_id = current_version_id WHERE id = %s",
+            [listing_id],
+        )
     source = await _source(products_world, listing_id)
     assert source.template.id == v1 != v2
     assert source.template.version == 1
     assert source.template.template.required_attributes == []
+    assert source.current_template is not None
+    assert source.current_template.required_attributes == ["x"]
 
 
 async def test_adapter_input_no_template_none(products_world: World, auth_db: Conn) -> None:
