@@ -98,8 +98,9 @@ SEED_GENDER: Final = "women"  # SI8: the demo kurta family's audience
 SEED_GENDERED: Final = frozenset({"KURTA-001", "KURTA-002"})
 # SI2: the seller's own colour and fabric of the two seeded kurtas (the AI never supplies them)
 SEED_ATTRIBUTES: Final[Mapping[str, Mapping[str, str]]] = {
-    "KURTA-001": {"color": "indigo", "fabric_type": "cotton"},
-    "KURTA-002": {"color": "maroon", "fabric_type": "silk"},
+    # 18 Nov: the kurta type is the Amazon `style` (required) the seeded kurtas send
+    "KURTA-001": {"color": "indigo", "fabric_type": "cotton", "kurta_type": "Straight"},
+    "KURTA-002": {"color": "maroon", "fabric_type": "silk", "kurta_type": "Anarkali"},
 }
 # SI5: Amazon refuses a create without a barcode or a GTIN exemption, so every sellable seeded
 # product carries its own EAN-13 (Indian GS1 prefix 890, a company code per brand, valid check
