@@ -136,6 +136,17 @@ or a link).
 | a missing setting, any failure       | stderr | 1    |
 | bad arguments (argparse)             | stderr | 2    |
 
+`templates refresh ... --via-tenant SLUG` (ADR-0033) fetches the same definition under tenant
+SLUG's stored Amazon connection instead of the platform authorization, so it never needs
+`AMAZON_PLATFORM_REFRESH_TOKEN`. It refuses unless SLUG is on `AMAZON_PTD_TENANT_SLUGS` and the
+staff email is an active platform admin (`ALEMBIC_DATABASE_URL`, even for `--dry-run`), resolves
+the slug (`DATABASE_URL`), then runs the fetch as a worker child process (`python -m
+app.workers.ptd_tenant`: the decrypt path, which this module never imports). The child checks the
+allow-list again, needs an active Amazon account, sends GET only and hands the fetched definition
+over in a 0600 file in a private temporary directory; this command recomputes its digest and
+saves or stores it as above, the audit reason ending with `(via tenant SLUG)`. Exit 3: refused
+(allow-list, not a platform admin, no active Amazon account); 4: no such tenant; else as above.
+
 `templates promote-definition --product-type T --version V [--digest PREFIX] [--requirements R]
 --staff-email E --reason R` makes a stored version current (after a `templates diff`).
 
@@ -1582,7 +1593,7 @@ def _save_schema(path: Path, schema: Any) -> None:
         handle.write("\n")
 
 
-def _definition_line(outcome: str, fetched: FetchedDefinition) -> str:
+def _definition_line(outcome: str, fetched: FetchedDefinition, suffix: str = "") -> str:
     properties = fetched.schema.get("properties")
     required = fetched.schema.get("required")
     count = len(properties) if isinstance(properties, dict) else 0
@@ -1590,7 +1601,7 @@ def _definition_line(outcome: str, fetched: FetchedDefinition) -> str:
     return (
         f"templates refresh: {outcome} {fetched.product_type} version "
         f"{fetched.product_type_version} digest {fetched.digest.hex()[:12]} "
-        f"properties {count} required {needed}\n"
+        f"properties {count} required {needed}{suffix}\n"
     )
 
 
@@ -1614,11 +1625,7 @@ async def _fetch_definition(
 
 
 async def run_ptd_refresh(args: argparse.Namespace) -> int:
-    from sqlalchemy.ext.asyncio import create_async_engine
-
     from app.core.config import get_settings
-    from app.core.request_context import new_request_id
-    from app.db.ptd_loads import Actor, DefinitionRow, store_definition
 
     settings = get_settings()
     missing = _missing_ptd_setting(settings)
@@ -1634,6 +1641,23 @@ async def run_ptd_refresh(args: argparse.Namespace) -> int:
         code = f", {report.error_code}" if report is not None and report.error_code else ""
         sys.stderr.write(f"templates refresh: failed ({type(exc).__name__}{code})\n")
         return EXIT_FAILED
+    return await _finish_refresh(args, settings, fetched, reason=args.reason)
+
+
+async def _finish_refresh(
+    args: argparse.Namespace,
+    settings: Settings,
+    fetched: FetchedDefinition,
+    *,
+    reason: str,
+    suffix: str = "",
+) -> int:
+    """The dry run's save, or the store as `migrator`; one stdout line naming the outcome."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.core.request_context import new_request_id
+    from app.db.ptd_loads import Actor, DefinitionRow, store_definition
+
     if args.dry_run:
         if args.save_schema is not None:
             try:
@@ -1641,7 +1665,7 @@ async def run_ptd_refresh(args: argparse.Namespace) -> int:
             except OSError as exc:
                 sys.stderr.write(f"templates refresh: not saved ({type(exc).__name__})\n")
                 return EXIT_FAILED
-        sys.stdout.write(_definition_line("fetched", fetched))
+        sys.stdout.write(_definition_line("fetched", fetched, suffix))
         return EXIT_OK
     row = DefinitionRow(
         marketplace_id=fetched.marketplace_id,
@@ -1656,7 +1680,7 @@ async def run_ptd_refresh(args: argparse.Namespace) -> int:
         schema=fetched.schema,
         digest=fetched.digest,
     )
-    actor = Actor(args.staff_email, args.reason, new_request_id())
+    actor = Actor(args.staff_email, reason, new_request_id())
     engine = create_async_engine(str(settings.alembic_database_url))
     try:
         result = await store_definition(engine, row, actor)
@@ -1665,8 +1689,136 @@ async def run_ptd_refresh(args: argparse.Namespace) -> int:
         return EXIT_FAILED
     finally:
         await engine.dispose()
-    sys.stdout.write(_definition_line(result.outcome, fetched))
+    sys.stdout.write(_definition_line(result.outcome, fetched, suffix))
     return EXIT_OK
+
+
+PTD_TENANT_MODULE: Final = "app.workers.ptd_tenant"
+PTD_RESULT_FIELDS: Final = (
+    "marketplace_id",
+    "product_type",
+    "requirements",
+    "locale",
+    "product_type_version",
+    "requirements_enforced",
+)
+
+
+def ptd_via_tenant_argv(args: argparse.Namespace, tenant_id: uuid.UUID, out: Path) -> list[str]:
+    """The fetch child's command line (flags only from the validated arguments)."""
+    argv = [sys.executable, "-m", PTD_TENANT_MODULE, "--tenant-id", str(tenant_id)]
+    argv += ["--tenant-slug", args.via_tenant, "--product-type", args.product_type]
+    argv += ["--requirements", args.requirements, "--staff-email", args.staff_email]
+    argv += ["--reason", args.reason, "--out", str(out)]
+    return argv
+
+
+def _run_child(argv: list[str]) -> int:
+    import subprocess
+
+    # argv[0] is this interpreter and every flag is a validated argument; no shell
+    return subprocess.run(argv, check=False).returncode  # noqa: S603
+
+
+# Tests swap this for a recorder that writes the hand-over file.
+RUN_PTD_CHILD: Callable[[list[str]], int] = _run_child
+
+
+def read_ptd_result(path: Path, args: argparse.Namespace) -> FetchedDefinition:
+    """The child's hand-over file as a `FetchedDefinition`: the asked key, plain field types and
+    a JSON-object schema; the digest is computed here, never taken from the file."""
+    from app.adapters.amazon.definitions import FetchedDefinition, canonical_digest
+
+    body = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(body, dict):
+        raise ValueError("the fetch result is not an object")
+    texts = {name: body.get(name) for name in PTD_RESULT_FIELDS}
+    schema, groups = body.get("schema"), body.get("property_groups")
+    display, meta = body.get("display_name"), body.get("meta_schema_id")
+    if (
+        not all(isinstance(value, str) and value for value in texts.values())
+        or texts["product_type"] != args.product_type
+        or texts["requirements"] != args.requirements
+        or not isinstance(schema, dict)
+        or not isinstance(groups, dict)
+        or not (display is None or isinstance(display, str))
+        or not (meta is None or isinstance(meta, str))
+    ):
+        raise ValueError("the fetch result does not match the request")
+    return FetchedDefinition(
+        **{name: str(value) for name, value in texts.items()},
+        display_name=display,
+        property_groups=groups,
+        meta_schema_id=meta,
+        schema=schema,
+        digest=canonical_digest(schema),
+    )
+
+
+async def _ptd_admin(settings: Settings, email: str) -> bool:
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    from app.db.ptd_loads import is_platform_admin
+
+    engine = create_async_engine(str(settings.alembic_database_url))
+    try:
+        return await is_platform_admin(engine, email)
+    finally:
+        await engine.dispose()
+
+
+def run_ptd_via_tenant(args: argparse.Namespace) -> int:
+    """ADR-0033: the allow-list, the platform admin and the tenant here; the fetch under the
+    tenant's connection in a worker child (`app.workers.ptd_tenant`, the decrypt path); then the
+    dry run's save or the store as `templates refresh` does, the audit reason naming the tenant."""
+    import shutil
+    import tempfile
+
+    from app.core.config import get_settings, ptd_tenant_slugs
+
+    label = "templates refresh"
+    settings = get_settings()
+    slug = args.via_tenant
+    if slug not in ptd_tenant_slugs(settings.amazon_ptd_tenant_slugs):
+        sys.stderr.write(f"{label}: refused (tenant {slug} is not on AMAZON_PTD_TENANT_SLUGS)\n")
+        return EXIT_REFUSED
+    for name, value in (
+        ("DATABASE_URL", settings.database_url),
+        ("ALEMBIC_DATABASE_URL", settings.alembic_database_url),
+    ):
+        if value is None:
+            sys.stderr.write(f"{label}: failed ({name} is required)\n")
+            return EXIT_FAILED
+    try:
+        admin = asyncio.run(_ptd_admin(settings, args.staff_email))
+    except Exception as exc:  # class and SQLSTATE only, never the message
+        sys.stderr.write(f"{label}: failed ({_describe(exc)})\n")
+        return EXIT_FAILED
+    if not admin:
+        sys.stderr.write(f"{label}: refused (--staff-email is not an active platform admin)\n")
+        return EXIT_REFUSED
+    tenant_id = resolve_tenant(label, slug, None)
+    if isinstance(tenant_id, int):
+        return tenant_id
+    workdir = Path(tempfile.mkdtemp(prefix="ptd-tenant-"))  # 0700
+    try:
+        out = workdir / "definition.json"
+        sys.stdout.flush()
+        sys.stderr.flush()
+        code = RUN_PTD_CHILD(ptd_via_tenant_argv(args, tenant_id, out))
+        if code != EXIT_OK:
+            return code
+        try:
+            fetched = read_ptd_result(out, args)
+        except (OSError, ValueError, TypeError) as exc:
+            sys.stderr.write(f"{label}: failed (unreadable fetch result: {type(exc).__name__})\n")
+            return EXIT_FAILED
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+    via = f" (via tenant {slug})"
+    return asyncio.run(
+        _finish_refresh(args, settings, fetched, reason=f"{args.reason}{via}", suffix=via)
+    )
 
 
 async def run_ptd_promote(args: argparse.Namespace) -> int:
@@ -1875,6 +2027,12 @@ def _add_ptd(templates_commands: Any) -> None:
     refresh.add_argument("--reason", type=_reason, required=True)
     refresh.add_argument("--dry-run", action="store_true", help="fetch only; no database")
     refresh.add_argument("--save-schema", type=Path, default=None, help="with --dry-run only")
+    refresh.add_argument(
+        "--via-tenant",
+        type=_slug,
+        default=None,
+        help="use this allow-listed tenant's Amazon connection (AMAZON_PTD_TENANT_SLUGS)",
+    )
     promote = templates_commands.add_parser(
         "promote-definition", help="make a stored definition version current (DW2)"
     )
@@ -2084,6 +2242,8 @@ def _run_ptd(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
     if args.command == "refresh":
         if args.save_schema is not None and not args.dry_run:
             parser.error("--save-schema needs --dry-run")
+        if args.via_tenant is not None:
+            return run_ptd_via_tenant(args)
         return asyncio.run(run_ptd_refresh(args))
     if args.command == "promote-definition":
         return asyncio.run(run_ptd_promote(args))

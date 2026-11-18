@@ -29,6 +29,7 @@ from mkos_schemas.codes import ERROR_CODE_META, ErrorCode
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from app.db.platform_admins import active_platform_admin
 from app.db.platform_loads import ErrorMapIn, _assume_migrator, load_error_map_rows
 from app.services.resolution import diagnosis
 
@@ -62,18 +63,10 @@ class Approved:
 
 
 async def _admin(connection: AsyncConnection, email: str) -> uuid.UUID:
-    row = (
-        await connection.execute(
-            text(
-                "SELECT id, is_platform_admin, is_active FROM users "
-                "WHERE lower(email) = lower(:email)"
-            ),
-            {"email": email.strip()},
-        )
-    ).first()
-    if row is None or not row.is_active or not row.is_platform_admin:
+    admin = await active_platform_admin(connection, email)
+    if admin is None:
         raise ReviewRefused("--by must be an active platform admin")
-    return uuid.UUID(str(row.id))
+    return admin
 
 
 async def _locked(connection: AsyncConnection, proposal_id: uuid.UUID) -> Any:

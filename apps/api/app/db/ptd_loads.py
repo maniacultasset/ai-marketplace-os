@@ -27,6 +27,7 @@ from sqlalchemy import insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from app.db.models.platform import ProductTypeDefinition
+from app.db.platform_admins import active_platform_admin
 from app.db.platform_loads import _assume_migrator, _hold_migration_lock
 
 ENTITY: Final = "product_type_definition"
@@ -215,3 +216,10 @@ async def promote_definition(
         return await promote_rows(
             connection, key=key, version=version, digest_prefix=digest_prefix, actor=actor
         )
+
+
+async def is_platform_admin(engine: AsyncEngine, email: str) -> bool:
+    """Whether `email` names an active platform admin (read-only, as `migrator`; ADR-0033)."""
+    async with engine.connect() as connection:
+        await connection.run_sync(_assume_migrator)
+        return await active_platform_admin(connection, email) is not None

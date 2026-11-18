@@ -2,8 +2,9 @@
 
 DW2 (T53). Staff run these from the migrate job's image (`APP_ROLE=migrate` or `shell`), never
 from the api or the worker: those refuse to boot with `AMAZON_PLATFORM_REFRESH_TOKEN` set outside
-local. The fetch uses the platform-owned SP-API authorization, never a tenant's token. Output names
-the product type, version and digest prefix only.
+local. The fetch uses the platform-owned SP-API authorization, or (ADR-0033, `--via-tenant`) the
+stored connection of an allow-listed tenant. Output names the product type, version and digest
+prefix only.
 
 ## Refresh, check, promote
 
@@ -34,6 +35,50 @@ current definition; an update publish is not blocked by it.
 2. `scripts/deploy/gcp/deploy.sh prod templates refresh --product-type KURTA --staff-email <you>
    --reason "<why>"`, then `templates promote-definition ...` as in step 3 above. The job
    `aimos-ptd` is the only place the platform token is mounted.
+
+## Through the owner's seller connection (ADR-0033)
+
+While `AMAZON_PLATFORM_REFRESH_TOKEN` is empty, fetch through an allow-listed tenant's stored
+Amazon connection instead: add `--via-tenant SLUG` to `templates refresh`. SLUG must be on
+`AMAZON_PTD_TENANT_SLUGS` (`prod.env`: `test`, the owner's own brand; blank refuses every tenant),
+the staff email must be an active platform admin, and the tenant's Amazon account must be
+`active`. Only `getDefinitionsProductType` and the schema download are sent (GET only), the
+account row is not changed, and the audit rows name the staff email and `(via tenant SLUG)`. The
+platform token is never read, mounted or asked for.
+
+Locally (needs `DATABASE_URL`, `ALEMBIC_DATABASE_URL`, the Amazon app and the token key):
+`python -m app.cli templates refresh --product-type SHIRT --staff-email <platform admin> --reason
+"<why>" --via-tenant test [--dry-run [--save-schema shirt.json]]`. `--dry-run` stores nothing but
+still checks the platform admin, so it needs `ALEMBIC_DATABASE_URL` too.
+
+In production, one job run per product type (job `aimos-ptd-tenant`, identity `aimos-ptd`):
+
+```
+scripts/deploy/gcp/deploy.sh prod templates refresh --product-type SHIRT  --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
+scripts/deploy/gcp/deploy.sh prod templates refresh --product-type KURTA  --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
+scripts/deploy/gcp/deploy.sh prod templates refresh --product-type PANTS  --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
+scripts/deploy/gcp/deploy.sh prod templates refresh --product-type SHORTS --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
+scripts/deploy/gcp/deploy.sh prod templates refresh --product-type SKIRT  --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
+```
+
+Each prints `templates refresh: stored_current <TYPE> version <v> digest <prefix> ... (via tenant
+test)` in the job log; a rerun with the same schema prints `unchanged`. The first version of a
+type goes in current, so no `promote-definition` is needed on a first load. To confirm in
+production, `scripts/deploy/gcp/deploy.sh prod amazon-check --slug test --staff-email <platform
+admin>` should show `4 ptd KURTA` and `4 ptd SHIRT` as `in sync with the stored definition`
+(read-only). `templates check` and `templates diff` (above) compare every template's believed
+names with the stored definitions; run them where `DATABASE_URL` reaches that database.
+
+`deploy.sh` cannot pass the CLI's own `--dry-run` (its `--dry-run` only prints the gcloud
+commands), and a `--save-schema` file in a Cloud Run job is lost when the job ends: use those
+locally.
+
+| exit | meaning |
+|---|---|
+| 0 | fetched (dry run), stored, stored_current or unchanged |
+| 1 | a missing setting, the token did not open or refresh, an Amazon or database failure |
+| 3 | refused: SLUG not on `AMAZON_PTD_TENANT_SLUGS`, not an active platform admin, or no active Amazon account with a stored token |
+| 4 | no such tenant |
 
 ## DW2-S (sandbox) and DW2-P (production)
 

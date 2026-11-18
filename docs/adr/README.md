@@ -38,3 +38,4 @@ change.
 | 0030 | Image candidates and the AI white-background main (reverses R04763 for the main image; amends the CANON.md AI-seam row with a second entry point) | ⚑ proposed (SI7 image generation; user decision in chat 2026-11-07) | 2026-11-07 |
 | 0031 | Owners may approve their own listings, per brand, off by default (amends invariant 3 and ADR-0008 decision 1 for one case; `0032_owner_self_approval`) | accepted (owner decision in chat 2026-11-11) | 2026-11-11 |
 | 0032 | An owner adds another brand without a new sign-up review (amends ADR-0019 for an owner of an approved, live brand) | ⚑ proposed (client feedback item 18; owner chose the light path in chat 2026-11-11; 0031 held by owner self-approval) | 2026-11-11 |
+| 0033 | Product type definitions through an allow-listed seller connection (amends DW2 decision 4, T53) | accepted (owner authorised in chat 2026-11-18) | 2026-11-18 |

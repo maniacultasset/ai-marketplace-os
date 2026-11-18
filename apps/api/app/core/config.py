@@ -351,6 +351,9 @@ class Settings(BaseSettings):
     amazon_platform_refresh_token: SecretStr | None = Field(default=None, repr=False)
     # DW2 (C7): the hosts a PTD schema link may name, comma separated; ".x.y" is a suffix match.
     amazon_ptd_link_hosts: str = ".amazonaws.com"
+    # ADR-0033: the tenants whose stored Amazon connection `templates refresh --via-tenant` may
+    # borrow for the definitions GET, comma separated slugs. Empty (the default) refuses every one.
+    amazon_ptd_tenant_slugs: str = ""
     # SI11 (ADR-0028): ask Amazon's dry run (VALIDATION_PREVIEW) about a listing before approval.
     # Off unless set: production turns it on only after the deliberate-error runbook passes on
     # Amazon India (its preview support is unconfirmed, F:61).
@@ -917,6 +920,11 @@ def ptd_link_host_errors(value: str) -> list[str]:
         ):
             return ["AMAZON_PTD_LINK_HOSTS must list DNS names of two or more labels"]
     return []
+
+
+def ptd_tenant_slugs(value: str) -> frozenset[str]:
+    """The slugs of `AMAZON_PTD_TENANT_SLUGS` (ADR-0033), trimmed and lower-cased."""
+    return frozenset(part.strip().lower() for part in value.split(",") if part.strip())
 
 
 def _ptd_errors(s: Settings) -> list[str]:
