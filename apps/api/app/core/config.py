@@ -922,6 +922,21 @@ def ptd_link_host_errors(value: str) -> list[str]:
     return []
 
 
+# ADR-0033: what the via-tenant fetch child never needs. It writes its audit row through
+# `DATABASE_URL` under RLS and uses the tenant's connection, so the migrator URL and the platform
+# authorization stay in the parent.
+PTD_CHILD_DROPPED_ENV: Final = frozenset({"ALEMBIC_DATABASE_URL", "AMAZON_PLATFORM_REFRESH_TOKEN"})
+
+
+def ptd_child_env(environ: Mapping[str, str] | None = None) -> dict[str, str]:
+    """The environment of `app.workers.ptd_tenant`: this process's, less `PTD_CHILD_DROPPED_ENV`
+    (names compared case-insensitively, as the settings read them)."""
+    import os
+
+    source = os.environ if environ is None else environ
+    return {k: v for k, v in source.items() if k.upper() not in PTD_CHILD_DROPPED_ENV}
+
+
 def ptd_tenant_slugs(value: str) -> frozenset[str]:
     """The slugs of `AMAZON_PTD_TENANT_SLUGS` (ADR-0033), trimmed and lower-cased."""
     return frozenset(part.strip().lower() for part in value.split(",") if part.strip())

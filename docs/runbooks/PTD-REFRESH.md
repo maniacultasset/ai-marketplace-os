@@ -41,8 +41,8 @@ current definition; an update publish is not blocked by it.
 While `AMAZON_PLATFORM_REFRESH_TOKEN` is empty, fetch through an allow-listed tenant's stored
 Amazon connection instead: add `--via-tenant SLUG` to `templates refresh`. SLUG must be on
 `AMAZON_PTD_TENANT_SLUGS` (`prod.env`: `test`, the owner's own brand; blank refuses every tenant),
-the staff email must be an active platform admin, and the tenant's Amazon account must be
-`active`. Only `getDefinitionsProductType` and the schema download are sent (GET only), the
+the staff email must be an active platform admin, and the tenant must be in trial or active with
+exactly one Amazon account, `active` with a stored token. Only `getDefinitionsProductType` and the schema download are sent (GET only), the
 account row is not changed, and the audit rows name the staff email and `(via tenant SLUG)`. The
 platform token is never read, mounted or asked for.
 
@@ -51,7 +51,8 @@ Locally (needs `DATABASE_URL`, `ALEMBIC_DATABASE_URL`, the Amazon app and the to
 "<why>" --via-tenant test [--dry-run [--save-schema shirt.json]]`. `--dry-run` stores nothing but
 still checks the platform admin, so it needs `ALEMBIC_DATABASE_URL` too.
 
-In production, one job run per product type (job `aimos-ptd-tenant`, identity `aimos-ptd`):
+In production, one job run per product type (job and identity `aimos-ptd-tenant`; it never gets the platform token, and `aimos-ptd` never
+gets the token key):
 
 ```
 scripts/deploy/gcp/deploy.sh prod templates refresh --product-type SHIRT  --staff-email <platform admin> --reason "first load, beta style rejection" --via-tenant test
@@ -69,6 +70,11 @@ admin>` should show `4 ptd KURTA` and `4 ptd SHIRT` as `in sync with the stored 
 (read-only). `templates check` and `templates diff` (above) compare every template's believed
 names with the stored definitions; run them where `DATABASE_URL` reaches that database.
 
+The first run creates the identity `aimos-ptd-tenant` and its grants seconds before the job
+starts. If that first run fails with `the stored Amazon token did not open` or a secret-mount
+error, wait 1-2 minutes for the new access to take effect and run it again; a later run failing
+that way is a real fault (the token key or the connection), not propagation.
+
 `deploy.sh` cannot pass the CLI's own `--dry-run` (its `--dry-run` only prints the gcloud
 commands), and a `--save-schema` file in a Cloud Run job is lost when the job ends: use those
 locally.
@@ -77,7 +83,7 @@ locally.
 |---|---|
 | 0 | fetched (dry run), stored, stored_current or unchanged |
 | 1 | a missing setting, the token did not open or refresh, an Amazon or database failure |
-| 3 | refused: SLUG not on `AMAZON_PTD_TENANT_SLUGS`, not an active platform admin, or no active Amazon account with a stored token |
+| 3 | refused: SLUG not on `AMAZON_PTD_TENANT_SLUGS`, not an active platform admin, the tenant suspended or offboarded, or not exactly one active Amazon account with a stored token |
 | 4 | no such tenant |
 
 ## DW2-S (sandbox) and DW2-P (production)

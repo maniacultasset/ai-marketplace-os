@@ -22,7 +22,7 @@ import pytest
 from app import cli
 from app.adapters.amazon import definitions
 from app.adapters.oauth.base import OAuthRejectedError, TokenGrant
-from app.core.config import Settings, get_settings, ptd_tenant_slugs
+from app.core.config import Settings, get_settings, ptd_child_env, ptd_tenant_slugs
 from app.core.crypto import TokenPair
 from app.db import ptd_loads
 from app.db.ptd_loads import Actor, DefinitionRow, StoreResult
@@ -229,11 +229,26 @@ class _Snap:
     kms_key_version: str | None
 
 
+@dataclass
+class _Profile:
+    slug: str = "test"
+    status: str = "active"
+    offboarded_at: Any = None
+
+
 class _FakeUow:
-    def __init__(self, rows: list[_Row], snap: _Snap | None) -> None:
+    def __init__(
+        self, rows: list[_Row], snap: _Snap | None, profile: _Profile | None = None
+    ) -> None:
         self.audits: list[dict[str, Any]] = []
+        self.pages = 0
+        tenant = profile if profile is not None else _Profile()
+
+        async def get_profile() -> _Profile:
+            return tenant
 
         async def page(**_: Any) -> tuple[list[_Row], None]:
+            self.pages += 1
             return rows, None
 
         async def snapshot(*_: Any, **__: Any) -> _Snap | None:
@@ -242,6 +257,7 @@ class _FakeUow:
         async def write(**values: Any) -> None:
             self.audits.append(values)
 
+        self.tenants = SimpleNamespace(get_profile=get_profile)
         self.marketplace_accounts = SimpleNamespace(page=page, snapshot=snapshot)
         self.audit = SimpleNamespace(write=write)
 
@@ -278,6 +294,11 @@ ACTIVE = _Row(ACCOUNT, "amazon", SELLER, "active")
         ([ACTIVE], None),
         ([ACTIVE], _Snap("amazon", "active", None, None)),
         ([ACTIVE], _Snap("amazon", "expired", b"x", "v1")),
+        # two active Amazon accounts: which seller is borrowed is never guessed
+        (
+            [ACTIVE, _Row(uuid.uuid4(), "amazon", "A3OTHER", "active")],
+            _Snap("amazon", "active", b"x", "v1"),
+        ),
     ],
 )
 async def test_load_account_refuses_an_account_that_is_not_active_amazon(
@@ -289,6 +310,49 @@ async def test_load_account_refuses_an_account_that_is_not_active_amazon(
         await ptd_tenant.load_account(_settings(), _request(tmp_path))
     assert caught.value.code == ptd_tenant.EXIT_REFUSED
     assert unsealed == [] and uow.audits == []
+
+
+@pytest.mark.parametrize(
+    "profile",
+    [
+        # an allowed slug paired with another brand's id: the id's own row names another slug
+        _Profile(slug="acme"),
+        _Profile(status="suspended"),
+        _Profile(status="offboarded"),
+        _Profile(offboarded_at="2026-11-01T00:00:00Z"),
+    ],
+)
+async def test_load_account_refuses_an_id_that_is_not_the_allowed_live_tenant(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile: _Profile
+) -> None:
+    uow = _FakeUow([ACTIVE], _Snap("amazon", "active", b"blob", "v1"), profile)
+    unsealed = _patch_db(monkeypatch, uow)
+    with pytest.raises(Refused) as caught:
+        await ptd_tenant.load_account(_settings(), _request(tmp_path))
+    assert caught.value.code == ptd_tenant.EXIT_REFUSED
+    assert unsealed == [] and uow.audits == [] and uow.pages == 0
+
+
+async def test_load_account_opens_a_trial_tenant(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    uow = _FakeUow([ACTIVE], _Snap("amazon", "active", b"blob", "v1"), _Profile(status="trial"))
+    unsealed = _patch_db(monkeypatch, uow)
+    account = await ptd_tenant.load_account(_settings(), _request(tmp_path))
+    assert account.account_id == ACCOUNT and len(unsealed) == 1
+
+
+def test_the_child_env_drops_the_migrator_url_and_the_platform_token() -> None:
+    env = ptd_child_env(
+        {
+            "DATABASE_URL": DB,
+            "ALEMBIC_DATABASE_URL": MIGRATOR_DB,
+            "AMAZON_PLATFORM_REFRESH_TOKEN": PLATFORM_REFRESH,
+            "amazon_platform_refresh_token": PLATFORM_REFRESH,
+            "AMAZON_CLIENT_SECRET": "s",
+        }
+    )
+    assert env == {"DATABASE_URL": DB, "AMAZON_CLIENT_SECRET": "s"}
 
 
 async def test_load_account_opens_the_active_account_and_audits(

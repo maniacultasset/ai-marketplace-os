@@ -2137,6 +2137,12 @@ def test_templates_refresh_runs_its_own_job_with_the_amazon_settings(
         if "secrets add-iam-policy-binding AMAZON_PLATFORM_REFRESH_TOKEN " in line
     ]
     assert token_grants and all("aimos-ptd@" in line for line in token_grants)
+    # ADR-0033: the platform-token identity never decrypts tenant tokens or reads DATABASE_URL
+    assert not _kms_bindings(out, "oauth-token-key")
+    assert not any(
+        "secrets add-iam-policy-binding DATABASE_URL " in line for line in out.splitlines()
+    )
+    assert "aimos-ptd-tenant" not in out
     assert "roles/cloudsql.client" in out
     assert "gcloud run jobs execute aimos-ptd" in out
     # the job's settings boot as the shell role in production
@@ -2236,18 +2242,21 @@ def test_templates_via_tenant_runs_without_the_platform_token(
     assert _secret_names(job) == ["DATABASE_URL", "ALEMBIC_DATABASE_URL", "AMAZON_CLIENT_SECRET"]
     assert "AMAZON_PLATFORM_REFRESH_TOKEN" not in out
     assert "run jobs deploy aimos-ptd " not in out
-    assert "--service-account=aimos-ptd@" in job and "--max-retries=0" in job
+    assert "--service-account=aimos-ptd-tenant@" in job and "--max-retries=0" in job
+    # its own identity: the platform-token identity aimos-ptd is never bound, deployed or granted
+    assert not [line for line in out.splitlines() if "aimos-ptd@" in line]
     args = job.replace("\\", "")
     assert (
         "--args=^|^-m|app.cli|templates|refresh|--product-type=SHIRT|--staff-email=s@b.test"
         "|--reason=beta style|--via-tenant=test" in args
     )
-    # the PTD identity may decrypt (never encrypt) with the token key, and reads its secrets
+    # the via-tenant identity may decrypt (never encrypt) with the token key, and reads its
+    # secrets; never the platform token
     (kms,) = _kms_bindings(out, "oauth-token-key")
-    assert "aimos-ptd@" in kms and "--role=roles/cloudkms.cryptoKeyDecrypter " in kms
+    assert "aimos-ptd-tenant@" in kms and "--role=roles/cloudkms.cryptoKeyDecrypter " in kms
     for name in ("ALEMBIC_DATABASE_URL", "DATABASE_URL", "AMAZON_CLIENT_SECRET"):
         assert any(
-            f"secrets add-iam-policy-binding {name} " in line and "aimos-ptd@" in line
+            f"secrets add-iam-policy-binding {name} " in line and "aimos-ptd-tenant@" in line
             for line in out.splitlines()
         ), name
     assert "gcloud run jobs execute aimos-ptd-tenant" in out

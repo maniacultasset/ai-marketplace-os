@@ -27,7 +27,10 @@
    - SLUG must be on the new setting `AMAZON_PTD_TENANT_SLUGS`. It is empty by default, which
      refuses every tenant. `prod.env` sets `test`; staging leaves it blank.
    - The staff email must be an active platform admin, the same check the proposal review uses.
-   - The tenant's Amazon account must be `active` and hold a stored token.
+   - The child confirms the tenant id it was given is that slug's tenant (its own row, read under
+     RLS) and that the tenant is in trial or active, so a hand run cannot pair an allowed slug
+     with another brand's id.
+   - The tenant must have exactly one Amazon account, `active` with a stored token.
 3. The CLI never imports the decrypt path (import contract), and workers write no SQL (R4).
    - The CLI checks the allow-list and the admin, resolves the slug, and runs
      `python -m app.workers.ptd_tenant` as a child process.
@@ -41,13 +44,18 @@
      `product_type_definition.stored` audit reason ends with `(via tenant SLUG)`. The audit
      allow-list keeps only the key fields, so the tenant goes in the reason.
 4. Deploy: `deploy.sh prod templates refresh ... --via-tenant SLUG` runs its own job,
-   `aimos-ptd-tenant`, under the PTD identity `aimos-ptd`.
+   `aimos-ptd-tenant`, under its own identity `aimos-ptd-tenant`.
    - It mounts `DATABASE_URL`, `ALEMBIC_DATABASE_URL` and `AMAZON_CLIENT_SECRET`.
    - It never mounts, grants or asks for `AMAZON_PLATFORM_REFRESH_TOKEN`.
-   - `aimos-ptd` gets decrypt only (`roles/cloudkms.cryptoKeyDecrypter`) on the token key, and
-     access to `DATABASE_URL`.
+   - `aimos-ptd-tenant` gets decrypt only (`roles/cloudkms.cryptoKeyDecrypter`) on the token key,
+     and access to `DATABASE_URL`, `ALEMBIC_DATABASE_URL` and `AMAZON_CLIENT_SECRET`. It never gets
+     the platform token.
+   - `aimos-ptd` (the platform-token job) gets none of this, so neither identity holds both the
+     platform token and the ability to open tenant tokens.
+   - The CLI starts the child without `ALEMBIC_DATABASE_URL` or `AMAZON_PLATFORM_REFRESH_TOKEN` in
+     its environment.
    - The worker identity is not used: giving the always-on worker pool the migrator URL would widen
-     it far more than giving decrypt to an identity that only one-off staff jobs run as.
+     it far more than a separate identity that only this one-off staff job runs as.
 
 ## Consequences
 
@@ -55,8 +63,8 @@
   console step. The platform-token path stays as it is for when the self-authorization exists.
 - The calls count against the owner's seller quota (one GET per run) and depend on that connection
   staying authorised. A revoked or expired connection fails closed with a clear line.
-- `aimos-ptd` can now decrypt tenant tokens. The code limits it to allow-listed tenants, and the
-  identity runs only these one-off jobs. ADR-0018's api/worker split for the token key is otherwise
+- `aimos-ptd-tenant` can decrypt tenant tokens. The code limits it to allow-listed tenants, and
+  the identity runs only this one-off job. ADR-0018's api/worker split for the token key is otherwise
   unchanged, and `setup` still binds only the api and the worker.
 - Adding another tenant to the allow-list is an env-file change plus the owner's OK for that
   account.

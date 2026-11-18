@@ -163,9 +163,10 @@ PTD_JOB="${PTD_JOB:-aimos-ptd}"
 SA_PTD="${SA_PTD:-aimos-ptd}"
 PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
 # ADR-0033: `templates refresh ... --via-tenant SLUG` borrows an allow-listed tenant's stored
-# Amazon connection instead of the platform token, in its own job (never next to the platform
-# token) under SA_PTD, which then also reads DATABASE_URL and may decrypt with the token key.
+# Amazon connection instead of the platform token, in its own job under its own identity: SA_PTD
+# never gets the token key or DATABASE_URL, and SA_PTD_TENANT never gets the platform token.
 PTD_TENANT_JOB="${PTD_TENANT_JOB:-aimos-ptd-tenant}"
+SA_PTD_TENANT="${SA_PTD_TENANT:-aimos-ptd-tenant}"
 # The read-only Amazon connection check (app.workers.amazon_check): a one-off job under the worker
 # identity, which already opens the tenant tokens (KMS) and reads DATABASE_URL and the LWA secret.
 AMZCHECK_JOB="${AMZCHECK_JOB:-aimos-amazon-check}"
@@ -1850,26 +1851,26 @@ via_tenant_slug() {
 }
 
 # SLUG: `templates refresh ... --via-tenant SLUG` (ADR-0033). The fetch uses tenant SLUG's stored
-# Amazon connection, so the job is PTD_TENANT_JOB under SA_PTD with what reading that connection
-# needs (DATABASE_URL, decrypt on the token key, the LWA client secret), plus the migrator URL the
-# store and the platform-admin check use. The platform refresh token is never mounted, granted or
-# required here. SLUG must be on AMAZON_PTD_TENANT_SLUGS; the CLI and the worker check it again.
+# Amazon connection, so the job is PTD_TENANT_JOB under its own identity SA_PTD_TENANT with what
+# reading that connection needs (DATABASE_URL, decrypt on the token key, the LWA client secret),
+# plus the migrator URL the store and the platform-admin check use. The platform refresh token is
+# never mounted, granted or required here, and SA_PTD (which reads it) gets none of these. SLUG must be on AMAZON_PTD_TENANT_SLUGS; the CLI and the worker check it again.
 templates_via_tenant() {
   local slug="$1" image url args arg envf="$WORK/ptd-tenant-env.yaml"
   case ",$AMAZON_PTD_TENANT_SLUGS," in
     *",$slug,"*) ;;
     *) die "templates: tenant $slug is not on AMAZON_PTD_TENANT_SLUGS (in $ENV_NAME.env)" ;;
   esac
-  gq iam service-accounts describe "$(sa_email "$SA_PTD")" --format='value(email)' >/dev/null ||
-    gc iam service-accounts create "$SA_PTD" --display-name="aimos PTD refresh job"
-  retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$SA_PTD")" \
+  gq iam service-accounts describe "$(sa_email "$SA_PTD_TENANT")" --format='value(email)' >/dev/null ||
+    gc iam service-accounts create "$SA_PTD_TENANT" --display-name="aimos PTD via-tenant job"
+  retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$SA_PTD_TENANT")" \
     --role=roles/cloudsql.client --condition=None --format=none
   # decrypt only (ADR-0018 gives the api encrypt and the worker both): the stored token is read,
   # never sealed again, because the account row is not changed
   retry gc kms keys add-iam-policy-binding "$KMS_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
-    --member="serviceAccount:$(sa_email "$SA_PTD")" --role=roles/cloudkms.cryptoKeyDecrypter --format=none
+    --member="serviceAccount:$(sa_email "$SA_PTD_TENANT")" --role=roles/cloudkms.cryptoKeyDecrypter --format=none
   for arg in ALEMBIC_DATABASE_URL DATABASE_URL AMAZON_CLIENT_SECRET; do
-    grant_secret "$arg" "$SA_PTD"
+    grant_secret "$arg" "$SA_PTD_TENANT"
   done
   image="$(image_ref)"
   url="$(api_url)"
@@ -1901,7 +1902,7 @@ templates_via_tenant() {
     sed 's/^/    /' "$envf"
   fi
   gc run jobs deploy "$PTD_TENANT_JOB" --image="$image" --region="$REGION" \
-    --service-account="$(sa_email "$SA_PTD")" --set-cloudsql-instances="$CONN" \
+    --service-account="$(sa_email "$SA_PTD_TENANT")" --set-cloudsql-instances="$CONN" \
     --env-vars-file="$envf" \
     --set-secrets="$(secret_refs "DATABASE_URL ALEMBIC_DATABASE_URL AMAZON_CLIENT_SECRET")" \
     --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=1Gi \

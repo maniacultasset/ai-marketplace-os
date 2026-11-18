@@ -1716,8 +1716,11 @@ def ptd_via_tenant_argv(args: argparse.Namespace, tenant_id: uuid.UUID, out: Pat
 def _run_child(argv: list[str]) -> int:
     import subprocess
 
-    # argv[0] is this interpreter and every flag is a validated argument; no shell
-    return subprocess.run(argv, check=False).returncode  # noqa: S603
+    from app.core.config import ptd_child_env
+
+    # argv[0] is this interpreter and every flag is a validated argument; no shell. The child's
+    # environment leaves out the migrator URL and the platform token (it needs neither).
+    return subprocess.run(argv, check=False, env=ptd_child_env()).returncode  # noqa: S603
 
 
 # Tests swap this for a recorder that writes the hand-over file.

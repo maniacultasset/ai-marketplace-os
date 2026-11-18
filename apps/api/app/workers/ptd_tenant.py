@@ -15,7 +15,8 @@ access token comes from tenant S's stored Amazon connection, refreshed in memory
 
 Guards, in order, before any token is opened: S is on `AMAZON_PTD_TENANT_SLUGS` again (this
 entrypoint can be run by hand), the Amazon app and `DATABASE_URL` are set, the SP-API endpoint
-matches `AMAZON_USE_SANDBOX`, and the tenant's Amazon account is `active` with a stored token. One
+matches `AMAZON_USE_SANDBOX`, ID is tenant S, in trial or active (its own row, read under RLS), and that
+tenant has exactly one Amazon account, `active` with a stored token. One
 audit row on the account names the staff email and the product type
 (`marketplace_account.ptd_fetch`). Then the token blob is opened (KMS), one LWA refresh gives an
 access token kept in memory only, and `getDefinitionsProductType` plus the pre-signed schema
@@ -30,7 +31,7 @@ and error code, never by message.
 | fetched (written to `--out`)         | -      | 0    |
 | a missing setting, any failure       | stderr | 1    |
 | bad arguments (argparse)             | stderr | 2    |
-| refused (allow-list, no active Amazon account with a token) | stderr | 3 |
+| refused (allow-list, ID is not S, no single active Amazon account with a token) | stderr | 3 |
 """
 
 from __future__ import annotations
@@ -77,6 +78,8 @@ ENTITY: Final = "marketplace_account"
 AUDIT_ACTION: Final = "marketplace_account.ptd_fetch"
 # one definitions GET per run; the schema download is not an SP-API operation
 RATES: Final[Mapping[str, int]] = {"ptd_get": 1}
+# a tenant that may still use its connection (`suspended` and `offboarded` may not)
+LIVE_TENANT: Final = frozenset({"trial", "active"})
 SLUG_RE: Final = re.compile(r"[a-z0-9][a-z0-9-]{1,39}", re.ASCII)  # the tenant slug rule
 PRODUCT_TYPE_RE: Final = re.compile(r"[A-Z0-9_]{1,64}", re.ASCII)
 EMAIL_RE: Final = re.compile(r"[^@\s]{1,64}@[^@\s]{1,189}")
@@ -135,10 +138,19 @@ async def load_account(settings: Settings, request: Request) -> TenantAccount:
     from app.workers.token_refresh import REFRESH_MARGIN
 
     async with tenant_uow(request.tenant_id) as uow:
+        # the allow-list was checked on the slug: the id must name that same tenant (its own row,
+        # under RLS), or a hand run could pair an allowed slug with another brand's id
+        profile = await uow.tenants.get_profile()
+        if profile is None or profile.slug != request.slug:
+            raise Refused(f"--tenant-id is not the tenant {request.slug}")
+        if profile.status not in LIVE_TENANT or profile.offboarded_at is not None:
+            raise Refused(f"tenant {request.slug} is suspended or offboarded")
         rows, _ = await uow.marketplace_accounts.page(limit=PAGE_LIMIT_MAX, after=None)
         amazon = [r for r in rows if r.marketplace == "amazon" and r.status == "active"]
         if not amazon:
             raise Refused(f"tenant {request.slug} has no active Amazon account")
+        if len(amazon) > 1:
+            raise Refused(f"tenant {request.slug} has more than one active Amazon account")
         row = amazon[0]
         snap = await uow.marketplace_accounts.snapshot(row.id, margin=REFRESH_MARGIN)
         if (
