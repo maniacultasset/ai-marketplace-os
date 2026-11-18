@@ -334,8 +334,9 @@ def test_rules_seed_count_228() -> None:
     """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
     secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
     warnings (text overlay and watermark, Amazon and Flipkart main), plus the twelve photo
-    rules 2.1.0 rows, plus five bottomwear copies of the tshirts RuleSets (14 + 10 rows each)."""
-    assert sum(len(s.rules) for s in _load()) == 108 + 5 * (14 + 10)
+    rules 2.1.0 rows, plus five bottomwear copies of the tshirts RuleSets (14 + 10 rows each),
+    plus the Amazon `style` requirement on the seven apparel RuleSets (18 Nov)."""
+    assert sum(len(s.rules) for s in _load()) == 108 + 5 * (14 + 10) + 7
     ids = {str(r.id) for s in _load() for r in s.rules}
     assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS | PHOTO_RULES_2_1_IDS
     retired = [r for s in _load() for r in s.rules if str(r.id) in RETIRED_PHOTO_RULE_IDS]

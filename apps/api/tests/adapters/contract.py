@@ -41,6 +41,8 @@ FIXTURE = Path(__file__).resolve().parents[4] / "packages/schemas/fixtures/Canon
 
 def sample_listing(**over: Any) -> CanonicalListing:
     listing = CanonicalListing.model_validate_json(FIXTURE.read_text(encoding="utf-8"))
+    # 18 Nov: Amazon apparel requires `style` (the seller overlay fills it in production)
+    listing = listing.model_copy(update={"attributes": {**listing.attributes, "style": "Straight"}})
     return listing.model_copy(update=over) if over else listing
 
 

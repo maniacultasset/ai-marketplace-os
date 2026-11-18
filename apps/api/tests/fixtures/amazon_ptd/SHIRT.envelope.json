@@ -55,6 +55,7 @@
         "product_description",
         "size",
         "sleeve_length_description",
+        "style",
         "variation_theme"
       ]
     }

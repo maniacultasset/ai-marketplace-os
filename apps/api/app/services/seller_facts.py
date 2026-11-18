@@ -18,6 +18,12 @@ attribute is never the AI's guess. Two paths carry the seller's facts to an adap
   dictionary's `min_confidence` (CP-D8). A style's variation axes are left alone: each child
   sends its own seller value.
 
+Prod feedback 18 Nov: a template with a `style` spec (Amazon apparel, where Amazon requires it)
+gets `style` from `style_value` only, never from the AI: the seller's own `style` fact, else one
+derived from the seller's own facts (T-shirts: the neckline in the template's spelling, else the
+fit; kurta sets: the kurta type; bottomwear: the leg style and the fit), else none, so the Rules
+Engine asks the seller. `attribute_sources["style"]` names the fact it came from.
+
 The seller value of an attribute is the stored Fact's `value` (the seller's spelling, SI1 S-f),
 else its `normalized` form, as the product API reads it (`services/products.py:207-212`).
 """
@@ -42,8 +48,10 @@ __all__ = [
     "COLUMN_ATTRIBUTES",
     "FACTUAL_KEYS",
     "FACT_ONLY_KEYS",
+    "STYLE_KEY",
     "seller_facts",
     "seller_overlay",
+    "style_value",
 ]
 
 _DICTIONARY: Final = ("mkos_schemas", "data/attribute_dictionary.json")
@@ -259,6 +267,54 @@ def _kept_mapping(
     return False
 
 
+STYLE_KEY: Final = "style"
+# the seller's own values: typed, imported or read from the seller's documents, never the AI's
+_OWN_SOURCES: Final = frozenset({"seller", "document", "pim"})
+_KURTA: Final = "ethnic_wear_kurta_sets"
+
+
+def _own_text(facts: ProductFacts, key: str, sources: frozenset[str] = _OWN_SOURCES) -> str | None:
+    fact = facts.attributes.get(key)
+    if fact is None or fact.source not in sources:
+        return None
+    value = _seller_value(fact)
+    return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _fit_text(fit: str) -> str:
+    return fit if fit.casefold().endswith("fit") else f"{fit} Fit"
+
+
+def _spelled(template: CategoryTemplate, key: str, value: str) -> str:
+    spellings = template_spellings(template, key)
+    return (canonical_match(value, spellings) if spellings else None) or value
+
+
+def style_value(facts: ProductFacts, template: CategoryTemplate | None) -> tuple[str, str] | None:
+    """(the `style` value, the fact key it came from) for a template with a `style` spec, else
+    None. Deterministic and from the seller's own facts only (module docstring); None when
+    nothing usable is there, so nothing is invented."""
+    if template is None or STYLE_KEY not in template.specs:
+        return None
+    own = _own_text(facts, STYLE_KEY, _OWN_SOURCES | {"derived"})
+    if own is not None:
+        return own, STYLE_KEY
+    fit = _own_text(facts, "fit")
+    if template.category == _KURTA:
+        kurta_type = _own_text(facts, "kurta_type")
+        return None if kurta_type is None else (kurta_type, "kurta_type")
+    if "neckline" in template.specs:
+        neckline = _own_text(facts, "neckline")
+        if neckline is not None:
+            return _spelled(template, "neckline", neckline), "neckline"
+        return None if fit is None else (_fit_text(fit), "fit")
+    leg = _own_text(facts, "leg_style")
+    parts = [p for p in (leg, None if fit is None else _fit_text(fit)) if p]
+    if not parts:
+        return None
+    return ", ".join(parts), "leg_style" if leg is not None else "fit"
+
+
 def seller_overlay(
     listing: CanonicalListing, facts: ProductFacts, template: CategoryTemplate | None
 ) -> CanonicalListing:
@@ -284,5 +340,12 @@ def seller_overlay(
             continue
         else:
             attributes.pop(key, None)
+    if template is not None and STYLE_KEY in template.specs:
+        style = style_value(facts, template)
+        if style is None:
+            attributes.pop(STYLE_KEY, None)
+            sources.pop(STYLE_KEY, None)
+        else:
+            attributes[STYLE_KEY], sources[STYLE_KEY] = style
     sources = {k: v for k, v in sources.items() if k in attributes}
     return listing.model_copy(update={"attributes": attributes, "attribute_sources": sources})

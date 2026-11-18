@@ -392,7 +392,7 @@ def _five() -> AdapterListing:
     base = listing()
     body = base.model_copy(
         update={
-            "attributes": {"color": "navy blue", "fabric_type": "cotton"},
+            "attributes": {"color": "navy blue", "fabric_type": "cotton", "style": "Straight"},
             "keywords": base.keywords.model_copy(update={"search_terms": [], "hidden_terms": []}),
             "images": [],
         }
