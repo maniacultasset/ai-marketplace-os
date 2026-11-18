@@ -105,7 +105,7 @@ def _listing(title: str = "Cotton kurta set") -> dict[str, Any]:
         "category": CATEGORY,
         "product_id": str(uuid.uuid4()),
         "content": {"title": title, "bullets": ["Soft"], "description": "A kurta."},
-        "attributes": {"color": "indigo", "fabric_type": "cotton"},
+        "attributes": {"color": "indigo", "fabric_type": "cotton", "style": "Straight"},
     }
 
 

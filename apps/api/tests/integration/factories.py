@@ -180,6 +180,7 @@ def seller_product(conn: Conn, tenant_id: UUID, kind: str = "standalone", **colu
         defaults["attributes"] = {
             "color": fact(value="navy blue"),
             "fabric_type": fact(value="cotton"),
+            "style": fact(value="Straight"),  # 18 Nov: Amazon apparel requires `style`
         }
     return product(conn, tenant_id, kind, **{**defaults, **columns})
 
