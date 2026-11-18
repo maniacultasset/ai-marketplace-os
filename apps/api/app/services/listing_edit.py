@@ -41,6 +41,7 @@ from app.core.errors import ConflictError, InputError, NotFoundError
 from app.core.logging import get_logger
 from app.core.rbac import Principal
 from app.repositories.listings import NewVersion, SourceVersion, UserActor
+from app.repositories.templates import takes_current
 from app.repositories.uow import TenantUnitOfWork, tenant_uow
 from app.repositories.validation_runs import summary_of
 from app.services.adapter_check import adapter_check
@@ -180,12 +181,16 @@ async def template_pin(
     pinned: uuid.UUID | None = parent.category_template_id
     if current is None or pinned is None or pinned == current:
         return pinned
-    if listing.published_version_id is not None or listing.live_version_id is not None:
-        return pinned
     old = await uow.templates.pinned(pinned)
-    if old is None or old.template.category != listing.category:
-        return pinned
-    return current
+    accepted = listing.published_version_id is not None or listing.live_version_id is not None
+    repin = takes_current(
+        pinned_id=pinned,
+        pinned_category=None if old is None else old.template.category,
+        current_id=current,
+        listing_category=listing.category,
+        accepted=accepted,
+    )
+    return current if repin else pinned
 
 
 async def save_edit(

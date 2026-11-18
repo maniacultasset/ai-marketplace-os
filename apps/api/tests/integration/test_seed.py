@@ -783,15 +783,17 @@ async def test_seed_demo_family_preview_has_no_errors(superuser_conn: Conn) -> N
     assert preview.report.errors == []
 
 
-async def test_seed_demo_listing_stays_on_v1(superuser_conn: Conn) -> None:
+async def test_seed_demo_listing_builds_with_the_current_template(superuser_conn: Conn) -> None:
+    """The demo listing stays pinned to v1, but Amazon never accepted it, so a build uses the
+    category's current template (18 Nov: a never-accepted listing picks up the Style mapping)."""
     from app.db.seed_ops import demo_listing_ids
 
     assert await _seed("demo") == 0
     assert await _seed("demo") == 0
     assert _kurta_001_pin(superuser_conn) == 1
     preview = await _preview(demo_listing_ids()[0])
-    assert preview.product_type is None and len(preview.items) == 1
-    assert [e.error_code.value for e in preview.report.errors] == ["CATEGORY_NOT_MAPPED"]
+    assert preview.product_type == "KURTA" and len(preview.items) == 1
+    assert "CATEGORY_NOT_MAPPED" not in [e.error_code.value for e in preview.report.errors]
 
 
 # ---- S22 T15 (D7; R3): the Flipkart mappings and acme's Flipkart demo listings ----
