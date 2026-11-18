@@ -318,7 +318,8 @@ class Cli:
 
 
 @pytest.fixture
-def cli_env(monkeypatch: pytest.MonkeyPatch) -> Iterator[Cli]:
+def cli_env(clean_env: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Cli]:
+    # clean_env: no Settings variable and no `.env` in the cwd (CI copies .env.example to .env)
     for key, value in ENV.items():
         monkeypatch.setenv(key, value)
     get_settings.cache_clear()
