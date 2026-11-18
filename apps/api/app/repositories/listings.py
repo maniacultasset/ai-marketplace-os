@@ -52,7 +52,7 @@ from app.db.models.ops import JobRun
 from app.db.session import USER_INFO_KEY
 from app.repositories.base import TenantScopedRepository
 from app.repositories.home import in_bucket
-from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate
+from app.repositories.templates import CategoryTemplateRepository, PinnedTemplate, takes_current
 
 __all__ = [
     "QUEUE_STATUSES",
@@ -682,7 +682,8 @@ class ListingRepository(TenantScopedRepository[Listing]):
     ) -> PreviewSource | None:
         """The listing's adapter input. SI9 B4: with `version` (content not stored yet: the
         generation persist and the edit check it before the insert), that version replaces the
-        current one, and the template is the one it pins."""
+        current one, and the template is the one it pins. 18 Nov: a listing the marketplace
+        never accepted is built with its category's current template instead (`takes_current`)."""
         lst = Listing
         row = (
             await self.db.execute(
@@ -696,6 +697,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
                     lst.product_id,
                     lst.current_version_id,
                     lst.published_version_id,
+                    lst.live_version_id,
                 )
             )
         ).one_or_none()
@@ -713,9 +715,20 @@ class ListingRepository(TenantScopedRepository[Listing]):
             template = pinned if pinned is not None and pinned.product_type else None
         current_template = None
         if template is not None:
-            current = await CategoryTemplateRepository(self.db).current(
-                row.marketplace, row.category
-            )
+            templates = CategoryTemplateRepository(self.db)
+            current = await templates.current(row.marketplace, row.category)
+            accepted = row.published_version_id is not None or row.live_version_id is not None
+            if current is not None and takes_current(
+                pinned_id=template.id,
+                pinned_category=template.template.category,
+                current_id=current.id,
+                listing_category=row.category,
+                accepted=accepted,
+            ):
+                # 18 Nov: never accepted, so built with the current template (`takes_current`)
+                latest = await templates.pinned(current.id)
+                if latest is not None and latest.product_type:
+                    template = latest
             if current is not None and current.id != template.id:
                 current_template = current.template
         children = await _children(products, product.id)
