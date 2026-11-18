@@ -36,6 +36,7 @@ from typing import Any, Final
 
 from mkos_schemas.codes import ErrorCode
 from mkos_schemas.enums import JobKind
+from mkos_schemas.jobs import CategoryTemplate as WireTemplate
 from sqlalchemy import exists, func, literal, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import DBAPIError, IntegrityError
@@ -191,6 +192,9 @@ class PreviewSource:
     """colour_key -> the live images of that colourway, main first, then by position (S22 C1)."""
     live: bool = False
     """SI9 B4: the listing has a published version (its next full send is an update)."""
+    current_template: WireTemplate | None = None
+    """18 Nov: the category's current template when the version pinned
+    another one, so an issue on an attribute only it maps reaches the seller; else None."""
 
 
 class _Versions(TenantScopedRepository[ListingVersion]):
@@ -707,6 +711,13 @@ class ListingRepository(TenantScopedRepository[Listing]):
         if version is not None and version.category_template_id is not None:
             pinned = await CategoryTemplateRepository(self.db).pinned(version.category_template_id)
             template = pinned if pinned is not None and pinned.product_type else None
+        current_template = None
+        if template is not None:
+            current = await CategoryTemplateRepository(self.db).current(
+                row.marketplace, row.category
+            )
+            if current is not None and current.id != template.id:
+                current_template = current.template
         children = await _children(products, product.id)
         colour_images: dict[str, tuple[uuid.UUID, ...]] = {}
         if children:
@@ -722,6 +733,7 @@ class ListingRepository(TenantScopedRepository[Listing]):
             template=template,
             colour_images=colour_images,
             live=row.published_version_id is not None,
+            current_template=current_template,
         )
 
     async def _colours(

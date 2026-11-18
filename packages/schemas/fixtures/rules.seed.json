@@ -200,6 +200,35 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100010050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "ethnic_wear_kurta_sets",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
+          "allowed_values": null
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000100010007",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -3664,6 +3693,35 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100030050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "tshirts",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
+          "allowed_values": null
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000100030007",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -4642,6 +4700,35 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100040050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "jeans",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
+          "allowed_values": null
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000100040007",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -5185,6 +5272,35 @@
           "gate": null,
           "type": "required_attribute",
           "attribute": "fabric_type",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100050050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "trousers",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
           "allowed_values": null
         }
       },
@@ -5736,6 +5852,35 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100060050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "track_pants",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
+          "allowed_values": null
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000100060007",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -6283,6 +6428,35 @@
         }
       },
       {
+        "id": "5eed0000-0000-4000-8000-000100070050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "shorts",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
+          "allowed_values": null
+        }
+      },
+      {
         "id": "5eed0000-0000-4000-8000-000100070007",
         "tenant_id": null,
         "marketplace": "amazon",
@@ -6826,6 +7000,35 @@
           "gate": null,
           "type": "required_attribute",
           "attribute": "fabric_type",
+          "allowed_values": null
+        }
+      },
+      {
+        "id": "5eed0000-0000-4000-8000-000100080050",
+        "tenant_id": null,
+        "marketplace": "amazon",
+        "category": "skirts",
+        "field": "attributes.style",
+        "severity": "error",
+        "version": 1,
+        "enabled": true,
+        "rule_def": {
+          "message": "the {attribute} attribute is required for this category",
+          "suggestion": "Set attributes.{attribute} from the product data. If the source does not state it, leave it unset and flag the row rather than guessing.",
+          "error_code": "MISSING_ATTRIBUTE",
+          "pack": "core",
+          "policy_ref": {
+            "source": "amazon_policy",
+            "title": "Amazon product detail page style guide",
+            "url": null,
+            "section": "required attributes",
+            "retrieved_on": "2026-11-18"
+          },
+          "error_class": null,
+          "retry_class": null,
+          "gate": null,
+          "type": "required_attribute",
+          "attribute": "style",
           "allowed_values": null
         }
       },

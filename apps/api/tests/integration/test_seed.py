@@ -759,7 +759,7 @@ async def test_seed_demo_family_once(superuser_conn: Conn) -> None:
     assert current == version
 
 
-async def test_seed_demo_family_pins_kurta_v4(superuser_conn: Conn) -> None:
+async def test_seed_demo_family_pins_kurta_v5(superuser_conn: Conn) -> None:
     from app.db.seed_ops import demo_family_ids
 
     assert await _seed("demo") == 0
@@ -769,7 +769,7 @@ async def test_seed_demo_family_pins_kurta_v4(superuser_conn: Conn) -> None:
         "JOIN category_templates t ON t.id = v.category_template_id WHERE v.id = %s",
         [version],
     ).fetchone()
-    assert row == (4, True, "KURTA")  # feedback item 10
+    assert row == (5, True, "KURTA")  # feedback item 10, 18 Nov `style`
 
 
 async def test_seed_demo_family_preview_has_no_errors(superuser_conn: Conn) -> None:

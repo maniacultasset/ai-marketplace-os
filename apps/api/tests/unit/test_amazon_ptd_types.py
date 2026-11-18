@@ -63,14 +63,15 @@ def test_adapter_listing_default_has_no_schema() -> None:
     assert plain == AdapterListing(listing_id, "SKU-1", "key-1", body, product_type_schema=None)
     names = [f.name for f in dataclasses.fields(AdapterListing)]
     # SI2 appends its keyword-defaulted fields after the DW2 schema, SI9 its `live` flag, SI11
-    # its `repairs`
-    assert names[-6:] == [
+    # its `repairs`, 18 Nov its `current_template`
+    assert names[-7:] == [
         "product_type_schema",
         "unit_facts",
         "parent_type_schema",
         "allow_http_images",
         "live",
         "repairs",
+        "current_template",
     ]
 
 

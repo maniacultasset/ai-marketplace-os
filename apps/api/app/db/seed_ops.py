@@ -98,8 +98,9 @@ SEED_GENDER: Final = "women"  # SI8: the demo kurta family's audience
 SEED_GENDERED: Final = frozenset({"KURTA-001", "KURTA-002"})
 # SI2: the seller's own colour and fabric of the two seeded kurtas (the AI never supplies them)
 SEED_ATTRIBUTES: Final[Mapping[str, Mapping[str, str]]] = {
-    "KURTA-001": {"color": "indigo", "fabric_type": "cotton"},
-    "KURTA-002": {"color": "maroon", "fabric_type": "silk"},
+    # 18 Nov: the kurta type is the Amazon `style` (required) the seeded kurtas send
+    "KURTA-001": {"color": "indigo", "fabric_type": "cotton", "kurta_type": "Straight"},
+    "KURTA-002": {"color": "maroon", "fabric_type": "silk", "kurta_type": "Anarkali"},
 }
 # SI5: Amazon refuses a create without a barcode or a GTIN exemption, so every sellable seeded
 # product carries its own EAN-13 (Indian GS1 prefix 890, a company code per brand, valid check
@@ -695,7 +696,7 @@ DEMO_FAMILY_SKU: Final = "KURTA-FAM-01"
 DEMO_FAMILY_THEME: Final = "size_color"
 DEMO_FAMILY_SIZES: Final = ("s", "m")
 DEMO_FAMILY_COLOURS: Final = ("navy blue", "maroon")
-DEMO_FAMILY_TEMPLATE_VERSION: Final = 4  # feedback item 10: the Amazon kurta v4
+DEMO_FAMILY_TEMPLATE_VERSION: Final = 5  # 18 Nov: the Amazon kurta v5 (`style`)
 
 
 def demo_family_child_sku(size: str, colour: str) -> str:
@@ -771,7 +772,11 @@ async def seed_demo_family(session: AsyncSession) -> None:
             selling_price=SEED_SELLING_PRICE,
             country_of_origin=SEED_COUNTRY,
             gender=SEED_GENDER,  # SI8: Amazon apparel needs the audience
-            attributes={"fabric_type": _seller_fact("cotton")},
+            # 18 Nov: the kurta type is the Amazon `style` the family sends
+            attributes={
+                "fabric_type": _seller_fact("cotton"),
+                "kurta_type": _seller_fact("Straight"),
+            },
             provenance={
                 **provenance,
                 "mrp": _seller_fact(str(SEED_MRP)),

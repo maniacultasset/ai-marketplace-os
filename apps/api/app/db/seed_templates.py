@@ -25,6 +25,13 @@ help search and filters and that the seller can fill on the product page. The le
 | recommended | fit, kurta_type, neckline, pattern, sleeve_length | fit, neckline, pattern, sleeve_length | lamp_material, lamp_type, light_source_type, shade_material |
 | optional | country_of_origin, fiber_composition, manufacturer, number_of_pieces, size | the kurta list without kurta_type, plus product_weight | country_of_origin |
 
+Prod feedback 18 Nov (a T-shirt create refused with "'Style' is required but missing"): one more
+Amazon version each (kurta v5, tshirts v4, the five bottomwear categories v2) with a `style`
+spec sent as Amazon `style`, required. Kurta `kurta_type` keeps its level but no longer has an
+Amazon field of its own: its value reaches `style` through the seller overlay's fallback
+(`services/seller_facts.style_value`), so Amazon never gets two `style` values. Flipkart is
+unchanged.
+
 `country_of_origin` and `manufacturer` stay optional here because the adapters already require
 them as seller facts; `size` is a variation axis. A missing recommended key is a non-blocking
 warning (`rules_engine.template`); a value is only ever filled from a fact. To change a level,
@@ -251,15 +258,26 @@ def _apparel_specs() -> dict[str, Any]:
     }
 
 
+# 18 Nov: Amazon `style` is required for every apparel product type we send (module docstring)
+STYLE_SPEC_KEY: Final = "style"
+
+
+def _with_style(specs: dict[str, Any]) -> dict[str, Any]:
+    return {**specs, STYLE_SPEC_KEY: _text("style", "required")}
+
+
 def _kurta() -> dict[str, Any]:
-    specs = _apparel_specs()
-    specs["kurta_type"] = _text("style")
+    specs = _with_style(_apparel_specs())
+    # the kurta type is the fallback for `style`, never an Amazon field of its own (two values)
+    specs["kurta_type"] = {"requirement": "optional", "value_type": "text"}
     return {
         "marketplace": "amazon",
         "category": "ethnic_wear_kurta_sets",
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
-        "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "optional_attributes": sorted(
+            k for k in specs if k not in ("color", "fabric_type", STYLE_SPEC_KEY)
+        ),
         "recommended_attributes": list(KURTA_RECOMMENDED),
         "specs": specs,
         "variation_themes": THEMES,
@@ -267,7 +285,7 @@ def _kurta() -> dict[str, Any]:
 
 
 def _tshirt() -> dict[str, Any]:
-    specs = _apparel_specs()
+    specs = _with_style(_apparel_specs())
     specs["product_weight"] = {
         "requirement": "optional",
         "marketplace_field": "item_weight",
@@ -279,7 +297,9 @@ def _tshirt() -> dict[str, Any]:
         "category": "tshirts",
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
-        "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "optional_attributes": sorted(
+            k for k in specs if k not in ("color", "fabric_type", STYLE_SPEC_KEY)
+        ),
         "recommended_attributes": list(APPAREL_RECOMMENDED),
         "specs": specs,
         "variation_themes": THEMES,
@@ -300,11 +320,11 @@ TSHIRT_PRODUCT_TYPE: Final = "SHIRT"
 def seed_templates() -> list[SeedTemplate]:
     """The three Amazon mappings, as the S13 loader takes them (no database needed)."""
     return [
-        SeedTemplate(KURTA_PRODUCT_TYPE, 4, CategoryTemplate.model_validate(_kurta())),
-        SeedTemplate(TSHIRT_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_tshirt())),
+        SeedTemplate(KURTA_PRODUCT_TYPE, 5, CategoryTemplate.model_validate(_kurta())),
+        SeedTemplate(TSHIRT_PRODUCT_TYPE, 4, CategoryTemplate.model_validate(_tshirt())),
         SeedTemplate(LAMP_PRODUCT_TYPE, 3, CategoryTemplate.model_validate(_amazon_lamp())),
         *(
-            SeedTemplate(b.amazon_type, 1, CategoryTemplate.model_validate(_amazon_bottom(b)))
+            SeedTemplate(b.amazon_type, 2, CategoryTemplate.model_validate(_amazon_bottom(b)))
             for b in BOTTOMWEAR
         ),
     ]
@@ -623,7 +643,9 @@ def _bottom(b: Bottomwear, marketplace: str, specs: dict[str, Any]) -> dict[str,
         "category": b.category,
         "external_category_id": None,
         "required_attributes": ["color", "fabric_type"],
-        "optional_attributes": sorted(k for k in specs if k not in ("color", "fabric_type")),
+        "optional_attributes": sorted(
+            k for k in specs if k not in ("color", "fabric_type", STYLE_SPEC_KEY)
+        ),
         "recommended_attributes": list(b.recommended),
         "specs": specs,
         "variation_themes": THEMES,
@@ -631,7 +653,7 @@ def _bottom(b: Bottomwear, marketplace: str, specs: dict[str, Any]) -> dict[str,
 
 
 def _amazon_bottom(b: Bottomwear) -> dict[str, Any]:
-    return _bottom(b, "amazon", _bottomwear_specs(b, flipkart=False))
+    return _bottom(b, "amazon", _with_style(_bottomwear_specs(b, flipkart=False)))
 
 
 def _flipkart_bottom(b: Bottomwear) -> dict[str, Any]:

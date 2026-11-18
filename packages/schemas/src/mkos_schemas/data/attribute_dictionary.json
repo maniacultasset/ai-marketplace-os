@@ -2230,6 +2230,29 @@
       "columns": []
     },
     {
+      "key": "style",
+      "section": "attributes",
+      "storage": "attributes",
+      "owner_levels": [
+        "style",
+        "standalone"
+      ],
+      "value_type": "text",
+      "unit": null,
+      "vocabulary": null,
+      "input_aliases": [],
+      "is_critical": false,
+      "allowed_sources": [
+        "seller",
+        "derived"
+      ],
+      "min_confidence": null,
+      "confirm_agent_captures": false,
+      "brd_ref": null,
+      "enabled": true,
+      "columns": []
+    },
+    {
       "key": "dress_type",
       "section": "attributes",
       "storage": "attributes",

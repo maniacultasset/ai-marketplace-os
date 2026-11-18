@@ -69,11 +69,11 @@ def test_platform_load_idempotent_no_tenants(
         "SELECT category, version, product_type FROM category_templates "
         "WHERE marketplace = 'amazon' AND is_current ORDER BY category"
     ).fetchall()
-    # feedback item 10: kurta v4, tshirts v3, lamps v3 (recommended attributes)
-    assert ("tshirts", 3, "SHIRT") in current and ("ethnic_wear_kurta_sets", 4, "KURTA") in current
+    # feedback item 10 (recommended attributes) and 18 Nov (`style`): kurta v5, tshirts v4
+    assert ("tshirts", 4, "SHIRT") in current and ("ethnic_wear_kurta_sets", 5, "KURTA") in current
     assert ("home_decor_lamps", 3, "LAMP") in current
-    # feedback 17 Nov: the bottomwear mappings, version 1 each
-    assert ("jeans", 1, "PANTS") in current and ("skirts", 1, "SKIRT") in current
+    # feedback 17 Nov: the bottomwear mappings, version 2 each since 18 Nov
+    assert ("jeans", 2, "PANTS") in current and ("skirts", 2, "SKIRT") in current
 
 
 @pytest.mark.parametrize("env", ["staging", "production"])

@@ -78,6 +78,7 @@ TITLE_FACTS: Final = frozenset(
         "number_of_pieces",
         "set_composition",
         "kurta_type",
+        "style",
         "dress_type",
         "style_number",
     }
