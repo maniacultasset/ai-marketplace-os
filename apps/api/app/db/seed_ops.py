@@ -584,7 +584,12 @@ DEMO_LISTING_MARKETPLACE: Final = "amazon"
 DEMO_LISTING_CATEGORY: Final = "ethnic_wear_kurta_sets"
 DEMO_TITLE_UNIT: Final = "Cotton Kurta Set for Women with Straight Fit and Round Neck "
 DEMO_TITLE: Final = (DEMO_TITLE_UNIT * 4)[:220] + "."  # 221 characters: one over the seeded 200
-DEMO_ATTRIBUTES: Final[Mapping[str, str]] = {"color": "indigo", "fabric_type": "cotton"}
+# 18 Nov: with the Amazon `style` the seeded KURTA-001 derives from its kurta type
+DEMO_ATTRIBUTES: Final[Mapping[str, str]] = {
+    "color": "indigo",
+    "fabric_type": "cotton",
+    "style": "Straight",
+}
 
 
 def demo_listing_ids() -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
