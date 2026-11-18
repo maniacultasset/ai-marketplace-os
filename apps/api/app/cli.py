@@ -1732,7 +1732,7 @@ def read_ptd_result(path: Path, args: argparse.Namespace) -> FetchedDefinition:
     a JSON-object schema; the digest is computed here, never taken from the file."""
     from app.adapters.amazon.definitions import FetchedDefinition, canonical_digest
 
-    body = json.loads(path.read_text(encoding="utf-8"))
+    body = json.loads(path.read_bytes())
     if not isinstance(body, dict):
         raise ValueError("the fetch result is not an object")
     texts = {name: body.get(name) for name in PTD_RESULT_FIELDS}
