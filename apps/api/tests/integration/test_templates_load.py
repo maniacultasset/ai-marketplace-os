@@ -316,9 +316,9 @@ def test_si2_new_versions_promote_over_the_prod_rows(
         "SELECT marketplace, category, version FROM category_templates "
         "WHERE is_current AND category IN ('ethnic_wear_kurta_sets', 'tshirts') ORDER BY 1, 2"
     ).fetchall()
-    assert current == [  # feedback item 10 moved these one version past SI2's
-        ("amazon", "ethnic_wear_kurta_sets", 4),
-        ("amazon", "tshirts", 3),
+    assert current == [  # feedback item 10 moved these one version past SI2's, 18 Nov Amazon too
+        ("amazon", "ethnic_wear_kurta_sets", 5),
+        ("amazon", "tshirts", 4),
         ("flipkart", "ethnic_wear_kurta_sets", 4),
         ("flipkart", "tshirts", 3),
     ]

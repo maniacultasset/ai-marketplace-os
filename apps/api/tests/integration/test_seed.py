@@ -596,7 +596,7 @@ def _kurta_001_pin(conn: Conn) -> int:
     return int(run_pin)
 
 
-async def test_seed_amazon_kurta_v4_promoted_once(superuser_conn: Conn) -> None:
+async def test_seed_amazon_kurta_v5_promoted_once(superuser_conn: Conn) -> None:
     from app.db.seed_ops import _template_rows
 
     assert await _seed("demo") == 0
@@ -605,7 +605,7 @@ async def test_seed_amazon_kurta_v4_promoted_once(superuser_conn: Conn) -> None:
     rows = _templates(superuser_conn, "ethnic_wear_kurta_sets")
     assert rows == first
     # SI2 v3, feedback item 10 v4: a fresh database never held versions 2 or 3
-    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (4, True, "KURTA")]
+    assert [(r[0], r[1], r[2]) for r in rows] == [(1, False, "KURTA"), (5, True, "KURTA")]
     (v1_seed,) = [
         t
         for t in _template_rows()
@@ -624,10 +624,10 @@ async def test_seed_amazon_kurta_v4_promoted_once(superuser_conn: Conn) -> None:
     assert _promotions(superuser_conn, "ethnic_wear_kurta_sets") == 1
 
 
-async def test_seed_amazon_tshirts_v3_current(superuser_conn: Conn) -> None:
+async def test_seed_amazon_tshirts_v4_current(superuser_conn: Conn) -> None:
     assert await _seed("isolation") == 0
     rows = _templates(superuser_conn, "tshirts")
-    assert [(r[0], r[1], r[2]) for r in rows] == [(3, True, "SHIRT")]  # feedback item 10
+    assert [(r[0], r[1], r[2]) for r in rows] == [(4, True, "SHIRT")]  # item 10, 18 Nov style
     assert _promotions(superuser_conn, "tshirts") == 1
 
 
@@ -656,7 +656,7 @@ async def test_seed_on_existing_v1_db_ok(
     assert await _seed("demo") == 0
     assert [(r[0], r[1]) for r in _templates(superuser_conn, "ethnic_wear_kurta_sets")] == [
         (1, False),
-        (4, True),  # feedback item 10
+        (5, True),  # feedback item 10, 18 Nov `style`
     ]
     assert _kurta_001_pin(superuser_conn) == 1
 

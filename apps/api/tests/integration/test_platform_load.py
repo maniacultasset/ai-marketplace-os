@@ -136,4 +136,4 @@ async def test_platform_load_then_seed_ok(cli_env: Path, superuser_conn: Conn) -
     pinned = superuser_conn.execute(
         "SELECT template_version FROM validation_runs WHERE id = %s", [run_id]
     ).fetchone()
-    assert pinned == (4,)  # feedback item 10: kurta version 4
+    assert pinned == (5,)  # feedback item 10, 18 Nov `style`: kurta version 5
