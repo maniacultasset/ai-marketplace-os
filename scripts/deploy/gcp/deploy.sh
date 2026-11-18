@@ -16,7 +16,8 @@
 #   restore-drill  [--pitr YYYY-MM-DDTHH:MM:SSZ] [--keep]: the latest backup (or a point in time) into a
 #               throwaway <SQL_INSTANCE>-drill-<stamp>; alembic, row count and smoke checks, timed, deleted
 #   tenant      create | add-member | set-password | make-admin | unlock | reset-mfa (staff CLI job)
-#   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job)
+#   templates   refresh | promote-definition: Amazon product type definitions (DW2; PTD job);
+#               refresh ... --via-tenant SLUG: through an allow-listed tenant's connection (ADR-0033)
 #   amazon-check  (--slug S | --seller-id ID) --staff-email E [--ean EAN] [--asin ASIN]: the read-only
 #               Amazon connection check of one tenant (GET only, worker identity, one-off job)
 #   amazon-preview  --slug S --listing-id L --staff-email E [--precheck]: the owner's one-off Amazon
@@ -161,6 +162,11 @@ PTD_JOB="${PTD_JOB:-aimos-ptd}"
 # token on the shared ops identity would be readable by every staff job.
 SA_PTD="${SA_PTD:-aimos-ptd}"
 PTD_TOKEN_SECRET="AMAZON_PLATFORM_REFRESH_TOKEN"
+# ADR-0033: `templates refresh ... --via-tenant SLUG` borrows an allow-listed tenant's stored
+# Amazon connection instead of the platform token, in its own job under its own identity: SA_PTD
+# never gets the token key or DATABASE_URL, and SA_PTD_TENANT never gets the platform token.
+PTD_TENANT_JOB="${PTD_TENANT_JOB:-aimos-ptd-tenant}"
+SA_PTD_TENANT="${SA_PTD_TENANT:-aimos-ptd-tenant}"
 # The read-only Amazon connection check (app.workers.amazon_check): a one-off job under the worker
 # identity, which already opens the tenant tokens (KMS) and reads DATABASE_URL and the LWA secret.
 AMZCHECK_JOB="${AMZCHECK_JOB:-aimos-amazon-check}"
@@ -224,6 +230,12 @@ esac
 case "$TENANT_CREATE_MAX_OWNED" in
   '' | [1-9] | [1-9][0-9] | 100) ;;
   *) die "TENANT_CREATE_MAX_OWNED must be 1-100 or blank (in $ENV_NAME.env)" ;;
+esac
+
+# ADR-0033: comma separated tenant slugs; blank (an older env file too) refuses every one.
+AMAZON_PTD_TENANT_SLUGS="${AMAZON_PTD_TENANT_SLUGS:-}"
+case "$AMAZON_PTD_TENANT_SLUGS" in
+  *[!a-z0-9,-]*) die "AMAZON_PTD_TENANT_SLUGS must be comma separated tenant slugs (in $ENV_NAME.env)" ;;
 esac
 
 # ---- the Amazon publish kill switch, refused before any gcloud call ----
@@ -1760,13 +1772,19 @@ cmd_tenant() {
 # and the platform refresh token (a self-authorization of the Kuinn app, added by the owner), and
 # the migrator URL the CLI writes with, under its own identity SA_PTD. Only while AMAZON_APP_ID is set.
 cmd_templates() {
-  [ ${#REST[@]} -ge 1 ] || die "usage: templates refresh --product-type T --staff-email E --reason R | promote-definition --product-type T --version V [--digest D] --staff-email E --reason R"
-  local action="${REST[0]}" image args arg secrets env name missing=0
+  [ ${#REST[@]} -ge 1 ] || die "usage: templates refresh --product-type T --staff-email E --reason R [--via-tenant SLUG] | promote-definition --product-type T --version V [--digest D] --staff-email E --reason R"
+  local action="${REST[0]}" image args arg secrets env name missing=0 via=""
   case "$action" in
     refresh | promote-definition) ;;
     *) die "unknown templates action '$action' (refresh | promote-definition)" ;;
   esac
   [ -n "$AMAZON_APP_ID" ] || die "templates needs the Amazon app: set AMAZON_APP_ID in $ENV_NAME.env"
+  via="$(via_tenant_slug ${REST[@]+"${REST[@]}"})" || exit 1
+  if [ -n "$via" ]; then
+    [ "$action" = "refresh" ] || die "templates: --via-tenant works with refresh only"
+    templates_via_tenant "$via"
+    return
+  fi
   gq iam service-accounts describe "$(sa_email "$SA_PTD")" --format='value(email)' >/dev/null ||
     gc iam service-accounts create "$SA_PTD" --display-name="aimos PTD refresh job"
   retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$SA_PTD")" \
@@ -1815,6 +1833,82 @@ cmd_templates() {
     --labels="$LABELS"
   run_job "$PTD_JOB"
   say "templates $action done: the job log names the product type, version and digest prefix only"
+}
+
+# ARGS...: the value of `--via-tenant` (either form), or nothing; dies on an empty or repeated one.
+via_tenant_slug() {
+  local found="" seen=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --via-tenant=*) found="${1#*=}"; seen=$((seen + 1)) ;;
+      --via-tenant) found="${2-}"; seen=$((seen + 1)); [ $# -lt 2 ] || shift ;;
+    esac
+    shift
+  done
+  [ "$seen" -le 1 ] || die "templates: pass --via-tenant once"
+  [ "$seen" -eq 0 ] || [ -n "$found" ] || die "templates: --via-tenant needs a tenant slug"
+  printf '%s' "$found"
+}
+
+# SLUG: `templates refresh ... --via-tenant SLUG` (ADR-0033). The fetch uses tenant SLUG's stored
+# Amazon connection, so the job is PTD_TENANT_JOB under its own identity SA_PTD_TENANT with what
+# reading that connection needs (DATABASE_URL, decrypt on the token key, the LWA client secret),
+# plus the migrator URL the store and the platform-admin check use. The platform refresh token is
+# never mounted, granted or required here, and SA_PTD (which reads it) gets none of these. SLUG must be on AMAZON_PTD_TENANT_SLUGS; the CLI and the worker check it again.
+templates_via_tenant() {
+  local slug="$1" image url args arg envf="$WORK/ptd-tenant-env.yaml"
+  case ",$AMAZON_PTD_TENANT_SLUGS," in
+    *",$slug,"*) ;;
+    *) die "templates: tenant $slug is not on AMAZON_PTD_TENANT_SLUGS (in $ENV_NAME.env)" ;;
+  esac
+  gq iam service-accounts describe "$(sa_email "$SA_PTD_TENANT")" --format='value(email)' >/dev/null ||
+    gc iam service-accounts create "$SA_PTD_TENANT" --display-name="aimos PTD via-tenant job"
+  retry gc projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$(sa_email "$SA_PTD_TENANT")" \
+    --role=roles/cloudsql.client --condition=None --format=none
+  # decrypt only (ADR-0018 gives the api encrypt and the worker both): the stored token is read,
+  # never sealed again, because the account row is not changed
+  retry gc kms keys add-iam-policy-binding "$KMS_KEY" --keyring="$KMS_KEYRING" --location="$REGION" \
+    --member="serviceAccount:$(sa_email "$SA_PTD_TENANT")" --role=roles/cloudkms.cryptoKeyDecrypter --format=none
+  for arg in ALEMBIC_DATABASE_URL DATABASE_URL AMAZON_CLIENT_SECRET; do
+    grant_secret "$arg" "$SA_PTD_TENANT"
+  done
+  image="$(image_ref)"
+  url="$(api_url)"
+  args="-m|app.cli|templates|refresh"
+  # gcloud refuses a repeated --args value, so `--flag value` pairs travel as `--flag=value`.
+  local -a rest
+  rest=("${REST[@]}")
+  rest=("${rest[@]:1}")
+  set -- ${rest[@]+"${rest[@]}"}
+  while [ $# -gt 0 ]; do
+    arg="$1"
+    shift
+    case "$arg" in
+      --*=*) ;;
+      --*) if [ $# -gt 0 ] && case "$1" in --*) false ;; *) true ;; esac; then arg="$arg=$1"; shift; fi ;;
+    esac
+    case "$arg" in *"|"*) die "an argument may not contain '|'" ;; esac
+    args="$args|$arg"
+  done
+  env_file shell "$url" "$envf"
+  {
+    printf 'AMAZON_APP_ID: %s\n' "$(yaml_quote "$AMAZON_APP_ID")"
+    printf 'AMAZON_CLIENT_ID: %s\n' "$(yaml_quote "$AMAZON_CLIENT_ID")"
+    printf 'AMAZON_AUTHORIZE_URL: %s\n' "$(yaml_quote "$AMAZON_AUTHORIZE_URL")"
+    printf 'AMAZON_PTD_TENANT_SLUGS: %s\n' "$(yaml_quote "$AMAZON_PTD_TENANT_SLUGS")"
+  } >>"$envf"
+  if [ "$DRY_RUN" -eq 1 ]; then
+    say "ptd-tenant env file $envf:"
+    sed 's/^/    /' "$envf"
+  fi
+  gc run jobs deploy "$PTD_TENANT_JOB" --image="$image" --region="$REGION" \
+    --service-account="$(sa_email "$SA_PTD_TENANT")" --set-cloudsql-instances="$CONN" \
+    --env-vars-file="$envf" \
+    --set-secrets="$(secret_refs "DATABASE_URL ALEMBIC_DATABASE_URL AMAZON_CLIENT_SECRET")" \
+    --args="^|^$args" --tasks=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=1Gi \
+    --labels="$LABELS"
+  run_job "$PTD_TENANT_JOB"
+  say "templates refresh via tenant $slug done: the job log names the product type, version and digest prefix only"
 }
 
 # ---- amazon-check (the read-only Amazon connection check) ----

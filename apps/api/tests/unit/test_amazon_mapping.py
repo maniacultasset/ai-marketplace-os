@@ -179,6 +179,7 @@ def test_amazon_mapping_reverse_index_round_trip() -> None:
     for name, spec_path in (
         (s.marketplace_field, f"{'facts' if k in FACT_SPEC_KEYS else 'attributes'}.{k}")
         for k, s in template().template.specs.items()
+        if s.marketplace_field  # 18 Nov: the kurta type feeds `style` through the overlay
     ):
         assert spec_path in index[str(name)]
 

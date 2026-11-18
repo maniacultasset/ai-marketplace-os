@@ -232,8 +232,8 @@ def test_token_enc_has_no_canary_bytes(flow: dict[str, Any]) -> None:
 def test_token_enc_decrypts_only_via_adapter_path() -> None:
     """Only `app.adapters.credentials` calls a key unwrapper's `unwrap` for seller tokens, and
     `unseal` is called only by the worker paths that need a live token (the adapter session, the
-    refresh job and the read-only Amazon connection check, which refreshes in memory and sends
-    GET only). DPP-1 (ADR-0021): `app.adapters.mfa_secrets` is the one other unwrapper,
+    refresh job, the read-only Amazon connection check, which refreshes in memory and sends
+    GET only, and ADR-0033's PTD fetch child, which does the same for one allow-listed tenant). DPP-1 (ADR-0021): `app.adapters.mfa_secrets` is the one other unwrapper,
     for the MFA data-key label only; the import-linter contract
     `mfa-secret-unseal-only-in-mfa-service` keeps it behind `app.services.mfa`, and it never
     imports the token path."""
@@ -260,6 +260,7 @@ def test_token_enc_decrypts_only_via_adapter_path() -> None:
         "workers/adapters.py",
         "workers/token_refresh.py",
         "workers/amazon_check.py",
+        "workers/ptd_tenant.py",
     }, unseal_callers
 
 

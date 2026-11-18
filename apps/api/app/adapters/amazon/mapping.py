@@ -927,6 +927,31 @@ def reverse_index(template: CategoryTemplate | None) -> Mapping[str, tuple[str, 
     return {name: tuple(sorted(paths)) for name, paths in sorted(index.items())}
 
 
+SELLER_ATTRIBUTE_ROOT: Final = "attributes."
+
+
+def issue_index(listing: AdapterListing) -> Mapping[str, tuple[str, ...]]:
+    """`reverse_index` of the pinned template, plus each Amazon attribute only the listing's
+    current template maps, fed by its seller attribute paths (18 Nov: a version pinned before
+    `style` was mapped still lands an issue on `style` on `attributes.style`)."""
+    pinned = listing.template.template if listing.template is not None else None
+    index = dict(reverse_index(pinned))
+    if listing.current_template is not None:
+        for name, paths in reverse_index(listing.current_template).items():
+            seller = tuple(p for p in paths if p.startswith(SELLER_ATTRIBUTE_ROOT))
+            if name not in index and seller:
+                index[name] = seller
+    return index
+
+
+def seller_paths(names: Sequence[str], index: Mapping[str, tuple[str, ...]]) -> list[str]:
+    """The seller attribute paths (`attributes.<key>`) that feed the named Amazon attributes,
+    sorted: where an issue on an attribute the item did not send belongs."""
+    return sorted(
+        {p for n in names for p in index.get(n, ()) if p.startswith(SELLER_ATTRIBUTE_ROOT)}
+    )
+
+
 # ---- families and checks ----
 
 

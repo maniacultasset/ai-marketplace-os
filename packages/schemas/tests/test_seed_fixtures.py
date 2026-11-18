@@ -49,6 +49,10 @@ REQUIRED = {
 BOTTOMWEAR = ("jeans", "trousers", "track_pants", "shorts", "skirts")
 REQUIRED |= {c: {"color", "fabric_type"} for c in BOTTOMWEAR}
 CATEGORY_CODES = range(1, 9)
+# prod feedback 18 Nov: Amazon refuses an apparel create without `style` (the Amazon apparel
+# RuleSets, category codes 1 and 3-8, row 0050)
+STYLE_CATEGORIES = ("ethnic_wear_kurta_sets", "tshirts", *BOTTOMWEAR)
+STYLE_RULE_IDS = {f"5eed0000-0000-4000-8000-0001000{n}0050" for n in (1, 3, 4, 5, 6, 7, 8)}
 S9_SCOPES = {
     (m, c) for m in ("amazon", "flipkart") for c in ("ethnic_wear_kurta_sets", "home_decor_lamps")
 }
@@ -130,13 +134,14 @@ def test_rules_seed_star_banned_terms_each_ruleset() -> None:
 
 
 def test_rules_seed_required_attributes_per_category() -> None:
-    for (_, category), rule_set in _by_scope().items():
+    for (marketplace, category), rule_set in _by_scope().items():
         required = {
             r.rule_def.attribute: r
             for r in rule_set.rules
             if isinstance(r.rule_def, RequiredAttribute)
         }
-        assert set(required) == REQUIRED[category], category
+        extra = {"style"} if marketplace == "amazon" and category in STYLE_CATEGORIES else set()
+        assert set(required) == REQUIRED[category] | extra, category
         for attribute, row in required.items():
             assert row.field == f"attributes.{attribute}"
             assert row.rule_def.policy_ref is not None
@@ -196,7 +201,7 @@ def test_rules_seed_tshirts_rulesets_present() -> None:
             r.rule_def.attribute
             for r in rule_set.rules
             if isinstance(r.rule_def, RequiredAttribute)
-        } == {"color", "fabric_type"}
+        } == {"color", "fabric_type"} | ({"style"} if marketplace == "amazon" else set())
         assert all(r.tenant_id is None and r.rule_def.policy_ref for r in rule_set.rules)
     assert list(scopes)[4:6] == [("amazon", "tshirts"), ("flipkart", "tshirts")]
 
@@ -334,8 +339,9 @@ def test_rules_seed_count_228() -> None:
     """78 rows, plus SI8's six Amazon bullet and description limits, plus the eight
     secondary and lifestyle resolution rows (QA 2026-11-09), plus SI14's four photo QA
     warnings (text overlay and watermark, Amazon and Flipkart main), plus the twelve photo
-    rules 2.1.0 rows, plus five bottomwear copies of the tshirts RuleSets (14 + 10 rows each)."""
-    assert sum(len(s.rules) for s in _load()) == 108 + 5 * (14 + 10)
+    rules 2.1.0 rows, plus five bottomwear copies of the tshirts RuleSets (14 + 10 rows each),
+    plus the Amazon `style` requirement on the seven apparel RuleSets (18 Nov)."""
+    assert sum(len(s.rules) for s in _load()) == 108 + 5 * (14 + 10) + 7
     ids = {str(r.id) for s in _load() for r in s.rules}
     assert ids >= EXTRA_PHOTO_RULE_IDS | SI14_PHOTO_QA_RULE_IDS | PHOTO_RULES_2_1_IDS
     retired = [r for s in _load() for r in s.rules if str(r.id) in RETIRED_PHOTO_RULE_IDS]
@@ -389,6 +395,7 @@ def test_rules_seed_apparel_unchanged_but_the_byte_rows() -> None:
         | SI14_PHOTO_QA_RULE_IDS
         | EXTRA_PHOTO_RULE_IDS
         | PHOTO_RULES_2_1_IDS
+        | STYLE_RULE_IDS
     )
 
     def pre_gate(rule: dict[str, Any]) -> dict[str, Any]:

@@ -68,7 +68,7 @@ async def _ungendered(amz: AmzWorld) -> str:
             title="Cotton Kurta Set",
             category="ethnic_wear_kurta_sets",
             images=(),
-            attributes={"color": "blue", "fabric_type": "cotton"},
+            attributes={"color": "blue", "fabric_type": "cotton", "style": "Straight"},
             mrp=Decimal("1499.00"),
             selling_price=Decimal("999.00"),
             product_identifier=("ean", f.ean()),  # SI5 B2: only the audience is missing

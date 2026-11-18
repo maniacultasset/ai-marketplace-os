@@ -33,14 +33,19 @@ def test_amazon_seed_templates_two_categories() -> None:
 
     got = [(t.template.marketplace.value, t.template.category, t.version, t.product_type) for t in seed_templates()]  # fmt: skip
     assert got == [
-        ("amazon", "ethnic_wear_kurta_sets", 4, "KURTA"),  # SI2, feedback item 10
-        ("amazon", "tshirts", 3, "SHIRT"),  # SI2, feedback item 10
+        ("amazon", "ethnic_wear_kurta_sets", 5, "KURTA"),  # SI2, feedback item 10, style
+        ("amazon", "tshirts", 4, "SHIRT"),  # SI2, feedback item 10, style
         ("amazon", "home_decor_lamps", 3, "LAMP"),  # A2, feedback item 10
-        *(("amazon", c, 1, types[0]) for c, types in BOTTOMWEAR.items()),
+        *(("amazon", c, 2, types[0]) for c, types in BOTTOMWEAR.items()),  # 18 Nov: style
     ]
     for seed in seed_templates():
         assert seed.template.variation_themes == THEMES[seed.template.category]
-        assert all(spec.marketplace_field for spec in seed.template.specs.values())
+        # 18 Nov: the Amazon kurta type feeds `style` through the overlay, not a field of its own
+        assert all(
+            spec.marketplace_field
+            for key, spec in seed.template.specs.items()
+            if not (seed.template.category == "ethnic_wear_kurta_sets" and key == "kurta_type")
+        )
 
 
 def test_amazon_seed_templates_every_spec_key_canonical() -> None:
@@ -199,8 +204,9 @@ def test_flipkart_seed_templates_s9_v1_unchanged() -> None:
 LAMP_KEYS = ("lamp_type", "lamp_material", "shade_material", "light_source_type")
 # The kurta and tshirts entries of `platform_template_loads()`: unchanged by A2; SI2's new
 # versions (Amazon kurta v3 / tshirts v2, Flipkart kurta v3 / t_shirt v2) moved the pin once, and
-# feedback item 10's (kurta v4 / tshirts v3, recommended attributes) once more.
-APPAREL_TEMPLATES_SHA256 = "a640c30245d7688c1e48171015415ba0c51c45aa164d26f6de545a08b3c106db"
+# feedback item 10's (kurta v4 / tshirts v3, recommended attributes) once more, and the Amazon
+# `style` versions (kurta v5 / tshirts v4, 18 Nov) once more.
+APPAREL_TEMPLATES_SHA256 = "e5e2189855f0bf691149c2b96bb0aad277e8af35d771f873f12f40188d7dadfb"
 
 
 def test_platform_dictionary_file_loads() -> None:
@@ -340,8 +346,10 @@ def test_si2_fact_specs_optional_and_versions(marketplace: str, category: str) -
     seed = _apparel(marketplace, category)
     for key in ("fiber_composition", "manufacturer", "country_of_origin"):
         assert seed.template.specs[key].requirement == "optional"
-    # SI2's versions, each one up for feedback item 10's recommended attributes
-    assert seed.version == (4 if category == "ethnic_wear_kurta_sets" else 3)
+    # SI2's versions, each one up for feedback item 10's recommended attributes, and Amazon one
+    # more for `style` (18 Nov)
+    version = 4 if category == "ethnic_wear_kurta_sets" else 3
+    assert seed.version == version + (marketplace == "amazon")
 
 
 def test_si2_amazon_value_maps() -> None:
@@ -479,10 +487,14 @@ def test_recommended_attributes_are_optional_mapped_specs(marketplace: str, cate
         # sent like any optional key: an optional spec the adapter maps, never required
         assert key in template.optional_attributes
         assert template.specs[key].requirement == "optional"
-        assert template.specs[key].marketplace_field
+        if (marketplace, key) != ("amazon", "kurta_type"):  # 18 Nov: it feeds Amazon `style`
+            assert template.specs[key].marketplace_field
     levels = requirement_levels(template)
     assert sorted(k for k, v in levels.items() if v == "recommended") == RECOMMENDED[category]
-    assert {k for k, v in levels.items() if v == "required"} == set(template.required_attributes)
+    required = set(template.required_attributes)
+    if marketplace == "amazon" and category != "home_decor_lamps":
+        required.add("style")  # 18 Nov: Amazon refuses an apparel create without `style`
+    assert {k for k, v in levels.items() if v == "required"} == required
 
 
 # ---- feedback 17 Nov: the bottomwear mappings ----

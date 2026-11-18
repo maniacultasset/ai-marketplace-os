@@ -1,7 +1,8 @@
 """Amazon Product Type Definitions 2020-09-01 (DW2 T4; T53): fetch one definition and its schema.
 
-Used only by the staff command `app.cli templates refresh`, under the platform-owned SP-API
-authorization (`PlatformTokenSource`, never a tenant token).
+Used only by the staff command `app.cli templates refresh`: under the platform-owned SP-API
+authorization (`PlatformTokenSource`), or with `--via-tenant` under an allow-listed tenant's
+connection in the fetch child `app.workers.ptd_tenant` (ADR-0033), and by the connection check.
 
 - The definition is one `SpApiClient.get_json("ptd_get", ...)`: the client's limiter, token
   refresh, 429 budget, redirect refusal, body cap and error map all apply.

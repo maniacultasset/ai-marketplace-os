@@ -65,9 +65,11 @@ from app.adapters.amazon.mapping import (
     error,
     fact_path,
     is_mapped,
+    issue_index,
     item_index,
     preview,
     reverse_index,
+    seller_paths,
 )
 from app.adapters.amazon.precheck import PrecheckResult
 from app.adapters.base import (
@@ -188,8 +190,7 @@ class AmazonAdapter(MarketplaceAdapter):
         local = tuple(e for e in errors if e.severity is Severity.ERROR)
         if local:
             return RemotePreview(status="failed", errors=local[:MAX_ERROR_ITEMS])
-        template = item.template.template if item.template is not None else None
-        index = reverse_index(template)
+        index = issue_index(item)
         parties = party_secrets(item)
         found: list[ErrorItem] = []
         per_sku: dict[str, str] = {}
@@ -275,6 +276,28 @@ class AmazonAdapter(MarketplaceAdapter):
             found: Sequence[str | None] = sorted(
                 {p for n in names for p in index.get(n, ()) if p in in_scope}
             )
+            # 18 Nov: an attribute the item did not send, fed by a seller attribute (Amazon
+            # `style` with no value): the issue lands on that attribute, which the seller answers
+            carried = set(mapped.paths)
+            unsent = (
+                []
+                if found
+                else seller_paths([n for n in names if not carried & set(index.get(n, ()))], index)
+            )
+            for unsent_path in unsent:
+                if severity == "WARNING":
+                    continue
+                kept = self._map.to_item(
+                    raw_code=str(issue.get("code", "")),
+                    raw_message=issue_text(str(issue.get("message", "")), names, index, secrets),
+                    field=unsent_path,
+                    value=None,
+                    categories=categories,
+                    secrets=secrets,
+                )
+                loose.append(kept.model_copy(update={"severity": Severity.ERROR}))
+            if unsent:
+                continue
             for path in found or [None]:
                 one = self._map.to_item(
                     raw_code=str(issue.get("code", "")),
@@ -465,8 +488,7 @@ class AmazonAdapter(MarketplaceAdapter):
         mapped, errors = build(item, marketplace_id=self._marketplace_id)
         if any(e.severity is Severity.ERROR for e in errors):
             return self._blocked(item, mapped, errors)
-        template = item.template.template if item.template is not None else None
-        index = reverse_index(template)
+        index = issue_index(item)
         results: list[ItemResult] = []
         bodies: list[bytes] = []
         ref: str | None = None
@@ -523,8 +545,7 @@ class AmazonAdapter(MarketplaceAdapter):
             require_identifier=False,
             definition_guard=True,
         )
-        template = item.template.template if item.template is not None else None
-        index = reverse_index(template)
+        index = issue_index(item)
         by_sku = {m.unit.seller_sku: m for m in mapped}
         for sku, paths in per_sku.items():
             unknown = [p for p in paths if p not in by_sku[sku].paths]

@@ -8,7 +8,9 @@
 2. the new listing: `content` replaced, `keywords` and `attributes` only when sent, images kept;
 3. no change → the current detail, no version;
 4. otherwise a version (`origin=edit`, the parent, the top-level `changed_paths`, the parent's
-   maker kept as `generated_by_user_id`, the caller as `edited_by_user_id`, the parent's pins);
+   maker kept as `generated_by_user_id`, the caller as `edited_by_user_id`, the parent's pins;
+   prod feedback 18 Nov: a listing the marketplace never accepted takes the category's current
+   template instead, so a fix after a template bump is sent with the new mapping, `template_pin`);
 5. the Rules Engine on it, one run (attempt 1, linked); SI9 B4: the marketplace check on the
    new content before the insert, its items synced under `schema` (cause `edit`);
 6. the move (event `edit`) to `validated`, `needs_review` or `blocked/validation_errors`, the
@@ -167,6 +169,25 @@ async def _locks_changed(
     )
 
 
+async def template_pin(
+    uow: TenantUnitOfWork, listing: Any, parent: Any, current: uuid.UUID | None
+) -> uuid.UUID | None:
+    """The template an edit version pins (module docstring step 4): the parent's, or `current`
+    (the category's current template, the one the edit was just checked against) when the
+    marketplace never accepted the listing (no published or live version) and the parent's
+    template is of the listing's category. A live listing keeps its pin; a recategorised one
+    keeps its old pin, so publish still asks for the regenerate."""
+    pinned: uuid.UUID | None = parent.category_template_id
+    if current is None or pinned is None or pinned == current:
+        return pinned
+    if listing.published_version_id is not None or listing.live_version_id is not None:
+        return pinned
+    old = await uow.templates.pinned(pinned)
+    if old is None or old.template.category != listing.category:
+        return pinned
+    return current
+
+
 async def save_edit(
     uow: TenantUnitOfWork,
     principal: Principal,
@@ -183,14 +204,13 @@ async def save_edit(
     from_status = listing.status
     number = await uow.listing_versions.next_version(listing.id)
     check = await rules_check(uow, listing, new)
+    pin = await template_pin(uow, listing, parent, check.pins.template_id)
     # SI9 B4 (CP-D2): the marketplace check on the new content before the insert
     new_id = uuid.uuid4()
     adapter = await adapter_check(
         uow,
         listing.id,
-        version=SourceVersion(
-            new_id, number, new.model_dump(mode="json"), parent.category_template_id
-        ),
+        version=SourceVersion(new_id, number, new.model_dump(mode="json"), pin),
     )
     to, reason = human_move(check.report, adapter)
     stored = new.model_copy(
@@ -210,7 +230,7 @@ async def save_edit(
             changed_paths=changed,
             locale=parent.locale,
             rules_version=parent.rules_version,
-            category_template_id=parent.category_template_id,
+            category_template_id=pin,
         )
     )
     run = await insert_run(uow, listing, version.id, check, cause="edit")

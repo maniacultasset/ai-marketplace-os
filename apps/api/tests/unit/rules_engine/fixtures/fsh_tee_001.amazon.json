@@ -13,6 +13,7 @@
   },
   "attributes": {
     "color": "black",
-    "fabric_type": "cotton"
+    "fabric_type": "cotton",
+    "style": "Round Neck"
   }
 }

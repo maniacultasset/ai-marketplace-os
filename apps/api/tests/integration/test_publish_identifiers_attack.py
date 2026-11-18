@@ -52,7 +52,7 @@ async def _standalone(
             title="Cotton Kurta Set",
             category=CATEGORY,
             images=(),
-            attributes={"color": "blue", "fabric_type": "cotton"},
+            attributes={"color": "blue", "fabric_type": "cotton", "style": "Straight"},
             mrp=Decimal("1499.00"),
             selling_price=Decimal("999.00"),
             gender="women",  # SI8: Amazon Kurta sets need the audience

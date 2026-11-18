@@ -26,12 +26,12 @@ from tests.support.fault_transport import FaultTransport
 
 
 def _five(**over: Any) -> Any:
-    """A standalone listing that sends exactly five paths: three content fields, color and
-    fabric_type (no keywords, no images)."""
+    """A standalone listing that sends three content fields, color and fabric_type (no keywords,
+    no images), plus the `style` Amazon requires (18 Nov)."""
     base = listing()
     body = base.model_copy(
         update={
-            "attributes": {"color": "navy blue", "fabric_type": "cotton"},
+            "attributes": {"color": "navy blue", "fabric_type": "cotton", "style": "Straight"},
             "keywords": base.keywords.model_copy(update={"search_terms": [], "hidden_terms": []}),
             "images": [],
         }

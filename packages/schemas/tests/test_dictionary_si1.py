@@ -64,7 +64,8 @@ def test_size_chart_url_levels(attributes: list[dict[str, Any]]) -> None:
 
 
 def test_key_count_up_by_one(attributes: list[dict[str, Any]]) -> None:
-    assert len(attributes) == BEFORE_SI1_KEYS + 1
+    # SI1 added one key; the Amazon `style` key (18 Nov) is one more
+    assert len(attributes) == BEFORE_SI1_KEYS + 2
 
 
 def test_no_alias_collides_with_a_key(attributes: list[dict[str, Any]]) -> None:

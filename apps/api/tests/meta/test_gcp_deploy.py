@@ -2137,6 +2137,12 @@ def test_templates_refresh_runs_its_own_job_with_the_amazon_settings(
         if "secrets add-iam-policy-binding AMAZON_PLATFORM_REFRESH_TOKEN " in line
     ]
     assert token_grants and all("aimos-ptd@" in line for line in token_grants)
+    # ADR-0033: the platform-token identity never decrypts tenant tokens or reads DATABASE_URL
+    assert not _kms_bindings(out, "oauth-token-key")
+    assert not any(
+        "secrets add-iam-policy-binding DATABASE_URL " in line for line in out.splitlines()
+    )
+    assert "aimos-ptd-tenant" not in out
     assert "roles/cloudsql.client" in out
     assert "gcloud run jobs execute aimos-ptd" in out
     # the job's settings boot as the shell role in production
@@ -2200,6 +2206,128 @@ def test_templates_keeps_a_comma_in_a_reason(toolkit: Path, tmp_path: Path) -> N
         "--staff-email", "s@b.test", "--reason", "first load, KURTA", "--dry-run", "--sha", SHA,
     ).stdout  # fmt: skip
     assert "|--reason=first load, KURTA" in _ptd_deploy(out).replace("\\", "")
+
+
+# ---- ADR-0033: the PTD fetch through an allow-listed tenant's connection ----
+
+
+def _ptd_tenant_deploy(out: str) -> str:
+    return next(line for line in out.splitlines() if "run jobs deploy aimos-ptd-tenant" in line)
+
+
+def _via(
+    toolkit: Path, tmp_path: Path, env_name: str, *extra: str
+) -> subprocess.CompletedProcess[str]:
+    return _run(
+        toolkit, tmp_path, env_name, "templates", "refresh", "--product-type", "SHIRT",
+        "--staff-email", "s@b.test", "--reason", "beta style", *extra, "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+
+
+def test_prod_env_allow_lists_only_the_owner_brand(repo_root: Path) -> None:
+    for name, expected in (("prod", "test"), ("staging", "")):
+        text = (repo_root / DEPLOY / f"{name}.env").read_text(encoding="utf-8")
+        values = dict(re.findall(r"^([A-Z_]+)=(.*)$", text, re.MULTILINE))
+        assert values["AMAZON_PTD_TENANT_SLUGS"] == expected, name
+
+
+def test_templates_via_tenant_runs_without_the_platform_token(
+    toolkit: Path, tmp_path: Path, clean_env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_USE_SANDBOX="false")
+    out = _via(toolkit, tmp_path, "prod", "--via-tenant", "test").stdout
+    job = _ptd_tenant_deploy(out)
+    # what reading the tenant connection needs, plus the migrator URL; never the platform token
+    assert _secret_names(job) == ["DATABASE_URL", "ALEMBIC_DATABASE_URL", "AMAZON_CLIENT_SECRET"]
+    assert "AMAZON_PLATFORM_REFRESH_TOKEN" not in out
+    assert "run jobs deploy aimos-ptd " not in out
+    assert "--service-account=aimos-ptd-tenant@" in job and "--max-retries=0" in job
+    # its own identity: the platform-token identity aimos-ptd is never bound, deployed or granted
+    assert not [line for line in out.splitlines() if "aimos-ptd@" in line]
+    args = job.replace("\\", "")
+    assert (
+        "--args=^|^-m|app.cli|templates|refresh|--product-type=SHIRT|--staff-email=s@b.test"
+        "|--reason=beta style|--via-tenant=test" in args
+    )
+    # the via-tenant identity may decrypt (never encrypt) with the token key, and reads its
+    # secrets; never the platform token
+    (kms,) = _kms_bindings(out, "oauth-token-key")
+    assert "aimos-ptd-tenant@" in kms and "--role=roles/cloudkms.cryptoKeyDecrypter " in kms
+    for name in ("ALEMBIC_DATABASE_URL", "DATABASE_URL", "AMAZON_CLIENT_SECRET"):
+        assert any(
+            f"secrets add-iam-policy-binding {name} " in line and "aimos-ptd-tenant@" in line
+            for line in out.splitlines()
+        ), name
+    assert "gcloud run jobs execute aimos-ptd-tenant" in out
+    loaded = yaml.safe_load(_blocks(out, "ptd-tenant env file")[0])
+    env = {str(k): str(v) for k, v in loaded.items()}
+    assert env["APP_ROLE"] == "shell" and env["APP_ENV"] == "production"
+    assert env["AMAZON_PTD_TENANT_SLUGS"] == "test"
+    assert env["AMAZON_APP_ID"] == AMAZON_APP and env["AMAZON_CLIENT_ID"] == AMAZON_CLIENT
+    assert env["AMAZON_SPAPI_ENDPOINT"] == "https://sellingpartnerapi-eu.amazon.com"
+    assert env["KMS_KEY_URI"].endswith("/cryptoKeys/oauth-token-key")
+    # the job's settings boot as the shell role in production with the allow-list and the app
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("ALEMBIC_DATABASE_URL", SECRET_VALUES["DATABASE_URL"])
+    monkeypatch.setenv("AMAZON_CLIENT_SECRET", SECRET_VALUES["AMAZON_CLIENT_SECRET"])
+    from app.core.config import get_settings, ptd_tenant_slugs
+    from app.workers.ptd_tenant import missing_setting
+
+    get_settings.cache_clear()
+    try:
+        settings = get_settings()
+        assert missing_setting(settings) is None and settings.alembic_database_url
+        assert settings.amazon_platform_refresh_token is None
+        assert ptd_tenant_slugs(settings.amazon_ptd_tenant_slugs) == {"test"}
+    finally:
+        get_settings.cache_clear()
+
+
+def test_templates_via_tenant_takes_the_equals_form(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    out = _via(toolkit, tmp_path, "prod", "--via-tenant=test").stdout
+    assert "|--via-tenant=test" in _ptd_tenant_deploy(out).replace("\\", "")
+
+
+def test_templates_via_tenant_refuses_a_slug_off_the_allow_list(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _via(toolkit, tmp_path, "prod", "--via-tenant", "acme")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "tenant acme is not on AMAZON_PTD_TENANT_SLUGS" in result.stderr
+    assert "aimos-ptd" not in result.stdout
+
+
+def test_templates_via_tenant_refuses_everything_when_the_list_is_blank(
+    toolkit: Path, tmp_path: Path
+) -> None:
+    _amazon_on(toolkit, "staging")
+    result = _via(toolkit, tmp_path, "staging", "--via-tenant", "test")
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "not on AMAZON_PTD_TENANT_SLUGS" in result.stderr
+    assert "run jobs deploy" not in result.stdout
+
+
+def test_templates_via_tenant_is_refresh_only(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    result = _run_fail(
+        toolkit, tmp_path, "prod", "templates", "promote-definition", "--product-type", "SHIRT",
+        "--version", "U1", "--staff-email", "s@b.test", "--reason", "x", "--via-tenant", "test",
+        "--dry-run", "--sha", SHA,
+    )  # fmt: skip
+    assert "--via-tenant works with refresh only" in result.stderr
+
+
+def test_templates_refuses_a_bad_tenant_allow_list(toolkit: Path, tmp_path: Path) -> None:
+    _amazon_on(toolkit, "prod")
+    _set_env(toolkit, "prod", AMAZON_PTD_TENANT_SLUGS="test,Acme")
+    result = _via(toolkit, tmp_path, "prod", "--via-tenant", "test")
+    assert result.returncode == 1
+    assert "AMAZON_PTD_TENANT_SLUGS must be comma separated tenant slugs" in result.stderr
 
 
 # ---- the read-only Amazon connection check (app.workers.amazon_check) ----
